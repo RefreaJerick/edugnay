@@ -703,7 +703,8 @@ button:focus-visible,
   transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.sidebar-scrollbar.is-visible {
+.sidebar-scrollbar.is-visible.is-hovered,
+.sidebar-scrollbar.is-visible.is-dragging {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -843,7 +844,8 @@ html.teacher-nav-hide-reports-group .sidebar #reports-nav {
 
 /* Student access snapshots keep feature links stable while fresh permissions load. */
 html.student-nav-hide-grades .sidebar a[href*="edugnay-student-grades.html"],
-html.student-nav-hide-journals .sidebar a[href*="edugnay-student-journal.html"] {
+html.student-nav-hide-journals .sidebar a[href*="edugnay-student-journal.html"],
+html.student-nav-hide-electives .sidebar a[data-student-access="electives"] {
   display: none !important;
 }
 
@@ -2348,6 +2350,9 @@ html.profile-chip-page .tb-profile-name { overflow: hidden; text-overflow: ellip
   }
   body.drawer-open .sidebar-scrollbar.is-visible {
     display: block;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
   .sidebar-overlay { display: block; z-index: 125 !important; }
   body.drawer-open .sidebar { z-index: 130 !important; }

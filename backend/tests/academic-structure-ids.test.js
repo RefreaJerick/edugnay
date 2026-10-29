@@ -17,10 +17,10 @@ test('academic structure includes school-scoped grade and track IDs for class ma
       if (sql.includes('FROM school_grade_levels')) {
         return [[{ id: 8, schoolLevelId: 3, gradeCode: 'grade-11', displayName: 'Grade 11', isEnabled: 1 }]];
       }
-      if (sql.includes('FROM school_shs_strands')) {
-        return [[{ id: 21, schoolLevelId: 3, trackId: 13, strandCode: 'stem', displayName: 'STEM', isEnabled: 1 }]];
-      }
-      return [[{ id: 13, schoolLevelId: 3, trackCode: 'academic', displayName: 'Academic', isEnabled: 1 }]];
+      return [[
+        { id: 13, schoolLevelId: 3, trackCode: 'academic', displayName: 'Academic', isEnabled: 1 },
+        { id: 14, schoolLevelId: 3, trackCode: 'techpro', displayName: 'Technical Professional (TechPro)', isEnabled: 1 }
+      ]];
     }
   };
   let result;
@@ -34,12 +34,12 @@ test('academic structure includes school-scoped grade and track IDs for class ma
   assert.equal(failure, undefined);
   assert.equal(result.levels[0].gradeLevels[0].id, 8);
   assert.equal(result.levels[0].tracks[0].id, 13);
-  assert.equal(result.levels[0].tracks[0].strands[0].id, 21);
+  assert.deepEqual(result.levels[0].tracks.map(track => track.trackCode), ['academic', 'techpro']);
   assert.equal(result.levels[0].gradeLevels[0].isEnabled, true);
   assert.equal(result.levels[0].tracks[0].isEnabled, true);
-  assert.equal(queries.length, 4);
+  assert.equal(queries.length, 3);
   assert.ok(queries.every(query => query.values[0] === 12));
   assert.match(queries[1].sql, /school_grade_levels\.id/);
   assert.match(queries[2].sql, /school_shs_tracks\.id/);
-  assert.match(queries[3].sql, /school_shs_strands\.id/);
+  assert.doesNotMatch(queries[2].sql, /school_shs_strands/);
 });

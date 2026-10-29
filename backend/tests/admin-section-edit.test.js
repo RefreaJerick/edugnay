@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8').replace(/\r\n/g, '\n');
 const openEdit = html.split('function openSectionEditModal(card) {')[1]
-  .split('\n}\n\nfunction openClassifyStrandModal')[0];
+  .split('\n}\n\nfunction openSectionDeleteConfirmation')[0];
 const payloadSource = html.split("function managementApiSectionPayload(sectionData, sectionId = '') {")[1]
   .split('async function saveSectionForm(')[0];
 
@@ -37,9 +37,7 @@ test('edit modal shows saved placement for each level without editable placement
     page.context.openSectionEditModal({ dataset: { id: section.id } });
     assert.equal(page.elements.get('editAcademicYear').textContent, section.academicYear);
     assert.equal(page.elements.get('editGradeLevel').textContent, section.grade);
-    assert.equal(page.elements.get('editStrand').textContent, section.trackName
-      ? `${section.trackName}${section.strandName ? ` / ${section.strandName}` : ''}`
-      : 'Not applicable');
+    assert.equal(page.elements.get('editStrand').textContent, section.trackName || 'Not applicable');
     assert.equal(page.elements.get('editStrandGroup').hidden, !section.trackName);
     assert.match(page.elements.get('sectionEditModalSub').textContent, /Academic placement cannot be changed/);
   }

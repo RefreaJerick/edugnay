@@ -8,22 +8,37 @@ const root = path.resolve(__dirname, '../..');
 const script = fs.readFileSync(path.join(root, 'assets/js/theme.js'), 'utf8');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
-function boot(saved, supportsSystem = true) {
+function createControl() {
+  const events = {};
+  const trigger = {
+    attributes: {}, innerHTML: '',
+    addEventListener(name, handler) { events[name] = handler; },
+    setAttribute(name, value) { this.attributes[name] = value; }
+  };
+  const control = {
+    querySelector(selector) { return selector === '[data-theme-trigger]' ? trigger : null; }
+  };
+  return { control, trigger, events };
+}
+
+function boot(saved, supportsSystem = true, controls = []) {
   const listeners = {};
   const storage = new Map(saved === undefined ? [] : [['edugnay_theme_v1', saved]]);
   const media = { matches: false, addEventListener(name, handler) { listeners.media = handler; } };
   const document = {
     documentElement: { dataset: {} },
-    querySelectorAll() { return []; },
+    querySelectorAll(selector) { return selector === '[data-theme-control]' ? controls.map(item => item.control) : []; },
     addEventListener(name, handler) { listeners[name] = handler; }
   };
+  const iconRenders = [];
   const window = {
     localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
     matchMedia: supportsSystem ? () => media : undefined,
+    lucide: { createIcons(options) { iconRenders.push(options.root); } },
     addEventListener(name, handler) { listeners[name] = handler; }
   };
   vm.runInNewContext(script, { window, document, Set });
-  return { window, document, media, listeners, storage };
+  return { window, document, media, listeners, storage, iconRenders };
 }
 
 test('theme is applied before DOM readiness and invalid preferences stay Light', () => {
@@ -35,19 +50,58 @@ test('theme is applied before DOM readiness and invalid preferences stay Light',
   assert.equal(boot('dark').document.documentElement.dataset.theme, 'dark');
 });
 
-test('System follows device changes, and tabs receive preference changes', () => {
-  const state = boot('system');
+test('System follows device changes, tabs stay in sync, and icons show the next mode', () => {
+  const control = createControl();
+  const state = boot('system', true, [control]);
+  state.listeners.DOMContentLoaded();
   state.media.matches = true;
   state.listeners.media();
   assert.equal(state.document.documentElement.dataset.theme, 'dark');
+  assert.equal(control.trigger.attributes['aria-label'], 'Switch to light mode');
+  assert.equal(control.trigger.attributes.title, 'Switch to light mode');
+  assert.match(control.trigger.innerHTML, /data-lucide="sun"/);
   state.window.ACADEMIX_THEME.setMode('light');
   assert.equal(state.storage.get('edugnay_theme_v1'), 'light');
+  assert.equal(control.trigger.attributes['aria-label'], 'Switch to dark mode');
+  assert.match(control.trigger.innerHTML, /data-lucide="moon"/);
   state.listeners.storage({ key: 'edugnay_theme_v1', newValue: 'system' });
   assert.equal(state.document.documentElement.dataset.theme, 'dark');
+  assert.equal(control.trigger.attributes['aria-label'], 'Switch to light mode');
+  assert.match(control.trigger.innerHTML, /data-lucide="sun"/);
   state.listeners.storage({ key: 'edugnay_theme_v1', newValue: 'invalid' });
   assert.equal(state.document.documentElement.dataset.theme, 'light');
+  assert.equal(control.trigger.attributes['aria-label'], 'Switch to dark mode');
+  assert.ok(state.iconRenders.every(icon => icon === control.trigger));
   const noMedia = boot('system', false);
   assert.equal(noMedia.document.documentElement.dataset.theme, 'light');
+});
+
+test('toggle switches immediately and makes legacy System preference explicit', () => {
+  const control = createControl();
+  const state = boot(undefined, true, [control]);
+  state.listeners.DOMContentLoaded();
+  assert.equal(control.trigger.attributes['aria-label'], 'Switch to dark mode');
+  assert.equal(control.trigger.attributes.title, 'Switch to dark mode');
+  assert.match(control.trigger.innerHTML, /data-lucide="moon"/);
+  control.events.click();
+  assert.equal(state.document.documentElement.dataset.theme, 'dark');
+  assert.equal(state.storage.get('edugnay_theme_v1'), 'dark');
+  assert.equal(control.trigger.attributes['aria-label'], 'Switch to light mode');
+  assert.match(control.trigger.innerHTML, /data-lucide="sun"/);
+  control.events.click();
+  assert.equal(state.document.documentElement.dataset.theme, 'light');
+  assert.equal(state.storage.get('edugnay_theme_v1'), 'light');
+
+  const systemControl = createControl();
+  const systemState = boot('system', true, [systemControl]);
+  systemState.listeners.DOMContentLoaded();
+  systemState.media.matches = true;
+  systemState.listeners.media();
+  assert.equal(systemState.document.documentElement.dataset.theme, 'dark');
+  systemControl.events.click();
+  assert.equal(systemState.document.documentElement.dataset.theme, 'light');
+  assert.equal(systemState.storage.get('edugnay_theme_v1'), 'light');
+  assert.equal(systemState.window.ACADEMIX_THEME.getMode(), 'light');
 });
 
 test('printing uses Light without changing the saved choice', () => {
@@ -59,65 +113,23 @@ test('printing uses Light without changing the saved choice', () => {
   assert.equal(state.document.documentElement.dataset.theme, 'dark');
 });
 
-test('chooser toggles, changes theme, and closes on Escape or outside click', () => {
-  const listeners = {};
-  const buttonEvents = {};
-  const menuEvents = {};
-  const inputs = ['light', 'dark', 'system'].map(value => ({ value, checked: value === 'light', focus() { this.focused = true; } }));
-  const trigger = {
-    attributes: {}, addEventListener(name, handler) { buttonEvents[name] = handler; },
-    setAttribute(name, value) { this.attributes[name] = value; }, focus() { this.focused = true; }
-  };
-  const menu = {
-    hidden: true, addEventListener(name, handler) { menuEvents[name] = handler; },
-    querySelector(selector) { return selector === 'input:checked' ? inputs.find(input => input.checked) : null; }
-  };
-  const control = {
-    querySelector(selector) { return selector === '[data-theme-trigger]' ? trigger : menu; },
-    querySelectorAll() { return inputs; }, contains(target) { return target === trigger || target === menu; }
-  };
-  const document = {
-    documentElement: { dataset: {} },
-    querySelectorAll() { return [control]; },
-    addEventListener(name, handler) { listeners[name] = handler; }
-  };
-  const window = {
-    localStorage: { getItem() { return null; }, setItem() {} },
-    addEventListener() {}
-  };
-  vm.runInNewContext(script, { window, document, Set });
-  listeners.DOMContentLoaded();
-  buttonEvents.click();
-  assert.equal(menu.hidden, false);
-  assert.equal(trigger.attributes['aria-expanded'], 'true');
-  assert.equal(inputs[0].focused, true);
-  buttonEvents.click();
-  assert.equal(menu.hidden, true);
-  buttonEvents.click();
-  menuEvents.change({ target: { value: 'dark', matches: () => true } });
-  assert.equal(document.documentElement.dataset.theme, 'dark');
-  assert.equal(menu.hidden, true);
-  assert.equal(trigger.focused, true);
-  buttonEvents.click();
-  listeners.keydown({ key: 'Escape' });
-  assert.equal(menu.hidden, true);
-  buttonEvents.click();
-  listeners.pointerdown({ target: {} });
-  assert.equal(menu.hidden, true);
-});
-
-test('every page has one static chooser and pre-paint theme loading', () => {
+test('every page has one static toggle and pre-paint theme loading', () => {
   const pages = ['index.html'];
   for (const role of fs.readdirSync(path.join(root, 'views'))) {
     const dir = path.join(root, 'views', role);
     if (!fs.statSync(dir).isDirectory()) continue;
     for (const name of fs.readdirSync(dir)) if (name.endsWith('.html')) pages.push(`views/${role}/${name}`);
   }
-  assert.equal(pages.length, 47);
+  assert.equal(pages.length, 50);
   for (const page of pages) {
     const html = read(page);
     assert.equal((html.match(/data-theme-control/g) || []).length, 1, page);
-    assert.match(html, /value="light" checked[\s\S]*value="dark"[\s\S]*value="system"/, page);
+    const button = html.match(/<button class="tb-theme-trigger"[^>]*>[\s\S]*?<\/button>/)?.[0];
+    assert.ok(button, page);
+    assert.match(button, /aria-label="Switch to dark mode"/, page);
+    assert.match(button, /title="Switch to dark mode"/, page);
+    assert.match(button, /data-lucide="moon"/, page);
+    assert.doesNotMatch(html, /tb-theme-menu|data-theme-menu|tb-theme-choice|academix-theme-menu|data-lucide="palette"/, page);
     assert.ok(html.indexOf('assets/js/theme.js') < html.indexOf('assets/css/styles.css'), page);
     assert.ok(html.indexOf('assets/css/theme.css') > html.indexOf('assets/css/styles.css'), page);
     if (!page.includes('onboarding') && page !== 'index.html') {
@@ -135,23 +147,16 @@ test('theme tokens preserve the previous light colors and keep exports separate'
   assert.doesNotMatch(read('assets/css/theme.css'), /html::?-webkit-scrollbar|body::?-webkit-scrollbar/);
 });
 
-test('selected choices stay borderless while keyboard focus remains visible', () => {
+test('theme toggle stays borderless and keeps keyboard focus visible', () => {
   const css = read('assets/css/theme.css');
-  assert.doesNotMatch(css, /\.tb-theme-choice:focus-within/);
-  assert.match(css, /\.tb-theme-choice input:focus-visible \+ span\s*\{[^}]*outline: 2px/);
-  assert.match(css, /\.tb-theme-choice input:checked \+ span\s*\{[^}]*background: var\(--blue-xpale\)/);
-  assert.match(css, /\.tb-theme-choice input:checked \+ span::after\s*\{[^}]*background: currentColor/);
-});
-
-test('palette button is borderless on signed-in and public pages', () => {
-  const css = read('assets/css/theme.css');
+  assert.doesNotMatch(css, /tb-theme-menu|tb-theme-choice/);
   assert.match(css, /\.tb-theme-trigger\s*\{[^}]*border: 0;[^}]*background: transparent;/);
-  assert.match(css, /\.tb-theme-trigger:hover, \.tb-theme-trigger\[aria-expanded="true"\]\s*\{[^}]*background: transparent; color: var\(--theme-accent-text\)/);
-  assert.match(css, /\.tb-theme-trigger:focus-visible,[\s\S]*?outline: 2px solid var\(--theme-accent-text\)/);
+  assert.match(css, /\.tb-theme-trigger:hover\s*\{[^}]*background: transparent; color: var\(--theme-accent-text\)/);
+  assert.match(css, /\.tb-theme-trigger:focus-visible\s*\{[^}]*outline: 2px solid var\(--theme-accent-text\)/);
   assert.match(css, /\.topbar \.tb-theme-trigger svg\s*\{ width: 20px; height: 20px; stroke-width: 1\.9; \}/);
   assert.match(css, /\.login-panel > \.tb-theme \.tb-theme-trigger\s*\{ width: 34px; height: 34px; \}/);
   assert.match(css, /\.onboarding-topbar-actions \.tb-theme-trigger\s*\{ width: 34px; height: 34px; \}/);
-  assert.doesNotMatch(css, /\.topbar \.tb-theme-trigger(?:\:hover|\[aria-expanded="true"\])?\s*\{[^}]*background/);
+  assert.doesNotMatch(css, /\.tb-theme-trigger\[aria-expanded/);
 });
 
 test('assignment list headings have no fill on student or parent pages', () => {

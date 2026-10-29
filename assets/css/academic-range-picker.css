@@ -199,6 +199,42 @@
   font-weight: 700;
 }
 
+.academic-range-month-year {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.academic-range-year-input {
+  box-sizing: border-box;
+  width: 52px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 5px;
+  border: 1px solid var(--gray-200);
+  border-radius: 7px;
+  appearance: textfield;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font: 600 12px/1 'Plus Jakarta Sans', sans-serif;
+  text-align: center;
+}
+
+.academic-range-year-input::-webkit-inner-spin-button,
+.academic-range-year-input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.academic-range-year-input:focus-visible {
+  outline: none;
+  border-color: var(--theme-accent-text);
+  background: var(--theme-surface, #fff);
+  box-shadow: 0 0 0 3px var(--button-focus-ring, rgba(29, 92, 180, .14));
+}
+
 .academic-range-navigation button,
 .academic-range-days button {
   border: 0;
@@ -294,6 +330,14 @@
   background: var(--surface-blue);
 }
 
+.academic-range-actions .academic-range-day-count {
+  margin-right: auto;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .academic-range-selection strong {
   color: var(--theme-accent-text);
   font-size: 12px;
@@ -308,6 +352,7 @@
 
 .academic-range-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   padding-top: 12px;

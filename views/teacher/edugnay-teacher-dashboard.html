@@ -18,7 +18,7 @@
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
-  <script src="../../assets/js/teacher/shell.js"></script>
+  <script src="../../assets/js/teacher/shell.js?v=4"></script>
   <script src="../../assets/js/timetables.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
@@ -232,16 +232,17 @@
           </a>
           <a href="edugnay-teacher-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
 
-          <!-- My Sections (expandable) -->
+          <!-- My Classes (expandable) -->
           <div class="nav-group" id="sections-group">
             <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
               <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
-              <span>My Sections</span>
+              <span>My Classes</span>
               <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
             </div>
             <div class="nav-children" data-teacher-sections-nav>
-              <div class="teacher-section-nav-message" role="status">Loading assigned sections…</div>
+              <div class="teacher-section-nav-message" role="status">Loading assigned classes…</div>
             </div>
+          <script>restoreTeacherClassesNavigation();</script>
           </div>
 
         </div>
@@ -335,13 +336,7 @@
         </div>
 
         <div class="tb-theme" data-theme-control>
-          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-            <div class="tb-theme-heading">Appearance</div>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-          </div>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -401,14 +396,14 @@
             <div class="timetable-preview-list" aria-live="polite">Loading today's classes...</div>
           </section>
 
-          <!-- My Sections -->
+          <!-- My Classes -->
           <div class="panel panel-sections">
             <div class="panel-head">
               <div class="section-panel-heading">
-                <div class="panel-title">My Sections</div>
+                <div class="panel-title">My Classes</div>
               </div>
               <div class="section-panel-meta">
-                <span class="section-count" id="teacherSectionCount">5 sections</span>
+                <span class="section-count" id="teacherSectionCount">Loading classes</span>
                 <a class="panel-action" onclick="navigate('section')">
                   View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
                 </a>
@@ -505,6 +500,7 @@
     let DASHBOARD_TEACHER_ID = '';
     let DASHBOARD_TEACHER_TODOS = [];
     let TEACHER_SECTIONS = [];
+    let TEACHER_CLASSES = [];
     const TEACHER_FLAGS_PREVIEW = new URLSearchParams(window.location.search).get('previewFlags') === '1';
     const SAMPLE_FLAGGED_STUDENTS = [
       { studentId: 'preview-1', name: 'Sample Student One', initials: 'S1', sectionId: 'preview-9a', sectionName: 'St. Paul', grade: 'Grade 9', reasons: [
@@ -971,7 +967,7 @@
           const materials = await window.EDUGNAY_API.getMaterials({ sectionId: section.sectionId, subjectId });
           if (!materials.some(item => String(item.id) === String(material.id))) throw new Error('The uploaded material was not returned by the materials list.');
         } catch (error) {
-          refreshMessage = ` The file was uploaded, but the list could not refresh: ${error.message || 'reload My Sections.'}`;
+          refreshMessage = ` The file was uploaded, but the list could not refresh: ${error.message || 'reload My Classes.'}`;
         }
         document.getElementById('teacherMaterialUploadForm')?.reset();
         updateTeacherMaterialFileName(document.getElementById('teacherMaterialFile'));
@@ -1063,15 +1059,15 @@
 
       const sectionList = document.getElementById('sectionCardsContainer');
       if (sectionList) {
-        sectionList.innerHTML = TEACHER_SECTIONS.map(section => `
-          <div class="section-card" data-grade="${window.EDUGNAY_CONFIG.escapeHtml(section.grade)}" data-section-id="${window.EDUGNAY_CONFIG.escapeHtml(section.id)}" role="button" tabindex="0">
+        sectionList.innerHTML = TEACHER_CLASSES.map(section => `
+          <div class="section-card" data-grade="${window.EDUGNAY_CONFIG.escapeHtml(section.grade)}" data-section-id="${section.classType === 'section' ? window.EDUGNAY_CONFIG.escapeHtml(section.id) : ''}" data-class-id="${section.classType === 'shs' ? window.EDUGNAY_CONFIG.escapeHtml(section.id) : ''}" role="button" tabindex="0">
             <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${window.EDUGNAY_CONFIG.escapeHtml(section.name)}</div><div class="section-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(getTeacherSectionSub(section))}</div></div></div>
+            <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${window.EDUGNAY_CONFIG.escapeHtml(section.name)}</div><div class="section-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(section.classType === 'shs' ? `SHS class · ${section.subjectName}` : getTeacherSectionSub(section))}</div></div></div>
             <div class="section-card-divider"></div>
-            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.sectionId)}</span></div></div>
+            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${section.classType === 'shs' ? section.studentCount : getTeacherSectionStudentCount(section.sectionId)}</span></div></div>
           </div>`).join('') + `<div id="teacherSectionsEmpty" class="panel-empty-slot" hidden></div>`;
         sectionList.querySelectorAll('.section-card').forEach(card => {
-          const openSection = () => navigate('section', card.dataset.sectionId);
+          const openSection = () => card.dataset.classId ? navigate('shsClass', card.dataset.classId) : navigate('section', card.dataset.sectionId);
           card.addEventListener('click', openSection);
           card.addEventListener('keydown', event => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -1081,17 +1077,17 @@
           });
         });
         const sectionEmpty = document.getElementById('teacherSectionsEmpty');
-        if (sectionEmpty && (!TEACHER_SECTIONS.length || TEACHER_SECTIONS_ERROR)) {
+        if (sectionEmpty && (!TEACHER_CLASSES.length || TEACHER_SECTIONS_ERROR)) {
           sectionEmpty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
             icon: TEACHER_SECTIONS_ERROR ? 'cloud-off' : 'door-open',
-            title: TEACHER_SECTIONS_ERROR ? 'Sections unavailable' : 'No sections assigned',
-            text: TEACHER_SECTIONS_ERROR || 'Sections assigned to you will appear here.'
+            title: TEACHER_SECTIONS_ERROR ? 'Classes unavailable' : 'No classes assigned',
+            text: TEACHER_SECTIONS_ERROR || 'Classes assigned to you will appear here.'
           });
           sectionEmpty.hidden = false;
         }
 
         const sectionCount = document.getElementById('teacherSectionCount');
-        if (sectionCount) sectionCount.textContent = TEACHER_SECTIONS_ERROR ? 'Unavailable' : `${TEACHER_SECTIONS.length} sections`;
+        if (sectionCount) sectionCount.textContent = TEACHER_SECTIONS_ERROR ? 'Unavailable' : `${TEACHER_CLASSES.length} ${TEACHER_CLASSES.length === 1 ? 'class' : 'classes'}`;
         renderTeacherGradeFilters();
       }
 
@@ -1157,7 +1153,7 @@
       const row = document.getElementById('sectionFilterRow');
       if (!row || !TEACHER_DASHBOARD_API_ENABLED) return;
       row.replaceChildren();
-      const grades = [...new Map(TEACHER_SECTIONS.map(section => [section.grade, section.gradeLabel || `Grade ${section.grade}`])).entries()];
+      const grades = [...new Map(TEACHER_CLASSES.map(section => [section.grade, section.gradeLabel || `Grade ${section.grade}`])).entries()];
       [['all', 'All'], ...grades].forEach(([value, label], index) => {
         const button = document.createElement('button');
         button.type = 'button';
@@ -1193,7 +1189,7 @@
       const empty = document.getElementById('teacherSectionsEmpty');
       if (empty) {
         empty.hidden = shown > 0;
-        if (!empty.hidden && !TEACHER_SECTIONS_ERROR) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No matching sections', text: 'Try another grade filter.' });
+        if (!empty.hidden && !TEACHER_SECTIONS_ERROR) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No matching classes', text: 'Try another grade filter.' });
       }
       lucide.createIcons();
     }
@@ -1233,6 +1229,23 @@
           }))
         };
       });
+      let shsClasses = [];
+      try {
+        shsClasses = (await window.EDUGNAY_API.getShsTeachingClasses()).classes || [];
+      } catch (error) {
+        if (error.status !== 403 && error.status !== 404) console.warn('SHS class preview could not be loaded.');
+      }
+      TEACHER_CLASSES = [
+        ...TEACHER_SECTIONS.map(section => ({ ...section, classType: 'section' })),
+        ...shsClasses.map(item => {
+          const grade = String(item.gradeCode || '').replace(/^grade-/, '') || String(item.gradeName || '').match(/\d+/)?.[0] || '';
+          return {
+            id: String(item.electiveClassId), classType: 'shs', grade, gradeLabel: item.gradeName || `Grade ${grade}`,
+            name: [item.gradeName, item.className].filter(Boolean).join(' · '), subjectName: item.subjectName || '',
+            studentCount: Number(item.enrolledCount) || 0
+          };
+        })
+      ];
       TEACHER_MATERIAL_SECTIONS = TEACHER_SECTIONS.filter(section => section.subjectAssignments.length > 0);
       TEACHER_SECTIONS_ERROR = '';
 
@@ -1284,12 +1297,13 @@
       });
       if (TEACHER_DASHBOARD_API_ENABLED) {
         document.getElementById('teacher-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading dashboard data', text: 'Please wait while your assigned sections are loaded.' });
-        document.getElementById('sectionCardsContainer').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading sections', text: 'Please wait while your assigned sections are loaded.' });
+        document.getElementById('sectionCardsContainer').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading classes', text: 'Please wait while your assigned classes are loaded.' });
         document.getElementById('teacher-dashboard-announcements').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' });
         try {
           await loadTeacherDashboardData();
         } catch (error) {
           TEACHER_SECTIONS = [];
+          TEACHER_CLASSES = [];
           TEACHER_MATERIAL_SECTIONS = [];
           TEACHER_SECTIONS_ERROR = error.message || 'Assigned sections could not be loaded.';
         }

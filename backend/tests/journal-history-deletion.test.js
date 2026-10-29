@@ -95,6 +95,7 @@ test('history marks old subject inactive and scopes teacher and student queries'
   queries = [];
   connection.execute = async (sql, values = []) => {
     queries.push({ sql, values });
+    if (sql.startsWith('SELECT 1 AS eligible FROM section_students')) return [[{ eligible: 1 }]];
     if (sql.includes('FROM school_settings')) return [[{ subjectId: 4 }]];
     if (sql.includes('FROM journal_prompts\n')) return [[{
       id: 13, journalSubjectId: 2, subjectId: 1, sectionId: 8, sectionName: 'St. Matthew', subjectName: 'Values Education',

@@ -51,6 +51,14 @@
       Number(a.sequenceNumber || 0) - Number(b.sequenceNumber || 0));
   }
 
+  function isElectiveAssignment(item) {
+    return item.scopeType === 'elective' || item.electiveClassId != null;
+  }
+
+  function assignmentsForCurrentView() {
+    return assignments.filter(item => String(item.academicTermId) === selectedTerm || isElectiveAssignment(item));
+  }
+
   function latestTermInYear(yearTerms) {
     return [...yearTerms]
       .filter(term => term.status !== 'upcoming')
@@ -101,7 +109,7 @@
       return `<button class="grade-tab ${active ? 'active' : ''}" type="button" role="tab"${unavailable ? ' aria-disabled="true" disabled' : ` data-academic-period-id="${escape(term.id)}"`} aria-selected="${active}"${accessibleName}><span>${escape(term.name)}</span>${upcoming ? '<i class="grade-tab-status-icon" data-lucide="lock" aria-hidden="true"></i>' : ''}</button>`;
     }).join('');
     window.lucide?.createIcons();
-    const subjects = [...new Set(assignments.filter(item => String(item.academicTermId) === selectedTerm).map(item => item.subjectName))].sort();
+    const subjects = [...new Set(assignmentsForCurrentView().map(item => item.subjectName).filter(Boolean))].sort();
     const subject = element('assignmentSubjectFilter');
     const previous = subject.value;
     subject.innerHTML = '<option value="all">All subjects</option>' + subjects.map(name => `<option value="${escape(name)}">${escape(name)}</option>`).join('');
@@ -111,7 +119,7 @@
   }
 
   function renderFilters() {
-    const inPeriod = assignments.filter(item => String(item.academicTermId) === selectedTerm);
+    const inPeriod = assignmentsForCurrentView();
     element('assignmentFilters').innerHTML = filters.map(filter => {
       const count = filter.key === 'all' ? inPeriod.length : inPeriod.filter(item => item.submissionStatus === filter.key).length;
       return `<button class="filter-tab assignment-filter-tab ${selectedStatus === filter.key ? 'active' : ''}" type="button" data-status="${filter.key}" aria-pressed="${selectedStatus === filter.key}">${filter.label}<span class="assignment-filter-count">${count}</span></button>`;
@@ -127,9 +135,11 @@
       return;
     }
     if (!selectedChild) { list.innerHTML = empty('users', 'No linked children', 'Ask your school to link a student account to yours.'); return; }
-    if (!availableTerms().length) { list.innerHTML = empty('calendar-x', 'No grading periods available', 'Grading periods for this student’s school level will appear here when configured.'); return; }
-    if (!selectedTerm) { list.innerHTML = empty('clipboard-check', 'No assignments yet', 'Published assignments will appear here when a grading period is available.'); return; }
-    const inPeriod = assignments.filter(item => String(item.academicTermId) === selectedTerm);
+    const periodAssignments = assignments.filter(item => !isElectiveAssignment(item) && String(item.academicTermId) === selectedTerm);
+    const electiveAssignments = assignments.filter(isElectiveAssignment);
+    if (!availableTerms().length && !electiveAssignments.length) { list.innerHTML = empty('calendar-x', 'No grading periods available', 'Grading periods for this student’s school level will appear here when configured.'); return; }
+    if (!selectedTerm && !electiveAssignments.length) { list.innerHTML = empty('clipboard-check', 'No assignments yet', 'Published assignments will appear here when a grading period is available.'); return; }
+    const inPeriod = periodAssignments.concat(electiveAssignments);
     if (!inPeriod.length) { list.innerHTML = empty('clipboard-check', 'No assignments in this grading period', 'There are no published assignments for this child in the selected period.'); return; }
     const search = element('assignmentSearch').value.trim().toLowerCase();
     const subject = element('assignmentSubjectFilter').value;
@@ -141,16 +151,23 @@
       list.innerHTML = empty('clipboard-check', 'No assignments found', 'Try another status, subject, or search term.');
       return;
     }
-    list.innerHTML = visible.map(item => {
+    function renderAssignmentRow(item) {
       const status = labels[item.submissionStatus] || labels.pending;
       const statusKey = labels[item.submissionStatus] ? item.submissionStatus : 'pending';
+      const classContext = isElectiveAssignment(item)
+        ? `Elective class${item.electiveClassName ? ` · ${escape(item.electiveClassName)}` : ''} · `
+        : '';
       return `<article class="assignment-row">
-        <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${escape(item.subjectName)} · Due ${escape(formatDate(item.dueDate))} · ${escape(item.teacherName)}</div></div>
+        <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${classContext}${escape(item.subjectName)} · Due ${escape(formatDate(item.dueDate))} · ${escape(item.teacherName)}</div></div>
         <div class="assignment-online-cell" data-label="Online submission"><span class="assignment-online-status ${item.onlineSubmissionEnabled ? 'available' : 'not-available'}">${item.onlineSubmissionEnabled ? 'Available' : 'Not available'}</span></div>
         <div class="assignment-status-cell" data-label="Status"><span class="assignment-status ${statusKey}"><i data-lucide="${icons[statusKey]}" style="width:12px;height:12px;"></i><span class="assignment-status-label">${status}</span></span></div>
         <div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary parent-assignment-view" type="button" data-assignment-id="${escape(item.id)}" aria-label="View details for ${escape(item.title)}">View details</button></div>
       </article>`;
-    }).join('');
+    }
+    const visibleElectives = visible.filter(isElectiveAssignment);
+    const visibleSectionAssignments = visible.filter(item => !isElectiveAssignment(item));
+    list.innerHTML = visibleSectionAssignments.map(renderAssignmentRow).join('') +
+      (visibleElectives.length ? `<div class="assignment-scope-heading">Elective class assignments</div>${visibleElectives.map(renderAssignmentRow).join('')}` : '');
     window.lucide?.createIcons();
   }
 

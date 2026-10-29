@@ -16,6 +16,7 @@ const database = {
     if (sql.includes("FROM users WHERE users.id = ?") && sql.includes("users.role = 'student'")) {
       return [values[0] === 4 && values[1] === 1 ? [{ id: 4, schoolId: 1, displayName: 'Student' }] : []];
     }
+    if (sql.includes('SELECT name AS subjectName FROM subjects')) return [[{ subjectName: 'Mathematics' }]];
     if (sql.includes('FROM student_qr_credentials WHERE school_id = ?')) return [[]];
     if (sql.includes('FROM sections') && sql.includes('section_teachers')) {
       return [values[0] === 8 && values[1] === 1 && values[2] === 3 && [1, 2].includes(values[3]) ? [section] : []];
@@ -171,6 +172,11 @@ test('manual save writes a subject-specific session and student status', async (
   assert.deepEqual(insert.values.slice(0, 3), [1, 8, 2]);
   const savedRecord = calls.find(call => call.sql.includes('INSERT INTO attendance_records'));
   assert.deepEqual(savedRecord.values.slice(0, 5), [1, 21, 4, 'present', 'Here']);
+  const audit = calls.find(call => call.sql.includes('INSERT INTO audit_logs'));
+  assert.equal((audit.sql.match(/\?/g) || []).length, audit.values.length);
+  assert.ok(audit.sql.includes("'sectionName', ?"));
+  assert.ok(audit.sql.includes("'subjectName', ?"));
+  assert.ok(audit.values.includes('Mathematics'));
   assert.ok(!calls.some(call => call.sql.includes('FROM school_portal_features')));
 });
 
@@ -184,6 +190,8 @@ test('QR confirmation keeps the session subject and records the reviewed roster'
   assert.equal(result.data.subjectId, 1);
   assert.ok(calls.some(call => call.sql.includes('section_teachers.subject_id = attendance_sessions.subject_id')));
   assert.ok(calls.some(call => call.sql.includes('INSERT INTO attendance_records') && call.values[3] === 'absent'));
+  const audit = calls.find(call => call.sql.includes('INSERT INTO audit_logs'));
+  assert.equal((audit.sql.match(/\?/g) || []).length, audit.values.length);
 });
 
 test('parent attendance query is scoped to linked children and confirmed subjects', async () => {

@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8').replace(/\r\n/g, '\n');
-const compactPathSource = html.split('function managementShsCompactPath(trackCodeValue, trackName, strandCodeValue, strandName, needsStrandReview = false) {')[1]
+const compactPathSource = html.split('function managementShsCompactPath(trackCodeValue, trackName, strandCodeValue, strandName, needsCurriculumSetup = false) {')[1]
   .split('\n}\n\nfunction managementSectionCardPath')[0];
 const cardPathSource = html.split('function managementSectionCardPath(section) {')[1]
   .split('\n}\n\nfunction managementSectionCompactBadgeLabel')[0];
@@ -19,7 +19,7 @@ const cardHeadTemplate = html.slice(cardHeadStart, cardHeadEnd).trim();
 
 function createCompactPathRenderer() {
   const context = vm.createContext({});
-  vm.runInContext(`function managementShsCompactPath(trackCodeValue, trackName, strandCodeValue, strandName, needsStrandReview = false) {${compactPathSource}\n}`, context);
+  vm.runInContext(`function managementShsCompactPath(trackCodeValue, trackName, strandCodeValue, strandName, needsCurriculumSetup = false) {${compactPathSource}\n}`, context);
   return (...args) => context.managementShsCompactPath(...args);
 }
 
@@ -32,7 +32,7 @@ function createCardPathRenderer() {
 function createSectionDisplayContext() {
   const context = vm.createContext({
     managementLevelLabel: level => ({ elementary: 'Elementary', jhs: 'Junior High School', shs: 'Senior High School' }[level] || level),
-    managementSectionPath: section => [section.trackName, section.strandName].filter(Boolean).join(' / ')
+    managementSectionPath: section => section.needsCurriculumSetup ? 'Needs Strengthened SHS setup' : (section.trackName || '')
   });
   vm.runInContext(`function managementSectionBadgeLabel(section) {${sectionDisplaySource}`, context);
   return context;
@@ -151,63 +151,42 @@ function renderCardHead(section) {
   });
 }
 
-test('section cards use compact saved SHS track and strand labels', () => {
+test('section cards use the two Strengthened SHS track labels', () => {
   const cardPath = createCardPathRenderer();
-  assert.equal(cardPath({ trackCode: 'academic', trackName: 'Academic', strandCode: 'stem', strandName: 'Science, Technology, Engineering, and Mathematics' }), 'Academic · STEM');
-  assert.equal(cardPath({ trackCode: 'academic', trackName: 'Academic', strandCode: 'abm', strandName: 'Accountancy, Business, and Management' }), 'Academic · ABM');
-  assert.equal(cardPath({ trackCode: 'academic', trackName: 'Academic', strandCode: 'humss', strandName: 'Humanities and Social Sciences' }), 'Academic · HUMSS');
-  assert.equal(cardPath({ trackCode: 'academic', trackName: 'Academic', strandCode: 'gas', strandName: 'General Academic Strand' }), 'Academic · GAS');
-  assert.equal(cardPath({ trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood', strandCode: 'agri-fishery-arts', strandName: 'Agri-Fishery Arts' }), 'TVL · AFA');
-  assert.equal(cardPath({ trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood', strandCode: 'home-economics', strandName: 'Home Economics' }), 'TVL · HE');
-  assert.equal(cardPath({ trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood', strandCode: 'ict', strandName: 'Information and Communications Technology' }), 'TVL · ICT');
-  assert.equal(cardPath({ trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood', strandCode: 'industrial-arts', strandName: 'Industrial Arts' }), 'TVL · IA');
-  assert.equal(cardPath({ trackCode: 'arts_and_design', trackName: 'Arts and Design' }), 'Arts & Design');
-  assert.equal(cardPath({ trackCode: 'sports', trackName: 'Sports' }), 'Sports');
+  assert.equal(cardPath({ trackCode: 'academic', trackName: 'Academic' }), 'Academic');
+  assert.equal(cardPath({ trackCode: 'techpro', trackName: 'Technical Professional (TechPro)' }), 'TechPro');
 });
 
-test('pending classifications and saved labels remain understandable without enabled options', () => {
+test('old SHS records show a setup-required state instead of old choices', () => {
   const cardPath = createCardPathRenderer();
-  assert.equal(cardPath({ trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood', needsStrandReview: true }), 'TVL · Needs review');
-  assert.equal(cardPath({ trackCode: 'future-track', trackName: 'Saved Track', strandCode: 'future-strand', strandName: 'Saved Strand', isEnabled: false }), 'Saved Track · Saved Strand');
+  assert.equal(cardPath({ trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood', needsCurriculumSetup: true }), 'Needs Strengthened SHS setup');
 });
 
-test('section display helpers compact read-only placement without losing full saved placement', () => {
+test('section display helpers show the new track or the setup warning', () => {
   const context = createSectionDisplayContext();
   const section = {
-    level: 'shs', grade: 'Grade 11', trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood',
-    strandCode: 'agri-fishery-arts', strandName: 'Agri-Fishery Arts', isEnabled: false
+    level: 'shs', grade: 'Grade 11', trackCode: 'techpro', trackName: 'Technical Professional (TechPro)'
   };
-  assert.equal(context.managementSectionCompactBadgeLabel(section), 'Grade 11 · TVL · AFA');
-  assert.equal(context.managementSectionCompactPlacement(section), 'Senior High School · Grade 11 · TVL · AFA');
-  assert.equal(context.managementSectionCompactContext(section), 'Senior High School · TVL · AFA');
-  assert.equal(context.managementSectionBadgeLabel(section), 'Grade 11 · Technical-Vocational-Livelihood / Agri-Fishery Arts');
-  assert.equal(context.managementSectionPlacement(section), 'Senior High School · Grade 11 · Technical-Vocational-Livelihood / Agri-Fishery Arts');
-
-  const pending = { ...section, needsStrandReview: true };
-  assert.equal(context.managementSectionCompactPlacement(pending), 'Senior High School · Grade 11 · TVL · Needs review');
-  assert.equal(context.managementSectionPlacement(pending), 'Senior High School · Grade 11 · Technical-Vocational-Livelihood / Agri-Fishery Arts · Needs strand review');
+  assert.equal(context.managementSectionCompactBadgeLabel(section), 'Grade 11 · TechPro');
+  assert.equal(context.managementSectionPlacement(section), 'Senior High School · Grade 11 · Technical Professional (TechPro)');
+  const pending = { ...section, needsCurriculumSetup: true };
+  assert.equal(context.managementSectionCompactPlacement(pending), 'Senior High School · Grade 11 · Needs Strengthened SHS setup');
 });
 
-test('Subjects filters show compact labels while retaining full configured names', () => {
+test('Subjects filters show only Academic and TechPro', () => {
   const compactPath = createCompactPathRenderer();
   const context = vm.createContext({
     managementTrackOptions: () => [
-      { id: 1, trackCode: 'academic', displayName: 'Academic', strands: [
-        { id: 2, strandCode: 'stem', displayName: 'Science, Technology, Engineering, and Mathematics' }
-      ] },
-      { id: 3, trackCode: 'tvl', displayName: 'Technical-Vocational-Livelihood', strands: [
-        { id: 4, strandCode: 'ict', displayName: 'Information and Communications Technology' }
-      ] },
-      { id: 5, trackCode: 'arts-design', displayName: 'Arts and Design', strands: [] }
+      { id: 1, trackCode: 'academic', displayName: 'Academic' },
+      { id: 3, trackCode: 'techpro', displayName: 'Technical Professional (TechPro)' }
     ],
     managementShsCompactPath: compactPath
   });
   vm.runInContext(`function managementShsPlacementOptions() {${placementOptionsSource}\n}`, context);
   const options = context.managementShsPlacementOptions();
   assert.deepEqual(JSON.parse(JSON.stringify(options.map(({ label, compactLabel }) => ({ label, compactLabel })))), [
-    { label: 'Academic / Science, Technology, Engineering, and Mathematics', compactLabel: 'Academic · STEM' },
-    { label: 'Technical-Vocational-Livelihood / Information and Communications Technology', compactLabel: 'TVL · ICT' },
-    { label: 'Arts and Design', compactLabel: 'Arts & Design' }
+    { label: 'Academic', compactLabel: 'Academic' },
+    { label: 'Technical Professional (TechPro)', compactLabel: 'TechPro' }
   ]);
   assert.match(html, /title="\$\{window\.EDUGNAY_CONFIG\.escapeHtml\(strand\.label\)\}"[^>]*>\$\{window\.EDUGNAY_CONFIG\.escapeHtml\(strand\.compactLabel\)\}/);
   assert.match(html, /title\.setAttribute\('title', fullTitle\)/);
@@ -220,10 +199,10 @@ test('Grades 11 and 12 show separately from compact pathways and retain full pla
   assert.match(sectionCardMarkup, /class="section-card-title-row"[\s\S]*?class="section-name">\$\{section\.name\}[\s\S]*?class="section-grade-badge[^>]*>\$\{window\.EDUGNAY_CONFIG\.escapeHtml\(section\.grade\)\}/);
   assert.match(sectionCardMarkup, /section-card-path[\s\S]*?managementSectionPlacement\(section\)/);
   for (const section of [
-    { grade: 'Grade 11', trackCode: 'academic', trackName: 'Academic', strandCode: 'stem', strandName: 'Science, Technology, Engineering, and Mathematics' },
-    { grade: 'Grade 11', trackCode: 'tvl', trackName: 'Technical-Vocational-Livelihood', strandCode: 'ict', strandName: 'Information and Communications Technology' },
-    { grade: 'Grade 12', trackCode: 'arts-design', trackName: 'Arts and Design' },
-    { grade: 'Grade 12', trackCode: 'sports', trackName: 'Sports' }
+    { grade: 'Grade 11', trackCode: 'academic', trackName: 'Academic' },
+    { grade: 'Grade 11', trackCode: 'techpro', trackName: 'Technical Professional (TechPro)' },
+    { grade: 'Grade 12', trackCode: 'academic', trackName: 'Academic' },
+    { grade: 'Grade 12', trackCode: 'techpro', trackName: 'Technical Professional (TechPro)' }
   ]) {
     const markup = renderCardHead({ level: 'shs', ...section });
     assert.match(markup, new RegExp(`>${section.grade}<\\/span>`));
@@ -259,7 +238,7 @@ test('Subjects tab rows use the shared fade and rerendering refreshes overflow s
   assert.match(scrollFade, /buttonSpace = showButton && isActivityFilters \? scrollButtonSpace : 0/);
   assert.match(scrollFade, /scrollButton\.type = 'button'/);
   assert.match(html, /id="subjectDivisionTabs" data-scroll-target="school level tabs"/);
-  assert.match(html, /id="subjectStrandSubTabs" data-scroll-target="SHS strand tabs"/);
+  assert.match(html, /id="subjectStrandSubTabs" data-scroll-target="SHS track tabs"/);
   assert.match(html, /id="subjectGradeSubTabs" data-scroll-target="grade level tabs"/);
   assert.match(html, /tabs\.innerHTML = \[[\s\S]*?\]\.join\(''\);\s*window\.initScrollFades\?\.\(\);/);
   assert.match(html, /class="division-filter-tabs subject-scroll-fade-tab-row"/);

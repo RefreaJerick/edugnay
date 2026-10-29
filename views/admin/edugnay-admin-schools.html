@@ -47,6 +47,7 @@
         </a>
         <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
         <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
+        <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">SHS Program</span></a>
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Reports</div>
@@ -120,13 +121,7 @@
           </div>
         </div>
         <div class="tb-theme" data-theme-control>
-          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-            <div class="tb-theme-heading">Appearance</div>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-          </div>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -181,6 +176,26 @@
         </section>
       </div>
     </main>
+  </div>
+
+  <div class="modal-backdrop school-term-modal subject-grading-editor-modal" id="shsGradingEditorModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shsGradingEditorTitle">
+      <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon"><i data-lucide="sliders-horizontal" aria-hidden="true"></i></span><div class="modal-heading-copy"><div class="modal-title" id="shsGradingEditorTitle">Configure SHS grading</div><div class="modal-sub" id="shsGradingEditorSubtitle"></div></div></div><button class="modal-close" id="shsGradingEditorClose" type="button" aria-label="Close"><i data-lucide="x"></i></button></div>
+      <form id="shsGradingEditorForm" class="subject-grading-editor-form">
+        <div class="modal-body subject-grading-editor-body" id="shsGradingEditorBody"></div>
+        <section class="modal-body school-k10-restore-confirmation" id="shsGradingRestoreConfirmation" aria-labelledby="shsGradingRestoreTitle" hidden>
+          <h3 id="shsGradingRestoreTitle">Restore this subject's DepEd defaults?</h3>
+          <p class="term-modal-message" id="shsGradingRestoreDescription">This replaces the saved grading rule for this school year. Existing assessment links must remain valid, and published grades cannot be changed.</p>
+          <div class="school-k10-restore-grid">
+            <section><h4>Current saved setup</h4><div id="shsGradingCurrentSummary"></div></section>
+            <section><h4 id="shsGradingDefaultsHeading">DepEd defaults</h4><div id="shsGradingDefaultsSummary"></div></section>
+          </div>
+          <div class="school-k10-grading-warning" id="shsGradingRestoreError" role="alert" hidden></div>
+        </section>
+        <div class="modal-foot" id="shsGradingEditorFooter"><button class="btn btn-cancel" type="button" id="shsGradingRestore">Restore DepEd defaults</button><button class="btn btn-cancel" type="button" id="shsGradingCancel">Cancel</button><button class="btn btn-save" type="submit">Save subject rules</button></div>
+        <div class="modal-foot school-k10-restore-confirmation-actions" id="shsGradingRestoreFooter" hidden><button class="btn btn-cancel" type="button" id="shsGradingRestoreBack">Back to editor</button><button class="btn btn-save" type="button" id="shsGradingRestoreConfirm">Restore DepEd defaults</button></div>
+      </form>
+    </div>
   </div>
 
   <div class="modal-backdrop school-term-modal" id="termActionModal" aria-hidden="true">
@@ -303,6 +318,14 @@
       k10GradingPreview: null,
       k10GradingLoading: false,
       k10GradingRequestId: 0,
+      shsGradingData: null,
+      shsGradingLoading: false,
+      shsGradingError: '',
+      shsGradingRequestId: 0,
+      shsGradingItem: null,
+      shsGradingComponents: [],
+      shsGradingReturnFocus: null,
+      shsGradingSaving: false,
       k10EditorSubject: null,
       k10EditorComponents: [],
       k10EditorGroup: null,
@@ -377,7 +400,7 @@
     }
 
     function trackCode(label) {
-      return { Academic: 'academic', 'Technical-Vocational-Livelihood': 'tvl', 'Arts and Design': 'arts-design', Sports: 'sports' }[label] || '';
+      return { Academic: 'academic', 'Technical Professional (TechPro)': 'techpro' }[label] || '';
     }
 
     function applyApiSchoolSettings(apiSchool) {
@@ -626,7 +649,7 @@
 
     function renderAcademicPane() {
       const school = activeSchool();
-      setSettingsHeading('Academic structure', 'Manage grade levels, tracks, strands, and subject offerings.');
+      setSettingsHeading('Academic structure', 'Manage grade levels, Strengthened SHS tracks, and subject offerings.');
       const { level, data } = activeDivision(school);
       const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || window.EDUGNAY_CONFIG.grades[0] || { label: levelLabel(level), grades: [] };
       const gradeOptions = Array.isArray(catalog.grades) ? catalog.grades : [];
@@ -637,7 +660,7 @@
         <div class="school-pane school-academic-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicForm">
-            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS tracks and strands</div><div class="track-options">${trackOptions.map(track => { const record = trackRecords.find(item => item.displayName === track); const strands = (record?.strands || []).filter(item => item.isEnabled !== false).map(item => item.displayName); return `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}${strands.length ? `<small class="form-help">Strands: ${strands.map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}</small>` : '<small class="form-help">No separate strand</small>'}</span></label>`; }).join('')}</div>` : ''}</div>
+            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">Strengthened SHS tracks</div><div class="track-options">${trackOptions.map(track => `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}</span></label>`).join('')}</div>` : ''}</div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic structure</button></div>
           </form>
         </div>`;
@@ -1900,11 +1923,274 @@
       } finally { button.disabled = false; }
     }
 
+    function renderShsGradingPane(school) {
+      const year = state.apiAcademicYear;
+      const body = document.getElementById('schoolSettingsBody');
+      const escape = window.EDUGNAY_CONFIG.escapeHtml;
+      if (!year) {
+        body.innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'Set up a school year first', text: 'Add a school year in Academic Terms before setting SHS grading rules.' })}</div></div>`;
+        bindDivisionSwitcher();
+        return;
+      }
+      if (Number(state.shsGradingData?.year?.id) !== Number(year.id) && !state.shsGradingLoading && !state.shsGradingError) {
+        state.shsGradingLoading = true;
+        const requestId = ++state.shsGradingRequestId;
+        window.EDUGNAY_API.request(`/shs-grading?academicYearId=${Number(year.id)}`)
+          .then(data => { if (requestId === state.shsGradingRequestId) { state.shsGradingData = data; state.shsGradingError = ''; } })
+          .catch(error => { if (requestId === state.shsGradingRequestId) state.shsGradingError = error.message || 'SHS grading rules could not be loaded.'; })
+          .finally(() => { if (requestId === state.shsGradingRequestId) { state.shsGradingLoading = false; if (state.tab === 'grading' && activeDivision(activeSchool()).level === 'shs') renderShsGradingPane(activeSchool()); } });
+      }
+      const rows = Number(state.shsGradingData?.year?.id) === Number(year.id) ? state.shsGradingData.subjects : [];
+      const tableRows = rows.map(item => {
+        const components = item.components || [];
+        const action = item.locked ? '<span class="school-k10-grading-row-note">Published grades lock this rule</span>'
+          : `<button class="top-btn secondary" type="button" data-shs-grade-edit="${item.subjectId ? `subject:${Number(item.subjectId)}` : `offering:${Number(item.offeringId)}`}" ${!item.ruleAvailable || !components.length || !item.isActive || year.status === 'archived' ? 'disabled' : ''}>Configure</button>`;
+        const weightList = components.length ? `<div class="school-k10-grading-weights">${components.map(component => `<span class="school-k10-grading-weight"><span>${escape(component.name)}</span><strong>${Number(component.weight)}%</strong></span>`).join('')}</div>` : 'Rule unavailable';
+        const alignment = item.alignmentStatus === 'unavailable'
+          ? '<span class="badge badge-gray">No verified rule</span>'
+          : `<span class="badge ${item.configured ? 'badge-blue' : 'badge-green'}">${item.configured ? 'School-customized' : 'DepEd default'}</span>`;
+        const setupStatus = !item.ruleAvailable ? 'Rule unavailable' : item.locked ? 'Locked' : item.isActive ? 'Ready' : 'Inactive';
+        return `<tr><td><span class="school-k10-grading-subject-name">${escape(item.name)}</span></td><td data-label="Grade level"><span class="school-k10-grading-grade-list">${escape(item.gradeCode.replace('grade-', 'Grade '))}</span></td><td data-label="Components and weights">${weightList}</td><td data-label="DepEd alignment">${alignment}</td><td data-label="Setup status"><span class="badge ${item.locked ? 'badge-gray' : item.ruleAvailable ? 'badge-green' : 'badge-gray'}">${setupStatus}</span></td><td>${action}</td></tr>`;
+      }).join('');
+      const empty = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No SHS subjects yet', text: 'Add Grade 11 core subjects in Class Management, or add approved electives in SHS Program.' });
+      body.innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${state.shsGradingError ? `<div class="school-k10-grading-warning" role="alert">${escape(state.shsGradingError)} <button class="top-btn secondary" type="button" id="shsGradingRetry">Retry</button></div>` : state.shsGradingLoading && !rows.length ? '<p class="term-modal-message" role="status">Loading SHS grading rules…</p>' : `<div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject</th><th>Grade level</th><th>Components and weights</th><th>DepEd alignment</th><th>Setup status</th><th>Action</th></tr></thead><tbody>${tableRows || `<tr><td colspan="6">${empty}<div class="school-k10-empty-state-actions"><a class="top-btn secondary" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','subjects')">Manage core subjects</a><a class="top-btn secondary" href="edugnay-admin-shs-program.html">Open SHS Program</a></div></td></tr>`}</tbody></table></div>`}</div></div>`;
+      bindDivisionSwitcher();
+      body.querySelector('#shsGradingRetry')?.addEventListener('click', () => { state.shsGradingError = ''; renderShsGradingPane(activeSchool()); });
+      body.querySelectorAll('[data-shs-grade-edit]').forEach(button => button.addEventListener('click', () => openShsGradingEditor(button)));
+      window.lucide?.createIcons();
+    }
+
+    function shsPartName(code) {
+      return ({ summative_test_1: 'Summative Test 1', summative_test_2: 'Summative Test 2', term_exam: 'Term Exam' })[code]
+        || String(code).replaceAll('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+    }
+
+    function normalizeShsComponents(components) {
+      return (Array.isArray(components) ? components : []).map(component => ({ ...component,
+        examParts: Array.isArray(component.examParts) ? component.examParts.map(part => ({ ...part }))
+          : Object.entries(component.examParts || {}).map(([code, value]) => ({ code,
+            name: value && typeof value === 'object' ? value.name || shsPartName(code) : shsPartName(code),
+            weight: Number(value && typeof value === 'object' ? value.weight : value) }))
+      }));
+    }
+
+    function readShsEditorComponents() {
+      const body = document.getElementById('shsGradingEditorBody');
+      return [...body.querySelectorAll('[data-shs-component-index]')].map(card => ({
+        code: card.querySelector('[data-shs-component-field="code"]').value.trim(),
+        name: card.querySelector('[data-shs-component-field="name"]').value.trim(),
+        componentType: card.querySelector('[data-shs-component-field="componentType"]').value,
+        weight: Number(card.querySelector('[data-shs-component-field="weight"]').value),
+        examParts: [...card.querySelectorAll('[data-shs-part-index]')].map(part => ({
+          code: part.querySelector('[data-shs-part-field="code"]').value.trim(),
+          name: part.querySelector('[data-shs-part-field="name"]').value.trim(),
+          weight: Number(part.querySelector('[data-shs-part-field="weight"]').value)
+        }))
+      }));
+    }
+
+    function renderShsEditorComponents() {
+      const escape = window.EDUGNAY_CONFIG.escapeHtml;
+      const components = state.shsGradingComponents;
+      const cardHost = document.getElementById('shsGradingComponents');
+      cardHost.innerHTML = components.map((component, index) => `<div class="shs-grading-component-entry" data-shs-component-index="${index}">
+        <div class="subject-grading-component-card school-k10-group-component-row school-k10-group-component-grid">
+          <label><span class="school-k10-field-label">Component code</span><input class="form-input" aria-label="Component code" required maxlength="30" data-component-field="code" data-shs-component-field="code" value="${escape(component.code)}"></label>
+          <label><span class="school-k10-field-label">Component name</span><input class="form-input" aria-label="Component name" required maxlength="100" data-component-field="name" data-shs-component-field="name" value="${escape(component.name)}"></label>
+          <label><span class="school-k10-field-label">Type</span><select class="form-select" aria-label="Component type" data-component-field="type" data-shs-component-field="componentType">${[['written','Written/Oral Works'],['performance','Performance Tasks'],['examination','Examinations'],['other','Other']].filter(([value]) => value !== 'examination' || state.shsGradingItem?.defaultComponents?.some(rule => rule.componentType === 'examination')).map(([value,label]) => `<option value="${value}" ${component.componentType === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+          <label><span class="school-k10-field-label">Weight (%)</span><input class="form-input" aria-label="Weight (%)" required type="number" min="0" max="100" step="1" data-component-field="weight" data-shs-component-field="weight" value="${Number(component.weight)}"></label>
+          <button class="top-btn secondary" type="button" data-shs-remove-component="${index}">Remove</button>
+        </div>
+        ${component.componentType === 'examination' ? `<div class="school-k10-standard-exam-editor shs-grading-exam-editor"><h4>Examination parts</h4>
+          <div class="school-k10-exam-part-columns" aria-hidden="true"><span>Part code</span><span>Part name</span><span>Weight</span><span></span></div>
+          <div class="school-k10-exam-part-list">${component.examParts.map((part, partIndex) => `<div class="subject-grading-exam-part" data-shs-part-index="${partIndex}">
+            <label><span class="school-k10-field-label">Part code</span><input class="form-input" aria-label="Part code" required maxlength="30" data-part-field="code" data-shs-part-field="code" value="${escape(part.code)}"></label>
+            <label><span class="school-k10-field-label">Part name</span><input class="form-input" aria-label="Part name" required maxlength="100" data-part-field="name" data-shs-part-field="name" value="${escape(part.name)}"></label>
+            <label><span class="school-k10-field-label">Weight (%)</span><input class="form-input" aria-label="Weight (%)" required type="number" min="0" max="100" step="1" data-part-field="weight" data-shs-part-field="weight" value="${Number(part.weight)}"></label>
+            <button class="top-btn secondary" type="button" data-shs-remove-part="${index}:${partIndex}">Remove</button></div>`).join('')}</div>
+          <small class="school-k10-exam-total-note" data-shs-part-total>Total exam-part weight: ${component.examParts.reduce((sum, part) => sum + Number(part.weight || 0), 0)}%</small>
+          <button class="top-btn secondary school-k10-add-exam-part" type="button" data-shs-add-part="${index}">Add exam part</button>
+        </div>` : ''}</div>`).join('') || '<p class="term-modal-message">Add at least one component.</p>';
+      const total = components.reduce((sum, component) => sum + Number(component.weight || 0), 0);
+      document.getElementById('shsGradingComponentTotal').textContent = `Total component weight: ${total}%`;
+      cardHost.querySelectorAll('[data-shs-remove-component]').forEach(button => button.addEventListener('click', () => {
+        state.shsGradingComponents = readShsEditorComponents();
+        state.shsGradingComponents.splice(Number(button.dataset.shsRemoveComponent), 1);
+        renderShsEditorComponents();
+      }));
+      cardHost.querySelectorAll('[data-shs-add-part]').forEach(button => button.addEventListener('click', () => {
+        state.shsGradingComponents = readShsEditorComponents();
+        const component = state.shsGradingComponents[Number(button.dataset.shsAddPart)];
+        let suffix = component.examParts.length + 1;
+        let code = `exam-part-${suffix}`;
+        while (component.examParts.some(part => part.code === code)) code = `exam-part-${++suffix}`;
+        component.examParts.push({ code, name: `Exam part ${suffix}`, weight: 0 });
+        renderShsEditorComponents();
+      }));
+      cardHost.querySelectorAll('[data-shs-remove-part]').forEach(button => button.addEventListener('click', () => {
+        state.shsGradingComponents = readShsEditorComponents();
+        const [componentIndex, partIndex] = button.dataset.shsRemovePart.split(':').map(Number);
+        state.shsGradingComponents[componentIndex].examParts.splice(partIndex, 1);
+        renderShsEditorComponents();
+      }));
+      cardHost.querySelectorAll('[data-shs-component-field="componentType"]').forEach(select => select.addEventListener('change', () => {
+        state.shsGradingComponents = readShsEditorComponents();
+        const component = state.shsGradingComponents[Number(select.closest('[data-shs-component-index]').dataset.shsComponentIndex)];
+        if (component.componentType !== 'examination') component.examParts = [];
+        renderShsEditorComponents();
+      }));
+      cardHost.querySelectorAll('input').forEach(input => input.addEventListener('input', () => {
+        const card = input.closest('[data-shs-component-index]');
+        const componentTotal = readShsEditorComponents().reduce((sum, component) => sum + Number(component.weight || 0), 0);
+        document.getElementById('shsGradingComponentTotal').textContent = `Total component weight: ${componentTotal}%`;
+        const partTotal = card.querySelector('[data-shs-part-total]');
+        if (partTotal) {
+          const total = [...card.querySelectorAll('[data-shs-part-field="weight"]')].reduce((sum, field) => sum + Number(field.value || 0), 0);
+          partTotal.textContent = `Total exam-part weight: ${total}%`;
+        }
+        const errorNode = document.getElementById('shsGradingEditorError');
+        errorNode.hidden = true;
+      }));
+      cardHost.querySelectorAll('select').forEach(select => select.addEventListener('change', () => {
+        document.getElementById('shsGradingEditorError').hidden = true;
+      }));
+    }
+
+    function openShsGradingEditor(button) {
+      const [kind, rawId] = button.dataset.shsGradeEdit.split(':');
+      const item = state.shsGradingData?.subjects.find(row => Number(row[kind === 'subject' ? 'subjectId' : 'offeringId']) === Number(rawId));
+      if (!item || item.locked || !item.components?.length) return;
+      state.shsGradingItem = item;
+      state.shsGradingReturnFocus = button;
+      document.getElementById('shsGradingEditorSubtitle').textContent = `${item.name} · ${item.gradeCode.replace('grade-', 'Grade ')} · ${state.shsGradingData.year.label}`;
+      state.shsGradingComponents = normalizeShsComponents(item.components);
+      const dialog = document.querySelector('#shsGradingEditorModal [role="dialog"]');
+      dialog.setAttribute('aria-labelledby', 'shsGradingEditorTitle');
+      dialog.removeAttribute('aria-describedby');
+      document.getElementById('shsGradingEditorBody').hidden = false;
+      document.getElementById('shsGradingRestoreConfirmation').hidden = true;
+      document.getElementById('shsGradingEditorFooter').hidden = false;
+      document.getElementById('shsGradingRestoreFooter').hidden = true;
+      document.getElementById('shsGradingRestoreError').hidden = true;
+      document.getElementById('shsGradingEditorBody').innerHTML = `<div class="school-k10-exam-info-banner"><span class="school-k10-exam-info-icon"><i data-lucide="info" aria-hidden="true"></i></span><p>DepEd defaults are a starting point. Changes apply to this school and school year. Published grades lock these rules.</p></div>
+        <section class="school-k10-editor-section school-k10-components-section" aria-labelledby="shsGradingComponentsTitle"><div class="school-k10-section-heading"><div><h3 id="shsGradingComponentsTitle">Component weights</h3><p>Set the grading components and their percentages.</p></div><button class="top-btn secondary" type="button" data-shs-add-component>Add component</button></div><div class="school-k10-component-table"><div class="school-k10-component-columns" aria-hidden="true"><span>Code</span><span>Component</span><span>Type</span><span>Weight (%)</span><span></span></div><div id="shsGradingComponents" class="school-k10-component-table"></div></div><p class="subject-grading-editor-total" id="shsGradingComponentTotal"></p><p class="school-k10-grading-row-note">Component weights must total 100%. Examination parts are optional, but if added they must total 100%.</p></section>
+        <p class="school-k10-grading-warning" id="shsGradingEditorError" role="alert" hidden></p>`;
+      renderShsEditorComponents();
+      document.querySelector('[data-shs-add-component]').addEventListener('click', () => {
+        state.shsGradingComponents = readShsEditorComponents();
+        let suffix = state.shsGradingComponents.length + 1;
+        let code = `component-${suffix}`;
+        while (state.shsGradingComponents.some(component => component.code === code)) code = `component-${++suffix}`;
+        state.shsGradingComponents.push({ code, name: `Component ${suffix}`, componentType: 'other', weight: 0, examParts: [] });
+        renderShsEditorComponents();
+      });
+      document.getElementById('shsGradingRestore').hidden = !item.configured;
+      openK10GradingModal('shsGradingEditorModal');
+      window.lucide?.createIcons();
+      document.querySelector('#shsGradingEditorBody input')?.focus();
+    }
+
+    function closeShsGradingEditor() {
+      if (state.shsGradingSaving) return;
+      closeK10GradingModal('shsGradingEditorModal');
+      document.getElementById('shsGradingEditorBody').hidden = false;
+      document.getElementById('shsGradingRestoreConfirmation').hidden = true;
+      document.getElementById('shsGradingEditorFooter').hidden = false;
+      document.getElementById('shsGradingRestoreFooter').hidden = true;
+      const dialog = document.querySelector('#shsGradingEditorModal [role="dialog"]');
+      dialog.setAttribute('aria-labelledby', 'shsGradingEditorTitle');
+      dialog.removeAttribute('aria-describedby');
+      state.shsGradingReturnFocus?.focus();
+      state.shsGradingItem = null;
+      state.shsGradingComponents = [];
+    }
+
+    function showShsGradingRestoreConfirmation() {
+      const item = state.shsGradingItem;
+      if (!item?.configured || item.locked || state.shsGradingSaving) return;
+      const dialog = document.querySelector('#shsGradingEditorModal [role="dialog"]');
+      document.getElementById('shsGradingRestoreTitle').textContent = `Restore ${item.name} to its DepEd defaults?`;
+      document.getElementById('shsGradingRestoreDescription').textContent = `This replaces the saved rule for ${state.shsGradingData.year.label}. Assessment links must remain valid, and published grades cannot be changed.`;
+      document.getElementById('shsGradingCurrentSummary').innerHTML = renderK10ComponentSummary(
+        normalizeShsComponents(item.components), { showExamDetails: true });
+      document.getElementById('shsGradingDefaultsSummary').innerHTML = renderK10ComponentSummary(
+        normalizeShsComponents(item.defaultComponents), { showExamDetails: true });
+      document.getElementById('shsGradingDefaultsHeading').textContent = `DepEd defaults for ${state.shsGradingData.year.label || 'this school year'}`;
+      document.getElementById('shsGradingRestoreError').hidden = true;
+      document.getElementById('shsGradingEditorBody').hidden = true;
+      document.getElementById('shsGradingEditorFooter').hidden = true;
+      document.getElementById('shsGradingRestoreConfirmation').hidden = false;
+      document.getElementById('shsGradingRestoreFooter').hidden = false;
+      dialog.setAttribute('aria-labelledby', 'shsGradingRestoreTitle');
+      dialog.setAttribute('aria-describedby', 'shsGradingRestoreDescription');
+      document.getElementById('shsGradingRestoreConfirm').focus();
+    }
+
+    function cancelShsGradingRestoreConfirmation() {
+      if (state.shsGradingSaving) return;
+      document.getElementById('shsGradingRestoreConfirmation').hidden = true;
+      document.getElementById('shsGradingRestoreFooter').hidden = true;
+      document.getElementById('shsGradingEditorBody').hidden = false;
+      document.getElementById('shsGradingEditorFooter').hidden = false;
+      const dialog = document.querySelector('#shsGradingEditorModal [role="dialog"]');
+      dialog.setAttribute('aria-labelledby', 'shsGradingEditorTitle');
+      dialog.removeAttribute('aria-describedby');
+      document.getElementById('shsGradingRestore').focus();
+    }
+
+    async function saveShsGradingEditor(event) {
+      event.preventDefault();
+      const item = state.shsGradingItem;
+      if (!item) return;
+      state.shsGradingComponents = readShsEditorComponents();
+      await submitShsGradingRule({ components: state.shsGradingComponents }, false);
+    }
+
+    async function submitShsGradingRule(rule, restore) {
+      const item = state.shsGradingItem;
+      if (!item || state.shsGradingSaving) return;
+      const errorNode = document.getElementById(restore ? 'shsGradingRestoreError' : 'shsGradingEditorError');
+      const yearId = Number(state.shsGradingData.year.id);
+      const payload = { academicYearId: state.shsGradingData.year.id,
+        ...(item.subjectId ? { subjectId: item.subjectId } : { offeringId: item.offeringId }), ...rule };
+      const form = document.getElementById('shsGradingEditorForm');
+      state.shsGradingSaving = true;
+      errorNode.hidden = true;
+      [...form.querySelectorAll('button')].forEach(button => { button.disabled = true; });
+      try {
+        await window.EDUGNAY_API.request(restore ? '/shs-grading/restore' : '/shs-grading', {
+          method: restore ? 'POST' : 'PUT', body: JSON.stringify(payload)
+        });
+        state.shsGradingData = null;
+        state.shsGradingError = '';
+        state.shsGradingSaving = false;
+        closeShsGradingEditor();
+        try {
+          state.shsGradingData = await window.EDUGNAY_API.request(`/shs-grading?academicYearId=${yearId}`);
+          state.shsGradingError = '';
+          renderShsGradingPane(activeSchool());
+          showAppToast(restore ? `${item.name} restored to DepEd defaults.` : 'SHS grading rule saved.');
+        } catch (refreshError) {
+          state.shsGradingError = refreshError.message || 'The rule was saved, but the grading table could not be refreshed.';
+          renderShsGradingPane(activeSchool());
+          showAppToast(restore ? 'Defaults restored, but the table could not be refreshed.' : 'Rule saved, but the table could not be refreshed.', 'error');
+        }
+      } catch (error) { errorNode.textContent = error.message || (restore ? 'DepEd defaults could not be restored.' : 'The grading rule could not be saved.'); errorNode.hidden = false; }
+      finally {
+        state.shsGradingSaving = false;
+        [...form.querySelectorAll('button')].forEach(button => { button.disabled = false; });
+      }
+    }
+
     function renderGradingPane() {
       const school = activeSchool();
       setSettingsHeading('Grading rules', 'Configure grading weights and final-grade rules.');
       const { level, data } = activeDivision(school);
       const isShs = level === 'shs';
+      if (isShs) {
+        renderShsGradingPane(school);
+        return;
+      }
       const defaults = window.EDUGNAY_CONFIG.createDivision(level);
       const apiLevel = getApiLevel(level);
       if (['elementary', 'jhs'].includes(level)) {
@@ -3015,6 +3301,19 @@
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.termAction) closeTermActionModal(); });
     document.getElementById('confirmApplyMissingDepedDefaults').addEventListener('click', applyMissingDepedDefaults);
     document.getElementById('subjectGradingEditorForm').addEventListener('submit', saveSubjectGradingEditor);
+    document.getElementById('shsGradingEditorForm').addEventListener('submit', saveShsGradingEditor);
+    document.getElementById('shsGradingEditorClose').addEventListener('click', closeShsGradingEditor);
+    document.getElementById('shsGradingCancel').addEventListener('click', closeShsGradingEditor);
+    document.getElementById('shsGradingRestore').addEventListener('click', showShsGradingRestoreConfirmation);
+    document.getElementById('shsGradingRestoreBack').addEventListener('click', cancelShsGradingRestoreConfirmation);
+    document.getElementById('shsGradingRestoreConfirm').addEventListener('click', () => submitShsGradingRule({}, true));
+    document.getElementById('shsGradingEditorModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeShsGradingEditor(); });
+    document.addEventListener('keydown', event => {
+      const modal = document.getElementById('shsGradingEditorModal');
+      if (event.key !== 'Escape' || !modal.classList.contains('open')) return;
+      if (!document.getElementById('shsGradingRestoreConfirmation').hidden) cancelShsGradingRestoreConfirmation();
+      else closeShsGradingEditor();
+    });
     document.getElementById('restoreDepedDefaults').addEventListener('click', showRestoreDepedDefaultsConfirmation);
     document.getElementById('cancelRestoreDepedDefaults').addEventListener('click', cancelRestoreDepedDefaultsConfirmation);
     document.getElementById('confirmRestoreDepedDefaults').addEventListener('click', confirmRestoreDepedDefaults);

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
-  <link rel="stylesheet" href="../../assets/css/admin/activity.css">
+  <link rel="stylesheet" href="../../assets/css/admin/activity.css?v=2">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
@@ -55,6 +55,7 @@
 
       <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
       <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
+      <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">SHS Program</span></a>
     </div>
 
     <div class="nav-section">
@@ -151,13 +152,7 @@
         </div>
       </div>
       <div class="tb-theme" data-theme-control>
-        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-        <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-          <div class="tb-theme-heading">Appearance</div>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-        </div>
+        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -349,7 +344,7 @@
       const icon = /^[a-z0-9-]{1,40}$/.test(item.icon || '') ? item.icon : 'activity';
       return `${groupLabel}<div class="activity-item">
         <div class="act-icon ${tone}" aria-hidden="true"><i data-lucide="${icon}" style="width:15px;height:15px;"></i></div>
-        <div class="act-body"><div class="act-text"><strong>${safe(item.actor || 'System')}</strong> ${safe(item.title || 'recorded an activity')} ${safe(item.detail || '')}</div>
+        <div class="act-body"><div class="act-text"><strong>${safe(item.actor || 'System')}</strong> ${safe(item.title || 'recorded an activity')}${item.detail ? ` · ${safe(item.detail)}` : ''}</div>
         <div class="act-time">${safe(formatTime(item.createdAt))}</div></div><span class="act-tag">${safe(item.type || 'System')}</span></div>`;
     }).join('');
     list.style.display = '';

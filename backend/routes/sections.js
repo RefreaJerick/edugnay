@@ -20,7 +20,6 @@ router.post('/:sectionId/teachers', requireSchoolAdmin, controller.assignTeacher
 router.patch('/:sectionId/teachers/:assignmentId', requireSchoolAdmin, controller.updateTeacherAssignment);
 router.delete('/:sectionId/teachers/:assignmentId', requireSchoolAdmin, controller.removeTeacherAssignment);
 router.get('/:sectionId', controller.getSection);
-router.patch('/:sectionId/classify-strand', requireSchoolAdmin, controller.classifySectionStrand);
 router.patch('/:sectionId', requireSchoolAdmin, controller.updateSection);
 router.delete('/:sectionId', requireSchoolAdmin, controller.deleteSection);
 

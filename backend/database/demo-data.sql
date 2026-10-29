@@ -67,46 +67,23 @@ VALUES
   (4, 2, 'jhs', 'Junior High School', 'quarterly', TRUE),
   (5, 2, 'shs', 'Senior High School', 'semestral', TRUE);
 
-INSERT INTO school_grade_levels (id, school_level_id, grade_code, display_name, sort_order, is_enabled)
+INSERT INTO school_grade_levels (id, school_id, school_level_id, grade_code, display_name, sort_order, is_enabled)
 VALUES
-  (1, 1, 'grade-4', 'Grade 4', 4, TRUE),
-  (2, 1, 'grade-5', 'Grade 5', 5, TRUE),
-  (3, 2, 'grade-7', 'Grade 7', 7, TRUE),
-  (4, 2, 'grade-8', 'Grade 8', 8, TRUE),
-  (5, 2, 'grade-9', 'Grade 9', 9, TRUE),
-  (6, 2, 'grade-10', 'Grade 10', 10, TRUE),
-  (7, 3, 'grade-11', 'Grade 11', 11, TRUE),
-  (8, 3, 'grade-12', 'Grade 12', 12, TRUE);
+  (1, 1, 1, 'grade-4', 'Grade 4', 4, TRUE),
+  (2, 1, 1, 'grade-5', 'Grade 5', 5, TRUE),
+  (3, 1, 2, 'grade-7', 'Grade 7', 7, TRUE),
+  (4, 1, 2, 'grade-8', 'Grade 8', 8, TRUE),
+  (5, 1, 2, 'grade-9', 'Grade 9', 9, TRUE),
+  (6, 1, 2, 'grade-10', 'Grade 10', 10, TRUE),
+  (7, 1, 3, 'grade-11', 'Grade 11', 11, TRUE),
+  (8, 1, 3, 'grade-12', 'Grade 12', 12, TRUE);
 
 INSERT INTO school_shs_tracks (id, school_id, school_level_id, track_code, display_name, is_enabled)
 VALUES
   (1, 1, 3, 'academic', 'Academic', TRUE),
-  (2, 1, 3, 'tvl', 'Technical-Vocational-Livelihood', TRUE),
-  (3, 1, 3, 'arts-design', 'Arts and Design', TRUE),
-  (4, 1, 3, 'sports', 'Sports', TRUE),
-  (5, 2, 5, 'academic', 'Academic', TRUE),
-  (6, 2, 5, 'tvl', 'Technical-Vocational-Livelihood', TRUE),
-  (7, 2, 5, 'arts-design', 'Arts and Design', TRUE),
-  (8, 2, 5, 'sports', 'Sports', TRUE);
-
-INSERT INTO school_shs_strands (id, school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
-VALUES
-  (1, 1, 3, 1, 'stem', 'Science, Technology, Engineering, and Mathematics', TRUE),
-  (2, 1, 3, 1, 'abm', 'Accountancy, Business, and Management', TRUE),
-  (3, 1, 3, 1, 'humss', 'Humanities and Social Sciences', TRUE),
-  (4, 1, 3, 1, 'gas', 'General Academic Strand', TRUE),
-  (5, 1, 3, 2, 'agri-fishery-arts', 'Agri-Fishery Arts', TRUE),
-  (6, 1, 3, 2, 'home-economics', 'Home Economics', TRUE),
-  (7, 1, 3, 2, 'ict', 'Information and Communications Technology', TRUE),
-  (8, 1, 3, 2, 'industrial-arts', 'Industrial Arts', TRUE),
-  (9, 2, 5, 5, 'stem', 'Science, Technology, Engineering, and Mathematics', TRUE),
-  (10, 2, 5, 5, 'abm', 'Accountancy, Business, and Management', TRUE),
-  (11, 2, 5, 5, 'humss', 'Humanities and Social Sciences', TRUE),
-  (12, 2, 5, 5, 'gas', 'General Academic Strand', TRUE),
-  (13, 2, 5, 6, 'agri-fishery-arts', 'Agri-Fishery Arts', TRUE),
-  (14, 2, 5, 6, 'home-economics', 'Home Economics', TRUE),
-  (15, 2, 5, 6, 'ict', 'Information and Communications Technology', TRUE),
-  (16, 2, 5, 6, 'industrial-arts', 'Industrial Arts', TRUE);
+  (2, 1, 3, 'techpro', 'Technical Professional (TechPro)', TRUE),
+  (3, 2, 5, 'academic', 'Academic', TRUE),
+  (4, 2, 5, 'techpro', 'Technical Professional (TechPro)', TRUE);
 
 -- =========================================================
 -- 2. Demo accounts and profiles
@@ -157,49 +134,49 @@ INSERT INTO parent_profiles (
 ) VALUES
   (9, 'Santos', 'Santos', FALSE, FALSE, 'female', 'Catholic', '09171234567', '12 Rizal Street', 'Poblacion', 'Dagupan City', 'Pangasinan');
 
-INSERT INTO student_parent_links (student_user_id, parent_user_id, relationship)
+INSERT INTO student_parent_links (school_id, student_user_id, parent_user_id, relationship)
 VALUES
-  (6, 9, 'mother'),
-  (7, 9, 'guardian');
+  (1, 6, 9, 'mother'),
+  (1, 7, 9, 'guardian');
 
 -- =========================================================
 -- 3. Academic terms, subjects, and Grade 7 - St. Matthew
 -- =========================================================
 
 INSERT INTO academic_terms (
-  id, academic_year_id, school_level_id, name, sequence_number,
+  id, school_id, academic_year_id, school_level_id, name, sequence_number,
   planned_start_date, planned_end_date, status, activated_at, completed_at
 ) VALUES
-  (1, 1, 2, 'Quarter 1', 1, '2025-03-03', '2025-05-02', 'closed', '2025-03-03 08:00:00', '2025-05-02 17:00:00'),
-  (2, 1, 2, 'Quarter 2', 2, '2025-05-05', '2025-07-18', 'closed', '2025-05-05 08:00:00', '2025-07-18 17:00:00'),
-  (3, 1, 3, 'Semester 1', 1, '2025-03-03', '2025-07-18', 'closed', '2025-03-03 08:00:00', '2025-07-18 17:00:00'),
-  (4, 2, 1, 'Quarter 1', 1, '2026-05-01', '2026-07-31', 'closed', '2026-05-01 08:00:00', '2026-07-31 17:00:00'),
-  (5, 2, 1, 'Quarter 2', 2, '2026-08-01', '2026-10-31', 'active', '2026-08-01 08:00:00', NULL),
-  (6, 2, 1, 'Quarter 3', 3, '2026-11-01', '2027-01-31', 'upcoming', NULL, NULL),
-  (7, 2, 1, 'Quarter 4', 4, '2027-02-01', '2027-04-30', 'upcoming', NULL, NULL),
-  (8, 2, 2, 'Quarter 1', 1, '2026-05-01', '2026-07-31', 'closed', '2026-05-01 08:00:00', '2026-07-31 17:00:00'),
-  (9, 2, 2, 'Quarter 2', 2, '2026-08-01', '2026-10-31', 'active', '2026-08-01 08:00:00', NULL),
-  (10, 2, 2, 'Quarter 3', 3, '2026-11-01', '2027-01-31', 'upcoming', NULL, NULL),
-  (11, 2, 2, 'Quarter 4', 4, '2027-02-01', '2027-04-30', 'upcoming', NULL, NULL),
-  (12, 2, 3, 'Semester 1', 1, '2026-05-01', '2026-10-31', 'active', '2026-05-01 08:00:00', NULL),
-  (13, 2, 3, 'Semester 2', 2, '2026-11-01', '2027-04-30', 'upcoming', NULL, NULL);
+  (1, 1, 1, 2, 'Quarter 1', 1, '2025-03-03', '2025-05-02', 'closed', '2025-03-03 08:00:00', '2025-05-02 17:00:00'),
+  (2, 1, 1, 2, 'Quarter 2', 2, '2025-05-05', '2025-07-18', 'closed', '2025-05-05 08:00:00', '2025-07-18 17:00:00'),
+  (3, 1, 1, 3, 'Semester 1', 1, '2025-03-03', '2025-07-18', 'closed', '2025-03-03 08:00:00', '2025-07-18 17:00:00'),
+  (4, 1, 2, 1, 'Quarter 1', 1, '2026-05-01', '2026-07-31', 'closed', '2026-05-01 08:00:00', '2026-07-31 17:00:00'),
+  (5, 1, 2, 1, 'Quarter 2', 2, '2026-08-01', '2026-10-31', 'active', '2026-08-01 08:00:00', NULL),
+  (6, 1, 2, 1, 'Quarter 3', 3, '2026-11-01', '2027-01-31', 'upcoming', NULL, NULL),
+  (7, 1, 2, 1, 'Quarter 4', 4, '2027-02-01', '2027-04-30', 'upcoming', NULL, NULL),
+  (8, 1, 2, 2, 'Quarter 1', 1, '2026-05-01', '2026-07-31', 'closed', '2026-05-01 08:00:00', '2026-07-31 17:00:00'),
+  (9, 1, 2, 2, 'Quarter 2', 2, '2026-08-01', '2026-10-31', 'active', '2026-08-01 08:00:00', NULL),
+  (10, 1, 2, 2, 'Quarter 3', 3, '2026-11-01', '2027-01-31', 'upcoming', NULL, NULL),
+  (11, 1, 2, 2, 'Quarter 4', 4, '2027-02-01', '2027-04-30', 'upcoming', NULL, NULL),
+  (12, 1, 2, 3, 'Semester 1', 1, '2026-05-01', '2026-10-31', 'active', '2026-05-01 08:00:00', NULL),
+  (13, 1, 2, 3, 'Semester 2', 2, '2026-11-01', '2027-04-30', 'upcoming', NULL, NULL);
 
 INSERT INTO academic_term_actions (
-  academic_term_id, action_type, performed_by_user_id, performed_at
+  school_id, academic_term_id, action_type, performed_by_user_id, performed_at
 ) VALUES
-  (1, 'activated', 2, '2025-03-03 08:00:00'),
-  (1, 'completed', 2, '2025-05-02 17:00:00'),
-  (2, 'activated', 2, '2025-05-05 08:00:00'),
-  (2, 'completed', 2, '2025-07-18 17:00:00'),
-  (3, 'activated', 2, '2025-03-03 08:00:00'),
-  (3, 'completed', 2, '2025-07-18 17:00:00'),
-  (4, 'activated', 2, '2026-05-01 08:00:00'),
-  (4, 'completed', 2, '2026-07-31 17:00:00'),
-  (5, 'activated', 2, '2026-08-01 08:00:00'),
-  (8, 'activated', 2, '2026-05-01 08:00:00'),
-  (8, 'completed', 2, '2026-07-31 17:00:00'),
-  (9, 'activated', 2, '2026-08-01 08:00:00'),
-  (12, 'activated', 2, '2026-05-01 08:00:00');
+  (1, 1, 'activated', 2, '2025-03-03 08:00:00'),
+  (1, 1, 'completed', 2, '2025-05-02 17:00:00'),
+  (1, 2, 'activated', 2, '2025-05-05 08:00:00'),
+  (1, 2, 'completed', 2, '2025-07-18 17:00:00'),
+  (1, 3, 'activated', 2, '2025-03-03 08:00:00'),
+  (1, 3, 'completed', 2, '2025-07-18 17:00:00'),
+  (1, 4, 'activated', 2, '2026-05-01 08:00:00'),
+  (1, 4, 'completed', 2, '2026-07-31 17:00:00'),
+  (1, 5, 'activated', 2, '2026-08-01 08:00:00'),
+  (1, 8, 'activated', 2, '2026-05-01 08:00:00'),
+  (1, 8, 'completed', 2, '2026-07-31 17:00:00'),
+  (1, 9, 'activated', 2, '2026-08-01 08:00:00'),
+  (1, 12, 'activated', 2, '2026-05-01 08:00:00');
 
 INSERT INTO subjects (id, school_id, subject_code, name, school_level_id, grade_level_id)
 VALUES
@@ -224,13 +201,13 @@ INSERT INTO sections (
   (2, 1, 1, 2, 4, 'St. Luke', 40, NULL, 'archived'),
   (3, 1, 2, 2, 3, 'St. Matthew', 40, 3, 'active');
 
-INSERT INTO section_students (section_id, student_user_id)
-VALUES (1, 4), (1, 5), (1, 6), (1, 7), (1, 8),
-  (3, 4), (3, 5), (3, 6), (3, 7), (3, 8);
+INSERT INTO section_students (school_id, section_id, student_user_id)
+VALUES (1, 1, 4), (1, 1, 5), (1, 1, 6), (1, 1, 7), (1, 1, 8),
+  (1, 3, 4), (1, 3, 5), (1, 3, 6), (1, 3, 7), (1, 3, 8);
 
-INSERT INTO section_teachers (section_id, teacher_user_id, subject_id)
-VALUES (1, 3, 1), (1, 3, 2), (1, 3, 3), (1, 3, 4),
-  (3, 3, 1), (3, 3, 2), (3, 3, 3), (3, 3, 4);
+INSERT INTO section_teachers (school_id, section_id, teacher_user_id, subject_id)
+VALUES (1, 1, 3, 1), (1, 1, 3, 2), (1, 1, 3, 3), (1, 1, 3, 4),
+  (1, 3, 3, 1), (1, 3, 3, 2), (1, 3, 3, 3), (1, 3, 3, 4);
 
 INSERT INTO grading_categories (id, school_id, school_level_id, code, name, weight)
 VALUES
@@ -251,32 +228,32 @@ INSERT INTO assignments (
   (2, 1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 'Review the core values lesson.', '2025-06-11 23:59:00', 25.00, 1, 'published');
 
 INSERT INTO assignment_submissions (
-  assignment_id, student_user_id, file_name, file_path, file_size_bytes,
+  school_id, assignment_id, student_user_id, file_name, file_path, file_size_bytes,
   submission_status, submitted_at
 ) VALUES
-  (1, 4, 'kindness-and-respect.pdf', '/uploads/assignment-submissions/kindness-and-respect.pdf', 184320, 'submitted', '2025-06-12 15:30:00'),
-  (1, 6, 'juan-seatwork.pdf', '/uploads/assignment-submissions/juan-seatwork.pdf', 165000, 'submitted', '2025-06-13 10:15:00'),
-  (2, 5, NULL, NULL, NULL, 'missing', NULL);
+  (1, 1, 4, 'kindness-and-respect.pdf', '/uploads/assignment-submissions/kindness-and-respect.pdf', 184320, 'submitted', '2025-06-12 15:30:00'),
+  (1, 1, 6, 'juan-seatwork.pdf', '/uploads/assignment-submissions/juan-seatwork.pdf', 165000, 'submitted', '2025-06-13 10:15:00'),
+  (1, 2, 5, NULL, NULL, NULL, 'missing', NULL);
 
 INSERT INTO grading_items (
-  id, section_id, subject_id, academic_term_id, grading_category_id,
+  id, school_id, section_id, subject_id, academic_term_id, grading_category_id,
   teacher_user_id, title, max_score, recorded_at
 ) VALUES
-  (1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 25.00, '2025-06-11 14:00:00'),
-  (2, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 20.00, '2025-06-13 14:00:00'),
-  (3, 3, 1, 9, 2, 3, 'Weekly Journal: Week of September 21, 2026', 50.00, '2026-09-21 08:00:00');
+  (1, 1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 25.00, '2025-06-11 14:00:00'),
+  (2, 1, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 20.00, '2025-06-13 14:00:00'),
+  (3, 1, 3, 1, 9, 2, 3, 'Weekly Journal: Week of September 21, 2026', 50.00, '2026-09-21 08:00:00');
 
 INSERT INTO journal_prompts (
-  id, journal_subject_id, section_id, grading_item_id, week_start_date,
+  id, school_id, journal_subject_id, section_id, grading_item_id, week_start_date,
   prompt_text, opens_at, due_at, min_words, allow_late, prompt_status, created_by_user_id
 ) VALUES
-  (1, 1, 3, 3, '2026-09-21', 'Describe one way you showed responsibility in class this week and what you learned from it.', '2026-09-21 08:00:00', '2026-10-02 23:59:00', 50, FALSE, 'open', 3);
+  (1, 1, 1, 3, 3, '2026-09-21', 'Describe one way you showed responsibility in class this week and what you learned from it.', '2026-09-21 08:00:00', '2026-10-02 23:59:00', 50, FALSE, 'open', 3);
 
-INSERT INTO student_scores (grading_item_id, student_user_id, score, recorded_by_user_id)
+INSERT INTO student_scores (school_id, grading_item_id, student_user_id, score, recorded_by_user_id)
 VALUES
-  (1, 4, 24.00, 3), (1, 5, 23.00, 3), (1, 6, 22.00, 3), (1, 7, 25.00, 3), (1, 8, 21.00, 3),
-  (2, 4, 19.00, 3), (2, 5, 18.00, 3), (2, 6, 20.00, 3), (2, 7, 20.00, 3), (2, 8, 17.00, 3),
-  (3, 4, 46.00, 3);
+  (1, 1, 4, 24.00, 3), (1, 1, 5, 23.00, 3), (1, 1, 6, 22.00, 3), (1, 1, 7, 25.00, 3), (1, 1, 8, 21.00, 3),
+  (1, 2, 4, 19.00, 3), (1, 2, 5, 18.00, 3), (1, 2, 6, 20.00, 3), (1, 2, 7, 20.00, 3), (1, 2, 8, 17.00, 3),
+  (1, 3, 4, 46.00, 3);
 
 INSERT INTO attendance_sessions (
   id, school_id, section_id, subject_id, attendance_date, method, status,
@@ -285,27 +262,27 @@ INSERT INTO attendance_sessions (
   (1, 1, 1, NULL, '2025-06-13', 'qr', 'confirmed', 3, 3, '2025-06-13 08:15:00');
 
 INSERT INTO attendance_records (
-  attendance_session_id, student_user_id, attendance_status, marked_by_user_id
+  school_id, attendance_session_id, student_user_id, attendance_status, marked_by_user_id
 ) VALUES
-  (1, 4, 'present', 3), (1, 5, 'present', 3), (1, 6, 'present', 3),
-  (1, 7, 'present', 3), (1, 8, 'excused', 3);
+  (1, 1, 4, 'present', 3), (1, 1, 5, 'present', 3), (1, 1, 6, 'present', 3),
+  (1, 1, 7, 'present', 3), (1, 1, 8, 'excused', 3);
 
-INSERT INTO student_qr_credentials (id, student_user_id, token_hash, credential_status)
+INSERT INTO student_qr_credentials (id, school_id, student_user_id, token_hash, credential_status)
 VALUES
-  (1, 4, SHA2('demo-qr-car-100201000001', 256), 'active'),
-  (2, 5, SHA2('demo-qr-liza-100201000002', 256), 'active'),
-  (3, 6, SHA2('demo-qr-juan-100201000003', 256), 'active'),
-  (4, 7, SHA2('demo-qr-maya-100201000004', 256), 'active'),
-  (5, 8, SHA2('demo-qr-sofia-100201000005', 256), 'active');
+  (1, 1, 4, SHA2('demo-qr-car-100201000001', 256), 'active'),
+  (2, 1, 5, SHA2('demo-qr-liza-100201000002', 256), 'active'),
+  (3, 1, 6, SHA2('demo-qr-juan-100201000003', 256), 'active'),
+  (4, 1, 7, SHA2('demo-qr-maya-100201000004', 256), 'active'),
+  (5, 1, 8, SHA2('demo-qr-sofia-100201000005', 256), 'active');
 
 INSERT INTO qr_scan_events (
-  attendance_session_id, student_qr_credential_id, scanned_student_user_id,
+  school_id, attendance_session_id, student_qr_credential_id, scanned_student_user_id,
   scanned_by_user_id, scan_result, scanned_at
 ) VALUES
-  (1, 1, 4, 3, 'accepted', '2025-06-13 08:02:00'),
-  (1, 2, 5, 3, 'accepted', '2025-06-13 08:03:00'),
-  (1, 3, 6, 3, 'accepted', '2025-06-13 08:04:00'),
-  (1, 4, 7, 3, 'accepted', '2025-06-13 08:05:00');
+  (1, 1, 1, 4, 3, 'accepted', '2025-06-13 08:02:00'),
+  (1, 1, 2, 5, 3, 'accepted', '2025-06-13 08:03:00'),
+  (1, 1, 3, 6, 3, 'accepted', '2025-06-13 08:04:00'),
+  (1, 1, 4, 7, 3, 'accepted', '2025-06-13 08:05:00');
 
 -- =========================================================
 -- 5. Announcements, journals, reports, and interventions
@@ -316,11 +293,11 @@ INSERT INTO announcements (
 ) VALUES
   (1, 1, 'Q2 Grade Encoding Deadline', 'Teachers must complete Quarter 2 grade encoding by June 14.', 'high', 'published', 2, '2025-06-12 08:00:00');
 
-INSERT INTO announcement_audiences (announcement_id, audience_type)
-VALUES (1, 'teacher'), (1, 'school_admin');
+INSERT INTO announcement_audiences (school_id, announcement_id, audience_type)
+VALUES (1, 1, 'teacher'), (1, 1, 'school_admin');
 
-INSERT INTO announcement_reads (announcement_id, user_id, read_at)
-VALUES (1, 3, '2025-06-12 08:30:00');
+INSERT INTO announcement_reads (school_id, announcement_id, user_id, read_at)
+VALUES (1, 1, 3, '2025-06-12 08:30:00');
 
 INSERT INTO notifications (announcement_id, user_id, type, title, message, target_path)
 VALUES
@@ -333,13 +310,13 @@ VALUES
   (3, 'Review Grade 7 journal entries', '2025-06-14', 'pending');
 
 INSERT INTO student_journal_entries (
-  id, journal_subject_id, student_user_id, section_id, journal_prompt_id, prompt_text,
+  id, school_id, journal_subject_id, student_user_id, section_id, journal_prompt_id, prompt_text,
   entry_text, entry_status, submitted_at
 ) VALUES
-  (1, 1, 4, 1, NULL, 'Describe a moment this week when you helped a classmate.', 'I helped a classmate understand the group activity.', 'submitted', '2025-06-12 13:00:00'),
-  (2, 1, 6, 1, NULL, 'Describe a moment this week when you helped a classmate.', 'I enjoyed working with my group during the activity.', 'submitted', '2025-06-12 13:05:00'),
-  (3, 1, 4, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I prepared my materials before class and finished my part of the group activity on time. I learned that being ready helps the whole group work better.', 'reviewed', '2026-09-24 10:00:00'),
-  (4, 1, 6, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I remembered to bring my notebook every day this week and completed my class reflection before going home.', 'submitted', '2026-09-25 14:00:00');
+  (1, 1, 1, 4, 1, NULL, 'Describe a moment this week when you helped a classmate.', 'I helped a classmate understand the group activity.', 'submitted', '2025-06-12 13:00:00'),
+  (2, 1, 1, 6, 1, NULL, 'Describe a moment this week when you helped a classmate.', 'I enjoyed working with my group during the activity.', 'submitted', '2025-06-12 13:05:00'),
+  (3, 1, 1, 4, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I prepared my materials before class and finished my part of the group activity on time. I learned that being ready helps the whole group work better.', 'reviewed', '2026-09-24 10:00:00'),
+  (4, 1, 1, 6, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I remembered to bring my notebook every day this week and completed my class reflection before going home.', 'submitted', '2026-09-25 14:00:00');
 
 INSERT INTO narrative_reports (
   id, school_id, student_user_id, section_id, teacher_user_id, academic_term_id,
@@ -367,10 +344,10 @@ VALUES
   (2, 'attendance_session', 1), (2, 'journal_entry', 2);
 
 INSERT INTO report_reopen_requests (
-  id, narrative_report_id, requested_by_user_id, reason, request_status,
+  id, school_id, narrative_report_id, requested_by_user_id, reason, request_status,
   admin_note, expires_at, reviewed_by_user_id, reviewed_at
 ) VALUES
-  (1, 1, 3, 'Correct a teacher-reviewed report detail.', 'approved',
+  (1, 1, 1, 3, 'Correct a teacher-reviewed report detail.', 'approved',
    'Editing access is approved until the stated deadline.', '2025-06-16 17:00:00', 2, '2025-06-14 09:00:00');
 
 INSERT INTO intervention_plans (
@@ -388,9 +365,9 @@ INSERT INTO intervention_actions (
   (1, 'Set aside 20 minutes for Values Education work twice each week.', 'parent', '2025-06-17', 'pending');
 
 INSERT INTO intervention_progress_entries (
-  intervention_plan_id, recorded_by_user_id, progress_status, note, recorded_at
+  school_id, intervention_plan_id, recorded_by_user_id, progress_status, note, recorded_at
 ) VALUES
-  (1, 3, 'on_track', 'Sofia completed the first follow-up activity with guidance.', '2025-06-14 15:00:00');
+  (1, 1, 3, 'on_track', 'Sofia completed the first follow-up activity with guidance.', '2025-06-14 15:00:00');
 
 -- =========================================================
 -- 6. SF1 metadata, holidays, and audit history
@@ -489,8 +466,7 @@ ALTER TABLE schools AUTO_INCREMENT = 3;
 ALTER TABLE academic_years AUTO_INCREMENT = 3;
 ALTER TABLE school_levels AUTO_INCREMENT = 6;
 ALTER TABLE school_grade_levels AUTO_INCREMENT = 9;
-ALTER TABLE school_shs_tracks AUTO_INCREMENT = 9;
-ALTER TABLE school_shs_strands AUTO_INCREMENT = 17;
+ALTER TABLE school_shs_tracks AUTO_INCREMENT = 5;
 ALTER TABLE users AUTO_INCREMENT = 10;
 ALTER TABLE academic_terms AUTO_INCREMENT = 14;
 ALTER TABLE subjects AUTO_INCREMENT = 5;

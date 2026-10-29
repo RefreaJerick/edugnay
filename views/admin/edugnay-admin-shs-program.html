@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="../../assets/js/theme.js"></script>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SHS Program | Academix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css"><link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <link rel="stylesheet" href="../../assets/css/timetables.css"><link rel="stylesheet" href="../../assets/css/shs-program.css?v=2">
+  <link rel="stylesheet" href="../../assets/css/theme.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script>
+  <script src="../../assets/js/admin/shell.js"></script><script src="../../assets/js/admin/shs-program.js?v=2"></script>
+</head>
+<body data-page-title="SHS Program">
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo"></div><div><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub">School portal</div></div></div>
+    <div class="nav-section"><div class="nav-section-label">Main</div>
+      <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
+      <a href="edugnay-admin-users.html" class="nav-item"><div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span></a>
+      <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days"></i></div><span class="nav-label">Timetables</span></a>
+      <a href="edugnay-admin-shs-program.html" class="nav-item active"><div class="nav-icon"><i data-lucide="graduation-cap"></i></div><span class="nav-label">SHS Program</span></a>
+    </div>
+    <div class="nav-section"><div class="nav-section-label">Reports</div>
+      <a href="edugnay-admin-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2"></i></div><span class="nav-label">System Reports</span></a>
+      <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span></a>
+    </div>
+    <div class="nav-section"><div class="nav-section-label">Settings</div>
+      <a href="edugnay-admin-schools.html" class="nav-item"><div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Settings</span></a>
+      <a href="edugnay-admin-system-config.html" class="nav-item"><div class="nav-icon"><i data-lucide="settings"></i></div><span class="nav-label">System Config</span></a>
+      <a href="edugnay-admin-archive.html" class="nav-item"><div class="nav-icon"><i data-lucide="archive"></i></div><span class="nav-label">Archive Data</span></a>
+    </div>
+    <div class="nav-section"><div class="nav-section-label">Account</div><a href="edugnay-admin-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span></a></div>
+  </aside>
+  <header class="topbar"><div class="topbar-left"><button class="hamburger" type="button" aria-label="Open navigation" onclick="toggleDrawer(true)"><i data-lucide="menu"></i></button><div class="topbar-context"><div class="topbar-context-copy"><strong>SHS Program</strong></div></div></div>
+    <div class="topbar-right"><div class="tb-notif"><button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none"></span></button><div class="tb-notif-panel" id="tbNotifPanel"><div class="tb-notif-panel-head"><span class="tb-notif-panel-title">Notifications</span><button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">Mark all read</button></div><div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty">No notifications yet.</div></div><div class="tb-notif-panel-foot"><a href="edugnay-admin-notifications.html">View all notifications</a></div></div></div>
+      <div class="tb-theme" data-theme-control><button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button></div>
+      <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Admin</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-admin-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
+    </div></header>
+  <script>restoreProfileChip();</script>
+  <main class="main"><div class="shs-page" id="shs-program-page">
+    <section class="timetable-card" aria-label="School year"><div class="shs-toolbar shs-year-toolbar">
+      <div class="timetable-field"><label for="shs-year">School year</label><select id="shs-year"></select></div>
+    </div></section>
+    <p class="shs-alert" id="shs-error" role="alert" hidden></p>
+    <div class="mgmt-tabs shs-tabs" role="tablist" aria-label="SHS Program sections">
+      <button class="mgmt-tab shs-tab active" id="shs-tab-subjects" type="button" role="tab" aria-selected="true" aria-controls="shs-panel-subjects" data-shs-tab="subjects">Subject classes</button>
+      <button class="mgmt-tab shs-tab" id="shs-tab-choices" type="button" role="tab" aria-selected="false" aria-controls="shs-panel-choices" data-shs-tab="choices" tabindex="-1">Student choices</button>
+    </div>
+    <section id="shs-panel-subjects" role="tabpanel" aria-labelledby="shs-tab-subjects">
+      <section class="timetable-card" aria-label="Subject classes"><div class="timetable-heading"><div class="timetable-heading-title"><span class="timetable-heading-icon" aria-hidden="true"><i data-lucide="book-open"></i></span><div><h2>Subject classes</h2><p>Manage approved subjects, teachers, available seats, and class schedules.</p></div></div></div>
+        <div class="shs-toolbar shs-subject-toolbar" role="group" aria-label="Subject class filters">
+          <div class="timetable-field"><label for="shs-grade">Grade</label><select id="shs-grade"><option value="">All grades</option></select></div>
+          <div class="timetable-field"><label for="shs-track">Track</label><select id="shs-track"><option value="">All tracks</option></select></div>
+          <button class="timetable-button" id="shs-activate" type="button"><i data-lucide="plus" aria-hidden="true"></i> Add subject</button>
+        </div>
+        <div class="shs-offerings" id="shs-offerings" aria-live="polite">Loading subject classes...</div>
+      </section>
+    </section>
+    <section id="shs-panel-choices" role="tabpanel" aria-labelledby="shs-tab-choices" hidden>
+      <section class="timetable-card" id="shs-selection-panel"><div class="timetable-heading"><div class="timetable-heading-title"><span class="timetable-heading-icon" aria-hidden="true"><i data-lucide="clipboard-check"></i></span><div><h2>Student choices</h2><p>Review and confirm the classes each learner chose with the school. After confirmation, staff can update or clear their choices here.</p></div></div></div>
+        <div class="shs-roster-controls" id="shs-roster-controls" hidden>
+          <div class="timetable-field"><label for="shs-student-search">Search learners</label><input id="shs-student-search" type="search" placeholder="Search by learner name"></div>
+          <div class="timetable-field"><label for="shs-student-grade">Grade</label><select id="shs-student-grade"><option value="">All grades</option><option value="grade-11">Grade 11</option><option value="grade-12">Grade 12</option></select></div>
+          <div class="timetable-field"><label for="shs-student-status">Choice status</label><select id="shs-student-status"><option value="all">All statuses</option><option value="not_recorded">Not recorded</option><option value="pending">Waiting for school confirmation</option><option value="approved">Confirmed by school</option><option value="rejected">Changes requested</option></select></div>
+        </div>
+        <div class="shs-reviews" id="shs-reviews" aria-live="polite"><p class="shs-roster-loading">Loading learner choices...</p></div>
+        <div class="shs-roster-pagination" id="shs-roster-pagination" hidden><span id="shs-roster-page" aria-live="polite"></span><div><button class="timetable-button secondary" type="button" id="shs-roster-prev">Previous</button><button class="timetable-button secondary" type="button" id="shs-roster-next">Next</button></div></div>
+      </section>
+    </section>
+  </div></main>
+</div>
+<div class="modal-backdrop shs-dialog-overlay" id="shs-dialog-overlay" hidden><div class="modal shs-dialog" id="shs-dialog" role="dialog" aria-modal="true" aria-labelledby="shs-dialog-title"><div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon" aria-hidden="true"><i data-lucide="graduation-cap"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="shs-dialog-title" tabindex="-1"></h2><p class="modal-sub" id="shs-dialog-subtitle"></p></div></div><button class="modal-close" id="shs-close" type="button" aria-label="Close dialog"><i data-lucide="x" aria-hidden="true"></i></button></div><form id="shs-form"><div class="modal-body shs-dialog-body">
+  <div class="shs-offering-layout" id="shs-offering-layout" hidden>
+    <div class="shs-offering-settings">
+      <div class="timetable-field" id="shs-offering-grade-field"><label for="shs-dialog-grade">Grade</label><select id="shs-dialog-grade" required></select></div>
+      <div class="shs-catalog-info-banner" role="note"><span class="shs-catalog-info-icon"><i data-lucide="info" aria-hidden="true"></i></span><p>Grade 11 core subjects are set up in Class Management. This list separates Academic electives, Academic Field Experience, TechPro electives, and TechPro Work Immersion.</p></div>
+    </div>
+    <div class="timetable-field shs-catalog-panel" id="shs-offering-field"><span class="shs-catalog-label" id="shs-catalog-label">Approved subjects</span><input id="shs-catalog-search" type="search" placeholder="Search subjects..." aria-label="Search approved subjects"><div id="shs-catalog-choices" class="shs-catalog-choices" role="group" aria-labelledby="shs-catalog-label"></div><div class="shs-catalog-actions"><button id="shs-catalog-clear" type="button">Clear selection</button><span id="shs-catalog-summary" class="shs-catalog-count" aria-live="polite" aria-atomic="true">0 selected</span></div></div>
+  </div>
+  <div class="timetable-field" id="shs-class-offering-field" hidden><label for="shs-class-offering">Subject</label><input id="shs-class-offering" readonly></div>
+  <div class="timetable-field shs-class-field" hidden><label for="shs-class-name">Class name</label><input id="shs-class-name" name="className" maxlength="100" placeholder="e.g. Group A"></div>
+  <div class="timetable-field shs-class-field" hidden><label for="shs-teacher">Assigned teacher</label><select id="shs-teacher" name="teacherId"></select></div>
+  <div class="timetable-field shs-class-field" hidden><label for="shs-capacity">Capacity</label><input id="shs-capacity" name="capacity" type="number" min="1" max="500" value="40"></div>
+  <p class="timetable-error" id="shs-dialog-error" role="alert"></p></div><div class="modal-foot"><button class="btn btn-cancel" id="shs-cancel" type="button">Cancel</button><button class="btn btn-save" type="submit" id="shs-save">Save</button></div></form></div></div>
+<div class="modal-backdrop shs-dialog-overlay" id="shs-choice-overlay" hidden><div class="modal shs-dialog shs-choice-dialog" role="dialog" aria-modal="true" aria-labelledby="shs-choice-title" tabindex="-1">
+  <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-check"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="shs-choice-title" tabindex="-1">Learner elective choices</h2><p class="modal-sub" id="shs-choice-subtitle"></p></div></div><button class="modal-close" id="shs-choice-close" type="button" aria-label="Close dialog"><i data-lucide="x" aria-hidden="true"></i></button></div>
+  <div class="modal-body shs-dialog-body"><p class="shs-muted" id="shs-choice-instructions">Select the classes the learner chose with the school.</p><div class="shs-review-class-choices" id="shs-choice-classes"></div><p class="shs-choice-empty-help" id="shs-choice-empty-help" role="status" hidden>Select at least one class to save changes, or use Clear all choices below.</p>
+    <div class="shs-review-actions" id="shs-choice-review-actions" hidden><div class="form-group"><label class="form-label" for="shs-choice-decision-note">Note for the learner (required when asking for a correction)</label><textarea class="form-textarea" id="shs-choice-decision-note" rows="3" maxlength="500" placeholder="Explain what the learner should correct"></textarea></div></div>
+    <p class="timetable-error" id="shs-choice-error" role="alert"></p></div>
+  <div class="modal-foot shs-choice-footer"><button class="btn btn-danger" id="shs-choice-clear" type="button" hidden>Clear all choices</button><button class="btn btn-cancel" id="shs-choice-cancel" type="button">Cancel</button><button class="btn btn-cancel" id="shs-choice-return" type="button" hidden>Ask for correction</button><button class="btn btn-save" id="shs-choice-confirm" type="button" hidden>Confirm choices</button><button class="btn btn-save" id="shs-choice-save" type="button">Save choices</button></div>
+</div></div>
+<div class="modal-backdrop shs-dialog-overlay" id="shs-choice-clear-overlay" hidden><div class="modal shs-dialog shs-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="shs-choice-clear-title" aria-describedby="shs-choice-clear-message">
+  <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="eraser"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="shs-choice-clear-title" tabindex="-1">Clear all choices?</h2><p class="modal-sub">Review this change before continuing.</p></div></div><button class="modal-close" id="shs-choice-clear-close" type="button" aria-label="Close dialog"><i data-lucide="x" aria-hidden="true"></i></button></div>
+  <div class="modal-body shs-dialog-body"><p id="shs-choice-clear-message"></p><p class="timetable-error" id="shs-choice-clear-error" role="alert"></p></div>
+  <div class="modal-foot"><button class="btn btn-cancel" id="shs-choice-clear-cancel" type="button">Cancel</button><button class="btn btn-danger" id="shs-choice-clear-confirm" type="button">Clear choices</button></div>
+</div></div>
+<div class="modal-backdrop shs-dialog-overlay" id="shs-delete-overlay" hidden><div class="modal shs-dialog shs-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="shs-delete-title" aria-describedby="shs-delete-message">
+  <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="shs-delete-title" tabindex="-1">Delete class?</h2><p class="modal-sub">Review this change before continuing.</p></div></div><button class="modal-close" id="shs-delete-close" type="button" aria-label="Close dialog"><i data-lucide="x" aria-hidden="true"></i></button></div>
+  <div class="modal-body shs-dialog-body"><p id="shs-delete-message">This permanently deletes the class. Classes with timetable, learner, or learning records cannot be deleted; their history is kept.</p><p class="timetable-error" id="shs-delete-error" role="alert"></p></div>
+  <div class="modal-foot"><button class="btn btn-cancel" id="shs-delete-cancel" type="button">Cancel</button><button class="btn btn-danger" id="shs-delete-confirm" type="button">Delete class</button></div>
+</div></div>
+</body>
+</html>

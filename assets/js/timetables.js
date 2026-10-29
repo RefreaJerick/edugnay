@@ -37,6 +37,7 @@
       sections.set(item.sectionId, `${item.gradeName} · ${item.sectionName}`);
       teachers.set(item.teacherId, item.teacherName);
     }
+    for (const item of state.data.electiveClasses || []) teachers.set(item.teacherId, item.teacherName);
     setOptions(document.getElementById('timetable-section'), [...sections].map(([value, label]) => ({ value, label })), 'All sections');
     setOptions(document.getElementById('timetable-teacher'), [...teachers].map(([value, label]) => ({ value, label })), 'All teachers');
   }
@@ -133,24 +134,50 @@
   function renderUnscheduled(state) {
     const sectionId = document.getElementById('timetable-section').value;
     const teacherId = document.getElementById('timetable-teacher').value;
-    const used = new Set(state.data.meetings.map(item => item.assignmentId));
+    const used = new Set(state.data.meetings.map(item => item.assignmentId).filter(Boolean));
     const items = state.data.assignments.filter(item => !used.has(item.assignmentId)
       && (!sectionId || String(item.sectionId) === sectionId)
       && (!teacherId || String(item.teacherId) === teacherId));
-    document.getElementById('timetable-unscheduled-count').textContent = `${items.length} unscheduled`;
-    document.getElementById('timetable-unscheduled').innerHTML = items.length ? items.map(item =>
+    const scheduledElectives = new Set(state.data.meetings.map(item => item.electiveClassId).filter(Boolean));
+    const electives = (state.data.electiveClasses || []).filter(item => !scheduledElectives.has(item.electiveClassId)
+      && !sectionId && (!teacherId || String(item.teacherId) === teacherId));
+    document.getElementById('timetable-unscheduled-count').textContent = `${items.length + electives.length} unscheduled`;
+    document.getElementById('timetable-unscheduled').innerHTML = items.length + electives.length ? items.map(item =>
       `<div class="timetable-unscheduled-item"><div><strong>${escape(item.subjectName)}</strong>
        <span>${escape(item.gradeName)} · ${escape(item.sectionName)} · ${escape(item.teacherName)}</span></div>
        ${state.data.year?.status !== 'archived' && item.sectionStatus === 'active'
         ? `<button class="timetable-button secondary" type="button" data-assignment-id="${item.assignmentId}">Schedule</button>` : ''}</div>`
-    ).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({
+    ).join('') + electives.map(item => `<div class="timetable-unscheduled-item"><div><strong>${escape(item.subjectName)}</strong>
+      <span>${escape(item.gradeName)} · ${escape(item.className)} · ${escape(item.teacherName)}</span></div>
+      ${state.data.year?.status !== 'archived' && item.classActive && item.offeringActive
+        ? `<button class="timetable-button secondary" type="button" data-elective-class-id="${item.electiveClassId}">Schedule</button>` : ''}</div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({
       icon: 'calendar-check',
       title: 'All subjects are scheduled',
       text: 'Every subject assignment matching these filters already has a meeting.'
     });
   }
 
-  function openDialog(state, assignmentId = '', meeting = null) {
+  function selectOwnerType(state, type, classId = '') {
+    const elective = type === 'elective';
+    document.getElementById('timetable-owner-type').value = type;
+    document.getElementById('timetable-section-fields').hidden = elective;
+    document.getElementById('timetable-teacher-field').hidden = elective;
+    document.getElementById('timetable-elective-field').hidden = !elective;
+    document.getElementById('timetable-dialog-section').required = !elective;
+    const subject = document.getElementById('timetable-assignment');
+    subject.required = !elective;
+    subject.disabled = elective || !document.getElementById('timetable-dialog-section').value || Boolean(state.editingId);
+    const select = document.getElementById('timetable-elective-class');
+    select.replaceChildren(new Option('Choose an elective class', ''), ...(state.data.electiveClasses || [])
+      .filter(item => item.classActive && item.offeringActive || String(item.electiveClassId) === String(classId))
+      .map(item => new Option(`${item.gradeName} · ${item.subjectName} · ${item.className} (${item.teacherName})`, String(item.electiveClassId))));
+    select.value = String(classId || '');
+    select.required = elective;
+    select.disabled = !elective || Boolean(state.editingId);
+  }
+
+  function openDialog(state, assignmentId = '', meeting = null, electiveClassId = '') {
     if (state.data.year?.status === 'archived') return;
     const dialog = document.getElementById('timetable-dialog');
     const form = document.getElementById('timetable-form');
@@ -172,6 +199,9 @@
     form.elements.startDate.max = form.elements.endDate.max = state.data.year.endDate;
     state.editingId = meeting?.id || null;
     state.editingAssignmentId = meeting?.assignmentId || null;
+    state.editingElectiveClassId = meeting?.electiveClassId || null;
+    selectOwnerType(state, meeting?.electiveClassId || electiveClassId ? 'elective' : 'section', meeting?.electiveClassId || electiveClassId);
+    document.getElementById('timetable-owner-type').disabled = Boolean(meeting);
     document.getElementById('timetable-dialog-title').textContent = meeting ? 'Edit class meeting' : 'Add class meeting';
     document.getElementById('timetable-delete').hidden = !meeting;
     document.getElementById('timetable-error').textContent = '';
@@ -228,10 +258,13 @@
     document.getElementById('timetable-error').textContent = '';
     try {
       const values = Object.fromEntries(new FormData(form));
+      const elective = document.getElementById('timetable-owner-type').value === 'elective';
       const assignmentId = state.editingAssignmentId || values.assignmentId;
+      const electiveClassId = state.editingElectiveClassId || document.getElementById('timetable-elective-class').value;
       const editing = Boolean(state.editingId);
       delete values.assignmentId;
-      await api().saveTimetableMeeting(assignmentId, state.editingId, values);
+      if (elective) await api().saveElectiveTimetableMeeting(electiveClassId, state.editingId, values);
+      else await api().saveTimetableMeeting(assignmentId, state.editingId, values);
       closeDialog(state);
       await load(state);
       showAppToast(editing ? 'Class meeting updated.' : 'Class meeting added.');
@@ -288,8 +321,15 @@
       renderFilters(state);
       if (state.role === 'admin') renderDialogSections(state);
       const add = document.getElementById('timetable-add');
-      if (add) add.disabled = state.data.year.status === 'archived' || !state.data.assignments.some(item => item.sectionStatus === 'active');
+      if (add) add.disabled = state.data.year.status === 'archived' || !(state.data.assignments.some(item => item.sectionStatus === 'active')
+        || (state.data.electiveClasses || []).some(item => item.classActive && item.offeringActive));
       renderWeek(state);
+      const requestedClass = new URLSearchParams(window.location?.search || '').get('electiveClassId');
+      if (state.role === 'admin' && requestedClass && !state.handledClassLink
+        && state.data.electiveClasses?.some(item => String(item.electiveClassId) === requestedClass)) {
+        state.handledClassLink = true;
+        openDialog(state, '', null, requestedClass);
+      }
       state.exportControl?.setAvailable(true);
     } catch (error) {
       const banner = document.getElementById('timetable-error-banner');
@@ -324,7 +364,9 @@
       state.years = years;
       year.replaceChildren(...years.map(item => new Option(`S.Y. ${item.label}`, String(item.id))));
       const active = years.find(item => item.status === 'active') || years[0];
-      if (active) year.value = String(active.id);
+      const requestedYear = role === 'admin' ? new URLSearchParams(window.location?.search || '').get('academicYearId') : null;
+      if (requestedYear && years.some(item => String(item.id) === requestedYear)) year.value = requestedYear;
+      else if (active) year.value = String(active.id);
     } catch (error) {
       const banner = document.getElementById('timetable-error-banner');
       banner.textContent = error.message || 'School years could not be loaded.';
@@ -339,6 +381,7 @@
       state.exportControl = window.AcademixTimetableExport?.init(() => exportWeek(state));
     }
     if (role === 'admin') {
+      document.getElementById('timetable-owner-type').addEventListener('change', event => selectOwnerType(state, event.target.value));
       document.getElementById('timetable-dialog-section').addEventListener('change', event => {
         renderDialogSubjects(state, event.currentTarget.value);
       });
@@ -356,6 +399,8 @@
       document.getElementById('timetable-unscheduled').addEventListener('click', event => {
         const button = event.target.closest('[data-assignment-id]');
         if (button) openDialog(state, button.dataset.assignmentId);
+        const electiveButton = event.target.closest('[data-elective-class-id]');
+        if (electiveButton) openDialog(state, '', null, electiveButton.dataset.electiveClassId);
       });
       document.getElementById('timetable-form').addEventListener('submit', event => saveMeeting(state, event));
       document.getElementById('timetable-delete').addEventListener('click', () => openDeleteConfirmation(state));

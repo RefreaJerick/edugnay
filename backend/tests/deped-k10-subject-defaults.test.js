@@ -5,6 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 const databaseModule = require('../config/database');
 const { DEPED_GRADE_SUBJECTS, DEPED_K10_SUBJECTS, EARLY_GRADE_SUBJECTS } = require('../config/depedK10Subjects');
+const { DEPED_SHS_CORE_SUBJECTS } = require('../config/depedShsCoreSubjects');
 
 const gradeRows = [
   { schoolLevelId: 10, levelCode: 'elementary', levelEnabled: 1, gradeLevelId: 20, gradeCode: 'grade-2', gradeName: 'Grade 2', gradeEnabled: 0 },
@@ -23,7 +24,7 @@ let database;
 databaseModule.getDatabase = () => database;
 const { applyDepedSubjectDefaults, getDepedSubjectPreview } = require('../controllers/depedK10SubjectsController');
 
-function createDatabase({ allGradesDisabled = false, enabledGradeCodes = null } = {}) {
+function createDatabase({ allGradesDisabled = false, enabledGradeCodes = null, extraGradeRows = [] } = {}) {
   const state = {
     subjects: [
       { id: 1, subjectCode: 'science-jhs', name: 'Science', schoolLevelId: 20, gradeLevelId: null, isActive: 1 },
@@ -40,7 +41,7 @@ function createDatabase({ allGradesDisabled = false, enabledGradeCodes = null } 
     async rollback() { state.transactions.push('rollback'); },
     release() {},
     async execute(sql, values = []) {
-      if (sql.includes('FROM school_levels')) return [gradeRows.map(row => ({
+      if (sql.includes('FROM school_levels')) return [[...gradeRows, ...extraGradeRows].map(row => ({
         ...row,
         gradeEnabled: allGradesDisabled ? 0 : enabledGradeCodes
           ? Number(enabledGradeCodes.includes(row.gradeCode)) : row.gradeEnabled
@@ -54,7 +55,8 @@ function createDatabase({ allGradesDisabled = false, enabledGradeCodes = null } 
       }
       if (sql.startsWith('INSERT INTO subjects')) {
         const id = state.nextSubjectId++;
-        state.subjects.push({ id, subjectCode: values[1], name: values[2], schoolLevelId: Number(values[3]), gradeLevelId: null, isActive: 1 });
+        state.subjects.push({ id, subjectCode: values[1], name: values[2], schoolLevelId: Number(values[3]), gradeLevelId: null,
+          shsSubjectType: values[4], instructionalHours: values[5], isActive: 1 });
         return [{ insertId: id }];
       }
       if (sql.startsWith('INSERT INTO subject_grade_scopes')) {
@@ -89,6 +91,47 @@ test('DepEd subject catalog reflects the Grades 4-10 learning areas and level-sp
   assert.equal(EARLY_GRADE_SUBJECTS.filter(subject => subject.gradeCodes[0] === 'grade-2').length, 5);
   assert.equal(EARLY_GRADE_SUBJECTS.filter(subject => subject.gradeCodes[0] === 'grade-3').length, 6);
   assert.equal(DEPED_GRADE_SUBJECTS.some(subject => subject.gradeCodes.includes('grade-1') || subject.gradeCodes.includes('kindergarten')), false);
+});
+
+test('Grade 11 review adds five core subjects once and never invents Grade 12 cores', async () => {
+  const fixture = createDatabase({ extraGradeRows: [
+    { schoolLevelId: 30, levelCode: 'shs', levelEnabled: 1, gradeLevelId: 110,
+      gradeCode: 'grade-11', gradeName: 'Grade 11', gradeEnabled: 1 },
+    { schoolLevelId: 30, levelCode: 'shs', levelEnabled: 1, gradeLevelId: 120,
+      gradeCode: 'grade-12', gradeName: 'Grade 12', gradeEnabled: 1 }
+  ] });
+  database = fixture.database;
+  const preview = await call(getDepedSubjectPreview);
+  assert.equal(preview.error, null);
+  assert.deepEqual(preview.data.grades.filter(grade => grade.levelCode === 'shs').map(grade => grade.gradeCode), ['grade-11']);
+  assert.equal(preview.data.grades.find(grade => grade.gradeCode === 'grade-11').subjects.length, 5);
+  assert.equal(DEPED_SHS_CORE_SUBJECTS.every(subject => subject.hours === 160), true);
+  const first = await call(applyDepedSubjectDefaults);
+  assert.equal(first.error, null);
+  assert.equal(first.data.addedSubjects.filter(subject => subject.code.startsWith('shs-core-')).length, 5);
+  assert.equal(fixture.state.subjects.filter(subject => subject.shsSubjectType === 'core').length, 5);
+  const repeat = await call(applyDepedSubjectDefaults);
+  assert.equal(repeat.error, null);
+  assert.equal(repeat.data.addedSubjects.length, 0);
+});
+
+test('existing split communication subjects are flagged for review, not renamed or duplicated', async () => {
+  const fixture = createDatabase({ extraGradeRows: [{ schoolLevelId: 30, levelCode: 'shs', levelEnabled: 1,
+    gradeLevelId: 110, gradeCode: 'grade-11', gradeName: 'Grade 11', gradeEnabled: 1 }] });
+  fixture.state.subjects.push({ id: 50, subjectCode: 'QA-CORE-1', name: 'Effective Communication',
+    schoolLevelId: 30, gradeLevelId: 110, shsSubjectType: 'core', instructionalHours: 160, isActive: 1 });
+  fixture.state.subjects.push({ id: 51, subjectCode: 'QA-CORE-2', name: 'Mabisang Komunikasyon',
+    schoolLevelId: 30, gradeLevelId: 110, shsSubjectType: 'core', instructionalHours: 160, isActive: 1 });
+  fixture.state.scopes.push({ subjectId: 50, gradeLevelId: 110 }, { subjectId: 51, gradeLevelId: 110 });
+  database = fixture.database;
+  const preview = await call(getDepedSubjectPreview);
+  const communication = preview.data.grades.find(grade => grade.gradeCode === 'grade-11').subjects[0];
+  assert.equal(communication.status, 'review-existing');
+  assert.match(communication.existingName, /Effective Communication, Mabisang Komunikasyon/);
+  const applied = await call(applyDepedSubjectDefaults);
+  assert.equal(applied.error, null);
+  assert.equal(applied.data.addedSubjects.some(subject => subject.code === 'shs-core-communication'), false);
+  assert.equal(fixture.state.subjects.find(subject => subject.id === 50).name, 'Effective Communication');
 });
 
 test('preview lists enabled Grades 4-10 and flags existing subjects without changing them', async () => {

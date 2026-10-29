@@ -11,8 +11,8 @@ const onboarding = fs.readFileSync(path.join(root, 'views/onboarding/edugnay-sch
 const schools = fs.readFileSync(path.join(root, 'views/admin/edugnay-admin-schools.html'), 'utf8');
 const rangeStyles = fs.readFileSync(path.join(root, 'assets/css/academic-range-picker.css'), 'utf8');
 const context = { window: {}, Event: class Event { constructor(type) { this.type = type; } } };
-vm.runInNewContext(source.replace(/\}\)\(\);\s*$/, 'window.testRange = { validDate, displayDate, moveDate, nextSelection, canApply, updateFields, apply, close, setState(range, element) { openRange = range; popup = element; } };\n})();'), context);
-const { validDate, displayDate, moveDate, nextSelection, canApply, updateFields, apply, close, setState } = context.window.testRange;
+vm.runInNewContext(source.replace(/\}\)\(\);\s*$/, 'window.testRange = { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, setState(range, element) { openRange = range; popup = element; } };\n})();'), context);
+const { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, setState } = context.window.testRange;
 
 function fakeButton() {
   const text = { textContent: '' };
@@ -28,9 +28,33 @@ function fakeButton() {
 test('calendar keeps exact dates across months, years, and leap days', () => {
   assert.equal(validDate('2028-02-29'), true);
   assert.equal(validDate('2027-02-29'), false);
-  assert.equal(displayDate('2026-10-23'), '23/10/2026');
+  assert.equal(displayDate('2026-10-23'), 'Oct 23, 2026');
+  assert.equal(displayDate('invalid'), '');
   assert.equal(moveDate('2026-12-31', 1), '2027-01-01');
   assert.equal(moveDate('2028-03-01', -1), '2028-02-29');
+});
+
+test('range calendar year entry preserves the selected month and day within school-year bounds', () => {
+  const range = {
+    start: '', end: '', yearStart: '2024-01-01', yearEnd: '2026-12-31',
+    active: '2024-02-29', year: 2024, month: 1, error: ''
+  };
+  assert.deepEqual({ ...yearBounds(range) }, { min: 2024, max: 2026 });
+  assert.equal(setCalendarYear(range, '2025'), true);
+  assert.equal(range.active, '2025-02-28');
+  assert.equal(range.year, 2025);
+  assert.equal(range.month, 1);
+  assert.equal(range.start, '');
+  assert.equal(range.end, '');
+  assert.equal(setCalendarYear(range, '2027'), false);
+  assert.equal(range.active, '2025-02-28');
+
+  const bounded = {
+    yearStart: '2026-08-15', yearEnd: '2027-05-31',
+    active: '2026-04-01', year: 2026, month: 3, error: ''
+  };
+  assert.equal(setCalendarYear(bounded, '2026'), true);
+  assert.equal(bounded.active, '2026-08-15');
 });
 
 test('range choice stages both endpoints and rejects reversed or out-of-year dates', () => {
@@ -86,14 +110,49 @@ test('one visible control shows empty, partial, saved, and locked ranges', () =>
   assert.equal(button.text.textContent, 'Select start and end dates');
   range.startInput.value = '2027-10-14';
   updateFields(range);
-  assert.equal(button.text.textContent, '14/10/2027 – Select end date');
+  assert.equal(button.text.textContent, 'Oct 14, 2027 – Select end date');
   range.endInput.value = '2027-10-16';
   updateFields(range);
-  assert.equal(button.text.textContent, '14/10/2027 – 16/10/2027');
-  assert.match(button.attributes['aria-label'], /Quarter 1: 14\/10\/2027 – 16\/10\/2027/);
+  assert.equal(button.text.textContent, 'Oct 14, 2027 – Oct 16, 2027');
+  assert.match(button.attributes['aria-label'], /Quarter 1: Oct 14, 2027 – Oct 16, 2027/);
   range.startInput.disabled = true;
   updateFields(range);
   assert.equal(button.disabled, true);
+});
+
+test('live range counter uses inclusive days and hides for incomplete or invalid ranges', () => {
+  const selection = { textContent: '' };
+  const counter = { textContent: '', hidden: true };
+  const range = { start: '2026-01-06', end: '2026-01-08', yearStart: '', yearEnd: '' };
+  assert.equal(inclusiveDayCount(range), 3);
+  updateSelectionSummary(range, selection, counter);
+  assert.equal(selection.textContent, 'Jan 06, 2026 – Jan 08, 2026');
+  assert.equal(counter.textContent, '3 days');
+  assert.equal(counter.hidden, false);
+
+  range.end = '2026-01-10';
+  updateSelectionSummary(range, selection, counter);
+  assert.equal(counter.textContent, '5 days');
+  range.start = '2026-12-30';
+  range.end = '2027-01-02';
+  updateSelectionSummary(range, selection, counter);
+  assert.equal(counter.textContent, '4 days');
+
+  range.end = '';
+  updateSelectionSummary(range, selection, counter);
+  assert.equal(selection.textContent, 'Dec 30, 2026 – Select end date');
+  assert.equal(counter.textContent, '');
+  assert.equal(counter.hidden, true);
+
+  range.start = '2026-10-16';
+  range.end = '2026-10-16';
+  assert.equal(inclusiveDayCount(range), null);
+  range.end = '2027-06-01';
+  range.yearStart = '2026-08-01';
+  range.yearEnd = '2027-05-31';
+  updateSelectionSummary(range, selection, counter);
+  assert.equal(counter.hidden, true);
+  assert.equal(canApply(range), false);
 });
 
 test('Apply saves both dates and Cancel leaves the saved values unchanged', () => {
@@ -116,7 +175,7 @@ test('Apply saves both dates and Cancel leaves the saved values unchanged', () =
   apply();
   assert.equal(range.startInput.value, '2027-10-14');
   assert.equal(range.endInput.value, '2027-10-16');
-  assert.equal(button.text.textContent, '14/10/2027 – 16/10/2027');
+  assert.equal(button.text.textContent, 'Oct 14, 2027 – Oct 16, 2027');
   assert.deepEqual(events, ['start:input', 'start:change', 'end:input', 'end:change']);
   assert.equal(popup.hidden, true);
 });
@@ -153,6 +212,20 @@ test('both term screens use the shared picker while school-year and extension da
   assert.match(onboarding, /id="schoolYearStartDate"[^>]*type="date"/);
   assert.match(schools, /id="termSchoolYearStart" type="date"/);
   assert.match(schools, /id="extendedEndDate" type="date"/);
+  assert.match(source, /data-range-year min="1" max="9999" step="1"/);
+  assert.match(source, /aria-label="Year"/);
+  assert.match(source, /popup\.addEventListener\('input', onPopupInput\)/);
+  assert.match(source, /popup\.addEventListener\('change', onPopupChange\)/);
+  assert.match(source, /data-range-day-count aria-live="polite" hidden/);
+  assert.match(source, /<div class="academic-range-selection"><span>Selected dates<\/span><strong data-range-selection><\/strong><\/div>/);
+  assert.match(source, /<div class="academic-range-actions"><span class="academic-range-day-count" data-range-day-count aria-live="polite" hidden><\/span><button type="button" class="academic-range-cancel"/);
+  const selectionCard = source.match(/<div class="academic-range-selection">[\s\S]*?<\/div>/)?.[0] || '';
+  assert.doesNotMatch(selectionCard, /data-range-day-count/);
+  assert.match(source, /academic-range-month-year"><strong data-range-month><\/strong><input class="academic-range-year-input"/);
+  assert.match(rangeStyles, /\.academic-range-month-year\s*\{[\s\S]*?gap: 8px;/);
+  assert.match(rangeStyles, /\.academic-range-year-input\s*\{[\s\S]*?width: 52px;[\s\S]*?border: 1px solid var\(--gray-200\)[\s\S]*?background: var\(--gray-50\)[\s\S]*?color: var\(--gray-800\)[\s\S]*?text-align: center;/);
+  assert.match(rangeStyles, /\.academic-range-year-input:focus-visible\s*\{[\s\S]*?border-color: var\(--theme-accent-text\)[\s\S]*?box-shadow: 0 0 0 3px var\(--button-focus-ring/);
+  assert.match(rangeStyles, /\.academic-range-actions \.academic-range-day-count\s*\{\s*margin-right: auto;\s*color: var\(--gray-500\);\s*font-size: 11px;\s*font-weight: 600;\s*white-space: nowrap;/);
 });
 
 test('onboarding puts school-year fields beside the period cards and stacks them on narrow screens', () => {

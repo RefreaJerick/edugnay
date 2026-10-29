@@ -5,7 +5,8 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const page = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-materials.html'), 'utf8');
-const script = page.match(/<script>([\s\S]*?)<\/script>/)[1];
+const script = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+  .map(match => match[1]).find(source => source.includes('let MATERIAL_RECORDS'));
 
 function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayBuffer(1), contentType: 'application/pdf' })) {
   const elements = new Map();
@@ -63,7 +64,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
     records
   });
   vm.runInContext(script, context);
-  vm.runInContext('MATERIAL_RECORDS = records; groupMaterials(); renderMaterials();', context);
+  vm.runInContext('MATERIAL_RECORDS = records; groupMaterials(); renderSubjectTabs(); renderMaterials();', context);
   return { context, element, downloads, messages, requests, revoked, documentEvents };
 }
 
@@ -80,6 +81,20 @@ test('student material rows show preview only for browser-supported types and do
   assert.match(html, /aria-label="Preview pdf lesson"[^>]*><i data-lucide="eye"><\/i><span class="material-action-label">Preview<\/span>/);
   assert.match(html, /aria-label="Download pdf lesson"[^>]*><i data-lucide="download"><\/i><span class="material-action-label">Download<\/span>/);
   assert.doesNotMatch(html, /class="material-row" data-material-id=/);
+});
+
+test('elective materials get separate class tabs and a clear group label', () => {
+  const page = createPage([
+    { id: '20', subjectId: null, electiveClassId: '51', scopeType: 'elective', subjectName: 'Contemporary Literature',
+      className: 'Academic 11-A', teacherName: 'Maya Santos', title: 'Research guide', type: 'pdf', postedAt: '2026-10-05' },
+    { id: '21', subjectId: null, electiveClassId: '52', scopeType: 'elective', subjectName: 'Contemporary Literature',
+      className: 'Academic 11-B', teacherName: 'Carlo Reyes', title: 'Reading guide', type: 'pdf', postedAt: '2026-10-05' }
+  ]);
+  assert.equal(vm.runInContext('Object.keys(MATERIALS_BY_SUBJECT).length', page.context), 2);
+  assert.match(page.element('subject-tabs').innerHTML, /Contemporary Literature · Academic 11-A/);
+  assert.match(page.element('subject-tabs').innerHTML, /Contemporary Literature · Academic 11-B/);
+  assert.match(page.element('materials-container').innerHTML, /Elective class materials/);
+  assert.match(page.element('materials-container').innerHTML, /Research guide/);
 });
 
 test('student materials distinguish an empty API result from a failed or missing API', async () => {

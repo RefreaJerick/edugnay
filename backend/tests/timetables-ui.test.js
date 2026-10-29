@@ -324,7 +324,8 @@ test('meeting assignment choices follow the section and prefill existing meeting
   }
   const elements = new Map([
     ['timetable-dialog-section', new Select()],
-    ['timetable-assignment', new Select()]
+    ['timetable-assignment', new Select()],
+    ['timetable-elective-class', new Select()]
   ]);
   const element = id => {
     if (!elements.has(id)) elements.set(id, { value: '', hidden: false, textContent: '' });
@@ -629,7 +630,7 @@ test('every administrator, teacher, and student sidebar contains one static sche
     }
   }
 
-  assert.deepEqual(counts, { admin: 12, teacher: 9, student: 10 });
+  assert.deepEqual(counts, { admin: 13, teacher: 10, student: 11 });
   const common = read('assets/js/shell-common.js');
   assert.doesNotMatch(common, /dashboard\.after\(link\)|const page = role === 'admin'/,
     'schedule links must not be injected after page load');

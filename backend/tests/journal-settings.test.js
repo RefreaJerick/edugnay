@@ -57,6 +57,7 @@ const connection = {
   release() {},
   async execute(sql, values = []) {
     calls.push({ sql, values });
+    if (sql.startsWith('SELECT 1 AS eligible FROM section_students')) return [state.studentJhsPlacement ? [{ eligible: 1 }] : []];
     if (sql.startsWith('INSERT INTO school_portal_features')) {
       state.featureRowPresent = true;
       state.featureValues ||= {
@@ -184,6 +185,19 @@ test('portal features return the saved journal subject', async () => {
   assert.equal(result.body.journalSubjectId, 1);
   assert.equal(result.body.journalSubjectName, 'Values Education');
   assert.equal(result.body.journalSubjectEligible, true);
+});
+
+test('student portal features include current Journal access, not just school configuration', async () => {
+  calls = [];
+  state = createState({ studentJhsPlacement: false });
+  const denied = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
+  assert.equal(denied.body.journalSubjectEligible, false);
+  assert.ok(calls.some(call => call.sql?.includes('section_teachers AS assignment')));
+
+  calls = [];
+  state = createState({ studentJhsPlacement: true });
+  const allowed = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
+  assert.equal(allowed.body.journalSubjectEligible, true);
 });
 
 test('SF Templates can be enabled and disabled, with changes returned after reload', async () => {
@@ -401,7 +415,7 @@ test('journal sections appear only for a teacher assigned to the selected subjec
   assert.deepEqual(query.values.slice(0, 2), [1, 3]);
 });
 
-test('current student Journals require a JHS placement while history remains available', async () => {
+test('student Journals, including history, require current eligibility', async () => {
   calls = [];
   state = createState({ studentJhsPlacement: false });
   const result = {};
@@ -411,7 +425,7 @@ test('current student Journals require a JHS placement while history remains ava
   }, error => { result.subjectError = error; });
   assert.equal(result.subjectError?.status, 403);
   assert.match(result.subjectError.message, /Junior High School/);
-  assert.match(calls[0].sql, /school_levels AS journal_levels/);
+  assert.match(calls[0].sql, /section_teachers AS assignment/);
 
   calls = [];
   state = createState({ studentJhsPlacement: false });
@@ -419,8 +433,8 @@ test('current student Journals require a JHS placement while history remains ava
   await listJournalHistory({ user: { id: 8, schoolId: 1, role: 'student' }, query: {} }, {
     json(body) { history.body = body; }
   }, error => { history.error = error; });
-  assert.equal(history.error, undefined);
-  assert.ok(calls.some(call => call.sql.includes('FROM journal_prompts')));
+  assert.equal(history.error?.status, 403);
+  assert.equal(calls.some(call => call.sql?.includes('FROM journal_prompts')), false);
 });
 
 test('teacher access and journal reminders use current backend assignments and subject', () => {
@@ -475,8 +489,8 @@ test('school settings and teacher shell scripts parse after journal changes', ()
   const teacher = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
   new vm.Script(teacher);
   const student = fs.readFileSync(path.join(__dirname, '../../assets/js/student/shell.js'), 'utf8');
-  assert.match(student, /schoolLevel === 'elementary' \|\| schoolLevel === 'shs'/);
-  assert.match(student, /studentJournalHistoryAvailable !== null/);
+  assert.match(student, /return window\.EDUGNAY_CONFIG\?\.isJournalsEnabled\?\.\(\) === true/);
+  assert.doesNotMatch(student, /studentJournalHistoryAvailable/);
   new vm.Script(student);
   const journalPage = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-journal.html'), 'utf8');
   assert.doesNotMatch(journalPage, /user\.schoolLevel !== 'jhs'/);

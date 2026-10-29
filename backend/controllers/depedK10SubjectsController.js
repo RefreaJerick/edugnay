@@ -1,6 +1,8 @@
 const { getDatabase } = require('../config/database');
 const { DEPED_GRADE_SUBJECTS } = require('../config/depedK10Subjects');
+const { DEPED_SHS_CORE_SUBJECTS } = require('../config/depedShsCoreSubjects');
 const { writeAuditLog } = require('../utils/auditLog');
+const DEFAULT_SUBJECTS = [...DEPED_GRADE_SUBJECTS, ...DEPED_SHS_CORE_SUBJECTS];
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -25,7 +27,7 @@ async function loadSubjectContext(connection, schoolId, lock = false) {
     FROM school_levels
     LEFT JOIN school_grade_levels ON school_grade_levels.school_level_id = school_levels.id
       AND school_grade_levels.school_id = school_levels.school_id
-    WHERE school_levels.school_id = ? AND school_levels.level_code IN ('elementary', 'jhs')
+    WHERE school_levels.school_id = ? AND school_levels.level_code IN ('elementary', 'jhs', 'shs')
     ORDER BY school_levels.id, school_grade_levels.sort_order${lock ? ' FOR UPDATE' : ''}`,
     [schoolId]
   );
@@ -52,7 +54,7 @@ async function loadSubjectContext(connection, schoolId, lock = false) {
   const gradeRows = [...levels.values()]
     .filter(level => level.isEnabled)
     .flatMap(level => level.grades
-      .filter(grade => grade.isEnabled && DEPED_GRADE_SUBJECTS.some(subject => subject.levelCode === level.levelCode && subject.gradeCodes.includes(grade.gradeCode)))
+      .filter(grade => grade.isEnabled && DEFAULT_SUBJECTS.some(subject => subject.levelCode === level.levelCode && subject.gradeCodes.includes(grade.gradeCode)))
       .map(grade => ({ ...grade, schoolLevelId: level.id, levelCode: level.levelCode })));
   return { levels, gradeRows };
 }
@@ -60,7 +62,8 @@ async function loadSubjectContext(connection, schoolId, lock = false) {
 async function loadExistingSubjects(connection, schoolId, lock = false) {
   const [subjects] = await connection.execute(
     `SELECT id, subject_code AS subjectCode, name, school_level_id AS schoolLevelId,
-      grade_level_id AS gradeLevelId, is_active AS isActive
+      grade_level_id AS gradeLevelId, shs_subject_type AS shsSubjectType,
+      instructional_hours AS instructionalHours, is_active AS isActive
     FROM subjects WHERE school_id = ?
     ORDER BY id${lock ? ' FOR UPDATE' : ''}`,
     [schoolId]
@@ -90,6 +93,12 @@ async function loadExistingSubjects(connection, schoolId, lock = false) {
 function matchingSubjects(defaultSubject, schoolLevelId, existingSubjects, gradeLevelId) {
   const name = normalizedName(defaultSubject.name);
   return existingSubjects.filter(subject => {
+    if (defaultSubject.levelCode === 'shs') {
+      if (subject.schoolLevelId !== schoolLevelId || subject.shsSubjectType !== 'core') return false;
+      const names = defaultSubject.code === 'shs-core-communication'
+        ? [name, 'effective communication', 'mabisang komunikasyon'] : [name];
+      return subject.subjectCode === defaultSubject.code || names.includes(normalizedName(subject.name));
+    }
     if (subject.subjectCode === defaultSubject.code) return true;
     if (defaultSubject.gradeSpecific) {
       const exclusiveGradeMatch = subject.gradeLevelId === gradeLevelId
@@ -104,12 +113,13 @@ function matchingSubjects(defaultSubject, schoolLevelId, existingSubjects, grade
 }
 
 function previewForGrade(grade, existingSubjects) {
-  const defaults = DEPED_GRADE_SUBJECTS.filter(subject => subject.levelCode === grade.levelCode && subject.gradeCodes.includes(grade.gradeCode));
+  const defaults = DEFAULT_SUBJECTS.filter(subject => subject.levelCode === grade.levelCode && subject.gradeCodes.includes(grade.gradeCode));
   return {
     ...grade,
     subjects: defaults.map(defaultSubject => {
       const matches = matchingSubjects(defaultSubject, grade.schoolLevelId, existingSubjects, grade.id);
-      const covered = matches.find(subject => subject.gradeLevelId === grade.id || subject.gradeLevelIds.has(grade.id));
+      const covered = matches.find(subject => (subject.gradeLevelId === grade.id || subject.gradeLevelIds.has(grade.id))
+        && (grade.levelCode !== 'shs' || Number(subject.instructionalHours) === defaultSubject.hours));
       let status = 'will-add';
       let existingName = null;
       if (covered) {
@@ -119,6 +129,11 @@ function previewForGrade(grade, existingSubjects) {
         status = 'review-existing';
         existingName = matches[0].name;
       }
+      if (grade.levelCode === 'shs' && matches.length > 1) {
+        status = 'review-existing';
+        existingName = matches.map(subject => subject.name).join(', ');
+      }
+      if (grade.levelCode === 'shs' && existingName && normalizedName(existingName) !== normalizedName(defaultSubject.name)) status = 'review-existing';
       return { code: defaultSubject.code, name: defaultSubject.name, status, existingName };
     })
   };
@@ -131,7 +146,7 @@ async function getDepedSubjectPreview(req, res, next) {
     const { levels, gradeRows } = await loadSubjectContext(database, schoolId);
     const existing = await loadExistingSubjects(database, schoolId);
     res.status(200).json({
-      curriculum: 'Revised K to 10 curriculum',
+      curriculum: 'DepEd subject defaults',
       grades: gradeRows.map(grade => previewForGrade(grade, existing))
     });
   } catch (error) { next(error); }
@@ -153,7 +168,7 @@ async function applyDepedSubjectDefaults(req, res, next) {
     const addedSubjects = [];
     let addedGradeScopes = 0;
 
-    for (const defaultSubject of DEPED_GRADE_SUBJECTS) {
+    for (const defaultSubject of DEFAULT_SUBJECTS) {
       const subjectGrades = selectedGrades.filter(grade => grade.levelCode === defaultSubject.levelCode
         && defaultSubject.gradeCodes.includes(grade.gradeCode));
       if (!subjectGrades.length) continue;
@@ -161,9 +176,11 @@ async function applyDepedSubjectDefaults(req, res, next) {
       if (matchingSubjects(defaultSubject, schoolLevel.id, existing, subjectGrades[0].id).length || existingCodes.has(defaultSubject.code)) continue;
 
       const [result] = await connection.execute(
-        `INSERT INTO subjects (school_id, subject_code, name, school_level_id, grade_level_id, shs_grading_group)
-        VALUES (?, ?, ?, ?, NULL, NULL)`,
-        [schoolId, defaultSubject.code, defaultSubject.name, schoolLevel.id]
+        `INSERT INTO subjects (school_id, subject_code, name, school_level_id, grade_level_id,
+          shs_grading_group, shs_subject_type, instructional_hours)
+        VALUES (?, ?, ?, ?, NULL, NULL, ?, ?)`,
+        [schoolId, defaultSubject.code, defaultSubject.name, schoolLevel.id,
+          defaultSubject.levelCode === 'shs' ? 'core' : null, defaultSubject.hours || null]
       );
       addedSubjects.push({ code: defaultSubject.code, name: defaultSubject.name });
       for (const grade of subjectGrades) {

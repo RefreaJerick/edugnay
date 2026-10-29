@@ -42,7 +42,7 @@ async function createCalendarNotice(req, res, next) {
       [req.user.schoolId, date, title, detail || null]
     );
     await writeAuditLog(connection, req, 'calendar_notice_created', 'holiday', result.insertId,
-      { summary: title }, req.user.schoolId);
+      { summary: title, noticeTitle: title, noticeDate: date }, req.user.schoolId);
     await connection.commit();
     res.status(201).json({ notice: formatNotice({ id: result.insertId, date, title, detail,
       type: 'holiday', appliesTo: 'all' }) });
@@ -62,6 +62,14 @@ async function deleteCalendarNotice(req, res, next) {
     if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ message: 'Invalid notice ID.' });
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
+    const [notices] = await connection.execute(
+      `SELECT title, DATE_FORMAT(holiday_date, '%Y-%m-%d') AS date FROM holidays
+       WHERE id = ? AND school_id = ? LIMIT 1 FOR UPDATE`,
+      [id, req.user.schoolId]);
+    if (!notices.length) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Calendar notice not found.' });
+    }
     const [result] = await connection.execute('DELETE FROM holidays WHERE id = ? AND school_id = ?',
       [id, req.user.schoolId]);
     if (!result.affectedRows) {
@@ -69,7 +77,7 @@ async function deleteCalendarNotice(req, res, next) {
       return res.status(404).json({ message: 'Calendar notice not found.' });
     }
     await writeAuditLog(connection, req, 'calendar_notice_deleted', 'holiday', id,
-      { summary: 'Calendar notice removed' }, req.user.schoolId);
+      { noticeTitle: notices[0].title, noticeDate: notices[0].date, summary: notices[0].title }, req.user.schoolId);
     await connection.commit();
     res.status(204).send();
   } catch (error) {

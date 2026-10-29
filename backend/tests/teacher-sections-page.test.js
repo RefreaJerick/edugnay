@@ -12,6 +12,49 @@ const modalStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/modal
 const sharedStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
 const sfSource = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
 
+function extractSourceBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  if (start < 0) return '';
+  const end = source.indexOf(endMarker, start);
+  return end > start ? source.slice(start, end).trim() : '';
+}
+
+test('regular attendance passes saved records to the shared row renderer', () => {
+  const renderer = extractSourceBetween(sectionsSource,
+    'function renderTeacherAttendanceRows() {', '\n    function renderAttendanceHistory()');
+  let rendered;
+  const context = vm.createContext({
+    document: { getElementById: () => ({}) },
+    getAttendanceStudents: () => [{ id: '7' }],
+    getTeacherAttendanceRecords: () => [{ studentId: '7', status: 'present' }],
+    BACKEND_ATTENDANCE_ERROR: '',
+    APP_TODAY: '2026-10-29',
+    window: { TeacherClassViews: { renderAttendanceRows: value => { rendered = value; } } }
+  });
+  vm.runInContext(`${renderer}; renderTeacherAttendanceRows();`, context);
+  context.renderTeacherAttendanceRows();
+  assert.equal(rendered.recordsByStudent['7'].status, 'present');
+});
+
+test('student and attendance updates tolerate shared empty table rows', () => {
+  assert.match(sectionsSource, /if \(studentGradePeriodName && workspace\.term\?\.name\)/);
+  assert.match(sectionsSource, /querySelectorAll\('#attTbody tr\[data-student-id\]'\)/);
+  assert.match(sectionsSource, /\(history\.sessions \|\| \[\]\)\.forEach/);
+  assert.match(sectionsSource, /const attendanceLoad = \(async \(\) => \{[\s\S]*?\}\)\(\)\.catch\(error => \{/);
+});
+
+test('teacher tabs begin loading independently and assignments are not nested in grade loading', () => {
+  const startup = sectionsSource.split("document.addEventListener('DOMContentLoaded', async () => {")[1]
+    .split("document.addEventListener('visibilitychange'")[0];
+  assert.match(startup, /const attendanceLoad = \(async \(\) =>/);
+  assert.match(startup, /const materialsLoad = loadBackendMaterials\(\)/);
+  assert.match(startup, /const assignmentsLoad = loadBackendAssignments\(\)/);
+  assert.match(startup, /Promise\.allSettled\(\[gradeLoad, attendanceLoad, assignmentsLoad, materialsLoad\]\)/);
+  assert.match(sectionsSource, /async function loadBackendAssignments\(\)/);
+  assert.doesNotMatch(sectionsSource.split('async function loadBackendGradeData() {')[1]
+    .split('async function loadBackendAttendanceData()')[0], /getAssignments\(/);
+});
+
 function createTransferNoticeContext(state) {
   const makeElement = tagName => ({
     tagName,
@@ -29,12 +72,13 @@ function createTransferNoticeContext(state) {
   });
   const notice = makeElement('div');
   const scope = { sectionId: '8', subjectId: '4', academicTermId: '2' };
-  const functionSource = sectionsSource.split('  function renderTransferReviewNotice(scope) {')[1]
-    .split('\n  async function ensureTransferReviewLoaded')[0];
+  const functionSource = extractSourceBetween(sectionsSource,
+    'function renderTransferReviewNotice(scope) {', '\n    async function ensureTransferReviewLoaded');
   let reviewCount = 0;
   let retryCount = 0;
   const transferReviewCache = new Map([['8:4:2', state]]);
   const context = vm.createContext({
+    scope,
     document: { getElementById: () => notice, createElement: makeElement },
     window: { lucide: { createIcons() {} } },
     TRANSFER_REVIEW_CACHE: transferReviewCache,
@@ -42,8 +86,7 @@ function createTransferNoticeContext(state) {
     ensureTransferReviewLoaded: () => { retryCount += 1; },
     openTransferReviewModal: () => { reviewCount += 1; }
   });
-  vm.runInContext(`function renderTransferReviewNotice(scope) {${functionSource}`, context);
-  context.renderTransferReviewNotice(scope);
+  vm.runInContext(`${functionSource}; renderTransferReviewNotice(scope);`, context);
   return { notice, transferReviewCache, reviewCount: () => reviewCount, retryCount: () => retryCount };
 }
 
@@ -58,7 +101,7 @@ test('score component cards keep icons neutral until selected and space exam-par
   for (const tone of ['ww', 'pt', 'qa']) {
     assert.match(sectionsSource, new RegExp(`class="comp-type-opt cat-${tone}[^\"]*"[\\s\\S]*?class="comp-type-icon"`));
   }
-  assert.match(sectionsSource, /data-lucide="\$\{presentation\.icon\}"/);
+  assert.match(sectionsSource, /data-lucide="\$\{window\.EDUGNAY_CONFIG\.escapeHtml\(component\.icon/);
   assert.match(sectionsSource, /aria-pressed="\$\{index === 0\}"/);
   assert.match(sectionsStyles, /\.comp-type-opt\s*\{[^}]*background:\s*var\(--theme-surface\)/);
   assert.match(sectionsStyles, /\.comp-type-opt:hover\s*\{[^}]*background:\s*var\(--gray-50\)/);
@@ -68,7 +111,8 @@ test('score component cards keep icons neutral until selected and space exam-par
 });
 
 test('grading average headers abbreviate standard categories but retain accessible full names', () => {
-  const functionSource = sectionsSource.match(/function gradingAverageHeaderLabel\(label\) \{[\s\S]*?\n  \}/)[0];
+  const functionSource = extractSourceBetween(sectionsSource,
+    'function gradingAverageHeaderLabel(label) {', '\n    function getDistinctExamPartName');
   const context = vm.createContext({});
   vm.runInContext(functionSource, context);
   assert.equal(context.gradingAverageHeaderLabel('Written/Oral Works'), 'WW');
@@ -76,26 +120,30 @@ test('grading average headers abbreviate standard categories but retain accessib
   assert.equal(context.gradingAverageHeaderLabel('Examinations'), 'Exams');
   assert.equal(context.gradingAverageHeaderLabel('Custom Lab Activities'), 'Custom Lab Activities');
 
-  assert.match(sectionsSource, /th\.textContent = `\$\{gradingAverageHeaderLabel\(categoryName\)\} Avg`/);
-  assert.match(sectionsSource, /th\.setAttribute\('aria-label', `\$\{categoryName\} average`\)/);
-  assert.match(sectionsSource, /th\.title = `\$\{categoryName\}: \$\{Number\(rule\.weight\) \|\| 0\}% of the final grade`/);
+  assert.match(sectionsSource, /categoryHeader: gradingAverageHeaderLabel\(categoryName\)/);
+  assert.match(sectionsSource, /label: `\$\{label\} Avg`, title: `\$\{label\}: \$\{Number\(rule\.weight\) \|\| 0\}% of the final grade`/);
+  assert.match(sectionsSource, /escapeHtml\(metric\.title \|\| metric\.label\)/);
+  assert.match(sectionsSource, /escapeHtml\(metric\.label\)/);
 });
 
 test('score component headers abbreviate standard categories while retaining full export labels', () => {
-  assert.match(sectionsSource, /const categoryName = String\(c\.categoryName \|\| c\.cat \|\| ''\)\.trim\(\)/);
-  assert.match(sectionsSource, /escapeHtml\(gradingAverageHeaderLabel\(categoryName\)\)/);
-  assert.match(sectionsSource, /escapeHtml\(categoryName\) \+ '" data-category-name="' \+ window\.EDUGNAY_CONFIG\.escapeHtml\(categoryName\)/);
-  assert.match(sectionsSource, /categoryLabel\.dataset\.categoryName \|\| categoryLabel\.textContent\.trim\(\)/);
+  assert.match(sectionsSource, /const categoryName = String\(component\.categoryName \|\| component\.cat \|\| ''\)\.trim\(\)/);
+  assert.match(sectionsSource, /categoryHeader: gradingAverageHeaderLabel\(categoryName\)/);
+  assert.match(sectionsSource, /categoryName,\s*categoryHeader: gradingAverageHeaderLabel\(categoryName\)/);
+  assert.match(sectionsSource, /data-category-name=/);
+  assert.match(sectionsSource, /renderScoreTable: renderSharedScoreTable/);
 });
 
 test('score component headers suppress duplicate exam-part labels and retain distinct labels', () => {
-  const helperSource = sectionsSource.match(/function getDistinctExamPartName\(componentName, examPartName\) \{[\s\S]*?\n  \}/)[0];
+  const helperSource = extractSourceBetween(sectionsSource,
+    'function getDistinctExamPartName(componentName, examPartName) {', '\n    function renderScoreTable(');
   const context = vm.createContext({});
   vm.runInContext(helperSource, context);
   assert.equal(context.getDistinctExamPartName('Term Exam', 'TERM EXAM'), '');
   assert.equal(context.getDistinctExamPartName('Summative Test', 'Summative Test 1'), 'Summative Test 1');
-  assert.match(sectionsSource, /c\.subjectId === c\.currentJournalSubjectId \? 'Journal' : 'Past journal'/);
-  assert.match(sectionsSource, /comp-head-name" title="' \+ window\.EDUGNAY_CONFIG\.escapeHtml\(c\.name\)/);
+  assert.match(sectionsSource, /getDistinctExamPartName\(component\.name, component\.examPartName\)/);
+  assert.match(sectionsSource, /item\.examPartName \? `<div class="comp-head-journal">/);
+  assert.match(sectionsSource, /comp-head-name" title="\$\{window\.EDUGNAY_CONFIG\.escapeHtml\(item\.title\)\}"/);
 });
 
 test('score component headers wrap full names and leave room for the actions button', () => {
@@ -108,13 +156,106 @@ test('score component headers wrap full names and leave room for the actions but
   assert.doesNotMatch(sectionsStyles, /\.comp-head-name\s*\{[^}]*text-overflow:\s*ellipsis/);
 });
 
-test('score component category labels keep their colors without pill styling', () => {
-  assert.match(sectionsSource, /comp-head-type ' \+ \(typeClass\[c\.cat\] \|\| 'type-ww'\)/);
+test('shared score component category labels keep their colors without pill styling', () => {
+  assert.match(sectionsSource, /code === 'PT' \? 'type-pt' : code === 'QA' \? 'type-qa' : 'type-ww'/);
+  assert.match(sectionsSource, /class="comp-head-type \$\{tone\}"/);
   assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*display:\s*block;[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
   assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*overflow-wrap:\s*anywhere;/);
   for (const [tone, color] of [['type-ww', '--theme-purple-text'], ['type-pt', '--theme-accent-text'], ['type-qa', '--theme-success-deep']]) {
     assert.match(sharedStyles, new RegExp(`\\.comp-head-type\\.${tone}\\s*\\{[^}]*--pill-color:\\s*var\\(${color}\\)`));
   }
+});
+
+test('shared score renderer uses one escaped component header for every class type', () => {
+  const renderer = extractSourceBetween(sectionsSource,
+    'function renderSharedScoreTable(', '\n    window.TeacherClassViews =');
+  const header = { innerHTML: '' };
+  const body = { innerHTML: '', querySelectorAll: () => [] };
+  const footer = { textContent: '' };
+  const host = { querySelector: selector => ({
+    '#scoreTheadRow': header,
+    '#scoreTbody': body,
+    '#scoreListFooter': footer
+  })[selector] };
+  const context = vm.createContext({ host,
+    window: {
+      EDUGNAY_CONFIG: {
+        escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+        renderPanelEmptyState: state => `<div>${state.title}</div>`
+      },
+      lucide: { createIcons() {} }
+    }
+  });
+  vm.runInContext(`${renderer}; renderSharedScoreTable({ host, items: [{
+    id: 'item-1', title: '<Quiz & test>', maxScore: 20, categoryCode: 'WW',
+    categoryName: 'Written & Oral Works', categoryHeader: 'WW'
+  }], empty: { noItems: { title: 'No assessments' } } });`, context);
+  assert.match(header.innerHTML, /data-category-name="Written &amp; Oral Works"/);
+  assert.match(header.innerHTML, /title="&lt;Quiz &amp; test&gt;"/);
+  assert.match(header.innerHTML, /class="comp-head-type type-ww"/);
+  assert.match(header.innerHTML, />WW<\/div>/);
+  assert.match(body.innerHTML, /No students enrolled/);
+});
+
+test('shared QR review renderers build the scan and final-review rows', () => {
+  const scanRenderer = extractSourceBetween(sectionsSource,
+    'function renderSharedQrAttendanceScans(', '\n    function renderSharedQrAttendanceFinalReview(');
+  const finalRenderer = extractSourceBetween(sectionsSource,
+    'function renderSharedQrAttendanceFinalReview(', '\n    function renderSharedGradePreviewRows(');
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, { innerHTML: '', textContent: '', querySelectorAll: () => [] });
+    return elements.get(id);
+  };
+  const context = vm.createContext({
+    document: { getElementById: element },
+    window: {
+      EDUGNAY_CONFIG: {
+        escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+        renderPanelEmptyState: state => `<div>${state.title}</div>`
+      },
+      EDUGNAY_AVATAR: { html: () => '<span class="avatar"></span>' },
+      lucide: { createIcons() {} }
+    }
+  });
+  vm.runInContext(`${scanRenderer}; renderSharedQrAttendanceScans({
+    students: [{ id: '1', displayName: '<Alex & Sam>' }, { id: '2', displayName: 'Jamie' }], scannedIds: ['1']
+  });`, context);
+  assert.equal(element('qrAttendanceProgress').textContent, '1 of 2 scanned');
+  assert.match(element('qrScannedStudents').innerHTML, /&lt;Alex &amp; Sam&gt;/);
+  assert.match(element('qrUnscannedStudents').innerHTML, /Not scanned/);
+
+  vm.runInContext(`${finalRenderer}; renderSharedQrAttendanceFinalReview({
+    students: [{ id: '1', displayName: '<Alex & Sam>' }], statusByStudent: new Map([['1', 'present']])
+  });`, context);
+  assert.match(element('qrAttendanceFinalList').innerHTML, /&lt;Alex &amp; Sam&gt;/);
+  assert.match(element('qrAttendanceFinalList').innerHTML, /class="att-btn P selected"/);
+  assert.equal(element('qrAttendanceProgress').textContent, '0 students need a status');
+});
+
+test('shared grade preview renderer escapes learner content and limits status classes', () => {
+  const renderer = extractSourceBetween(sectionsSource,
+    'function renderSharedGradePreviewRows(', '\n    function renderSharedAssignmentCards(');
+  const container = { innerHTML: '' };
+  const context = vm.createContext({
+    window: {
+      EDUGNAY_CONFIG: {
+        escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+      }
+    }
+  });
+  vm.runInContext(`${renderer}; renderSharedGradePreviewRows(container, [{
+    name: '<Alex & Sam>', value: '<86>', tone: 'grade-pass', ariaLabel: 'Final grade <86>', details: ['Weighted <83>.']
+  }, { name: 'Jamie', value: 'Incomplete', tone: 'unexpected-class' }]);`, vm.createContext({
+    ...context,
+    container
+  }));
+  assert.match(container.innerHTML, /&lt;Alex &amp; Sam&gt;/);
+  assert.match(container.innerHTML, /&lt;86&gt;/);
+  assert.match(container.innerHTML, /aria-label="Final grade &lt;86&gt;"/);
+  assert.match(container.innerHTML, /Weighted &lt;83&gt;\./);
+  assert.match(container.innerHTML, /class="grade-pass"/);
+  assert.doesNotMatch(container.innerHTML, /unexpected-class/);
 });
 
 test('Publish Grades modal uses the wider shared desktop modal width', () => {
@@ -136,7 +277,8 @@ test('Publish Grades method note uses an accessible info banner with separate me
 });
 
 test('published teacher grades use the configured passing threshold for their status color', () => {
-  const functionSource = sectionsSource.match(/function getGradeStatusTone\([\s\S]*?\n  \}/)[0];
+  const functionSource = extractSourceBetween(sectionsSource,
+    'function getGradeStatusTone(', '\n    function getBackendGradingItemForAssignment(');
   const context = vm.createContext({});
   vm.runInContext(functionSource, context);
   assert.equal(context.getGradeStatusTone(86, 75, 70), 'grade-pass');
@@ -148,28 +290,32 @@ test('published teacher grades use the configured passing threshold for their st
   assert.match(sectionsSource, /class="published-grade-value \$\{progress\.gradeTone\}"/);
 });
 
-test('score table labels calculated grades and keeps calculation details accessible', () => {
-  assert.match(sectionsSource, /gradeHeaderLabel\.textContent = weightedScoreOnly \? 'Weighted Grade' : 'Final Grade'/);
+test('shared score table keeps calculated grade details accessible', () => {
+  assert.match(sectionsSource, /label: weightedScoreOnly \? 'Weighted Grade' : 'Final Grade'/);
   assert.doesNotMatch(sectionsSource, /final-grade-preview-note|Preview until published/);
-  assert.match(sectionsSource, /finalTh\.setAttribute\('aria-label', gradeHeaderLabel\.textContent\)/);
   assert.match(sectionsSource, /finalCell\.textContent = String\(termGrade\)/);
   assert.match(sectionsSource, /finalCell\.textContent = String\(rounded\)/);
   assert.match(sectionsSource, /Weighted grade: \$\{initial\.toFixed\(2\)\}; converted to final grade/);
   assert.match(sectionsSource, /finalCell\.setAttribute\('aria-label', `Final grade \$\{termGrade\}\. Weighted grade/);
   assert.match(sectionsSource, /finalCell\.tabIndex = 0/);
-  const previewSource = sectionsSource.match(/function renderPublishGradePreview\([\s\S]*?\n  \}\n\n  async function flushPendingBackendScoreSaves/)[0];
-  assert.match(previewSource, /grade\.textContent = hasFinalGrade \? String\(finalGrade\) : 'Incomplete'/);
-  assert.match(previewSource, /grade\.setAttribute\('aria-label', student\.retainedPublishedGrade/);
-  assert.match(previewSource, /Below passing grade \(\$\{passingThreshold\}\)/);
-  assert.match(previewSource, /Weighted grade \$\{Number\(student\.initialGrade\)\.toFixed\(2\)\}/);
+  assert.match(sectionsSource, /window\.TeacherClassViews\.renderScoreTable\(/);
+  const previewSource = extractSourceBetween(sectionsSource,
+    'function renderPublishGradePreview(', '\n    async function flushPendingBackendScoreSaves');
+  assert.match(previewSource, /value: hasFinalGrade \? String\(finalGrade\) : 'Incomplete'/);
+  assert.match(previewSource, /row\.ariaLabel = student\.retainedPublishedGrade/);
+  assert.match(previewSource, /row\.details\.push\(`Below passing grade \(\$\{passingThreshold\}\)\.`\)/);
+  assert.match(previewSource, /row\.details\.push\(`Weighted grade \$\{Number\(student\.initialGrade\)\.toFixed\(2\)\}\.`\)/);
+  assert.match(previewSource, /TeacherClassViews\.renderGradePreviewRows\(studentList, rows\)/);
   assert.doesNotMatch(previewSource, /Initial \$\{Number\(student\.initialGrade\)/);
 });
 
 test('Publish Grades preview presents final results and teacher-facing blocker guidance', () => {
-  const toneSource = sectionsSource.match(/function getGradeStatusTone\([\s\S]*?\n  \}/)[0];
-  const issueSource = sectionsSource.match(/function teacherFriendlyPreviewIssue\(issue\) \{[\s\S]*?\n  \}/)[0];
-  const renderSource = sectionsSource.match(/function renderPublishGradePreview\([\s\S]*?\n  \}\n\n  async function flushPendingBackendScoreSaves/)[0]
-    .replace(/\n\n  async function flushPendingBackendScoreSaves$/, '');
+  const toneSource = extractSourceBetween(sectionsSource,
+    'function getGradeStatusTone(', '\n    function getBackendGradingItemForAssignment(');
+  const issueSource = extractSourceBetween(sectionsSource,
+    'function teacherFriendlyPreviewIssue(issue) {', '\n    function updateTransferPublishButton(');
+  const renderSource = extractSourceBetween(sectionsSource,
+    'function renderPublishGradePreview(', '\n    async function flushPendingBackendScoreSaves');
   const makeElement = () => ({
     children: [], attributes: {}, className: '', textContent: '', hidden: false, checked: false, disabled: false,
     classList: { values: [], add(value) { this.values.push(value); }, toggle() {} },
@@ -184,7 +330,13 @@ test('Publish Grades preview presents final results and teacher-facing blocker g
     return elements.get(id);
   };
   element('academicPeriodSelect').selectedOptions = [{ textContent: 'Term 1' }];
+  let renderedRows = [];
   const context = vm.createContext({
+    window: {
+      TeacherClassViews: {
+        renderGradePreviewRows(_container, rows) { renderedRows = rows; }
+      }
+    },
     document: { getElementById: element, createElement: makeElement },
     PASSING_GRADE_THRESHOLD: 75,
     WARNING_GRADE_THRESHOLD: 70,
@@ -222,15 +374,15 @@ test('Publish Grades preview presents final results and teacher-facing blocker g
   assert.match(element('publishGradeSummary').textContent, /Final grades for 5 students are ready to publish for Term 1/);
   assert.equal(element('publishGradeMethodNote').hidden, false);
   assert.match(element('publishGradeMethodText').textContent, /Weighted grades are converted/);
-  const rows = element('publishPreviewStudentList').children;
+  const rows = renderedRows;
   assert.equal(rows.length, 5);
-  assert.equal(rows[2].children[0].textContent, 'Alexandra Camille Bautista-Mendoza');
-  assert.equal(rows[0].children[1].children[0].textContent, '86');
-  assert.equal(rows[0].children[1].children[0].attributes['aria-label'], 'Final grade 86.');
-  assert.match(rows[0].children[1].children.map(child => child.textContent).join(' '), /86 Weighted grade 83\.10/);
-  assert.equal(rows[1].children[1].children[0].textContent, '72');
-  assert.match(rows[1].children[1].children.map(child => child.textContent).join(' '), /72 Below passing grade \(75\)\. Weighted grade 60\.00/);
-  assert.equal(rows[1].children[1].children[0].classList.values.includes('grade-warn'), true);
+  assert.equal(rows[2].name, 'Alexandra Camille Bautista-Mendoza');
+  assert.equal(rows[0].value, '86');
+  assert.equal(rows[0].ariaLabel, 'Final grade 86.');
+  assert.match(rows[0].details.join(' '), /Weighted grade 83\.10/);
+  assert.equal(rows[1].value, '72');
+  assert.match(rows[1].details.join(' '), /Below passing grade \(75\)\. Weighted grade 60\.00/);
+  assert.equal(rows[1].tone, 'grade-warn');
 
   context.renderPublishGradePreview({
     ...preview,
@@ -263,11 +415,11 @@ test('Publish Grades preview presents final results and teacher-facing blocker g
       { studentName: 'New student', finalGrade: null, initialGrade: null, isPassing: false }
     ]
   }, {});
-  const retainedRows = element('publishPreviewStudentList').children;
-  assert.equal(retainedRows[0].children[1].children[0].textContent, '72');
-  assert.match(retainedRows[0].children[1].children.map(child => child.textContent).join(' '), /72 Kept from St\. Mark\. Below passing grade \(75\)\./);
-  assert.doesNotMatch(retainedRows[0].children[1].children.map(child => child.textContent).join(' '), /Weighted grade/);
-  assert.equal(retainedRows[1].children[1].children[0].textContent, 'Incomplete');
+  const retainedRows = renderedRows;
+  assert.equal(retainedRows[0].value, '72');
+  assert.match(retainedRows[0].details.join(' '), /Kept from St\. Mark\. Below passing grade \(75\)\./);
+  assert.doesNotMatch(retainedRows[0].details.join(' '), /Weighted grade/);
+  assert.equal(retainedRows[1].value, 'Incomplete');
 });
 
 test('Publish Grades shows actionable blockers and hides the warning when ready', () => {
@@ -293,7 +445,8 @@ test('published section status starts hidden and follows actual period records',
 });
 
 test('published section status follows saved grades for the selected period', () => {
-  const functionSource = sectionsSource.match(/function updatePublishedGradesBanner\(academicPeriodId\) \{[\s\S]*?\n  \}/)[0];
+  const functionSource = extractSourceBetween(sectionsSource,
+    'function updatePublishedGradesBanner(academicPeriodId) {', '\n    function getBackendCategory(');
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, { hidden: false, style: {}, textContent: '' });
@@ -391,8 +544,8 @@ test('transfer review notice handles loading, retry, empty, and full review stat
 });
 
 test('transfer review modal renders score and published-grade cards with a safe empty state', () => {
-  const functionSource = sectionsSource.split('  function openTransferReviewModal() {')[1]
-    .split('\n  function renderScoreTable(')[0];
+  const functionSource = extractSourceBetween(sectionsSource,
+    'function openTransferReviewModal() {', '\n    function gradingAverageHeaderLabel(');
   const content = { innerHTML: '' };
   let openedModal = '';
   let reviewData = {
@@ -411,8 +564,7 @@ test('transfer review modal renders score and published-grade cards with a safe 
     getGradeStudents: () => [{ id: 7, displayName: 'Test & Demo' }],
     openModal: id => { openedModal = id; }
   });
-  vm.runInNewContext(`function openTransferReviewModal() {${functionSource}`, context);
-  context.openTransferReviewModal();
+  vm.runInNewContext(`${functionSource}; openTransferReviewModal();`, context);
   assert.equal(openedModal, 'transferReviewModal');
   assert.match(content.innerHTML, /Test &amp; Demo/);
   assert.match(content.innerHTML, /Quiz &amp; test: 25 \/ 25/);
@@ -440,8 +592,8 @@ test('assignment modal follows the selected subject and saves its ID', () => {
   assert.match(sectionsSource, /subjectId: CURRENT_SUBJECT_ID,/);
   assert.doesNotMatch(sectionsSource, /getElementById\('assignSubjectInput'\)\.value\.trim\(\)/);
 
-  const updateSource = sectionsSource.match(/function updateSectionSubjectControl\(\) \{[\s\S]*?\n  \}\n\n  function renderScoreTable/)[0]
-    .replace(/\n\n  function renderScoreTable$/, '');
+  const updateSource = extractSourceBetween(sectionsSource,
+    'function updateSectionSubjectControl() {', '\n    function transferReviewScope');
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, {
@@ -544,8 +696,8 @@ test('custom select click toggles the menu without focus closing the first click
 });
 
 test('assignment creation uses the selected subject ID even if a label is stale', async () => {
-  const addSource = sectionsSource.match(/async function addAssignment\(\) \{[\s\S]*?\n  \}\n\n  function resetAssignmentForm/)[0]
-    .replace(/\n\n  function resetAssignmentForm$/, '');
+  const addSource = extractSourceBetween(sectionsSource,
+    'async function addAssignment() {', '\n    function resetAssignmentForm(');
   let saved;
   const fields = {
     assignTitleInput: { value: 'Reading response' },
@@ -576,9 +728,9 @@ test('assignment creation uses the selected subject ID even if a label is stale'
   assert.equal(saved.subjectId, 'english');
 });
 
-test('delete modal allows a new component even when its subject has published grades', () => {
-  const openSource = sectionsSource.match(/async function openTeacherDeleteModal\(kind, id, name\) \{[\s\S]*?\n  \}\n\n  async function confirmTeacherDelete/)[0]
-    .replace(/\n\n  async function confirmTeacherDelete$/, '');
+test('delete modal allows a new component even when its subject has published grades', async () => {
+  const openSource = extractSourceBetween(sectionsSource,
+    'async function openTeacherDeleteModal(kind, id, name) {', '\n    async function confirmTeacherDelete(');
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, { textContent: '', disabled: false });
@@ -587,26 +739,27 @@ test('delete modal allows a new component even when its subject has published gr
   const component = { id: '12', sectionId: '8', subjectId: '4', academicTermId: '6', usedInPublishedGrades: false };
   const context = {
     document: { getElementById: element },
-    window: { lucide: { createIcons() {} } },
+    window: { lucide: { createIcons() {} }, location: { search: '' } },
+    URLSearchParams,
     BACKEND_GRADING_ITEMS: [component],
     BACKEND_STUDENT_SCORES: [{ gradingItemId: '12', score: 5 }],
     BACKEND_ASSIGNMENTS: [],
     BACKEND_PUBLISHED_GRADES: [{ sectionId: '8', subjectId: '4', academicTermId: '6' }],
     openModal() {}
   };
-  vm.runInNewContext(`${openSource}; openTeacherDeleteModal('scoreComponent', '12', 'New quiz');`, context);
+  await vm.runInNewContext(`${openSource}; openTeacherDeleteModal('scoreComponent', '12', 'New quiz');`, context);
   assert.equal(element('teacherDeleteConfirmButton').disabled, false);
   assert.match(element('teacherDeleteConfirmDescription').textContent, /1 saved student score record/);
 
   component.usedInPublishedGrades = true;
-  vm.runInNewContext("openTeacherDeleteModal('scoreComponent', '12', 'New quiz');", context);
+  await vm.runInNewContext("openTeacherDeleteModal('scoreComponent', '12', 'New quiz');", context);
   assert.equal(element('teacherDeleteConfirmButton').disabled, true);
   assert.match(element('teacherDeleteConfirmDescription').textContent, /used in published grades/);
 });
 
 test('linked score component opens the combined assignment deletion confirmation', async () => {
-  const openSource = sectionsSource.match(/async function openTeacherDeleteModal\(kind, id, name\) \{[\s\S]*?\n  \}\n\n  async function confirmTeacherDelete/)[0]
-    .replace(/\n\n  async function confirmTeacherDelete$/, '');
+  const openSource = extractSourceBetween(sectionsSource,
+    'async function openTeacherDeleteModal(kind, id, name) {', '\n    async function confirmTeacherDelete(');
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, { textContent: '', disabled: false });
@@ -614,10 +767,12 @@ test('linked score component opens the combined assignment deletion confirmation
   };
   const context = {
     document: { getElementById: element },
-    window: { lucide: { createIcons() {} }, EDUGNAY_API: { getAssignmentSubmissions: async () => [] } },
+    window: { lucide: { createIcons() {} }, location: { search: '' }, EDUGNAY_API: { getAssignmentSubmissions: async () => [] } },
+    URLSearchParams,
     BACKEND_GRADING_ITEMS: [{ id: '12', name: 'Quiz', usedInPublishedGrades: false }],
     BACKEND_ASSIGNMENTS: [{ id: '4', title: 'test', gradingItemId: '12' }],
     BACKEND_STUDENT_SCORES: [{ gradingItemId: '12', score: null, remarks: null }], BACKEND_SUBMISSIONS: new Map(),
+    BACKEND_SUBMISSION_ERRORS: new Set(),
     openModal() {}
   };
   await vm.runInNewContext(`${openSource}; openTeacherDeleteModal('scoreComponent', '12', 'Quiz');`, context);
@@ -629,7 +784,8 @@ test('linked score component opens the combined assignment deletion confirmation
   await vm.runInNewContext("openTeacherDeleteModal('assignment', '4', 'test');", context);
   assert.equal(element('teacherDeleteConfirmName').textContent, 'test');
   assert.equal(element('teacherDeleteConfirmDescription').textContent, 'This will permanently remove the assignment and its linked score component.');
-  assert.match(sectionsSource, /data-delete-assignment=.*?Delete Assignment & Component/s);
+  assert.match(sectionsSource, /label: a\.gradingItemId \? 'Delete Assignment & Component' : 'Delete Assignment'/);
+  assert.match(sectionsSource, /menu: true, danger: true, onClick: \(\) => \{ closeAssignmentMenus\(\); openTeacherDeleteModal\('assignment', a\.id, a\.title\); \}/);
   assert.match(sectionsSource, /if \(request\.kind === 'assignment'\) \{[\s\S]*?EDUGNAY_API\.deleteAssignment\(request\.id, request\.expectedSubmissionCount\)/);
 
   context.window.EDUGNAY_API.getAssignmentSubmissions = async () => [{ id: 1 }, { id: 2 }];
@@ -652,8 +808,8 @@ test('linked score component opens the combined assignment deletion confirmation
 });
 
 test('a changed submission count reopens the delete warning', async () => {
-  const confirmSource = sectionsSource.match(/async function confirmTeacherDelete\(\) \{[\s\S]*?\n  \}\n\n  document\.getElementById\('teacherDeleteConfirmButton'\)/)[0]
-    .replace(/\n\n  document\.getElementById\('teacherDeleteConfirmButton'\)$/, '');
+  const confirmSource = extractSourceBetween(sectionsSource,
+    'async function confirmTeacherDelete() {', "\n    document.getElementById('teacherDeleteConfirmButton')");
   const button = { disabled: false, textContent: 'Delete Assignment' };
   const refreshed = [];
   const context = {

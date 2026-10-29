@@ -9,6 +9,8 @@ const { getDatabase } = require('../config/database');
 const { assertGradeWriteAccess, validateGradeItemScope } = require('./gradesController');
 const { writeAuditLog } = require('../utils/auditLog');
 const { uploadDirectory } = require('../config/uploads');
+const { assertElectiveStudent, assertElectiveTeacher } = require('../utils/shsTeachingAccess');
+const { createLinkedAssignmentItem } = require('./shsGradesController');
 
 const ASSIGNMENT_STATUSES = new Set(['draft', 'published', 'closed']);
 const SUBMISSION_STATUSES = new Set(['pending', 'submitted', 'not_submitted']);
@@ -98,6 +100,10 @@ function formatAssignment(row) {
   return {
     id: row.id, schoolId: row.schoolId, sectionId: row.sectionId, sectionName: row.sectionName,
     subjectId: row.subjectId, subjectName: row.subjectName, academicTermId: row.academicTermId,
+    electiveClassId: row.electiveClassId == null ? null : String(row.electiveClassId),
+    scopeType: row.electiveClassId == null ? 'section' : 'elective',
+    sectionGrade: row.sectionGrade || row.electiveGrade || null,
+    className: row.electiveClassName || row.sectionName || null,
     academicTermName: row.academicTermName, gradingCategoryId: row.gradingCategoryId,
     subjectGradingComponentId: row.subjectGradingComponentId == null ? null : Number(row.subjectGradingComponentId),
     subjectGradingExamPartId: row.subjectGradingExamPartId == null ? null : Number(row.subjectGradingExamPartId),
@@ -114,7 +120,8 @@ function formatAssignment(row) {
 
 function assignmentSelect() {
   return `SELECT assignments.id, assignments.school_id AS schoolId, assignments.section_id AS sectionId,
-    assignments.subject_id AS subjectId, assignments.academic_term_id AS academicTermId,
+    assignments.subject_id AS subjectId, assignments.shs_elective_class_id AS electiveClassId,
+    assignments.academic_term_id AS academicTermId,
     assignments.grading_category_id AS gradingCategoryId,
     assignments.subject_grading_component_id AS subjectGradingComponentId,
     assignments.subject_grading_exam_part_id AS subjectGradingExamPartId,
@@ -124,17 +131,30 @@ function assignmentSelect() {
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
     sections.name AS sectionName, school_grade_levels.display_name AS sectionGrade,
-    academic_years.status AS academicYearStatus,
-    subjects.name AS subjectName, academic_terms.name AS academicTermName,
+    elective_grade.display_name AS electiveGrade, elective_class.class_name AS electiveClassName,
+    elective_class.teacher_user_id AS currentClassTeacherId,
+    academic_years.status AS sectionYearStatus, elective_year.status AS electiveYearStatus,
+    COALESCE(academic_years.status, elective_year.status) AS academicYearStatus,
+    COALESCE(subjects.name, elective_offering.subject_name) AS subjectName, academic_terms.name AS academicTermName,
     grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName,
     subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName,
     subject_grading_exam_parts.code AS subjectGradingExamPartCode, subject_grading_exam_parts.name AS subjectGradingExamPartName,
-    teachers.display_name AS teacherName
-  FROM assignments INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
-  INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+    COALESCE(elective_teacher.display_name, teachers.display_name) AS teacherName
+  FROM assignments LEFT JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
+  LEFT JOIN academic_years ON academic_years.id = sections.academic_year_id
   LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
     AND school_grade_levels.school_id = sections.school_id
-  INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+  LEFT JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+  LEFT JOIN shs_elective_classes AS elective_class ON elective_class.id = assignments.shs_elective_class_id
+    AND elective_class.school_id = assignments.school_id
+  LEFT JOIN shs_offerings AS elective_offering ON elective_offering.id = elective_class.offering_id
+    AND elective_offering.school_id = elective_class.school_id
+  LEFT JOIN academic_years AS elective_year ON elective_year.id = elective_offering.academic_year_id
+    AND elective_year.school_id = elective_offering.school_id
+  LEFT JOIN school_grade_levels AS elective_grade ON elective_grade.id = elective_offering.grade_level_id
+    AND elective_grade.school_id = elective_offering.school_id
+  LEFT JOIN users AS elective_teacher ON elective_teacher.id = elective_class.teacher_user_id
+    AND elective_teacher.school_id = elective_class.school_id
   LEFT JOIN academic_terms ON academic_terms.id = assignments.academic_term_id AND academic_terms.school_id = assignments.school_id
   LEFT JOIN grading_categories ON grading_categories.id = assignments.grading_category_id AND grading_categories.school_id = assignments.school_id
   LEFT JOIN subject_grading_components ON subject_grading_components.id = assignments.subject_grading_component_id AND subject_grading_components.school_id = assignments.school_id
@@ -143,16 +163,21 @@ function assignmentSelect() {
 }
 
 function assignmentAuditDetails(assignment, status, extra = {}) {
+  const className = assignment.electiveClassName || assignment.className || null;
   const sectionLabel = [assignment.sectionGrade, assignment.sectionName].filter(Boolean).join(' · ');
   return {
     summary: [assignment.title, assignment.subjectName, sectionLabel].filter(Boolean).join(' · '),
     title: assignment.title,
     subjectName: assignment.subjectName || null,
+    className,
+    scopeType: assignment.electiveClassId == null ? 'section' : 'elective',
+    electiveClassId: assignment.electiveClassId || null,
     sectionId: assignment.sectionId,
     sectionName: assignment.sectionName || null,
     sectionGrade: assignment.sectionGrade || null,
     subjectId: assignment.subjectId,
     status,
+    gradingItemId: assignment.gradingItemId || null,
     ...extra
   };
 }
@@ -193,7 +218,13 @@ async function getAssignmentForManagement(connection, user, assignmentId, lock =
   if (!['school_admin', 'teacher'].includes(user.role)) return null;
   const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1${lock ? ' FOR UPDATE' : ''}`, [assignmentId, user.schoolId]);
   const assignment = assignments[0];
-  if (!assignment || (user.role === 'teacher' && assignment.teacherUserId !== user.id)) return null;
+  if (!assignment || (assignment.electiveClassId && process.env.SHS_SELECTION_ENABLED !== 'true')) return null;
+  if (user.role === 'teacher') {
+    if (assignment.electiveClassId) {
+      try { await assertElectiveTeacher(connection, user, assignment.electiveClassId); }
+      catch { return null; }
+    } else if (Number(assignment.teacherUserId) !== Number(user.id)) return null;
+  }
   return assignment;
 }
 
@@ -235,20 +266,80 @@ async function listAssignments(req, res, next) {
     const database = getDatabase();
     const where = ['assignments.school_id = ?'];
     const values = [req.user.schoolId];
-    if (req.user.role === 'teacher') { where.push('assignments.teacher_user_id = ?'); values.push(req.user.id); }
+    if (process.env.SHS_SELECTION_ENABLED !== 'true') where.push('assignments.shs_elective_class_id IS NULL');
+    if (req.user.role === 'teacher') {
+      where.push(`((assignments.shs_elective_class_id IS NULL AND assignments.teacher_user_id = ?)
+        OR (assignments.shs_elective_class_id IS NOT NULL AND EXISTS (
+          SELECT 1 FROM shs_elective_classes ec WHERE ec.id = assignments.shs_elective_class_id
+            AND ec.school_id = assignments.school_id AND ec.teacher_user_id = ?
+            AND ec.is_active = TRUE
+        )))`);
+      values.push(req.user.id, req.user.id);
+    }
     else if (req.user.role === 'student') {
       where.push("assignments.status = 'published'");
-      where.push('EXISTS (SELECT 1 FROM section_students WHERE section_students.school_id = assignments.school_id AND section_students.section_id = assignments.section_id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)');
+      where.push(`((assignments.shs_elective_class_id IS NULL AND EXISTS (
+        SELECT 1 FROM section_students ss WHERE ss.school_id = assignments.school_id
+          AND ss.section_id = assignments.section_id AND ss.student_user_id = ? AND ss.withdrawn_at IS NULL
+      )) OR (assignments.shs_elective_class_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM shs_elective_class_students em JOIN shs_elective_classes ec
+          ON ec.id = em.elective_class_id AND ec.school_id = em.school_id
+        JOIN shs_offerings eo ON eo.id = ec.offering_id AND eo.school_id = ec.school_id
+        JOIN academic_years ey ON ey.id = eo.academic_year_id AND ey.school_id = eo.school_id
+        WHERE em.school_id = assignments.school_id AND em.elective_class_id = assignments.shs_elective_class_id
+          AND em.student_user_id = ? AND (em.withdrawn_at IS NULL OR assignments.created_at <= em.withdrawn_at)
+          AND ec.is_active = TRUE AND eo.is_active = TRUE AND ey.status = 'active'
+      )))`);
+      values.push(req.user.id);
       values.push(req.user.id);
     } else if (req.user.role === 'parent') {
       where.push("assignments.status = 'published'");
-      where.push('EXISTS (SELECT 1 FROM section_students INNER JOIN student_parent_links ON student_parent_links.school_id = section_students.school_id AND student_parent_links.student_user_id = section_students.student_user_id WHERE section_students.school_id = assignments.school_id AND section_students.section_id = assignments.section_id AND section_students.withdrawn_at IS NULL AND student_parent_links.parent_user_id = ?)');
+      where.push(`((assignments.shs_elective_class_id IS NULL AND EXISTS (
+        SELECT 1 FROM section_students ss JOIN student_parent_links pl
+          ON pl.school_id = ss.school_id AND pl.student_user_id = ss.student_user_id
+        WHERE ss.school_id = assignments.school_id AND ss.section_id = assignments.section_id
+          AND ss.withdrawn_at IS NULL AND pl.parent_user_id = ?
+      )) OR (assignments.shs_elective_class_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM shs_elective_class_students em JOIN student_parent_links pl
+          ON pl.school_id = em.school_id AND pl.student_user_id = em.student_user_id
+        JOIN shs_elective_classes ec ON ec.id = em.elective_class_id AND ec.school_id = em.school_id
+        JOIN shs_offerings eo ON eo.id = ec.offering_id AND eo.school_id = ec.school_id
+        JOIN academic_years ey ON ey.id = eo.academic_year_id AND ey.school_id = eo.school_id
+        WHERE em.school_id = assignments.school_id AND em.elective_class_id = assignments.shs_elective_class_id
+          AND (em.withdrawn_at IS NULL OR assignments.created_at <= em.withdrawn_at)
+          AND pl.parent_user_id = ? AND ec.is_active = TRUE AND eo.is_active = TRUE AND ey.status = 'active'
+      )))`);
+      values.push(req.user.id);
       values.push(req.user.id);
     } else if (req.user.role !== 'school_admin') throw createError('You do not have access to assignments.', 403);
     if (req.query.sectionId) { where.push('assignments.section_id = ?'); values.push(parseId(req.query.sectionId, 'section ID')); }
     if (req.query.subjectId) { where.push('assignments.subject_id = ?'); values.push(parseId(req.query.subjectId, 'subject ID')); }
+    if (req.query.electiveClassId) {
+      where.push('assignments.shs_elective_class_id = ?');
+      values.push(parseId(req.query.electiveClassId, 'elective class ID'));
+    }
     const [assignments] = await database.execute(`${assignmentSelect()} WHERE ${where.join(' AND ')} ORDER BY assignments.due_at IS NULL, assignments.due_at, assignments.created_at DESC`, values);
-    res.json({ assignments: assignments.map(formatAssignment) });
+    let formatted = assignments.map(formatAssignment);
+    if (req.user.role === 'student' && process.env.SHS_SELECTION_ENABLED === 'true') {
+      const electiveIds = [...new Set(formatted.filter(item => item.electiveClassId).map(item => Number(item.electiveClassId)))];
+      if (electiveIds.length) {
+        const placeholders = electiveIds.map(() => '?').join(', ');
+        const [memberships] = await database.execute(
+          `SELECT elective_class_id AS electiveClassId, withdrawn_at AS withdrawnAt
+           FROM shs_elective_class_students WHERE school_id = ? AND student_user_id = ?
+             AND elective_class_id IN (${placeholders}) ORDER BY id DESC`,
+          [req.user.schoolId, req.user.id, ...electiveIds]);
+        const activeByClass = new Map();
+        for (const membership of memberships) {
+          const classId = String(membership.electiveClassId);
+          if (!activeByClass.has(classId)) activeByClass.set(classId, !membership.withdrawnAt);
+        }
+        formatted = formatted.map(item => item.electiveClassId
+          ? { ...item, electiveMembershipActive: activeByClass.get(item.electiveClassId) === true }
+          : item);
+      }
+    }
+    res.json({ assignments: formatted });
   } catch (error) { next(error); }
 }
 
@@ -357,15 +448,49 @@ async function getParentChildAssignments(req, res, next) {
       ORDER BY assignments.due_at IS NULL, assignments.due_at, assignments.created_at DESC`,
       [studentId, studentId, req.user.schoolId, req.user.id]
     );
+    let electiveRows = [];
+    if (process.env.SHS_SELECTION_ENABLED === 'true') {
+      [electiveRows] = await database.execute(
+        `SELECT a.id, a.shs_elective_class_id AS electiveClassId, a.academic_term_id AS academicTermId,
+          a.title, a.description, DATE_FORMAT(a.due_at, '%Y-%m-%d') AS dueDate,
+          a.online_submission_enabled AS onlineSubmissionEnabled, ec.class_name AS electiveClassName,
+          o.subject_name AS subjectName,
+          t.display_name AS teacherName, sub.submission_status AS savedStatus,
+          sub.file_path AS filePath, sub.file_path IS NOT NULL AS hasUploadedFile,
+          DATE_FORMAT(sub.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+         FROM assignments a
+         JOIN shs_elective_classes ec ON ec.id = a.shs_elective_class_id AND ec.school_id = a.school_id
+         JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
+         JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
+         JOIN users t ON t.id = ec.teacher_user_id AND t.school_id = ec.school_id
+         LEFT JOIN assignment_submissions sub ON sub.school_id = a.school_id
+           AND sub.assignment_id = a.id AND sub.student_user_id = ?
+         WHERE a.school_id = ? AND a.status = 'published' AND y.status = 'active'
+           AND ec.is_active = TRUE AND o.is_active = TRUE
+           AND EXISTS (SELECT 1 FROM shs_elective_class_students em WHERE em.school_id = a.school_id
+             AND em.elective_class_id = ec.id AND em.student_user_id = ?
+             AND (em.withdrawn_at IS NULL OR a.created_at <= em.withdrawn_at))
+         ORDER BY a.due_at IS NULL, a.due_at, a.created_at DESC`,
+        [studentId, req.user.schoolId, studentId]);
+    }
     const history = await getPreviousSectionWork(database, req.user.schoolId, studentId, currentDate);
-    res.json({ studentId: String(studentId), currentDate, history, assignments: rows.map(row => ({
+    const sectionAssignments = rows.map(row => ({
       id: String(row.id), sectionId: String(row.sectionId), subjectId: String(row.subjectId),
       academicTermId: String(row.academicTermId), title: row.title, description: row.description,
       dueDate: row.dueDate, subjectName: row.subjectName, teacherName: row.teacherName,
       onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
       submissionStatus: parentSubmissionStatus(row, currentDate),
       submittedAt: row.savedStatus === 'submitted' && row.hasUploadedFile ? row.submittedAt : null
-    })) });
+    }));
+    res.json({ studentId: String(studentId), currentDate, history, assignments: [...sectionAssignments, ...electiveRows.map(row => ({
+      id: String(row.id), sectionId: null, electiveClassId: String(row.electiveClassId), scopeType: 'elective',
+      subjectId: null, academicTermId: row.academicTermId == null ? null : String(row.academicTermId),
+      title: row.title, description: row.description, dueDate: row.dueDate, subjectName: row.subjectName,
+      electiveClassName: row.electiveClassName,
+      teacherName: row.teacherName, onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
+      submissionStatus: parentSubmissionStatus(row, currentDate),
+      submittedAt: row.savedStatus === 'submitted' && row.hasUploadedFile ? row.submittedAt : null
+    }))] });
   } catch (error) { next(error); }
 }
 
@@ -415,6 +540,28 @@ async function getParentAssignmentActivity(req, res, next) {
       ORDER BY subjects.name, assignments.title`,
       [studentId, studentId, req.user.schoolId, req.user.schoolId, date, req.user.id]
     );
+    let electiveRows = [];
+    if (process.env.SHS_SELECTION_ENABLED === 'true') {
+      [electiveRows] = await database.execute(
+        `SELECT a.id AS assignmentId, a.shs_elective_class_id AS electiveClassId,
+          o.subject_name AS subjectName, a.title, DATE_FORMAT(a.due_at, '%Y-%m-%d') AS dueDate,
+          a.online_submission_enabled AS onlineSubmissionEnabled, s.submission_status AS savedStatus,
+          s.file_path AS filePath, DATE_FORMAT(s.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+         FROM assignments a JOIN shs_elective_classes ec ON ec.id = a.shs_elective_class_id AND ec.school_id = a.school_id
+         JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
+         JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id AND y.status = 'active'
+         JOIN shs_elective_class_students em ON em.school_id = a.school_id
+           AND em.elective_class_id = ec.id AND em.student_user_id = ?
+           AND (em.withdrawn_at IS NULL OR a.created_at <= em.withdrawn_at)
+         LEFT JOIN assignment_submissions s ON s.school_id = a.school_id AND s.assignment_id = a.id
+           AND s.student_user_id = ?
+         WHERE a.school_id = ? AND a.status = 'published' AND a.due_at IS NOT NULL AND DATE(a.due_at) = ?
+           AND ec.is_active = TRUE AND o.is_active = TRUE
+           AND EXISTS (SELECT 1 FROM student_parent_links pl WHERE pl.school_id = a.school_id
+             AND pl.student_user_id = em.student_user_id AND pl.parent_user_id = ?)
+         ORDER BY o.subject_name, a.title`,
+        [studentId, studentId, req.user.schoolId, date, req.user.id]);
+    }
 
     const assignments = rows.map(row => {
       const onlineSubmissionEnabled = Boolean(row.onlineSubmissionEnabled);
@@ -434,6 +581,13 @@ async function getParentAssignmentActivity(req, res, next) {
       };
     });
 
+    for (const row of electiveRows) {
+      const submissionStatus = parentSubmissionStatus(row, currentDate);
+      assignments.push({ id: String(row.assignmentId), electiveClassId: String(row.electiveClassId), scopeType: 'elective',
+        subjectId: null, subjectName: row.subjectName, title: row.title, dueDate: row.dueDate,
+        onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled), submissionStatus,
+        submittedAt: row.savedStatus === 'submitted' && row.filePath ? row.submittedAt : null });
+    }
     res.json({ studentId: String(studentId), date, assignments });
   } catch (error) { next(error); }
 }
@@ -537,7 +691,7 @@ async function createAssignment(req, res, next) {
     }
     const assignment = await getAssignmentForManagement(connection, req.user, result.insertId);
     await writeAuditLog(connection, req, 'assignment_created', 'assignment', result.insertId,
-      assignmentAuditDetails(assignment, status));
+      assignmentAuditDetails(assignment, status, { scoreComponentCreated: Boolean(assignment.gradingItemId) }));
     await connection.commit();
     transactionStarted = false;
     res.status(201).json({ assignment: formatAssignment(assignment) });
@@ -554,6 +708,53 @@ async function updateAssignment(req, res, next) {
     const current = await getAssignmentForManagement(connection, req.user, assignmentId, true);
     if (!current) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(current);
+    if (current.electiveClassId) {
+      await assertElectiveTeacher(connection, req.user, current.electiveClassId, { write: true });
+      if ((req.body.maxScore !== undefined && req.body.maxScore !== null && req.body.maxScore !== '')
+        || req.body.gradingCategoryId || req.body.subjectGradingComponentId
+        || req.body.subjectGradingExamPartId || req.body.gradingItemId) {
+        throw createError('Link the elective assignment to an assessment in Grades.', 409);
+      }
+      const title = req.body.title === undefined ? current.title : requiredText(req.body.title, 255, 'Assignment title');
+      if (current.gradingItemId && title !== current.title) {
+        throw createError('A linked assessment protects the assignment title from changes.', 409);
+      }
+      const description = req.body.description === undefined ? current.description : optionalText(req.body.description, 10000, 'Assignment description');
+      const dueAt = req.body.dueAt === undefined ? current.dueAt : dateTime(req.body.dueAt, 'Due date');
+      const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
+        ? Boolean(current.onlineSubmissionEnabled) : req.body.onlineSubmissionEnabled === true;
+      const status = req.body.status === undefined ? current.status : String(req.body.status);
+      if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
+      const statusChanged = current.status !== status;
+      const detailsChanged = current.title !== title
+        || String(current.description || '') !== String(description || '')
+        || comparableDateTime(current.dueAt) !== comparableDateTime(dueAt)
+        || Number(current.onlineSubmissionEnabled) !== Number(onlineSubmissionEnabled);
+      if (req.body.grade && current.gradingItemId) throw createError('This assignment already has a score component.', 409);
+      if (req.body.grade === false && current.gradingItemId) throw createError('A linked score component cannot be removed here.', 409);
+      await connection.execute(
+        `UPDATE assignments SET title = ?, description = ?, due_at = ?, online_submission_enabled = ?, status = ?
+         WHERE id = ? AND school_id = ? AND shs_elective_class_id = ?`,
+        [title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId, current.electiveClassId]);
+      if (req.body.grade) await createLinkedAssignmentItem(connection, req, current.electiveClassId, assignmentId,
+        { ...req.body.grade, title });
+      const [updatedRows] = await connection.execute(
+        `${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1`,
+        [assignmentId, req.user.schoolId]);
+      const updated = updatedRows[0];
+      if (statusChanged || detailsChanged || req.body.grade) {
+        await writeAuditLog(connection, req, 'assignment_updated', 'assignment', assignmentId, {
+          summary: [title, updated.subjectName, updated.sectionName || updated.electiveClassName].filter(Boolean).join(' · '),
+          title, subjectName: updated.subjectName, className: updated.electiveClassName || null,
+          electiveClassId: current.electiveClassId, scopeType: 'elective', status,
+          fromStatus: current.status, toStatus: status, statusChanged, detailsChanged,
+          scoreComponentCreated: Boolean(req.body.grade), gradingItemId: updated.gradingItemId || null
+        });
+      }
+      await connection.commit();
+      transactionStarted = false;
+      return res.json({ assignment: formatAssignment(updated) });
+    }
     const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId, current.subjectId);
     if (!section) throw createError('The assignment section-subject relationship is no longer active.', 409);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId === undefined ? current.academicTermId : req.body.academicTermId);
@@ -648,6 +849,9 @@ async function deleteAssignment(req, res, next) {
     }
     assignment = await getAssignmentForManagement(connection, req.user, assignmentId, true);
     if (!assignment) throw createError('Assignment was not found.', 404);
+    if (assignment.electiveClassId) {
+      await assertElectiveTeacher(connection, req.user, assignment.electiveClassId, { write: true });
+    }
     if (['sectionId', 'subjectId', 'academicTermId', 'gradingCategoryId', 'teacherUserId', 'gradingItemId']
       .some(field => String(assignment[field]) !== String(original[field]))) {
       throw createError('The assignment changed while deletion was being prepared. Reload and try again.', 409);
@@ -741,8 +945,66 @@ async function deleteAssignment(req, res, next) {
 }
 
 async function getStudentAssignment(connection, schoolId, studentId, assignmentId) {
-  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? AND assignments.status = 'published' AND EXISTS (SELECT 1 FROM section_students WHERE section_students.school_id = assignments.school_id AND section_students.section_id = assignments.section_id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL) LIMIT 1`, [assignmentId, schoolId, studentId]);
+  const electiveCondition = process.env.SHS_SELECTION_ENABLED === 'true'
+    ? `OR (assignments.shs_elective_class_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM shs_elective_class_students em JOIN shs_elective_classes ec
+          ON ec.id = em.elective_class_id AND ec.school_id = em.school_id
+        JOIN shs_offerings eo ON eo.id = ec.offering_id AND eo.school_id = ec.school_id
+        JOIN academic_years ey ON ey.id = eo.academic_year_id AND ey.school_id = eo.school_id
+        WHERE em.school_id = assignments.school_id AND em.elective_class_id = assignments.shs_elective_class_id
+          AND em.student_user_id = ? AND (em.withdrawn_at IS NULL OR assignments.created_at <= em.withdrawn_at)
+          AND ec.is_active = TRUE AND eo.is_active = TRUE AND ey.status = 'active'
+      ))` : '';
+  const values = [assignmentId, schoolId, studentId];
+  if (electiveCondition) values.push(studentId);
+  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ?
+    AND assignments.school_id = ? AND assignments.status = 'published'
+    AND (EXISTS (SELECT 1 FROM section_students WHERE section_students.school_id = assignments.school_id
+      AND section_students.section_id = assignments.section_id AND section_students.student_user_id = ?
+      AND section_students.withdrawn_at IS NULL) ${electiveCondition}) LIMIT 1`, values);
   return assignments[0] || null;
+}
+
+async function createElectiveAssignment(req, res, next) {
+  let connection;
+  try {
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    const electiveClass = await assertElectiveTeacher(connection, req.user,
+      parseId(req.params.classId, 'elective class ID'), { write: true });
+    if (req.body.maxScore !== undefined && req.body.maxScore !== null && req.body.maxScore !== '')
+      throw createError('Elective assignments cannot be graded in this phase.', 409);
+    if (req.body.gradingCategoryId || req.body.subjectGradingComponentId || req.body.subjectGradingExamPartId || req.body.gradingItemId)
+      throw createError('Elective assignments cannot be linked to grading items in this phase.', 409);
+    const title = requiredText(req.body.title, 255, 'Assignment title');
+    const description = optionalText(req.body.description, 10000, 'Assignment description');
+    const dueAt = dateTime(req.body.dueAt, 'Due date');
+    const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true || req.body.onlineSubmissionEnabled === 'true' ? 1 : 0;
+    const status = req.body.status === undefined ? 'published' : String(req.body.status);
+    if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
+    const [result] = await connection.execute(
+      `INSERT INTO assignments (school_id, shs_elective_class_id, teacher_user_id, title, description,
+        due_at, max_score, online_submission_enabled, status)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+      [electiveClass.schoolId, electiveClass.id, req.user.id, title, description, dueAt, onlineSubmissionEnabled, status]);
+    if (req.body.grade) await createLinkedAssignmentItem(connection, req, electiveClass.id, result.insertId,
+      { ...req.body.grade, title });
+    const [rows] = await connection.execute(
+      `${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1`,
+      [result.insertId, req.user.schoolId]);
+    const assignment = rows[0];
+    await writeAuditLog(connection, req, 'assignment_created', 'assignment', result.insertId, {
+      summary: [title, electiveClass.subjectName, electiveClass.className].join(' · '),
+      title, subjectName: electiveClass.subjectName, className: electiveClass.className,
+      electiveClassId: electiveClass.id, scopeType: 'elective', status,
+      scoreComponentCreated: Boolean(assignment.gradingItemId), gradingItemId: assignment.gradingItemId || null
+    });
+    await connection.commit();
+    res.status(201).json({ assignment: formatAssignment(assignment) });
+  } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
+    next(error);
+  } finally { connection?.release(); }
 }
 
 async function removeUploadedFile(file) {
@@ -784,6 +1046,9 @@ async function submitAssignment(req, res, next) {
     const assignment = await getStudentAssignment(getDatabase(), req.user.schoolId, req.user.id, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(assignment);
+    if (assignment.electiveClassId) {
+      await assertElectiveStudent(getDatabase(), req.user, assignment.electiveClassId, { write: true });
+    }
     if (!assignment.onlineSubmissionEnabled) throw createError('Online submissions are not enabled for this assignment.', 409);
     const filePath = req.file.filename;
     const database = getDatabase();
@@ -809,7 +1074,8 @@ async function listSubmissions(req, res, next) {
       const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ?', [req.user.schoolId, assignmentId, req.user.id]);
       return res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
         ...submission,
-        fileUrl: null
+        fileUrl: filePath && ownAssignment.electiveClassId
+          ? `/api/assignments/history/${assignmentId}/file` : null
       })) });
     }
     const [submissions] = await database.execute('SELECT assignment_submissions.id, assignment_submissions.assignment_id AS assignmentId, assignment_submissions.student_user_id AS studentId, students.display_name AS studentName, assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath, assignment_submissions.file_size_bytes AS fileSizeBytes, assignment_submissions.submission_status AS submissionStatus, assignment_submissions.submitted_at AS submittedAt, assignment_submissions.updated_at AS updatedAt FROM assignment_submissions INNER JOIN users AS students ON students.id = assignment_submissions.student_user_id AND students.school_id = assignment_submissions.school_id WHERE assignment_submissions.school_id = ? AND assignment_submissions.assignment_id = ? ORDER BY students.last_name, students.first_name', [assignment.schoolId, assignmentId]);
@@ -846,6 +1112,13 @@ async function getManagedSubmissionFile(database, user, assignmentId, submission
 async function downloadOwnHistoricalSubmission(req, res, next) {
   try {
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
+    const electiveHistory = process.env.SHS_SELECTION_ENABLED === 'true'
+      ? ` OR (assignments.shs_elective_class_id IS NOT NULL AND EXISTS (
+          SELECT 1 FROM shs_elective_class_students em
+          WHERE em.school_id = assignments.school_id AND em.elective_class_id = assignments.shs_elective_class_id
+            AND em.student_user_id = assignment_submissions.student_user_id
+            AND (em.withdrawn_at IS NULL OR assignments.created_at <= em.withdrawn_at)
+        ))` : '';
     const [rows] = await getDatabase().execute(
       `SELECT assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath
       FROM assignment_submissions
@@ -854,7 +1127,7 @@ async function downloadOwnHistoricalSubmission(req, res, next) {
       WHERE assignment_submissions.assignment_id = ? AND assignment_submissions.school_id = ?
         AND assignment_submissions.student_user_id = ?
         AND assignments.status = 'published'
-        AND EXISTS (SELECT 1 FROM section_students
+        AND ((EXISTS (SELECT 1 FROM section_students
           WHERE section_students.school_id = assignments.school_id
             AND section_students.section_id = assignments.section_id
             AND section_students.student_user_id = assignment_submissions.student_user_id
@@ -865,6 +1138,7 @@ async function downloadOwnHistoricalSubmission(req, res, next) {
             AND active_enrollment.section_id = assignments.section_id
             AND active_enrollment.student_user_id = assignment_submissions.student_user_id
             AND active_enrollment.withdrawn_at IS NULL)
+          ) ${electiveHistory})
       LIMIT 1`,
       [assignmentId, req.user.schoolId, req.user.id]
     );
@@ -956,4 +1230,4 @@ async function previewSubmission(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { createAssignment, deleteAssignment, downloadOwnHistoricalSubmission, downloadSubmission, getParentAssignmentActivity, getParentChildAssignments, getStudentAssignmentHistory, listAssignments, listSubmissions, previewSubmission, submitAssignment, updateAssignment, updateStudentAssignmentStatus };
+module.exports = { createAssignment, createElectiveAssignment, deleteAssignment, downloadOwnHistoricalSubmission, downloadSubmission, getParentAssignmentActivity, getParentChildAssignments, getStudentAssignmentHistory, listAssignments, listSubmissions, previewSubmission, submitAssignment, updateAssignment, updateStudentAssignmentStatus };

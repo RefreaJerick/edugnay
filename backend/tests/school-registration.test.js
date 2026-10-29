@@ -74,6 +74,18 @@ async function call(body) {
   return result;
 }
 
+test('SHS registration seeds Academic and TechPro without strands', async () => {
+  queries.length = 0;
+  const body = registration();
+  body.schoolLevels = ['shs'];
+  body.academicTermConfigs[0].schoolLevel = 'shs';
+  const result = await call(body);
+  assert.equal(result.error, null);
+  const tracks = queries.filter(query => query.sql?.startsWith('INSERT INTO school_shs_tracks'));
+  assert.deepEqual(tracks.map(query => query.values[2]), ['academic', 'techpro']);
+  assert.ok(!queries.some(query => query.sql?.includes('INSERT INTO school_shs_strands')));
+});
+
 test('registration saves the school, academic periods, and pending administrator together', async () => {
   queries.length = 0;
   const result = await call(registration());

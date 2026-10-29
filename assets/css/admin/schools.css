@@ -1582,7 +1582,7 @@
 
 .school-k10-grading-subject-name {
   display: block;
-  color: var(--navy, #1d355f);
+  color: var(--theme-text, var(--navy, #1d355f));
   font-weight: 650;
 }
 
@@ -3127,7 +3127,31 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  #restoreDepedDefaults {
+  #restoreDepedDefaults,
+  #shsGradingRestore {
     margin-right: 0;
   }
+}
+
+#shsGradingEditorModal .modal {
+  width: min(940px, calc(100vw - 32px));
+  max-width: 940px;
+  max-height: min(90vh, 900px);
+  display: flex;
+  flex-direction: column;
+}
+
+#shsGradingEditorModal .subject-grading-editor-body { flex: 1 1 auto; }
+#shsGradingRestore { margin-right: auto; }
+#shsGradingComponents,
+.shs-grading-component-entry {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.shs-grading-exam-editor {
+  margin: 0 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gray-100, #edf1f7);
 }

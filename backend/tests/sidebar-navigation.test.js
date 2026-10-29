@@ -18,6 +18,7 @@ function createTeacherShellHarness({
   session = { apiSchoolId: '10', apiUserId: '50', role: 'teacher' },
   advisorySections = [],
   teachingSections = [],
+  shsClasses = [],
   journalSections = [],
   journalHistory = { prompts: [], entries: [] },
   narrativeReportsEnabled = true,
@@ -25,7 +26,8 @@ function createTeacherShellHarness({
   sfTemplatesEnabled = true,
   failures = {},
   cachedSnapshot = null,
-  pathname = '/views/teacher/edugnay-teacher-dashboard.html'
+  pathname = '/views/teacher/edugnay-teacher-dashboard.html',
+  search = ''
 } = {}) {
   const storage = new Map();
   if (cachedSnapshot) {
@@ -43,7 +45,17 @@ function createTeacherShellHarness({
     hidden: false,
     querySelector: () => accessItems.find(item => !item.hidden) || null
   };
-  const sectionsNav = { children: [], replaceChildren(...children) { this.children = children; } };
+  const sectionsNav = { children: [], renderCount: 0, replaceChildren(...children) { this.children = children; this.renderCount += 1; } };
+  const sectionGroupClasses = new Set(pathname.endsWith('edugnay-teacher-sections.html') ? ['open'] : []);
+  const sectionToggle = { attributes: {}, listeners: {}, setAttribute(name, value) { this.attributes[name] = value; },
+    addEventListener(name, listener) { this.listeners[name] = listener; } };
+  const sectionGroup = { querySelector: () => sectionToggle, classList: {
+    toggle(name, force) {
+      if (force === undefined ? !sectionGroupClasses.has(name) : force) sectionGroupClasses.add(name);
+      else sectionGroupClasses.delete(name);
+    },
+    contains: name => sectionGroupClasses.has(name)
+  } };
   const listeners = new Map();
   const rootClasses = new Set();
   let lucideRenderCount = 0;
@@ -73,14 +85,14 @@ function createTeacherShellHarness({
       };
     },
     createTextNode(textContent) { return { textContent }; },
-    getElementById() { return null; },
+    getElementById(id) { return id === 'sections-group' ? sectionGroup : null; },
     querySelector() { return null; }
   };
 
   let releaseSchoolReady;
   let schoolContextReady = false;
   const schoolReady = new Promise(resolve => { releaseSchoolReady = resolve; });
-  const location = { pathname, search: '', href: 'http://localhost/views/teacher/current.html', redirect: '' };
+  const location = { pathname, search, href: `http://localhost/views/teacher/current.html${search}`, redirect: '' };
   location.replace = target => { location.redirect = target; };
   const context = {
     document,
@@ -125,6 +137,14 @@ function createTeacherShellHarness({
       }
       return session;
     },
+    getShsTeachingClasses: async () => {
+      if (failures.shsClasses) {
+        const error = new Error('SHS classes unavailable');
+        error.status = failures.shsClasses;
+        throw error;
+      }
+      return { classes: shsClasses };
+    },
     getJournalSections: async () => {
       if (failures.journals) throw new Error('journal request failed');
       return journalSections;
@@ -143,6 +163,8 @@ function createTeacherShellHarness({
     rootClasses,
     reportNav,
     sectionsNav,
+    sectionGroup,
+    sectionToggle,
     storage,
     resolveSchoolReady() {
       schoolContextReady = true;
@@ -162,7 +184,9 @@ function createStudentShellHarness({
   failures = {},
   cachedSnapshot = null,
   pathname = '/views/student/edugnay-student-dashboard.html',
-  deferPortal = false
+  deferPortal = false,
+  electivesEnabled = true,
+  deferElectives = false
 } = {}) {
   const storage = new Map();
   if (cachedSnapshot) {
@@ -205,6 +229,8 @@ function createStudentShellHarness({
   };
   let releasePortal;
   const portalPromise = deferPortal ? new Promise(resolve => { releasePortal = resolve; }) : null;
+  let releaseElectives;
+  const electivesPromise = deferElectives ? new Promise(resolve => { releaseElectives = resolve; }) : null;
   let activeFeatures = null;
   const location = { pathname, href: `http://localhost${pathname}`, redirect: '' };
   location.replace = target => { location.redirect = target; };
@@ -248,6 +274,11 @@ function createStudentShellHarness({
       if (portalPromise) return portalPromise;
       return { features: { gradesEnabled, journalsEnabled }, journalSubjectId: 3, journalSubjectName: 'English', journalSubjectEligible: true };
     },
+    getShsSelection: async () => {
+      if (failures.electives || !electivesEnabled) throw new Error('elective selection unavailable');
+      if (electivesPromise) return electivesPromise;
+      return {};
+    },
     setPortalFeatures(features) { activeFeatures = features; },
     getJournalHistory: async () => {
       if (failures.history) throw new Error('history request failed');
@@ -265,6 +296,7 @@ function createStudentShellHarness({
     listeners,
     location,
     releasePortal,
+    releaseElectives,
     getCachedSnapshot() {
       const pointer = JSON.parse(storage.get(`${studentNavPrefix}current`) || 'null');
       if (!pointer) return null;
@@ -491,7 +523,7 @@ test('teacher sidebar uses a school- and teacher-scoped session snapshot before 
   assert.match(teacherShell, /function getTeacherSidebarCacheKey\(schoolId, teacherId\)[\s\S]*?String\(schoolId\)[\s\S]*?String\(teacherId\)/);
   assert.match(teacherShell, /function readTeacherSidebarSnapshot\(\)[\s\S]*?String\(snapshot\.schoolId\) !== String\(pointer\.schoolId\)/);
   assert.match(teacherShell, /const INITIAL_TEACHER_SIDEBAR_SNAPSHOT = readTeacherSidebarSnapshot\(\);\s*setTeacherSidebarPrepaintState\(INITIAL_TEACHER_SIDEBAR_SNAPSHOT\);/);
-  assert.match(teacherShell, /if \(window\.lucide\) window\.lucide\.createIcons\(\);\s*let cachedSnapshot = INITIAL_TEACHER_SIDEBAR_SNAPSHOT;\s*if \(cachedSnapshot\) applyTeacherSidebarSnapshot\(cachedSnapshot\);[\s\S]*?await window\.EDUGNAY_SCHOOL_READY/);
+  assert.match(teacherShell, /if \(window\.lucide\) window\.lucide\.createIcons\(\);\s*let cachedSnapshot = INITIAL_TEACHER_SIDEBAR_SNAPSHOT;\s*if \(cachedSnapshot\) applyTeacherSidebarSnapshot\(cachedSnapshot, \{[\s\S]*?teacherClassesRestoredBeforePaint[\s\S]*?await window\.EDUGNAY_SCHOOL_READY/);
   assert.match(teacherShell, /if \(!teacherSidebarSnapshotsMatch\(cachedSnapshot, snapshot\)\)\s*\{\s*applyTeacherSidebarSnapshot\(snapshot, \{ previousSnapshot: cachedSnapshot, sectionsError \}\);/);
   assert.match(teacherShell, /function guardTeacherPageAccess\(\)[\s\S]*?teacherCanAccess\(restrictedFeature\)/);
   assert.match(teacherShell, /function teacherCanAccess\(feature\)[\s\S]*?if \(feature === 'journals'\) return teacherJournalAccess;[\s\S]*?if \(feature === 'sfTemplates'\) return teacherSfTemplatesAccess/);
@@ -529,11 +561,16 @@ test('student navigation pre-paints cached access on every portal page', () => {
   for (const filename of filenames) {
     const html = fs.readFileSync(path.join(studentViews, filename), 'utf8');
     assert.match(html, /assets\/js\/student\/shell\.js/, `${filename} should use the shared student shell`);
+    assert.match(html, /data-student-access="electives"/, `${filename} should use the shared elective access state`);
   }
   assert.match(styles, /html\.student-nav-hide-grades[\s\S]*?edugnay-student-grades\.html[\s\S]*?display:\s*none !important/);
   assert.match(styles, /html\.student-nav-hide-journals[\s\S]*?edugnay-student-journal\.html[\s\S]*?display:\s*none !important/);
+  assert.match(styles, /html\.student-nav-hide-electives \.sidebar a\[data-student-access="electives"\][\s\S]*?display:\s*none !important/);
   assert.match(studentShell, /let cachedStudentSidebarSnapshot = readStudentSidebarSnapshot\(\);/);
   assert.match(studentShell, /setStudentSidebarPrepaintState\(cachedStudentSidebarSnapshot\);/);
+  assert.match(studentShell, /student-nav-hide-electives/);
+  assert.match(studentShell, /electives: Boolean\(matchingSnapshot && cachedStudentSidebarSnapshot\.access\.electives === true\)/);
+  assert.doesNotMatch(studentShell, /student-electives-available/);
   assert.match(commonShell, /function clearStudentSidebarCache\(\)/);
   assert.match(commonShell, /confirmLogout\(\)[\s\S]*?clearStudentSidebarCache\(\)/);
   assert.match(commonShell, /if \(error\.status === 401\)[\s\S]*?clearStudentSidebarCache\(\)/);
@@ -557,13 +594,14 @@ test('student sidebar uses a cached snapshot only for pre-paint, then refreshes 
   });
 
   assert.equal(harness.rootClasses.has('student-nav-hide-grades'), true, 'cached grade visibility applies before page initialization');
-  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), false, 'cached Journal visibility applies before page initialization');
+  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), true, 'Journal stays hidden until current eligibility is verified');
+  assert.equal(harness.rootClasses.has('student-nav-hide-electives'), true, 'older snapshots without elective access hide the link until checked');
   harness.context.navigate('journal');
   assert.equal(harness.location.href, `http://localhost${harness.location.pathname}`, 'cached visibility does not grant Journal access');
 
   const initialization = harness.listeners.get('DOMContentLoaded')();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), false, 'cached state remains while fresh portal permissions are pending');
+  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), true, 'Journal stays hidden while fresh portal permissions are pending');
   harness.releasePortal({
     features: { gradesEnabled: true, journalsEnabled: false },
     journalSubjectId: 3,
@@ -571,13 +609,43 @@ test('student sidebar uses a cached snapshot only for pre-paint, then refreshes 
     journalSubjectEligible: true
   });
   await initialization;
+  await new Promise(resolve => setImmediate(resolve));
 
   assert.equal(harness.rootClasses.has('student-nav-hide-grades'), false, 'fresh grade access replaces the cached state');
   assert.equal(harness.rootClasses.has('student-nav-hide-journals'), true, 'fresh Journal denial removes the stale cached link');
+  assert.equal(harness.rootClasses.has('student-nav-hide-electives'), false, 'confirmed elective access stays visible after the API check');
   assert.equal(harness.accessItems.grades.hidden, false);
   assert.equal(harness.accessItems.journals.hidden, true);
   assert.equal(harness.location.redirect, './edugnay-student-dashboard.html', 'fresh access still guards the Journal page');
-  assert.deepEqual(harness.getCachedSnapshot().access, { grades: true, journals: false });
+  assert.deepEqual(harness.getCachedSnapshot().access, { grades: true, journals: false, electives: true });
+});
+
+test('student elective navigation keeps its cached visibility while access refreshes and hides on denial', async () => {
+  const cachedSnapshot = {
+    version: 1,
+    role: 'student',
+    schoolId: '10',
+    studentId: '70',
+    access: { grades: true, journals: true, electives: true }
+  };
+  const allowed = createStudentShellHarness({ cachedSnapshot, deferElectives: true });
+  assert.equal(allowed.rootClasses.has('student-nav-hide-electives'), false, 'cached elective access pre-paints the link');
+  const initialization = allowed.listeners.get('DOMContentLoaded')();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(allowed.rootClasses.has('student-nav-hide-electives'), false, 'the cached link stays visible during refresh');
+  allowed.releaseElectives({});
+  await initialization;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(allowed.rootClasses.has('student-nav-hide-electives'), false);
+  assert.equal(allowed.getCachedSnapshot().access.electives, true);
+
+  const denied = createStudentShellHarness({ cachedSnapshot, electivesEnabled: false });
+  assert.equal(denied.rootClasses.has('student-nav-hide-electives'), false, 'the last verified state is used before refresh');
+  const denialInitialization = denied.listeners.get('DOMContentLoaded')();
+  await denialInitialization;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(denied.rootClasses.has('student-nav-hide-electives'), true, 'the link hides after access is denied');
+  assert.equal(denied.getCachedSnapshot().access.electives, false);
 });
 
 test('student sidebar cache is discarded on account changes and session expiry', async () => {
@@ -586,7 +654,7 @@ test('student sidebar cache is discarded on account changes and session expiry',
     role: 'student',
     schoolId: '10',
     studentId: '70',
-    access: { grades: true, journals: true }
+    access: { grades: true, journals: true, electives: true }
   };
   const switchHarness = createStudentShellHarness({
     cachedSnapshot,
@@ -596,17 +664,22 @@ test('student sidebar cache is discarded on account changes and session expiry',
   });
   const switchInitialization = switchHarness.listeners.get('DOMContentLoaded')();
   await switchInitialization;
+  await new Promise(resolve => setImmediate(resolve));
 
   assert.equal(switchHarness.storage.has(`${studentNavPrefix}10:70`), false, 'old student snapshot is removed after identity mismatch');
   assert.equal(switchHarness.getCachedSnapshot().studentId, '71');
   assert.equal(switchHarness.rootClasses.has('student-nav-hide-grades'), true);
   assert.equal(switchHarness.rootClasses.has('student-nav-hide-journals'), true);
+  assert.equal(switchHarness.rootClasses.has('student-nav-hide-electives'), false, 'the new student link appears after their own access check');
+  assert.equal(switchHarness.getCachedSnapshot().access.electives, true);
 
   const expiredHarness = createStudentShellHarness({ cachedSnapshot, failures: { session: true, sessionStatus: 401 } });
   const expiredInitialization = expiredHarness.listeners.get('DOMContentLoaded')();
   await expiredInitialization;
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(expiredHarness.rootClasses.has('student-nav-hide-grades'), true, 'expired sessions fail closed before showing cached links');
   assert.equal(expiredHarness.rootClasses.has('student-nav-hide-journals'), true);
+  assert.equal(expiredHarness.rootClasses.has('student-nav-hide-electives'), true);
   assert.equal([...expiredHarness.storage.keys()].some(key => key.startsWith(studentNavPrefix)), false, 'session expiry clears the student sidebar cache');
 });
 
@@ -766,11 +839,115 @@ test('cold teacher navigation shows the existing menu and icons before data load
   await initialization;
 
   assert.equal(harness.sectionsNav.children.length, 1);
-  assert.equal(harness.sectionsNav.children[0].textContent, 'No subject sections assigned');
+  assert.equal(harness.sectionsNav.children[0].textContent, 'No classes assigned');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-reports'), true, 'the adviser-only Reports link remains hidden');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-journals'), true, 'the Journal link remains hidden without an assignment');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-sf-templates'), false, 'school-enabled SF Templates becomes visible after context loads');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-reports-group'), false, 'the group appears without reserving space while unverified');
+});
+
+test('My Classes sidebar includes SHS assignments and keeps their saved links stable', async () => {
+  const shsClass = { electiveClassId: '77', gradeName: 'Grade 12', className: 'Immersion A', subjectName: 'Work Immersion' };
+  const harness = createTeacherShellHarness({
+    teachingSections: [], shsClasses: [shsClass],
+    pathname: '/views/teacher/edugnay-teacher-sections.html', search: '?classId=77'
+  });
+  const initialization = harness.listeners.get('DOMContentLoaded')();
+  harness.resolveSchoolReady();
+  await initialization;
+  assert.equal(harness.sectionsNav.children.length, 1);
+  assert.equal(harness.sectionsNav.children[0].className, 'nav-child active');
+  assert.match(harness.sectionsNav.children[0].href, /edugnay-teacher-sections\.html\?classId=77$/);
+  assert.equal(harness.sectionsNav.children[0].children[0].className, 'teacher-section-nav-dot');
+  assert.equal(harness.sectionsNav.children[0].children[1].textContent, 'Grade 12 · Immersion A');
+
+  const saved = JSON.parse(harness.storage.get(`${teacherNavPrefix}10:50`));
+  assert.equal(saved.shsClasses.length, 1);
+  assert.equal(Object.hasOwn(saved.shsClasses[0], 'subject'), false, 'new snapshots keep only fields needed for navigation');
+  const refresh = createTeacherShellHarness({ cachedSnapshot: saved, shsClasses: [shsClass] });
+  const refreshInitialization = refresh.listeners.get('DOMContentLoaded')();
+  assert.equal(refresh.sectionsNav.children.length, 1, 'saved class appears before the fresh request');
+  refresh.resolveSchoolReady();
+  await refreshInitialization;
+  assert.equal(refresh.sectionsNav.children.length, 1);
+
+  const outage = createTeacherShellHarness({ cachedSnapshot: saved, failures: { shsClasses: 500 } });
+  outage.context.restoreTeacherClassesNavigation();
+  const retainedLink = outage.sectionsNav.children[0];
+  const outageInitialization = outage.listeners.get('DOMContentLoaded')();
+  outage.resolveSchoolReady();
+  await outageInitialization;
+  assert.equal(outage.sectionsNav.children[0], retainedLink, 'temporary API failure keeps the saved class link in place');
+
+  const denied = createTeacherShellHarness({ cachedSnapshot: saved, failures: { shsClasses: 404 } });
+  const deniedInitialization = denied.listeners.get('DOMContentLoaded')();
+  denied.resolveSchoolReady();
+  await deniedInitialization;
+  assert.equal(denied.sectionsNav.children[0].textContent, 'No classes assigned');
+  assert.deepEqual(JSON.parse(denied.storage.get(`${teacherNavPrefix}10:50`)).shsClasses, []);
+});
+
+test('My Classes restores short labels and the open state before page initialization', async () => {
+  const saved = {
+    version: 1, schoolId: '10', teacherId: '50',
+    access: { reports: false, journals: false, sfTemplates: true },
+    sections: [{ id: '8', grade: 'Grade 8', name: 'St. Peter', subjects: ['English', 'Mathematics', 'Science'] }],
+    shsClasses: [{ id: '77', grade: 'Grade 12', name: 'Immersion A', subject: 'Work Immersion' }],
+    classesExpanded: true
+  };
+  const harness = createTeacherShellHarness({
+    cachedSnapshot: saved,
+    teachingSections: [{ id: '8', gradeLevelName: 'Grade 8', name: 'St. Peter',
+      subjectAssignments: [{ subjectName: 'English' }, { subjectName: 'Mathematics' }, { subjectName: 'Science' }] }],
+    shsClasses: [{ electiveClassId: '77', gradeName: 'Grade 12', className: 'Immersion A', subjectName: 'Work Immersion' }]
+  });
+  harness.context.restoreTeacherClassesNavigation();
+  assert.equal(harness.sectionGroup.classList.contains('open'), true);
+  assert.equal(harness.sectionToggle.attributes['aria-expanded'], 'true');
+  assert.equal(harness.sectionToggle.attributes.tabindex, '0');
+  assert.equal(harness.sectionsNav.children[0].children[1].textContent, 'Grade 8 · St. Peter');
+  assert.equal(harness.sectionsNav.children[1].children[0].className, 'teacher-section-nav-dot');
+  assert.equal(harness.sectionsNav.children[1].children[1].textContent, 'Grade 12 · Immersion A', 'older cached subject names are ignored in the sidebar');
+  const firstLink = harness.sectionsNav.children[0];
+  const initialRenderCount = harness.sectionsNav.renderCount;
+  const initialization = harness.listeners.get('DOMContentLoaded')();
+  assert.equal(harness.sectionsNav.children[0], firstLink, 'DOMContentLoaded does not rebuild saved links');
+  harness.resolveSchoolReady();
+  await initialization;
+  assert.equal(harness.sectionsNav.renderCount, initialRenderCount, 'unchanged API assignments do not rebuild links');
+  assert.equal(harness.sectionGroup.classList.contains('open'), true);
+
+  let prevented = false;
+  harness.sectionToggle.listeners.keydown({ key: 'Enter', preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(harness.sectionGroup.classList.contains('open'), false);
+  assert.equal(harness.sectionToggle.attributes['aria-expanded'], 'false');
+  const nextPage = createTeacherShellHarness({ cachedSnapshot: JSON.parse(harness.storage.get(`${teacherNavPrefix}10:50`)),
+    pathname: '/views/teacher/edugnay-teacher-sections.html' });
+  nextPage.context.restoreTeacherClassesNavigation();
+  assert.equal(nextPage.sectionGroup.classList.contains('open'), false, 'a saved collapsed state overrides the page default');
+  assert.equal(nextPage.sectionsNav.children.length, 2);
+});
+
+test('older My Classes snapshots use page defaults and every teacher sidebar restores beside its markup', () => {
+  const oldSnapshot = {
+    version: 1, schoolId: '10', teacherId: '50',
+    access: { reports: false, journals: false, sfTemplates: false },
+    sections: [{ id: '8', grade: 'Grade 8', name: 'St. Peter' }]
+  };
+  const onClassesPage = createTeacherShellHarness({ cachedSnapshot: oldSnapshot,
+    pathname: '/views/teacher/edugnay-teacher-sections.html' });
+  onClassesPage.context.restoreTeacherClassesNavigation();
+  assert.equal(onClassesPage.sectionGroup.classList.contains('open'), true);
+  const onDashboard = createTeacherShellHarness({ cachedSnapshot: oldSnapshot });
+  onDashboard.context.restoreTeacherClassesNavigation();
+  assert.equal(onDashboard.sectionGroup.classList.contains('open'), false);
+  for (const filename of fs.readdirSync(teacherViews).filter(name => name.endsWith('.html'))) {
+    const html = fs.readFileSync(path.join(teacherViews, filename), 'utf8');
+    if (!html.includes('data-teacher-sections-nav')) continue;
+    const navIndex = html.indexOf('data-teacher-sections-nav');
+    assert.ok(html.slice(navIndex, navIndex + 320).includes('restoreTeacherClassesNavigation();'), `${filename} restores its nav while parsing`);
+  }
 });
 
 test('teacher sidebar cache is isolated by tenant and teacher, and survives refresh failures safely', async () => {
@@ -779,18 +956,22 @@ test('teacher sidebar cache is isolated by tenant and teacher, and survives refr
     schoolId: '99',
     teacherId: '50',
     access: { reports: true, journals: true, sfTemplates: true },
-    sections: [{ id: '999', grade: 'Grade 9', name: 'Wrong School' }]
+    sections: [{ id: '999', grade: 'Grade 9', name: 'Wrong School' }],
+    classesExpanded: true
   };
   const tenantHarness = createTeacherShellHarness({
     cachedSnapshot: wrongSchoolSnapshot,
     teachingSections: [{ id: '101', gradeLevelName: 'Grade 4', name: 'New School', status: 'active', academicYearStatus: 'active' }]
   });
+  tenantHarness.context.restoreTeacherClassesNavigation();
+  assert.equal(tenantHarness.sectionGroup.classList.contains('open'), true);
   const tenantInitialization = tenantHarness.listeners.get('DOMContentLoaded')();
-  assert.equal(tenantHarness.sectionsNav.children[0].children[1].textContent, 'Grade 9 – Wrong School', 'the last menu is shown while the current identity is checked');
+  assert.equal(tenantHarness.sectionsNav.children[0].children[1].textContent, 'Grade 9 · Wrong School', 'the last menu is shown while the current identity is checked');
   tenantHarness.resolveSchoolReady();
   await tenantInitialization;
   assert.equal(tenantHarness.sectionsNav.children.length, 1);
-  assert.equal(tenantHarness.sectionsNav.children[0].children[1].textContent, 'Grade 4 – New School');
+  assert.equal(tenantHarness.sectionsNav.children[0].children[1].textContent, 'Grade 4 · New School');
+  assert.equal(tenantHarness.sectionGroup.classList.contains('open'), false, 'new identity uses the page default');
 
   const sameSchoolSnapshot = { ...wrongSchoolSnapshot, schoolId: '10' };
   const switchHarness = createTeacherShellHarness({
@@ -799,10 +980,10 @@ test('teacher sidebar cache is isolated by tenant and teacher, and survives refr
     teachingSections: [{ id: '102', gradeLevelName: 'Grade 5', name: 'New Teacher', status: 'active', academicYearStatus: 'active' }]
   });
   const switchInitialization = switchHarness.listeners.get('DOMContentLoaded')();
-  assert.equal(switchHarness.sectionsNav.children[0].children[1].textContent, 'Grade 9 – Wrong School');
+  assert.equal(switchHarness.sectionsNav.children[0].children[1].textContent, 'Grade 9 · Wrong School');
   switchHarness.resolveSchoolReady();
   await switchInitialization;
-  assert.equal(switchHarness.sectionsNav.children[0].children[1].textContent, 'Grade 5 – New Teacher');
+  assert.equal(switchHarness.sectionsNav.children[0].children[1].textContent, 'Grade 5 · New Teacher');
   assert.equal(switchHarness.storage.has(`${teacherNavPrefix}10:50`), false, 'old teacher cache is removed on identity mismatch');
   assert.equal(JSON.parse(switchHarness.storage.get(`${teacherNavPrefix}current`)).teacherId, '51');
 

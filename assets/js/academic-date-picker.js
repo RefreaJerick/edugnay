@@ -48,7 +48,9 @@
   }
 
   function displayDate(value) {
-    return validDate(value) ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : '';
+    return validDate(value)
+      ? `${MONTHS[Number(value.slice(5, 7)) - 1].slice(0, 3)} ${value.slice(8, 10)}, ${value.slice(0, 4)}`
+      : '';
   }
 
   function displayDateTime(value) {
@@ -67,6 +69,58 @@
 
   function boundDate(value) {
     return /^\d{4}-\d{2}-\d{2}/.test(value || '') ? value.slice(0, 10) : '';
+  }
+
+  function yearBounds(state) {
+    const minimum = state.type === 'month'
+      ? (validMonth(state.input.min) ? Number(state.input.min.slice(0, 4)) : 1)
+      : (boundDate(state.input.min) ? Number(state.input.min.slice(0, 4)) : 1);
+    const maximum = state.type === 'month'
+      ? (validMonth(state.input.max) ? Number(state.input.max.slice(0, 4)) : 9999)
+      : (boundDate(state.input.max) ? Number(state.input.max.slice(0, 4)) : 9999);
+    return { min: Math.max(1, minimum), max: Math.min(9999, maximum) };
+  }
+
+  function dateForYear(value, year) {
+    const month = Number(value.slice(5, 7)) - 1;
+    const day = Number(value.slice(8, 10));
+    const lastDay = new Date(0);
+    lastDay.setUTCHours(0, 0, 0, 0);
+    lastDay.setUTCFullYear(year, month + 1, 0);
+    return `${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-${String(Math.min(day, lastDay.getUTCDate())).padStart(2, '0')}`;
+  }
+
+  function utcDate(year, month, day) {
+    const date = new Date(0);
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCFullYear(year, month, day);
+    return date;
+  }
+
+  function setCalendarYear(state, value) {
+    const year = Number(value);
+    const bounds = yearBounds(state);
+    if (!Number.isInteger(year) || year < bounds.min || year > bounds.max || state.type === 'time') return false;
+
+    if (state.type === 'month') {
+      let month = state.date.slice(0, 7);
+      month = `${String(year).padStart(4, '0')}-${month.slice(5, 7)}`;
+      const minimum = validMonth(state.input.min) ? state.input.min : '';
+      const maximum = validMonth(state.input.max) ? state.input.max : '';
+      if (minimum && month < minimum) month = minimum;
+      if (maximum && month > maximum) month = maximum;
+      state.monthValue = month;
+      state.date = `${month}-01`;
+    } else {
+      let date = dateForYear(state.date, year);
+      const minimum = boundDate(state.input.min);
+      const maximum = boundDate(state.input.max);
+      if (minimum && date < minimum) date = minimum;
+      if (maximum && date > maximum) date = maximum;
+      state.date = date;
+    }
+    state.error = '';
+    return true;
   }
 
   function selectedHour(state) {
@@ -131,7 +185,7 @@
       <div class="academic-range-navigation">
         <button type="button" data-date-nav="-12" aria-label="Previous year"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5m7 10-5-5 5-5"/></svg></button>
         <button type="button" data-date-nav="-1" aria-label="Previous month"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
-        <strong data-date-month></strong>
+        <div class="academic-range-month-year"><strong data-date-month></strong><input class="academic-range-year-input" type="number" data-date-year min="1" max="9999" step="1" inputmode="numeric" aria-label="Year"></div>
         <button type="button" data-date-nav="1" aria-label="Next month"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
         <button type="button" data-date-nav="12" aria-label="Next year"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 17 5-5-5-5m2 10 5-5-5-5"/></svg></button>
       </div>
@@ -150,7 +204,7 @@
     document.body.appendChild(popup);
     popup.addEventListener('click', onPopupClick);
     popup.addEventListener('input', onPopupInput);
-    popup.addEventListener('change', onPopupInput);
+    popup.addEventListener('change', onPopupChange);
     popup.addEventListener('keydown', onPopupKeydown);
     popup.addEventListener('focusout', () => setTimeout(() => {
       if (active && !popup.contains(document.activeElement)) close(false);
@@ -307,7 +361,13 @@
     popup.querySelector('[data-date-title]').textContent = state.label || (isTimeOnly ? 'Choose a time' : 'Choose a date');
     popup.querySelector('[data-date-step]').textContent = isTimeOnly ? 'Choose time' : isMonth ? 'Choose month' : state.type === 'datetime-local' ? 'Choose date and time' : 'Choose date';
     popup.setAttribute('aria-label', isTimeOnly ? `Choose time${state.label ? ` for ${state.label.toLowerCase()}` : ''}` : isMonth ? 'Choose reporting month' : state.type === 'datetime-local' ? 'Choose date and time' : 'Choose a date');
-    popup.querySelector('[data-date-month]').textContent = isMonth ? String(year) : `${MONTHS[month]} ${year}`;
+    popup.querySelector('[data-date-month]').textContent = isMonth ? '' : MONTHS[month];
+    const yearField = popup.querySelector('[data-date-year]');
+    const bounds = yearBounds(state);
+    yearField.min = String(bounds.min);
+    yearField.max = String(bounds.max);
+    yearField.value = String(year).padStart(4, '0');
+    yearField.hidden = isTimeOnly;
     popup.querySelector('.academic-range-navigation').hidden = isTimeOnly;
     popup.querySelectorAll('[data-date-nav]').forEach(button => {
       const value = Number(button.dataset.dateNav);
@@ -333,8 +393,8 @@
     const days = popup.querySelector('.academic-range-days');
     days.replaceChildren();
     if (!isMonth && !isTimeOnly) {
-      const firstWeekday = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
-      const count = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      const firstWeekday = (utcDate(year, month, 1).getUTCDay() + 6) % 7;
+      const count = utcDate(year, month + 1, 0).getUTCDate();
       for (let blank = 0; blank < firstWeekday; blank += 1) {
         const spacer = document.createElement('span');
         spacer.setAttribute('aria-hidden', 'true');
@@ -384,7 +444,7 @@
     error.textContent = message;
     error.hidden = !message;
     popup.querySelector('[data-date-action="clear"]').hidden = state.input.required;
-    popup.querySelector('[data-date-action="apply"]').disabled = !valid;
+    popup.querySelector('[data-date-action="apply"]').disabled = !valid || Boolean(state.error);
     position();
     if (focusActive) {
       const target = isTimeOnly
@@ -420,7 +480,7 @@
     }
     const nav = event.target.closest('[data-date-nav]');
     if (nav) {
-      const next = new Date(Date.UTC(Number(active.date.slice(0, 4)), Number(active.date.slice(5, 7)) - 1 + Number(nav.dataset.dateNav), 1));
+      const next = utcDate(Number(active.date.slice(0, 4)), Number(active.date.slice(5, 7)) - 1 + Number(nav.dataset.dateNav), 1);
       active.date = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-01`;
       if (active.type === 'month' && active.monthValue) active.monthValue = `${next.getUTCFullYear()}-${active.monthValue.slice(5, 7)}`;
       active.error = '';
@@ -450,6 +510,16 @@
 
   function onPopupInput(event) {
     if (!active) return;
+    if (event.target.matches('[data-date-year]')) {
+      if (!/^\d{4}$/.test(event.target.value)) return;
+      if (!setCalendarYear(active, event.target.value)) {
+        const bounds = yearBounds(active);
+        active.error = `Enter a year from ${bounds.min} to ${bounds.max}.`;
+      }
+      render();
+      event.target.focus();
+      return;
+    }
     if (event.target.matches('[data-time-hour]')) {
       const entered = event.target.value === '' ? NaN : Number(event.target.value);
       if (Number.isInteger(entered) && entered >= 1 && entered <= 12) {
@@ -476,10 +546,38 @@
     popup.querySelector('[data-date-action="apply"]').disabled = !canApply(active, value);
   }
 
+  function onPopupChange(event) {
+    if (!active) return;
+    if (event.target.matches('[data-date-year]')) {
+      const year = event.target.value;
+      const currentYear = Number(active.date.slice(0, 4));
+      if (/^\d{1,4}$/.test(year) && Number(year) === currentYear) {
+        active.error = '';
+        render();
+        event.target.focus();
+        return;
+      }
+      if (/^\d{1,4}$/.test(year) && setCalendarYear(active, year)) {
+        render();
+        event.target.focus();
+        return;
+      }
+      const bounds = yearBounds(active);
+      active.error = `Enter a year from ${bounds.min} to ${bounds.max}.`;
+      event.target.value = String(currentYear).padStart(4, '0');
+      const error = popup.querySelector('[data-date-error]');
+      error.textContent = active.error;
+      error.hidden = false;
+      popup.querySelector('[data-date-action="apply"]').disabled = true;
+      return;
+    }
+    onPopupInput(event);
+  }
+
   function moveMonth(delta) {
-    const date = new Date(Date.UTC(Number(active.date.slice(0, 4)), Number(active.date.slice(5, 7)) - 1 + delta, 1));
+    const date = utcDate(Number(active.date.slice(0, 4)), Number(active.date.slice(5, 7)) - 1 + delta, 1);
     const desiredDay = Number(active.date.slice(8, 10));
-    const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+    const last = utcDate(date.getUTCFullYear(), date.getUTCMonth() + 1, 0).getUTCDate();
     active.date = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(Math.min(desiredDay, last)).padStart(2, '0')}`;
     if (active.type === 'month') active.monthValue = active.date.slice(0, 7);
     active.cleared = false;

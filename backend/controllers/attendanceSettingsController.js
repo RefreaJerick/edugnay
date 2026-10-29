@@ -51,7 +51,11 @@ async function updateAttendanceSettings(req, res, next) {
       [req.user.schoolId, ...counts, req.body.countExcusedAbsences, req.body.allowEditPastAttendance]
     );
     await writeAuditLog(connection, req, 'attendance_settings_updated', 'school_attendance_settings',
-      req.user.schoolId, { thresholds: counts }, req.user.schoolId);
+      req.user.schoolId, {
+        thresholds: counts,
+        countExcusedAbsences: req.body.countExcusedAbsences,
+        allowEditPastAttendance: req.body.allowEditPastAttendance
+      }, req.user.schoolId);
     await connection.commit();
     return getAttendanceSettings(req, res, next);
   } catch (error) {

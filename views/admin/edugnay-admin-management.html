@@ -54,10 +54,6 @@
             <label class="form-label" for="createTrack">SHS Track</label>
             <select class="form-select dropdown" name="track" id="createTrack" onchange="updateSectionFormFields('create')"></select>
           </div>
-          <div class="form-group" id="createStrandGroup" style="display:none;">
-            <label class="form-label" for="createStrand">Strand</label>
-            <select class="form-select dropdown" name="strand" id="createStrand" onchange="updateSectionFormFields('create')"></select>
-          </div>
           <div class="form-group">
             <label class="form-label" for="createSectionName">Section Name</label>
             <input class="form-select" type="text" name="name" id="createSectionName" placeholder="e.g. St. Matthew" required/>
@@ -115,7 +111,7 @@
             <div class="form-select section-placement-value" id="editGradeLevel"></div>
           </div>
           <div class="form-group" id="editStrandGroup" hidden>
-            <div class="form-label">Track and Strand</div>
+            <div class="form-label">SHS track</div>
             <div class="form-select section-placement-value" id="editStrand"></div>
           </div>
         </div>
@@ -140,35 +136,6 @@
     <div class="modal-foot">
       <button type="button" class="btn btn-cancel" onclick="closeSectionEditModal()">Cancel</button>
       <button type="submit" form="editSectionForm" class="btn btn-save">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="sectionClassifyStrandModalBackdrop">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="classifyStrandTitle">
-    <div class="modal-head">
-      <div class="modal-heading">
-        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="list-checks"></i></div>
-        <div class="modal-heading-copy">
-          <div class="modal-title" id="classifyStrandTitle">Review SHS strand</div>
-          <div class="modal-sub" id="classifyStrandSub">Confirm the strand for this existing section.</div>
-        </div>
-      </div>
-      <button class="modal-close" type="button" onclick="closeClassifyStrandModal()" aria-label="Close"><i data-lucide="x"></i></button>
-    </div>
-    <div class="modal-body">
-      <form id="classifyStrandForm">
-        <input type="hidden" id="classifyStrandSectionId">
-        <div class="form-group">
-          <label class="form-label" for="classifyStrandSelect">Strand</label>
-          <select class="form-select dropdown" id="classifyStrandSelect" required></select>
-        </div>
-        <p class="form-help">This one-time classification keeps the section, its students, and their saved records in place. Choose the strand confirmed by your school.</p>
-      </form>
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closeClassifyStrandModal()">Cancel</button>
-      <button type="submit" form="classifyStrandForm" class="btn btn-save">Confirm Strand</button>
     </div>
   </div>
 </div>
@@ -237,20 +204,19 @@
         <div class="form-group" id="subjectShsFields" hidden>
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label" for="subjectShsGroup">Grading type</label>
-              <select class="form-select dropdown" id="subjectShsGroup" name="shsGradingGroup" onchange="updateSubjectShsFields()">
-                <option value="">Select a grading type</option>
+              <label class="form-label" for="subjectShsGroup">Subject type</label>
+              <select class="form-select dropdown" id="subjectShsGroup" name="shsSubjectType" onchange="updateSubjectShsFields()">
+                <option value="">Select a subject type</option>
               </select>
-              <div id="subjectShsWeightSummary" class="subject-shs-weight-summary" aria-live="polite" hidden></div>
             </div>
             <div class="form-group">
               <label class="form-label" for="subjectShsTrack">Track</label>
               <select class="form-select dropdown" id="subjectShsTrack" name="trackId" onchange="updateSubjectShsFields()"></select>
             </div>
           </div>
-          <div class="form-group" id="subjectShsStrandGroup">
-            <label class="form-label" for="subjectShsStrand">Strand</label>
-            <select class="form-select dropdown" id="subjectShsStrand" name="strandId"></select>
+          <div class="form-group">
+            <label class="form-label" for="subjectShsHours">Instructional hours</label>
+            <select class="form-select dropdown" id="subjectShsHours" name="instructionalHours"></select>
           </div>
         </div>
       </form>
@@ -599,6 +565,7 @@
 
       <a href="edugnay-admin-management.html" class="nav-item active" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
       <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
+      <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">SHS Program</span></a>
     </div>
 
     <div class="nav-section">
@@ -689,13 +656,7 @@
       </div>
 
       <div class="tb-theme" data-theme-control>
-        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-        <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-          <div class="tb-theme-heading">Appearance</div>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-        </div>
+        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -817,7 +778,7 @@
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
         <div>
           <div class="info-title">How subjects work in Academix</div>
-          <div class="info-text">Subjects are applied to the selected grade levels and, for Senior High School, selected strands. Once saved, they appear in the <strong>Assign Teachers</strong> tab where you can link a teacher to each subject per section.</div>
+          <div class="info-text">Subjects are applied to the selected grade levels and, for Senior High School, the selected track. Once saved, they appear in the <strong>Assign Teachers</strong> tab where you can link a teacher to each subject per section.</div>
         </div>
       </div>
 
@@ -969,7 +930,7 @@
         <span class="modal-heading-icon"><i data-lucide="book-open-check"></i></span>
         <div class="modal-heading-copy">
           <div class="modal-title" id="depedSubjectReviewTitle">Review DepEd subjects</div>
-          <div class="modal-sub" id="depedSubjectReviewDescription">Review subjects for enabled Grades 2–10.</div>
+          <div class="modal-sub" id="depedSubjectReviewDescription">Review subjects for enabled Grades 2–11.</div>
         </div>
       </div>
       <button class="modal-close" id="closeDepedSubjectReview" type="button" aria-label="Close"><i data-lucide="x"></i></button>
@@ -986,7 +947,7 @@
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   closeSectionMenus();
-  closeSectionAddModal(); closeSectionEditModal(); closeClassifyStrandModal(); closeSectionStudentsModal();
+  closeSectionAddModal(); closeSectionEditModal(); closeSectionStudentsModal();
   closeSubjectModal(); closeTeacherModal(); closeDepedSubjectReview();
   closeStudentAssignModal(); closeConfirmRemoveModal(); closeImportStudentsModal();
 });
@@ -1026,8 +987,6 @@ function updateSectionFormFields() {
   const gradeSelect = document.getElementById('createGradeLevel');
   const trackSelect = document.getElementById('createTrack');
   const trackGroup = document.getElementById('createTrackGroup');
-  const strandSelect = document.getElementById('createStrand');
-  const strandGroup = document.getElementById('createStrandGroup');
   const levels = managementSchoolLevels();
   const requestedLevel = levelSelect?.value;
   const level = levels.includes(requestedLevel)
@@ -1045,13 +1004,6 @@ function updateSectionFormFields() {
   if (trackGroup) trackGroup.style.display = level === 'shs' ? '' : 'none';
   managementSetOptions(trackSelect, tracks.map(option => ({ value: option.displayName, label: option.displayName })), 'Select a track', track?.displayName || '');
   if (trackSelect) trackSelect.required = level === 'shs';
-  const strands = track ? managementStrandOptions(track.id) : [];
-  const requestedStrand = strandSelect?.value;
-  const strand = strands.find(option => option.displayName === requestedStrand) || strands[0] || null;
-  const strandRequired = Boolean(track && ['academic', 'tvl'].includes(track.trackCode));
-  if (strandGroup) strandGroup.style.display = strandRequired ? '' : 'none';
-  managementSetOptions(strandSelect, strands.map(option => ({ value: option.displayName, label: option.displayName })), 'Select a strand', strand?.displayName || '');
-  if (strandSelect) strandSelect.required = strandRequired;
   const sub = document.getElementById('sectionAddModalSub');
   if (sub) {
     sub.textContent = !level || !grade
@@ -1158,15 +1110,9 @@ function managementApiSubjectRecord(subject) {
     ? `shs:${managementGradeKey(scope.gradeLevelName)}:${scope.trackId == null ? 'all' : `t${scope.trackId}`}:${scope.strandId == null ? 'all' : `s${scope.strandId}`}`
     : `${scope.schoolLevelCode}:${managementGradeKey(scope.gradeLevelName)}`);
   const placement = (subject.gradeScopes || []).find(scope => scope.schoolLevelCode === 'shs');
-  const groupLabels = {
-    core: 'Core subject',
-    academic_other: 'Academic track subject',
-    academic_immersion: 'Academic immersion, research, or enterprise',
-    other_other: 'TVL, Sports, or Arts and Design subject',
-    other_immersion: 'TVL, Sports, or Arts immersion, performance, or exhibit'
-  };
+  const groupLabels = { core: 'Core subject', academic_elective: 'Academic elective', techpro_elective: 'TechPro elective', work_immersion: 'Work immersion' };
   const hasShsScope = (subject.gradeScopes || []).some(scope => scope.schoolLevelCode === 'shs');
-  const isShsSubject = level === 'shs' || hasShsScope || Boolean(subject.shsGradingGroup);
+  const isShsSubject = level === 'shs' || hasShsScope;
   return {
     id: subject.id,
     apiId: subject.apiId,
@@ -1176,37 +1122,32 @@ function managementApiSubjectRecord(subject) {
     schoolLevelCode: level,
     schoolLevelName: subject.schoolLevelName || (level ? managementLevelLabel(level) : ''),
     gradeLevelName: grade,
-    type: isShsSubject ? groupLabels[subject.shsGradingGroup] || 'Needs SHS classification' : '',
+    type: isShsSubject ? groupLabels[subject.shsSubjectType] || 'Needs Strengthened SHS setup' : '',
     isActive: subject.isActive,
     gradeLevelIds: subject.gradeLevelIds || [],
     gradeScopes: subject.gradeScopes || [],
     trackId: placement?.trackId ?? subject.trackId ?? null,
     strandId: placement?.strandId ?? subject.strandId ?? null,
-    shsGradingGroup: subject.shsGradingGroup || null,
+    shsSubjectType: subject.shsSubjectType || null,
+    instructionalHours: subject.instructionalHours || null,
     grades: [...new Set(grades.length ? grades : (level && grade ? [`${level}:${managementGradeKey(grade)}`] : []))]
   };
 }
 
 async function loadManagementApiData() {
-  const [school, structure, academicYears, sectionRecords, subjects, teacherResponse, studentResponse, shsGradingTypes] = await Promise.all([
+  const [school, structure, academicYears, sectionRecords, subjects, teacherResponse, studentResponse] = await Promise.all([
     window.EDUGNAY_API.getSchoolSettings(),
     window.EDUGNAY_API.getAcademicStructure(),
     window.EDUGNAY_API.getAcademicYears(),
     window.EDUGNAY_API.getSections(),
     window.EDUGNAY_API.getSubjects(),
     window.EDUGNAY_API.getAllUsers({ role: 'teacher', status: 'active' }),
-    window.EDUGNAY_API.getAllUsers({ role: 'student', status: 'active' }),
-    window.EDUGNAY_API.getShsGradingTypes()
+    window.EDUGNAY_API.getAllUsers({ role: 'student', status: 'active' })
   ]);
 
   MANAGEMENT_API_CONTEXT.school = school;
   MANAGEMENT_API_CONTEXT.structure = Array.isArray(structure) ? structure : [];
   MANAGEMENT_API_CONTEXT.academicYears = Array.isArray(academicYears) ? academicYears : [];
-  MANAGEMENT_API_CONTEXT.shsGradingTypes = Array.isArray(shsGradingTypes) ? shsGradingTypes : [];
-  managementSetOptions(document.getElementById('subjectShsGroup'), MANAGEMENT_API_CONTEXT.shsGradingTypes.map(type => ({
-    value: type.code,
-    label: type.label
-  })), 'Select a grading type', '');
   MANAGEMENT_API_CONTEXT.activeAcademicYear = MANAGEMENT_API_CONTEXT.academicYears.find(year => year.status === 'active') || null;
   window.EDUGNAY_API.setSchoolContext(school);
 
@@ -1285,20 +1226,16 @@ function managementApiSectionPayload(sectionData, sectionId = '') {
   const track = sectionData.level === 'shs'
     ? level?.tracks?.find(item => managementGradeKey(item.displayName) === managementGradeKey(sectionData.track))
     : null;
-  const strand = track && sectionData.strand
-    ? track.strands?.find(item => managementGradeKey(item.displayName) === managementGradeKey(sectionData.strand))
-    : null;
   const academicYearId = MANAGEMENT_API_CONTEXT.activeAcademicYear?.id;
-  const requiresStrand = ['academic', 'tvl'].includes(track?.trackCode);
-  if (!academicYearId || !level?.id || !grade?.id || (sectionData.level === 'shs' && !track?.id) || (requiresStrand && !strand?.id)) {
-    throw new Error('The selected academic year, school level, grade, track, or strand is not configured.');
+  if (!academicYearId || !level?.id || !grade?.id || (sectionData.level === 'shs' && !track?.id)) {
+    throw new Error('The selected academic year, school level, grade, or track is not configured.');
   }
   return {
     academicYearId: Number(academicYearId),
     schoolLevelId: Number(level.id),
     gradeLevelId: Number(grade.id),
     trackId: track?.id ? Number(track.id) : null,
-    strandId: strand?.id ? Number(strand.id) : null,
+    strandId: null,
     name: sectionData.name,
     capacity: sectionData.capacity,
     adviserUserId: sectionData.adviserId ? Number(sectionData.adviserId) : null
@@ -1312,12 +1249,9 @@ async function saveSectionForm(event, mode) {
   const grade = mode === 'create' ? form.elements.grade?.value || '' : '';
   const name = String(form.elements.name?.value || '').trim();
   const track = mode === 'create' && level === 'shs' ? String(form.elements.track?.value || '').trim() : '';
-  const strand = mode === 'create' && level === 'shs' ? String(form.elements.strand?.value || '').trim() : '';
-  const selectedTrack = MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === 'shs')?.tracks?.find(item => managementGradeKey(item.displayName) === managementGradeKey(track));
-  const requiresStrand = ['academic', 'tvl'].includes(selectedTrack?.trackCode);
   const adviserId = form.elements.adviserId?.value || null;
   const capacity = Number(form.elements.capacity?.value);
-  if ((mode === 'create' && (!level || !grade || (level === 'shs' && !track) || (requiresStrand && !strand))) || !name || !Number.isFinite(capacity) || capacity <= 0) {
+  if ((mode === 'create' && (!level || !grade || (level === 'shs' && !track))) || !name || !Number.isFinite(capacity) || capacity <= 0) {
     form.reportValidity();
     return;
   }
@@ -1327,7 +1261,7 @@ async function saveSectionForm(event, mode) {
     level,
     grade,
     track,
-    strand: strand || null,
+    strand: null,
     capacity,
     adviserId
   };
@@ -1473,7 +1407,7 @@ function renderSections() {
                   <span class="section-grade-badge gb-${managementSectionTone(section.level, section.gradeValue)}" title="${window.EDUGNAY_CONFIG.escapeHtml(managementSectionPlacement(section))}">${window.EDUGNAY_CONFIG.escapeHtml(section.grade)}</span>
                 </div>
                 ${section.level === 'shs' && managementSectionCardPath(section)
-                  ? `<div class="section-card-path${section.needsStrandReview ? ' is-review' : ''}" title="${window.EDUGNAY_CONFIG.escapeHtml(managementSectionPlacement(section))}">${window.EDUGNAY_CONFIG.escapeHtml(managementSectionCardPath(section))}</div>`
+                  ? `<div class="section-card-path${section.needsCurriculumSetup ? ' is-review' : ''}" title="${window.EDUGNAY_CONFIG.escapeHtml(managementSectionPlacement(section))}">${window.EDUGNAY_CONFIG.escapeHtml(managementSectionCardPath(section))}</div>`
                   : ''}
               </div>
               <div class="card-stats">
@@ -1494,7 +1428,6 @@ function renderSections() {
                   <button class="section-menu-trigger" type="button" aria-label="Section actions" aria-haspopup="menu" aria-expanded="false"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
                   <div class="section-action-menu" role="menu">
                     <button class="section-menu-item section-menu-edit" type="button" role="menuitem"><i data-lucide="pencil" style="width:14px;height:14px;"></i>Edit Section</button>
-                    ${section.needsStrandReview ? '<button class="section-menu-item section-menu-classify" type="button" role="menuitem"><i data-lucide="list-checks" style="width:14px;height:14px;"></i>Review SHS Strand</button>' : ''}
                     <button class="section-menu-item delete" type="button" role="menuitem"><i data-lucide="trash-2" style="width:14px;height:14px;"></i>Delete Section</button>
                   </div>
                 </div>
@@ -1527,11 +1460,6 @@ function renderSections() {
       closeSectionMenus();
       openSectionEditModal(card);
     });
-    card.querySelector('.section-menu-classify')?.addEventListener('click', () => {
-      closeSectionMenus();
-      const section = managementSectionById(card.dataset.id);
-      if (section) openClassifyStrandModal(section);
-    });
     card.querySelector('.section-menu-item.delete').addEventListener('click', () => {
       closeSectionMenus();
       const section = managementSectionById(card.dataset.id);
@@ -1548,16 +1476,12 @@ function renderSections() {
       <td>${section.students}</td>
       <td>${section.subjects}</td>
       <td>${section.capacity}</td>
-      <td><div class="row-actions"><button class="row-btn view" type="button">View</button><button class="row-btn edit" type="button">${section.adviser ? 'Edit' : 'Assign'}</button>${section.needsStrandReview ? '<button class="row-btn classify" type="button">Review strand</button>' : ''}<button class="row-btn danger" type="button">Delete</button></div></td>
+      <td><div class="row-actions"><button class="row-btn view" type="button">View</button><button class="row-btn edit" type="button">${section.adviser ? 'Edit' : 'Assign'}</button><button class="row-btn danger" type="button">Delete</button></div></td>
     </tr>`).join('') : '') + `<tr class="panel-empty-row" hidden><td colspan="7">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections found', text: 'Create a section or adjust the filters.' })}</td></tr>`;
   const sectionTableEmpty = tbody.querySelector('.panel-empty-row');
   if (sectionTableEmpty) sectionTableEmpty.hidden = records.length > 0;
   tbody.querySelectorAll('.row-btn.view').forEach(button => button.addEventListener('click', () => openSectionStudentsModal(button.closest('tr'))));
   tbody.querySelectorAll('.row-btn.edit').forEach(button => button.addEventListener('click', () => openSectionEditModal(button.closest('tr'))));
-  tbody.querySelectorAll('.row-btn.classify').forEach(button => button.addEventListener('click', () => {
-    const section = managementSectionById(button.closest('tr').dataset.id);
-    if (section) openClassifyStrandModal(section);
-  }));
   tbody.querySelectorAll('.row-btn.danger').forEach(button => button.addEventListener('click', () => {
     const section = managementSectionById(button.closest('tr').dataset.id);
     if (section) openSectionDeleteConfirmation(section);
@@ -1699,7 +1623,7 @@ function renderSubjectStrandTabs(level) {
   const strands = managementShsPlacementOptions();
   tabs.classList.remove('is-empty');
   tabs.innerHTML = [
-    `<div class="filter-tab grade-filter-tab ${activeSubjectStrand === 'all' ? 'active' : ''}" data-strand="all" onclick="switchSubjectStrandTab('all')">All tracks and strands <span class="tab-count">${subjects.filter(subject => managementSubjectFilterMatches(gradeFilter, subject.grades)).length}</span></div>`,
+    `<div class="filter-tab grade-filter-tab ${activeSubjectStrand === 'all' ? 'active' : ''}" data-strand="all" onclick="switchSubjectStrandTab('all')">All tracks <span class="tab-count">${subjects.filter(subject => managementSubjectFilterMatches(gradeFilter, subject.grades)).length}</span></div>`,
     ...strands.map(strand => {
       const key = `t${strand.track.id}:s${strand.strand?.id || 'all'}`;
       const count = subjects.filter(subject => managementSubjectFilterMatches(gradeFilter, subject.grades, key)).length;
@@ -1725,7 +1649,7 @@ function renderManagementSubjectTabs() {
         return `<button type="button" class="division-filter-tab ${activeDivision === level ? 'active' : ''}" data-division="${level}" role="tab" aria-selected="${activeDivision === level}" onclick="switchSubjectDivisionTab('${level}', this)">${managementLevelLabel(level)} <span class="tab-count">${count}</span></button>`;
       }).join('')}
     </div>
-    <div class="grade-filter-tabs subject-scroll-fade-tab-row is-empty" id="subjectStrandSubTabs" data-scroll-target="SHS strand tabs" role="tablist" aria-label="SHS strands"></div>
+    <div class="grade-filter-tabs subject-scroll-fade-tab-row is-empty" id="subjectStrandSubTabs" data-scroll-target="SHS track tabs" role="tablist" aria-label="SHS tracks"></div>
     <div class="grade-filter-tabs subject-scroll-fade-tab-row is-empty" id="subjectGradeSubTabs" data-scroll-target="grade level tabs" role="tablist" aria-label="Grade levels"></div>`;
   renderSubjectGradeTabs(activeDivision === 'all' ? 'all' : activeDivision);
   updateSubjectPanelTitle();
@@ -1775,7 +1699,7 @@ function renderSubjects() {
   const subjectRecords = managementSubjectRecords();
   const reviewDepedButton = document.getElementById('reviewDepedSubjects');
   if (reviewDepedButton) {
-    reviewDepedButton.hidden = !managementSchoolLevels().some(level => ['elementary', 'jhs'].includes(level));
+    reviewDepedButton.hidden = !managementSchoolLevels().some(level => ['elementary', 'jhs', 'shs'].includes(level));
   }
   const assignmentStats = getTeacherAssignmentStats();
   const subjectSlots = subjectRecords.reduce((total, subject) => total + subject.total, 0);
@@ -1822,7 +1746,7 @@ function renderDepedSubjectPreview(preview) {
   const content = document.getElementById('depedSubjectReviewContent');
   const grades = Array.isArray(preview?.grades) ? preview.grades : [];
   if (!grades.length) {
-    content.innerHTML = `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible grades', text: 'Enable and save a supported Grade 2–10 level in Academic Structure before adding its DepEd subjects.' })}<div class="deped-subject-empty-action"><a class="top-btn secondary" href="edugnay-admin-schools.html#academic-structure"><i data-lucide="settings-2"></i> Open Academic Structure</a></div><div class="deped-subject-result" id="depedSubjectApplyResult" role="status" hidden></div>`;
+    content.innerHTML = `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible grades', text: 'Enable and save Grade 2–11 in Academic Structure before adding its DepEd subjects.' })}<div class="deped-subject-empty-action"><a class="top-btn secondary" href="edugnay-admin-schools.html#academic-structure"><i data-lucide="settings-2"></i> Open Academic Structure</a></div><div class="deped-subject-result" id="depedSubjectApplyResult" role="status" hidden></div>`;
     document.getElementById('applyDepedSubjectReview').disabled = true;
     if (window.lucide) lucide.createIcons();
     return;
@@ -2172,51 +2096,12 @@ function openSectionEditModal(card) {
   document.getElementById('editSchoolLevel').textContent = managementLevelLabel(section.level);
   document.getElementById('editGradeLevel').textContent = section.grade || 'Not set';
   document.getElementById('editStrand').textContent = section.trackName
-    ? `${section.trackName}${section.strandName ? ` / ${section.strandName}` : section.needsStrandReview ? ' / Needs review' : ''}`
+    ? `${section.needsCurriculumSetup ? 'Needs Strengthened SHS setup' : section.trackName || ''}`
     : 'Not applicable';
   document.getElementById('editStrandGroup').hidden = !section.trackName;
   document.getElementById('sectionEditModalSub').textContent = `Update a ${managementLevelLabel(section.level)} class section. Academic placement cannot be changed.`;
   document.getElementById('sectionEditModalBackdrop').classList.add('open');
 }
-
-function openClassifyStrandModal(section) {
-  if (!section?.needsStrandReview || !section.trackId) return;
-  const strands = managementStrandOptions(section.trackId);
-  document.getElementById('classifyStrandSectionId').value = section.id;
-  document.getElementById('classifyStrandSub').textContent = `${section.grade} · ${section.trackName} · ${section.name}`;
-  managementSetOptions(document.getElementById('classifyStrandSelect'), strands.map(strand => ({
-    value: String(strand.id), label: strand.displayName
-  })), 'Select the confirmed strand', '');
-  document.getElementById('sectionClassifyStrandModalBackdrop').classList.add('open');
-  lucide.createIcons();
-}
-
-function closeClassifyStrandModal() {
-  document.getElementById('sectionClassifyStrandModalBackdrop').classList.remove('open');
-}
-
-document.getElementById('sectionClassifyStrandModalBackdrop').addEventListener('click', event => {
-  if (event.target === event.currentTarget) closeClassifyStrandModal();
-});
-
-document.getElementById('classifyStrandForm').addEventListener('submit', async event => {
-  event.preventDefault();
-  const sectionId = document.getElementById('classifyStrandSectionId').value;
-  const strandId = document.getElementById('classifyStrandSelect').value;
-  if (!sectionId || !strandId) return;
-  const button = event.submitter;
-  if (button) button.disabled = true;
-  try {
-    await window.EDUGNAY_API.classifySectionStrand(sectionId, strandId);
-    closeClassifyStrandModal();
-    await refreshManagementViews();
-    showAppToast('SHS strand classification saved and recorded.');
-  } catch (error) {
-    showAppToast(error?.message || 'The section strand could not be classified.', 'error');
-  } finally {
-    if (button) button.disabled = false;
-  }
-});
 
 function openSectionDeleteConfirmation(section) {
   const placement = managementSectionPlacement(section);
@@ -2354,54 +2239,31 @@ function updateSubjectShsFields() {
   const panel = document.getElementById('subjectShsFields');
   const groupSelect = document.getElementById('subjectShsGroup');
   const trackSelect = document.getElementById('subjectShsTrack');
-  const strandSelect = document.getElementById('subjectShsStrand');
-  const strandGroup = document.getElementById('subjectShsStrandGroup');
-  const weightSummary = document.getElementById('subjectShsWeightSummary');
-  if (!panel || !groupSelect || !trackSelect || !strandSelect) return;
+  const hoursSelect = document.getElementById('subjectShsHours');
+  if (!panel || !groupSelect || !trackSelect || !hoursSelect) return;
   panel.hidden = !containsShs;
   if (!containsShs) {
     groupSelect.value = '';
     trackSelect.value = '';
-    strandSelect.value = '';
-    if (weightSummary) {
-      weightSummary.textContent = '';
-      weightSummary.hidden = true;
-    }
+    hoursSelect.value = '';
     return;
   }
-  managementSetOptions(groupSelect, MANAGEMENT_API_CONTEXT.shsGradingTypes.map(type => ({
-    value: type.code,
-    label: type.label
-  })), 'Select a grading type', groupSelect.value);
+  const gradeCodes = selectedGrades.filter(input => input.dataset.levelCode === 'shs').map(input => input.dataset.gradeCode);
+  const types = gradeCodes.every(code => code === 'grade-11')
+    ? [{ value: 'core', label: 'Core subject' }] : [];
+  managementSetOptions(groupSelect, types, 'Select a subject type', groupSelect.value);
   const group = groupSelect.value;
-  const gradingType = MANAGEMENT_API_CONTEXT.shsGradingTypes.find(type => type.code === group);
-  if (weightSummary) {
-    weightSummary.textContent = gradingType
-      ? `Weights: Written Work ${Number(gradingType.weights.ww)}%, Performance Tasks ${Number(gradingType.weights.pt)}%, Quarterly Assessment ${Number(gradingType.weights.qa)}%`
-      : '';
-    weightSummary.hidden = !gradingType;
-  }
   let tracks = managementTrackOptions();
-  if (group?.startsWith('academic_')) tracks = tracks.filter(item => item.trackCode === 'academic');
-  else if (group?.startsWith('other_')) tracks = tracks.filter(item => item.trackCode !== 'academic');
+  if (group === 'academic_elective') tracks = tracks.filter(item => item.trackCode === 'academic');
+  else if (group === 'techpro_elective' || group === 'work_immersion') tracks = tracks.filter(item => item.trackCode === 'techpro');
   managementSetOptions(trackSelect, [
     { value: '', label: group === 'core' ? 'Shared across all tracks' : 'Select a track' },
     ...tracks.map(item => ({ value: String(item.id), label: item.displayName }))
   ], '', trackSelect.value);
-  const selectedTrack = tracks.find(item => String(item.id) === trackSelect.value) || null;
-  const strands = selectedTrack ? managementStrandOptions(selectedTrack.id) : [];
-  managementSetOptions(strandSelect, [
-    { value: '', label: selectedTrack ? 'All strands in this track' : 'Select a track first' },
-    ...strands.map(item => ({ value: String(item.id), label: item.displayName }))
-  ], '', strandSelect.value);
-  const shared = group === 'core';
-  trackSelect.disabled = shared;
-  strandSelect.disabled = shared || !selectedTrack || !strands.length;
-  if (shared) {
-    trackSelect.value = '';
-    strandSelect.value = '';
-  }
-  if (strandGroup) strandGroup.hidden = !selectedTrack || !strands.length;
+  trackSelect.disabled = group === 'core';
+  let allowedHours = { core: [160], academic_elective: [80, 160, 320], techpro_elective: [320], work_immersion: [320, 640] }[group] || [];
+  if (group === 'academic_elective' && gradeCodes.includes('grade-11')) allowedHours = [80];
+  managementSetOptions(hoursSelect, allowedHours.map(hours => ({ value: String(hours), label: `${hours} hours` })), 'Select hours', hoursSelect.value);
 }
 
 function openSubjectModal(subjectKey) {
@@ -2410,6 +2272,10 @@ function openSubjectModal(subjectKey) {
   const subject = subjectKey
     ? records.find(record => record.id === subjectKey || record.name === subjectKey)
     : null;
+  if (subject?.type === 'Needs Strengthened SHS setup') {
+    showAppToast('This subject uses the earlier SHS setup. Clear the SHS test data before editing it.', 'error');
+    return;
+  }
   const contextValue = activeSubjectGrade || 'all';
   const contextStrand = activeSubjectStrand || 'all';
   const context = getSubjectModalContext(contextValue, contextStrand);
@@ -2428,12 +2294,12 @@ function openSubjectModal(subjectKey) {
   updateSubjectShsFields();
   const subjectGroup = document.getElementById('subjectShsGroup');
   const subjectTrack = document.getElementById('subjectShsTrack');
-  const subjectStrand = document.getElementById('subjectShsStrand');
-  if (subjectGroup) subjectGroup.value = subject?.shsGradingGroup || '';
+  const subjectHours = document.getElementById('subjectShsHours');
+  if (subjectGroup) subjectGroup.value = subject?.shsSubjectType || '';
   updateSubjectShsFields();
   if (subjectTrack) subjectTrack.value = subject?.trackId == null ? String(context.placement?.track?.id || '') : String(subject.trackId);
   updateSubjectShsFields();
-  if (subjectStrand) subjectStrand.value = subject?.strandId == null ? String(context.placement?.strand?.id || '') : String(subject.strandId);
+  if (subjectHours) subjectHours.value = subject?.instructionalHours ? String(subject.instructionalHours) : '';
   document.querySelector('#subjectModalBackdrop .btn-save').textContent = subject ? 'Save Changes' : 'Save Subject';
   document.getElementById('subjectModalBackdrop').classList.add('open');
   lucide.createIcons();
@@ -2478,14 +2344,14 @@ document.getElementById('createSubjectForm').addEventListener('submit', async fu
   }
   const levelIds = [...new Set(gradeRows.map(grade => Number(grade.schoolLevelId)))];
   const shsSelected = gradeRows.some(grade => grade.levelCode === 'shs');
-  const shsGradingGroup = shsSelected ? document.getElementById('subjectShsGroup').value || null : null;
-  const trackId = shsSelected && shsGradingGroup !== 'core' ? Number(document.getElementById('subjectShsTrack').value) || null : null;
-  const strandId = trackId ? Number(document.getElementById('subjectShsStrand').value) || null : null;
-  if (shsSelected && !shsGradingGroup) {
-    showAppToast('Choose the SHS grading type before saving.', 'error');
+  const shsSubjectType = shsSelected ? document.getElementById('subjectShsGroup').value || null : null;
+  const instructionalHours = shsSelected ? Number(document.getElementById('subjectShsHours').value) || null : null;
+  const trackId = shsSelected && shsSubjectType !== 'core' ? Number(document.getElementById('subjectShsTrack').value) || null : null;
+  if (shsSelected && (!shsSubjectType || !instructionalHours)) {
+    showAppToast('Choose the SHS subject type and instructional hours before saving.', 'error');
     return;
   }
-  if (shsGradingGroup && shsGradingGroup !== 'core' && !trackId) {
+  if (shsSubjectType && shsSubjectType !== 'core' && !trackId) {
     showAppToast('Choose the track for this SHS subject.', 'error');
     return;
   }
@@ -2499,8 +2365,9 @@ document.getElementById('createSubjectForm').addEventListener('submit', async fu
       schoolLevelId: levelIds.length === 1 ? levelIds[0] : null,
       gradeLevelIds,
       trackId,
-      strandId,
-      shsGradingGroup
+      strandId: null,
+      shsSubjectType,
+      instructionalHours
     };
     if (existing?.apiId) await window.EDUGNAY_API.updateSubject(existing.apiId, payload);
     else await window.EDUGNAY_API.createSubject(payload);
@@ -2815,36 +2682,16 @@ function managementSectionSort(a, b) {
 
 function managementSectionBadgeLabel(section) {
   const path = managementSectionPath(section);
-  return `${section.grade}${path ? ` · ${path}` : ''}${section.needsStrandReview ? ' · Needs review' : ''}`;
+  return `${section.grade}${path ? ` · ${path}` : ''}`;
 }
 
-function managementShsCompactPath(trackCodeValue, trackName, strandCodeValue, strandName, needsStrandReview = false) {
-  const code = value => String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
-  const trackLabels = {
-    academic: 'Academic',
-    tvl: 'TVL',
-    'arts-design': 'Arts & Design',
-    'arts-and-design': 'Arts & Design',
-    sports: 'Sports'
-  };
-  const strandLabels = {
-    stem: 'STEM',
-    abm: 'ABM',
-    humss: 'HUMSS',
-    gas: 'GAS',
-    'agri-fishery-arts': 'AFA',
-    'home-economics': 'HE',
-    ict: 'ICT',
-    'industrial-arts': 'IA'
-  };
-  const track = trackLabels[code(trackCodeValue)] || trackName || '';
-  if (needsStrandReview) return [track, 'Needs review'].filter(Boolean).join(' · ');
-  const strand = strandLabels[code(strandCodeValue)] || strandName || '';
-  return [track, strand].filter(Boolean).join(' · ');
+function managementShsCompactPath(trackCodeValue, trackName, strandCodeValue, strandName, needsCurriculumSetup = false) {
+  if (needsCurriculumSetup) return 'Needs Strengthened SHS setup';
+  return { academic: 'Academic', techpro: 'TechPro' }[trackCodeValue] || trackName || '';
 }
 
 function managementSectionCardPath(section) {
-  return managementShsCompactPath(section.trackCode, section.trackName, section.strandCode, section.strandName, section.needsStrandReview);
+  return managementShsCompactPath(section.trackCode, section.trackName, section.strandCode, section.strandName, section.needsCurriculumSetup);
 }
 
 function managementSectionCompactBadgeLabel(section) {
@@ -2853,7 +2700,7 @@ function managementSectionCompactBadgeLabel(section) {
 }
 
 function managementSectionPlacement(section) {
-  return [managementLevelLabel(section.level), section.grade, managementSectionPath(section), section.needsStrandReview ? 'Needs strand review' : ''].filter(Boolean).join(' · ');
+  return [managementLevelLabel(section.level), section.grade, managementSectionPath(section)].filter(Boolean).join(' · ');
 }
 
 function managementSectionCompactPlacement(section) {
@@ -2861,7 +2708,7 @@ function managementSectionCompactPlacement(section) {
 }
 
 function managementSectionContext(section) {
-  return [managementLevelLabel(section.level), managementSectionPath(section), section.needsStrandReview ? 'Needs strand review' : ''].filter(Boolean).join(' · ');
+  return [managementLevelLabel(section.level), managementSectionPath(section)].filter(Boolean).join(' · ');
 }
 
 function managementSectionCompactContext(section) {
@@ -2912,7 +2759,7 @@ function managementTrackOptions() {
 function managementStrandOptions(trackId) {
   const track = managementTrackOptions().find(item => String(item.id) === String(trackId)
     || managementGradeKey(item.displayName) === managementGradeKey(trackId));
-  return (track?.strands || []).filter(item => item.isEnabled !== false);
+  return [];
 }
 
 function managementTrackByName(value) {
@@ -2920,23 +2767,15 @@ function managementTrackByName(value) {
 }
 
 function managementSectionPath(section) {
-  return [section.trackName, section.strandName].filter(Boolean).join(' / ');
+  return section.needsCurriculumSetup ? 'Needs Strengthened SHS setup' : (section.trackName || '');
 }
 
 function managementStrandRequired(track) {
-  return ['academic', 'tvl'].includes(track?.trackCode);
+  return false;
 }
 
 function managementShsPlacementOptions() {
-  return managementTrackOptions().flatMap(track => (track.strands || []).length
-    ? track.strands.filter(strand => strand.isEnabled !== false).map(strand => ({
-      key: `${track.id}:${strand.id}`,
-      label: `${track.displayName} / ${strand.displayName}`,
-      compactLabel: managementShsCompactPath(track.trackCode, track.displayName, strand.strandCode, strand.displayName),
-      track,
-      strand
-    }))
-    : [{
+  return managementTrackOptions().flatMap(track => [{
       key: `${track.id}:all`,
       label: track.displayName,
       compactLabel: managementShsCompactPath(track.trackCode, track.displayName),
@@ -3026,7 +2865,7 @@ function managementRenderFields(state, ids, excludeSection = '', locked = false)
     if (section.level !== level || managementGradeKey(section.grade) !== gradeKey) return false;
     if (level === 'shs' && section.trackId !== state.track) return false;
     if (requiresStrand && section.strandId !== state.strand) return false;
-    if (section.needsStrandReview) return false;
+    if (section.needsCurriculumSetup) return false;
     if (excludeSection && (section.id === excludeSection || section.name.toLowerCase() === String(excludeSection).toLowerCase())) return false;
     return true;
   }).map(section => ({
@@ -3309,7 +3148,7 @@ document.getElementById('assignStudentForm').addEventListener('submit', async fu
   if (section.level !== managementAssignState.level || managementGradeKey(section.grade) !== managementGradeKey(managementAssignState.grade)
     || (section.level === 'shs' && section.trackId !== managementAssignState.track)
     || (requiresStrand && section.strandId !== managementAssignState.strand)
-    || section.needsStrandReview) {
+    || section.needsCurriculumSetup) {
     showAppToast('The selected section does not match the chosen grade, track, or strand.', 'error');
     return;
   }
@@ -3646,7 +3485,7 @@ document.getElementById('importStudentsForm').addEventListener('submit', async f
     const gradeSections = managementSectionRecords().filter(section => section.level === level && managementGradeKey(section.grade) === managementGradeKey(grade)
       && (level !== 'shs' || section.trackId === trackId)
       && (!requiresStrand || section.strandId === strand)
-      && !section.needsStrandReview);
+      && !section.needsCurriculumSetup);
     if (!gradeSections.length) { alert('No sections found for this placement.'); return; }
 
     let sectionIdx = 0;

@@ -665,6 +665,8 @@ async function createUser(req, res, next) {
       }
     }
     await writeAuditLog(connection, req, 'user_created', 'user', userId, {
+      displayName,
+      role,
       summary: `${displayName} · ${role.replace(/_/g, ' ')}`
     }, schoolId);
     await connection.commit();
@@ -783,6 +785,8 @@ async function updateUser(req, res, next) {
         ? 'user_deactivated'
         : 'user_updated';
     await writeAuditLog(connection, req, actionType, 'user', userId, {
+      displayName,
+      role: user.role,
       summary: `${displayName} · ${user.role.replace(/_/g, ' ')}`
     }, user.schoolId);
     await connection.commit();
@@ -866,6 +870,8 @@ async function deleteUser(req, res, next) {
     }
 
     await writeAuditLog(connection, req, 'user_deleted', 'user', userId, {
+      displayName: user.displayName,
+      role: user.role,
       summary: `${user.displayName} · ${user.role.replace(/_/g, ' ')}`
     }, req.user.schoolId);
     const [result] = await connection.execute(

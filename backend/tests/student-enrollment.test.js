@@ -11,6 +11,7 @@ let auditFailure;
 let duplicateInsert;
 let notificationFailure;
 let notifications;
+let auditEntries;
 let teachers;
 let sectionTeacherIds;
 let commits;
@@ -57,6 +58,7 @@ const connection = {
     }
     if (sql.startsWith('INSERT INTO audit_logs')) {
       if (auditFailure) throw new Error('Audit write failed');
+      auditEntries.push({ action: values[2], details: JSON.parse(values[5]) });
       return [{ insertId: 1 }];
     }
     throw new Error(`Unexpected query: ${sql}`);
@@ -71,8 +73,8 @@ const { enrollStudent, moveStudent, previewStudentMove } = require('../controlle
 
 function reset() {
   sections = {
-    8: { id: 8, schoolId: 1, name: 'St. Matthew', status: 'active', academicYearStatus: 'active', academicYearId: 2, schoolLevelId: 1, gradeLevelId: 7, strandId: null, studentCount: 5, capacity: 40 },
-    9: { id: 9, schoolId: 1, name: 'St. Mark', status: 'active', academicYearStatus: 'active', academicYearId: 2, schoolLevelId: 1, gradeLevelId: 7, strandId: null, studentCount: 4, capacity: 40 }
+    8: { id: 8, schoolId: 1, name: 'St. Matthew', status: 'active', academicYearStatus: 'active', academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 1, gradeLevelId: 7, gradeLevelName: 'Grade 7', strandId: null, studentCount: 5, capacity: 40 },
+    9: { id: 9, schoolId: 1, name: 'St. Mark', status: 'active', academicYearStatus: 'active', academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 1, gradeLevelId: 7, gradeLevelName: 'Grade 7', strandId: null, studentCount: 4, capacity: 40 }
   };
   enrolled = false;
   studentFound = true;
@@ -82,6 +84,7 @@ function reset() {
   duplicateInsert = false;
   notificationFailure = false;
   notifications = [];
+  auditEntries = [];
   teachers = {};
   sectionTeacherIds = [];
   commits = 0;
@@ -106,6 +109,13 @@ test('admin can enroll an unassigned student in an active-year section', async (
   assert.equal(result.status, 201);
   assert.equal(inserts, 1);
   assert.equal(commits, 1);
+  assert.equal(auditEntries.length, 1);
+  assert.equal(auditEntries[0].action, 'student_enrolled');
+  assert.deepEqual(auditEntries[0].details, {
+    studentName: 'Jerick Refrea', sectionName: 'St. Matthew', sectionId: 8,
+    gradeName: 'Grade 7', schoolYear: '2026-2027',
+    summary: 'Jerick Refrea, St. Matthew, Grade 7, S.Y. 2026-2027'
+  });
 });
 
 test('a withdrawn enrollment does not block a fresh enrollment in the same section', async () => {

@@ -116,9 +116,12 @@ test('graded assignment and score component commit with a direct link', async ()
   assert.ok(queries.findIndex(sql => sql.startsWith('INSERT INTO assignments'))
     < queries.findIndex(sql => sql.startsWith('INSERT INTO grading_items')));
   assert.ok(queries.some(sql => sql.startsWith('UPDATE assignments SET grading_item_id')));
+  assert.equal(auditEntries.length, 1);
   assert.equal(auditEntries[0].actionType, 'assignment_created');
   assert.equal(auditEntries[0].details.summary, 'Project · English · Grade 8 · St. John');
   assert.equal(auditEntries[0].details.status, 'published');
+  assert.equal(auditEntries[0].details.scoreComponentCreated, true);
+  assert.equal(auditEntries[0].details.gradingItemId, 18);
   assert.ok(queries.findIndex(sql => sql.startsWith('INSERT INTO audit_logs')) < queries.indexOf('COMMIT'));
   assert.equal(queries.at(-1), 'COMMIT');
 });

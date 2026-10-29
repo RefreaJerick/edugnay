@@ -520,6 +520,10 @@
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
+.modal .form-textarea {
+  padding: 10px 12px;
+}
+
 .modal :is(.form-input, .form-select, .form-textarea):focus {
   background: var(--theme-surface);
   border-color: var(--theme-accent-text);

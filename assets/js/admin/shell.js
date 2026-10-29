@@ -129,7 +129,10 @@ function renderTopbarNotifs() {
   const items = getAdminNotifItems().slice(0, 5);
   const unreadLabel = document.querySelector('.tb-notif-unread-count');
   const unreadCount = items.filter(n => !n.read).length;
-  if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
+  if (unreadLabel) {
+    unreadLabel.hidden = items.length === 0;
+    unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
+  }
 
   if (!items.length) {
     list.innerHTML = `

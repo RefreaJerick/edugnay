@@ -1,6 +1,8 @@
 -- =========================================================
 -- Academix Database Schema
--- MySQL 8.0+ | Run this file, migrations 021-023, then demo-data.sql
+-- Final schema through migration 056. Import on a new database only.
+-- Then import reference-data.sql; for a demo, import demo-data.sql first.
+-- Do not run historical migrations after importing this file.
 -- =========================================================
 
 CREATE DATABASE IF NOT EXISTS academix
@@ -27,7 +29,7 @@ CREATE TABLE IF NOT EXISTS schools (
   phone VARCHAR(30) NULL,
   email VARCHAR(255) NULL,
   website VARCHAR(255) NULL,
-  school_email_domain VARCHAR(253) NOT NULL UNIQUE,
+  school_email_domain VARCHAR(253) NOT NULL,
   logo_path VARCHAR(500) NULL,
   registration_status VARCHAR(30) NOT NULL DEFAULT 'pending',
   submitted_at DATETIME NULL,
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS schools (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_schools_registration_status_token_hash (registration_status_token_hash),
+  UNIQUE KEY uq_schools_school_email_domain (school_email_domain),
   CONSTRAINT chk_schools_registration_status CHECK (registration_status IN ('pending', 'active', 'rejected', 'suspended'))
 ) ENGINE=InnoDB;
 
@@ -233,7 +236,6 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   session_token_hash VARCHAR(255) NOT NULL UNIQUE,
   expires_at DATETIME NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_user_sessions_expires (expires_at),
   CONSTRAINT fk_user_sessions_user
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -363,6 +365,7 @@ CREATE TABLE IF NOT EXISTS academic_terms (
 
 CREATE TABLE IF NOT EXISTS academic_term_actions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   academic_term_id BIGINT UNSIGNED NOT NULL,
   action_type VARCHAR(30) NOT NULL,
   previous_end_date DATE NULL,
@@ -384,6 +387,8 @@ CREATE TABLE IF NOT EXISTS subjects (
   school_level_id BIGINT UNSIGNED NULL,
   grade_level_id BIGINT UNSIGNED NULL,
   shs_grading_group VARCHAR(40) NULL,
+  shs_subject_type VARCHAR(30) NULL,
+  instructional_hours SMALLINT UNSIGNED NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -449,6 +454,7 @@ CREATE TABLE IF NOT EXISTS sections (
   track_id BIGINT UNSIGNED NULL,
   strand_id BIGINT UNSIGNED NULL,
   name VARCHAR(120) NOT NULL,
+  shs_curriculum_code VARCHAR(30) NULL,
   capacity SMALLINT UNSIGNED NOT NULL DEFAULT 40,
   adviser_user_id BIGINT UNSIGNED NULL,
   status VARCHAR(30) NOT NULL DEFAULT 'active',
@@ -529,15 +535,183 @@ CREATE TABLE IF NOT EXISTS section_teachers (
     FOREIGN KEY (school_id, subject_id) REFERENCES subjects(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS shs_offerings (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  academic_year_id BIGINT UNSIGNED NOT NULL,
+  grade_level_id BIGINT UNSIGNED NOT NULL,
+  catalog_version VARCHAR(40) NOT NULL,
+  catalog_code VARCHAR(40) NOT NULL,
+  track_code VARCHAR(30) NOT NULL,
+  subject_type VARCHAR(30) NOT NULL,
+  subject_name VARCHAR(120) NOT NULL,
+  instructional_hours SMALLINT UNSIGNED NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_offering_year_grade_code (school_id, academic_year_id, grade_level_id, catalog_code),
+  UNIQUE KEY uq_shs_offering_school_id (school_id, id),
+  CONSTRAINT fk_shs_offering_year FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_offering_grade FOREIGN KEY (school_id, grade_level_id) REFERENCES school_grade_levels(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_elective_classes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  offering_id BIGINT UNSIGNED NOT NULL,
+  teacher_user_id BIGINT UNSIGNED NOT NULL,
+  class_name VARCHAR(100) NOT NULL,
+  capacity SMALLINT UNSIGNED NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_elective_class_name (offering_id, class_name),
+  UNIQUE KEY uq_shs_elective_class_school_id (school_id, id),
+  CONSTRAINT fk_shs_elective_class_offering FOREIGN KEY (school_id, offering_id) REFERENCES shs_offerings(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_elective_class_teacher FOREIGN KEY (school_id, teacher_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS scheduled_classes (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
-  assignment_id BIGINT UNSIGNED NOT NULL,
+  assignment_id BIGINT UNSIGNED NULL,
+  shs_elective_class_id BIGINT UNSIGNED NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_scheduled_class_assignment (assignment_id),
+  UNIQUE KEY uq_scheduled_class_elective (shs_elective_class_id),
   UNIQUE KEY uq_scheduled_class_school_id (school_id, id),
-  CONSTRAINT fk_scheduled_class_tenant_assignment FOREIGN KEY (school_id, assignment_id) REFERENCES section_teachers(school_id, id) ON DELETE CASCADE
+  CONSTRAINT fk_scheduled_class_tenant_assignment FOREIGN KEY (school_id, assignment_id) REFERENCES section_teachers(school_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_scheduled_class_elective FOREIGN KEY (school_id, shs_elective_class_id) REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_scheduled_class_single_owner CHECK ((assignment_id IS NULL) <> (shs_elective_class_id IS NULL))
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_elective_class_students (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  elective_class_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  withdrawn_at DATETIME NULL,
+  active_marker TINYINT GENERATED ALWAYS AS (IF(withdrawn_at IS NULL, 1, NULL)) STORED,
+  UNIQUE KEY uq_shs_elective_class_student (elective_class_id, student_user_id, active_marker),
+  CONSTRAINT fk_shs_elective_student_class FOREIGN KEY (school_id, elective_class_id) REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_elective_student_user FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_selection_windows (
+  school_id BIGINT UNSIGNED NOT NULL,
+  academic_year_id BIGINT UNSIGNED NOT NULL,
+  opens_at DATETIME NULL,
+  closes_at DATETIME NULL,
+  updated_by_user_id BIGINT UNSIGNED NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (school_id, academic_year_id),
+  CONSTRAINT fk_shs_window_year FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_window_user FOREIGN KEY (school_id, updated_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_shs_window_dates CHECK (opens_at IS NULL OR closes_at IS NULL OR opens_at < closes_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_selection_requests (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  academic_year_id BIGINT UNSIGNED NOT NULL,
+  grade_level_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  pathway_code VARCHAR(40) NOT NULL,
+  status ENUM('pending', 'approved', 'rejected', 'not_recorded') NOT NULL DEFAULT 'pending',
+  revision INT UNSIGNED NOT NULL DEFAULT 1,
+  decision_reason VARCHAR(500) NULL,
+  reviewed_by_user_id BIGINT UNSIGNED NULL,
+  reviewed_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_request_student_grade (school_id, academic_year_id, grade_level_id, student_user_id),
+  UNIQUE KEY uq_shs_request_school_id (school_id, id),
+  CONSTRAINT fk_shs_request_year FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_request_grade FOREIGN KEY (school_id, grade_level_id) REFERENCES school_grade_levels(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_request_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_request_reviewer FOREIGN KEY (school_id, reviewed_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_selection_request_classes (
+  school_id BIGINT UNSIGNED NOT NULL,
+  request_id BIGINT UNSIGNED NOT NULL,
+  elective_class_id BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (request_id, elective_class_id),
+  CONSTRAINT fk_shs_request_class_request FOREIGN KEY (school_id, request_id) REFERENCES shs_selection_requests(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_request_class_class FOREIGN KEY (school_id, elective_class_id) REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_selection_history (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  request_id BIGINT UNSIGNED NOT NULL,
+  actor_user_id BIGINT UNSIGNED NOT NULL,
+  action VARCHAR(30) NOT NULL,
+  revision INT UNSIGNED NOT NULL,
+  details JSON NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_shs_history_request FOREIGN KEY (school_id, request_id) REFERENCES shs_selection_requests(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_history_actor FOREIGN KEY (school_id, actor_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_verified_prior_electives (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  catalog_version VARCHAR(40) NOT NULL,
+  catalog_code VARCHAR(40) NOT NULL,
+  instructional_hours SMALLINT UNSIGNED NOT NULL,
+  final_grade DECIMAL(5,2) NULL,
+  grade_source VARCHAR(500) NULL,
+  verified_by_user_id BIGINT UNSIGNED NOT NULL,
+  verified_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_prior_elective (school_id, student_user_id, catalog_code),
+  CONSTRAINT fk_shs_prior_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_prior_verifier FOREIGN KEY (school_id, verified_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_completion_confirmations (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  grade12_academic_year_id BIGINT UNSIGNED NOT NULL,
+  pathway_code VARCHAR(40) NOT NULL,
+  evidence_hash CHAR(64) NOT NULL,
+  confirmation_version INT UNSIGNED NOT NULL DEFAULT 1,
+  latest_history_id BIGINT UNSIGNED NULL,
+  confirmed_by_user_id BIGINT UNSIGNED NOT NULL,
+  confirmed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_completion_student_year
+    (school_id, student_user_id, grade12_academic_year_id),
+  CONSTRAINT fk_shs_completion_student FOREIGN KEY (school_id, student_user_id)
+    REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_completion_year FOREIGN KEY (school_id, grade12_academic_year_id)
+    REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_completion_confirmer FOREIGN KEY (school_id, confirmed_by_user_id)
+    REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_completion_confirmation_history (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  grade12_academic_year_id BIGINT UNSIGNED NOT NULL,
+  pathway_code VARCHAR(40) NOT NULL,
+  evidence_hash CHAR(64) NOT NULL,
+  evidence_snapshot JSON NOT NULL,
+  confirmation_version INT UNSIGNED NOT NULL,
+  confirmed_by_user_id BIGINT UNSIGNED NOT NULL,
+  confirmed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_completion_history_school_id (school_id, id),
+  KEY idx_shs_completion_history_student (school_id, student_user_id, grade12_academic_year_id, confirmation_version),
+  CONSTRAINT fk_shs_completion_history_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_completion_history_year FOREIGN KEY (school_id, grade12_academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_completion_history_admin FOREIGN KEY (school_id, confirmed_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+ALTER TABLE shs_completion_confirmations
+  ADD CONSTRAINT fk_shs_completion_latest_history FOREIGN KEY (school_id, latest_history_id)
+    REFERENCES shs_completion_confirmation_history(school_id, id) ON DELETE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS timetable_meetings (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -656,10 +830,12 @@ CREATE TABLE IF NOT EXISTS subject_grading_exam_parts (
 CREATE TABLE IF NOT EXISTS assignments (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
-  section_id BIGINT UNSIGNED NOT NULL,
-  subject_id BIGINT UNSIGNED NOT NULL,
-  academic_term_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NULL,
+  subject_id BIGINT UNSIGNED NULL,
+  shs_elective_class_id BIGINT UNSIGNED NULL,
+  academic_term_id BIGINT UNSIGNED NULL,
   grading_category_id BIGINT UNSIGNED NULL,
+  grading_item_id BIGINT UNSIGNED NULL,
   subject_grading_component_id BIGINT UNSIGNED NULL,
   subject_grading_exam_part_id BIGINT UNSIGNED NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
@@ -672,6 +848,9 @@ CREATE TABLE IF NOT EXISTS assignments (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_assignments_section_subject (section_id, subject_id),
+  KEY idx_assignments_elective_class (school_id, shs_elective_class_id),
+  UNIQUE KEY uq_assignments_tenant_grading_item (school_id, grading_item_id),
+  UNIQUE KEY uq_assignments_school_id (school_id, id),
   CONSTRAINT fk_assignments_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_section
@@ -687,11 +866,23 @@ CREATE TABLE IF NOT EXISTS assignments (
   CONSTRAINT fk_assignments_subject_grading_exam_part
     FOREIGN KEY (school_id, subject_grading_exam_part_id) REFERENCES subject_grading_exam_parts(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_teacher
-    FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT
+    FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_assignment_elective_class FOREIGN KEY (school_id, shs_elective_class_id)
+    REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_assignment_scope CHECK (
+    (shs_elective_class_id IS NOT NULL AND section_id IS NULL AND subject_id IS NULL)
+    OR (shs_elective_class_id IS NULL AND section_id IS NOT NULL AND subject_id IS NOT NULL)
+  ),
+  CONSTRAINT ck_elective_assignment_grading_scope CHECK (
+    shs_elective_class_id IS NULL
+    OR (grading_category_id IS NULL AND
+      (grading_item_id IS NULL OR (academic_term_id IS NOT NULL AND max_score IS NOT NULL)))
+  )
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS assignment_submissions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   assignment_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
   file_name VARCHAR(255) NULL,
@@ -710,12 +901,15 @@ CREATE TABLE IF NOT EXISTS assignment_submissions (
 CREATE TABLE IF NOT EXISTS grading_items (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
-  section_id BIGINT UNSIGNED NOT NULL,
-  subject_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NULL,
+  subject_id BIGINT UNSIGNED NULL,
+  shs_elective_class_id BIGINT UNSIGNED NULL,
   academic_term_id BIGINT UNSIGNED NOT NULL,
   grading_category_id BIGINT UNSIGNED NULL,
   subject_grading_component_id BIGINT UNSIGNED NULL,
   subject_grading_exam_part_id BIGINT UNSIGNED NULL,
+  shs_component_code VARCHAR(30) NULL,
+  shs_exam_part_code VARCHAR(30) NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   title VARCHAR(255) NOT NULL,
   max_score DECIMAL(8,2) NOT NULL,
@@ -724,6 +918,7 @@ CREATE TABLE IF NOT EXISTS grading_items (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_grading_items_school_id (school_id, id),
+  KEY idx_grading_item_elective (school_id, shs_elective_class_id, academic_term_id),
   CONSTRAINT fk_grading_items_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
@@ -732,11 +927,22 @@ CREATE TABLE IF NOT EXISTS grading_items (
     FOREIGN KEY (school_id, subject_grading_component_id) REFERENCES subject_grading_components(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_subject_grading_exam_part
     FOREIGN KEY (school_id, subject_grading_exam_part_id) REFERENCES subject_grading_exam_parts(school_id, id) ON DELETE RESTRICT,
-  CONSTRAINT fk_grading_items_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT
+  CONSTRAINT fk_grading_items_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_grading_item_elective FOREIGN KEY (school_id, shs_elective_class_id)
+    REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_grading_item_owner CHECK (
+    (shs_elective_class_id IS NOT NULL AND section_id IS NULL AND subject_id IS NULL)
+    OR (shs_elective_class_id IS NULL AND section_id IS NOT NULL AND subject_id IS NOT NULL)
+  )
 ) ENGINE=InnoDB;
+
+ALTER TABLE assignments
+  ADD CONSTRAINT fk_assignments_tenant_grading_item
+    FOREIGN KEY (school_id, grading_item_id) REFERENCES grading_items(school_id, id) ON DELETE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS student_scores (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   grading_item_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
   score DECIMAL(8,2) NULL,
@@ -747,37 +953,126 @@ CREATE TABLE IF NOT EXISTS student_scores (
   UNIQUE KEY uq_student_scores_item_student (grading_item_id, student_user_id),
   CONSTRAINT fk_student_scores_item FOREIGN KEY (grading_item_id) REFERENCES grading_items(id) ON DELETE RESTRICT,
   CONSTRAINT fk_student_scores_student FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_student_scores_user FOREIGN KEY (recorded_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+  CONSTRAINT fk_student_scores_user FOREIGN KEY (recorded_by_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_student_scores_tenant_item FOREIGN KEY (school_id, grading_item_id) REFERENCES grading_items(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_student_scores_tenant_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_grading_profiles (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  academic_year_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NULL,
+  offering_id BIGINT UNSIGNED NULL,
+  written_weight TINYINT UNSIGNED NOT NULL,
+  performance_weight TINYINT UNSIGNED NOT NULL,
+  examination_weight TINYINT UNSIGNED NOT NULL,
+  exam_parts JSON NULL,
+  components_json JSON NULL,
+  changed_by_user_id BIGINT UNSIGNED NOT NULL,
+  changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_grading_core (school_id, academic_year_id, subject_id),
+  UNIQUE KEY uq_shs_grading_offering (school_id, academic_year_id, offering_id),
+  CONSTRAINT fk_shs_grading_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grading_year FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grading_subject FOREIGN KEY (school_id, subject_id) REFERENCES subjects(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grading_offering FOREIGN KEY (school_id, offering_id) REFERENCES shs_offerings(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grading_actor FOREIGN KEY (school_id, changed_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_shs_grading_owner CHECK ((subject_id IS NOT NULL AND offering_id IS NULL) OR (subject_id IS NULL AND offering_id IS NOT NULL)),
+  CONSTRAINT ck_shs_grading_weights CHECK (written_weight + performance_weight + examination_weight = 100)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_grade_publication_history (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NULL,
+  subject_id BIGINT UNSIGNED NULL,
+  shs_elective_class_id BIGINT UNSIGNED NULL,
+  academic_term_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  final_grade DECIMAL(5,2) NOT NULL,
+  publication_version INT UNSIGNED NOT NULL,
+  correction_reason VARCHAR(500) NULL,
+  score_snapshot JSON NOT NULL,
+  published_by_user_id BIGINT UNSIGNED NOT NULL,
+  published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_grade_history_school_id (school_id, id),
+  KEY idx_shs_grade_history_scope (school_id, academic_term_id, section_id, subject_id, shs_elective_class_id, publication_version),
+  KEY idx_shs_grade_history_student (school_id, student_user_id, academic_term_id),
+  CONSTRAINT fk_shs_grade_history_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grade_history_section FOREIGN KEY (school_id, section_id) REFERENCES sections(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grade_history_subject FOREIGN KEY (school_id, subject_id) REFERENCES subjects(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grade_history_term FOREIGN KEY (school_id, academic_term_id) REFERENCES academic_terms(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grade_history_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grade_history_publisher FOREIGN KEY (school_id, published_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_grade_history_class FOREIGN KEY (school_id, shs_elective_class_id) REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_shs_grade_history_owner CHECK (
+    (shs_elective_class_id IS NOT NULL AND section_id IS NULL AND subject_id IS NULL)
+    OR (shs_elective_class_id IS NULL AND section_id IS NOT NULL AND subject_id IS NOT NULL)
+  )
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shs_grade_score_corrections (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  grading_item_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  old_score DECIMAL(8,2) NULL,
+  new_score DECIMAL(8,2) NOT NULL,
+  published_history_id BIGINT UNSIGNED NOT NULL,
+  publication_version INT UNSIGNED NOT NULL,
+  reason VARCHAR(500) NOT NULL,
+  changed_by_user_id BIGINT UNSIGNED NOT NULL,
+  changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_shs_score_correction_student (school_id, student_user_id, changed_at),
+  CONSTRAINT fk_shs_score_correction_item FOREIGN KEY (school_id, grading_item_id) REFERENCES grading_items(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_score_correction_publication FOREIGN KEY (school_id, published_history_id) REFERENCES shs_grade_publication_history(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_score_correction_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_score_correction_actor FOREIGN KEY (school_id, changed_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- Stores the latest published snapshot for each student, subject, section, and term.
 CREATE TABLE IF NOT EXISTS published_final_grades (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
-  section_id BIGINT UNSIGNED NOT NULL,
-  subject_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NULL,
+  subject_id BIGINT UNSIGNED NULL,
+  shs_elective_class_id BIGINT UNSIGNED NULL,
   academic_term_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
   final_grade DECIMAL(5,2) NOT NULL,
+  publication_version INT UNSIGNED NOT NULL DEFAULT 1,
+  latest_history_id BIGINT UNSIGNED NULL,
+  correction_reason VARCHAR(500) NULL,
   published_by_user_id BIGINT UNSIGNED NOT NULL,
   published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_published_final_grades_scope (student_user_id, section_id, subject_id, academic_term_id),
+  UNIQUE KEY uq_published_elective_grade (school_id, shs_elective_class_id, academic_term_id, student_user_id),
   KEY idx_published_final_grades_section_subject_term (section_id, subject_id, academic_term_id),
   CONSTRAINT fk_published_final_grades_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_published_final_grades_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_published_final_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_published_final_grades_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
   CONSTRAINT fk_published_final_grades_student FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_published_final_grades_publisher FOREIGN KEY (published_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+  CONSTRAINT fk_published_final_grades_publisher FOREIGN KEY (published_by_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_published_elective_class FOREIGN KEY (school_id, shs_elective_class_id)
+    REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_published_grade_latest_history FOREIGN KEY (school_id, latest_history_id)
+    REFERENCES shs_grade_publication_history(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_published_grade_owner CHECK (
+    (shs_elective_class_id IS NOT NULL AND section_id IS NULL AND subject_id IS NULL)
+    OR (shs_elective_class_id IS NULL AND section_id IS NOT NULL AND subject_id IS NOT NULL)
+  )
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS attendance_sessions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
-  section_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NULL,
   subject_id BIGINT UNSIGNED NULL,
+  shs_elective_class_id BIGINT UNSIGNED NULL,
   subject_scope_id BIGINT UNSIGNED AS (COALESCE(subject_id, 0)) STORED,
   attendance_date DATE NOT NULL,
   method VARCHAR(30) NOT NULL DEFAULT 'manual',
@@ -788,15 +1083,25 @@ CREATE TABLE IF NOT EXISTS attendance_sessions (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_attendance_sessions_scope (section_id, subject_scope_id, attendance_date),
+  UNIQUE KEY uq_attendance_elective_class_date (school_id, shs_elective_class_id, attendance_date),
+  UNIQUE KEY uq_attendance_sessions_school_id (school_id, id),
   CONSTRAINT fk_attendance_sessions_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_attendance_sessions_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_attendance_sessions_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_attendance_sessions_creator FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_attendance_sessions_confirmer FOREIGN KEY (confirmed_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT fk_attendance_sessions_confirmer FOREIGN KEY (confirmed_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_attendance_elective_class FOREIGN KEY (school_id, shs_elective_class_id)
+    REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  -- Preserve existing section-wide sessions where subject_id is NULL.
+  CONSTRAINT ck_attendance_session_scope CHECK (
+    (shs_elective_class_id IS NOT NULL AND section_id IS NULL AND subject_id IS NULL)
+    OR (shs_elective_class_id IS NULL AND section_id IS NOT NULL)
+  )
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS attendance_records (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   attendance_session_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
   attendance_status VARCHAR(30) NOT NULL,
@@ -812,8 +1117,9 @@ CREATE TABLE IF NOT EXISTS attendance_records (
 
 CREATE TABLE IF NOT EXISTS student_qr_credentials (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
-  token_hash VARCHAR(255) NOT NULL UNIQUE,
+  token_hash VARCHAR(255) NOT NULL,
   token_ciphertext TEXT NULL,
   credential_status VARCHAR(30) NOT NULL DEFAULT 'active',
   issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -821,11 +1127,14 @@ CREATE TABLE IF NOT EXISTS student_qr_credentials (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_student_qr_credentials_student (student_user_id),
+  UNIQUE KEY token_hash (token_hash),
+  UNIQUE KEY uq_student_qr_credentials_school_id (school_id, id),
   CONSTRAINT fk_student_qr_credentials_student FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS qr_scan_events (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   attendance_session_id BIGINT UNSIGNED NOT NULL,
   student_qr_credential_id BIGINT UNSIGNED NULL,
   scanned_student_user_id BIGINT UNSIGNED NULL,
@@ -896,6 +1205,7 @@ CREATE TABLE IF NOT EXISTS announcements (
 
 CREATE TABLE IF NOT EXISTS announcement_audiences (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   announcement_id BIGINT UNSIGNED NOT NULL,
   audience_type VARCHAR(30) NOT NULL,
   section_id BIGINT UNSIGNED NULL,
@@ -906,6 +1216,7 @@ CREATE TABLE IF NOT EXISTS announcement_audiences (
 
 CREATE TABLE IF NOT EXISTS announcement_reads (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   announcement_id BIGINT UNSIGNED NOT NULL,
   user_id BIGINT UNSIGNED NOT NULL,
   read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -978,6 +1289,7 @@ WHERE subscriptions.user_id = NEW.user_id;
 
 CREATE TABLE IF NOT EXISTS announcement_email_outbox (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   announcement_id BIGINT UNSIGNED NOT NULL,
   user_id BIGINT UNSIGNED NOT NULL,
   status ENUM('pending', 'sending', 'sent', 'failed', 'skipped') NOT NULL DEFAULT 'pending',
@@ -999,8 +1311,9 @@ CREATE TABLE IF NOT EXISTS announcement_email_outbox (
 CREATE TABLE IF NOT EXISTS learning_materials (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
-  section_id BIGINT UNSIGNED NOT NULL,
-  subject_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NULL,
+  subject_id BIGINT UNSIGNED NULL,
+  shs_elective_class_id BIGINT UNSIGNED NULL,
   academic_term_id BIGINT UNSIGNED NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -1015,11 +1328,21 @@ CREATE TABLE IF NOT EXISTS learning_materials (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_materials_section_subject_status (section_id, subject_id, status),
+  KEY idx_materials_elective_class (school_id, shs_elective_class_id),
   CONSTRAINT fk_materials_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_materials_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_materials_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_materials_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE SET NULL,
-  CONSTRAINT fk_materials_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT
+  CONSTRAINT fk_materials_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_material_elective_class FOREIGN KEY (school_id, shs_elective_class_id)
+    REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_material_scope CHECK (
+    (shs_elective_class_id IS NOT NULL AND section_id IS NULL AND subject_id IS NULL)
+    OR (shs_elective_class_id IS NULL AND section_id IS NOT NULL AND subject_id IS NOT NULL)
+  ),
+  CONSTRAINT ck_elective_material_no_term CHECK (
+    shs_elective_class_id IS NULL OR academic_term_id IS NULL
+  )
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS user_tasks (
@@ -1049,6 +1372,7 @@ CREATE TABLE IF NOT EXISTS journal_subjects (
 
 CREATE TABLE IF NOT EXISTS journal_prompts (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   journal_subject_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NOT NULL,
   grading_item_id BIGINT UNSIGNED NULL,
@@ -1073,8 +1397,10 @@ CREATE TABLE IF NOT EXISTS journal_prompts (
 
 CREATE TABLE IF NOT EXISTS student_journal_entries (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   journal_subject_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
+  owner_teacher_user_id BIGINT UNSIGNED NULL,
   section_id BIGINT UNSIGNED NOT NULL,
   journal_prompt_id BIGINT UNSIGNED NULL,
   prompt_text TEXT NOT NULL,
@@ -1084,6 +1410,7 @@ CREATE TABLE IF NOT EXISTS student_journal_entries (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_journal_entry_prompt_student (journal_prompt_id, student_user_id),
+  KEY idx_journal_entries_owner (school_id, owner_teacher_user_id),
   CONSTRAINT fk_student_journal_entries_subject FOREIGN KEY (journal_subject_id) REFERENCES journal_subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_student_journal_entries_student FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT,
   CONSTRAINT fk_student_journal_entries_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
@@ -1092,6 +1419,7 @@ CREATE TABLE IF NOT EXISTS student_journal_entries (
 
 CREATE TABLE IF NOT EXISTS journal_feedback (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   journal_entry_id BIGINT UNSIGNED NOT NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   feedback_text TEXT NOT NULL,
@@ -1196,6 +1524,7 @@ CREATE TABLE IF NOT EXISTS report_data_sources (
 
 CREATE TABLE IF NOT EXISTS report_reopen_requests (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   narrative_report_id BIGINT UNSIGNED NOT NULL,
   requested_by_user_id BIGINT UNSIGNED NOT NULL,
   reason TEXT NOT NULL,
@@ -1248,6 +1577,7 @@ CREATE TABLE IF NOT EXISTS intervention_actions (
 
 CREATE TABLE IF NOT EXISTS intervention_progress_entries (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   intervention_plan_id BIGINT UNSIGNED NOT NULL,
   recorded_by_user_id BIGINT UNSIGNED NOT NULL,
   progress_status VARCHAR(30) NOT NULL,
@@ -1379,7 +1709,171 @@ CREATE TABLE IF NOT EXISTS school_registration_email_outbox (
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- Apply migrations/021_add_feature_tenant_constraints.sql and
--- migrations/022_add_child_tenant_constraints.sql and
--- migrations/023_link_assignment_grading_items.sql and
--- migrations/024_track_published_grading_items.sql before loading demo-data.sql.
+-- Final school-scoped keys from migrations 021-022.
+-- These are added after all tables so composite references can be resolved.
+
+-- Unique parent keys.
+ALTER TABLE `announcements`
+  ADD UNIQUE KEY `uq_announcements_school_id` (`school_id`,`id`);
+
+ALTER TABLE `grading_categories`
+  ADD UNIQUE KEY `uq_grading_categories_school_id` (`school_id`,`id`);
+
+ALTER TABLE `grading_period_reopen_requests`
+  ADD UNIQUE KEY `uq_gp_reopen_school_id` (`school_id`,`id`);
+
+ALTER TABLE `intervention_plans`
+  ADD UNIQUE KEY `uq_intervention_plans_school_id` (`school_id`,`id`);
+
+ALTER TABLE `journal_prompts`
+  ADD UNIQUE KEY `uq_journal_prompts_school_id` (`school_id`,`id`);
+
+ALTER TABLE `journal_subjects`
+  ADD UNIQUE KEY `uq_journal_subjects_school_id` (`school_id`,`id`);
+
+ALTER TABLE `learning_materials`
+  ADD UNIQUE KEY `uq_materials_school_id` (`school_id`,`id`);
+
+ALTER TABLE `narrative_reports`
+  ADD UNIQUE KEY `uq_narrative_reports_school_id` (`school_id`,`id`);
+
+ALTER TABLE `published_final_grades`
+  ADD UNIQUE KEY `uq_published_final_grades_school_id` (`school_id`,`id`);
+
+ALTER TABLE `school_form_exports`
+  ADD UNIQUE KEY `uq_school_form_exports_school_id` (`school_id`,`id`);
+
+ALTER TABLE `student_journal_entries`
+  ADD UNIQUE KEY `uq_student_journal_entries_school_id` (`school_id`,`id`);
+
+-- School-scoped references.
+ALTER TABLE `academic_term_actions`
+  ADD CONSTRAINT `fk_term_actions_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_term_actions_tenant_user` FOREIGN KEY (`school_id`, `performed_by_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `announcements`
+  ADD CONSTRAINT `fk_announcements_tenant_author` FOREIGN KEY (`school_id`, `author_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `announcement_audiences`
+  ADD CONSTRAINT `fk_announcement_audiences_tenant_announcement` FOREIGN KEY (`school_id`, `announcement_id`) REFERENCES `announcements` (`school_id`, `id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_announcement_audiences_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`);
+
+ALTER TABLE `announcement_email_outbox`
+  ADD CONSTRAINT `fk_announcement_email_tenant_announcement` FOREIGN KEY (`school_id`, `announcement_id`) REFERENCES `announcements` (`school_id`, `id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_announcement_email_tenant_user` FOREIGN KEY (`school_id`, `user_id`) REFERENCES `users` (`school_id`, `id`) ON DELETE CASCADE;
+
+ALTER TABLE `announcement_reads`
+  ADD CONSTRAINT `fk_announcement_reads_tenant_announcement` FOREIGN KEY (`school_id`, `announcement_id`) REFERENCES `announcements` (`school_id`, `id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_announcement_reads_tenant_user` FOREIGN KEY (`school_id`, `user_id`) REFERENCES `users` (`school_id`, `id`) ON DELETE CASCADE;
+
+ALTER TABLE `assignments`
+  ADD CONSTRAINT `fk_assignments_tenant_category` FOREIGN KEY (`school_id`, `grading_category_id`) REFERENCES `grading_categories` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_assignments_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_assignments_tenant_subject` FOREIGN KEY (`school_id`, `subject_id`) REFERENCES `subjects` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_assignments_tenant_teacher` FOREIGN KEY (`school_id`, `teacher_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_assignments_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`);
+
+ALTER TABLE `assignment_submissions`
+  ADD CONSTRAINT `fk_assignment_submissions_tenant_assignment` FOREIGN KEY (`school_id`, `assignment_id`) REFERENCES `assignments` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_assignment_submissions_tenant_student` FOREIGN KEY (`school_id`, `student_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `attendance_records`
+  ADD CONSTRAINT `fk_attendance_records_tenant_marker` FOREIGN KEY (`school_id`, `marked_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_attendance_records_tenant_session` FOREIGN KEY (`school_id`, `attendance_session_id`) REFERENCES `attendance_sessions` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_attendance_records_tenant_student` FOREIGN KEY (`school_id`, `student_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `attendance_sessions`
+  ADD CONSTRAINT `fk_attendance_sessions_tenant_confirmer` FOREIGN KEY (`school_id`, `confirmed_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_attendance_sessions_tenant_creator` FOREIGN KEY (`school_id`, `created_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_attendance_sessions_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_attendance_sessions_tenant_subject` FOREIGN KEY (`school_id`, `subject_id`) REFERENCES `subjects` (`school_id`, `id`);
+
+ALTER TABLE `grading_categories`
+  ADD CONSTRAINT `fk_grading_categories_tenant_level` FOREIGN KEY (`school_id`, `school_level_id`) REFERENCES `school_levels` (`school_id`, `id`);
+
+ALTER TABLE `grading_items`
+  ADD CONSTRAINT `fk_grading_items_tenant_category` FOREIGN KEY (`school_id`, `grading_category_id`) REFERENCES `grading_categories` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_grading_items_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_grading_items_tenant_subject` FOREIGN KEY (`school_id`, `subject_id`) REFERENCES `subjects` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_grading_items_tenant_teacher` FOREIGN KEY (`school_id`, `teacher_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_grading_items_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`);
+
+ALTER TABLE `grading_period_reopen_requests`
+  ADD CONSTRAINT `fk_gp_reopen_tenant_reviewer` FOREIGN KEY (`school_id`, `reviewed_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_gp_reopen_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_gp_reopen_tenant_subject` FOREIGN KEY (`school_id`, `subject_id`) REFERENCES `subjects` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_gp_reopen_tenant_teacher` FOREIGN KEY (`school_id`, `teacher_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_gp_reopen_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`);
+
+ALTER TABLE `intervention_plans`
+  ADD CONSTRAINT `fk_intervention_plans_tenant_creator` FOREIGN KEY (`school_id`, `created_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_intervention_plans_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_intervention_plans_tenant_student` FOREIGN KEY (`school_id`, `student_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_intervention_plans_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`);
+
+ALTER TABLE `intervention_progress_entries`
+  ADD CONSTRAINT `fk_intervention_progress_tenant_plan` FOREIGN KEY (`school_id`, `intervention_plan_id`) REFERENCES `intervention_plans` (`school_id`, `id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_intervention_progress_tenant_user` FOREIGN KEY (`school_id`, `recorded_by_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `journal_feedback`
+  ADD CONSTRAINT `fk_journal_feedback_tenant_entry` FOREIGN KEY (`school_id`, `journal_entry_id`) REFERENCES `student_journal_entries` (`school_id`, `id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_journal_feedback_tenant_teacher` FOREIGN KEY (`school_id`, `teacher_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `journal_prompts`
+  ADD CONSTRAINT `fk_journal_prompts_tenant_creator` FOREIGN KEY (`school_id`, `created_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_journal_prompts_tenant_item` FOREIGN KEY (`school_id`, `grading_item_id`) REFERENCES `grading_items` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_journal_prompts_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_journal_prompts_tenant_subject` FOREIGN KEY (`school_id`, `journal_subject_id`) REFERENCES `journal_subjects` (`school_id`, `id`);
+
+ALTER TABLE `journal_subjects`
+  ADD CONSTRAINT `fk_journal_subjects_tenant_subject` FOREIGN KEY (`school_id`, `subject_id`) REFERENCES `subjects` (`school_id`, `id`);
+
+ALTER TABLE `learning_materials`
+  ADD CONSTRAINT `fk_materials_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_materials_tenant_subject` FOREIGN KEY (`school_id`, `subject_id`) REFERENCES `subjects` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_materials_tenant_teacher` FOREIGN KEY (`school_id`, `teacher_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_materials_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`);
+
+ALTER TABLE `narrative_reports`
+  ADD CONSTRAINT `fk_narrative_reports_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_narrative_reports_tenant_student` FOREIGN KEY (`school_id`, `student_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_narrative_reports_tenant_teacher` FOREIGN KEY (`school_id`, `teacher_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_narrative_reports_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`);
+
+ALTER TABLE `published_final_grades`
+  ADD CONSTRAINT `fk_published_final_grades_tenant_publisher` FOREIGN KEY (`school_id`, `published_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_published_final_grades_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_published_final_grades_tenant_student` FOREIGN KEY (`school_id`, `student_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_published_final_grades_tenant_subject` FOREIGN KEY (`school_id`, `subject_id`) REFERENCES `subjects` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_published_final_grades_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`);
+
+ALTER TABLE `qr_scan_events`
+  ADD CONSTRAINT `fk_qr_scans_tenant_credential` FOREIGN KEY (`school_id`, `student_qr_credential_id`) REFERENCES `student_qr_credentials` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_qr_scans_tenant_session` FOREIGN KEY (`school_id`, `attendance_session_id`) REFERENCES `attendance_sessions` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_qr_scans_tenant_student` FOREIGN KEY (`school_id`, `scanned_student_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_qr_scans_tenant_user` FOREIGN KEY (`school_id`, `scanned_by_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `report_reopen_requests`
+  ADD CONSTRAINT `fk_report_reopen_tenant_report` FOREIGN KEY (`school_id`, `narrative_report_id`) REFERENCES `narrative_reports` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_report_reopen_tenant_requester` FOREIGN KEY (`school_id`, `requested_by_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_report_reopen_tenant_reviewer` FOREIGN KEY (`school_id`, `reviewed_by_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `school_form_exports`
+  ADD CONSTRAINT `fk_school_form_exports_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_school_form_exports_tenant_term` FOREIGN KEY (`school_id`, `academic_term_id`) REFERENCES `academic_terms` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_school_form_exports_tenant_user` FOREIGN KEY (`school_id`, `requested_by_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+ALTER TABLE `student_journal_entries`
+  ADD CONSTRAINT `fk_journal_entries_tenant_owner` FOREIGN KEY (`school_id`, `owner_teacher_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_journal_entries_tenant_prompt` FOREIGN KEY (`school_id`, `journal_prompt_id`) REFERENCES `journal_prompts` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_journal_entries_tenant_section` FOREIGN KEY (`school_id`, `section_id`) REFERENCES `sections` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_journal_entries_tenant_student` FOREIGN KEY (`school_id`, `student_user_id`) REFERENCES `users` (`school_id`, `id`),
+  ADD CONSTRAINT `fk_journal_entries_tenant_subject` FOREIGN KEY (`school_id`, `journal_subject_id`) REFERENCES `journal_subjects` (`school_id`, `id`);
+
+ALTER TABLE `student_qr_credentials`
+  ADD CONSTRAINT `fk_student_qr_credentials_tenant_student` FOREIGN KEY (`school_id`, `student_user_id`) REFERENCES `users` (`school_id`, `id`) ON DELETE CASCADE;
+
+ALTER TABLE `student_scores`
+  ADD CONSTRAINT `fk_student_scores_tenant_recorder` FOREIGN KEY (`school_id`, `recorded_by_user_id`) REFERENCES `users` (`school_id`, `id`);
+
+-- Existing databases are upgraded with migrations, not by importing this file again.

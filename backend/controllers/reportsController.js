@@ -40,6 +40,7 @@ async function getSchoolGradeSummary(req, res, next) {
         AVG(published_final_grades.final_grade) AS averageGrade,
         COUNT(*) AS total,
         SUM(CASE WHEN published_final_grades.final_grade >= CASE
+          WHEN school_levels.level_code = 'shs' THEN 75
           WHEN school_levels.level_code IN ('elementary', 'jhs')
             AND (school_grade_levels.grade_code IN ('grade-4', 'grade-5', 'grade-6',
               'grade-7', 'grade-8', 'grade-9', 'grade-10')
@@ -76,11 +77,58 @@ async function getSchoolGradeSummary(req, res, next) {
         AND students.school_id = published_final_grades.school_id
         AND students.role = 'student'
       WHERE published_final_grades.school_id = ? AND academic_years.id = ?
+        AND (school_levels.level_code <> 'shs' OR (
+          ? = TRUE AND sections.shs_curriculum_code = 'strengthened_2026'
+          AND school_grade_levels.grade_code IN ('grade-11', 'grade-12')
+          AND YEAR(academic_years.start_date) >= 2026
+          ))
       GROUP BY school_grade_levels.id, school_grade_levels.display_name,
         school_grade_levels.sort_order, subjects.id, subjects.name
       ORDER BY school_grade_levels.sort_order, averageGrade DESC, subjects.name`,
-      [schoolId, academicYear.id]
+      [schoolId, academicYear.id, process.env.SHS_SELECTION_ENABLED === 'true']
     );
+
+    if (process.env.SHS_SELECTION_ENABLED === 'true') {
+      const [electiveRows] = await database.execute(
+        `SELECT school_grade_levels.display_name AS grade,
+          school_grade_levels.sort_order AS gradeSort,
+          shs_offerings.subject_name AS subject,
+          AVG(published_final_grades.final_grade) AS averageGrade,
+          COUNT(*) AS total,
+          SUM(CASE WHEN published_final_grades.final_grade >= 75 THEN 1 ELSE 0 END) AS passing,
+          SUM(CASE WHEN published_final_grades.final_grade >= 90 THEN 1 ELSE 0 END) AS band90,
+          SUM(CASE WHEN published_final_grades.final_grade >= 80 AND published_final_grades.final_grade < 90 THEN 1 ELSE 0 END) AS band80,
+          SUM(CASE WHEN published_final_grades.final_grade >= 75 AND published_final_grades.final_grade < 80 THEN 1 ELSE 0 END) AS band75,
+          SUM(CASE WHEN published_final_grades.final_grade < 75 THEN 1 ELSE 0 END) AS bandBelow75
+         FROM published_final_grades
+         INNER JOIN shs_elective_classes ON shs_elective_classes.id = published_final_grades.shs_elective_class_id
+           AND shs_elective_classes.school_id = published_final_grades.school_id
+         INNER JOIN shs_offerings ON shs_offerings.id = shs_elective_classes.offering_id
+           AND shs_offerings.school_id = shs_elective_classes.school_id
+         INNER JOIN school_grade_levels ON school_grade_levels.id = shs_offerings.grade_level_id
+           AND school_grade_levels.school_id = published_final_grades.school_id
+         INNER JOIN school_levels ON school_levels.id = school_grade_levels.school_level_id
+           AND school_levels.school_id = school_grade_levels.school_id
+         INNER JOIN academic_years ON academic_years.id = shs_offerings.academic_year_id
+           AND academic_years.school_id = shs_offerings.school_id
+         INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
+           AND academic_terms.school_id = published_final_grades.school_id
+           AND academic_terms.academic_year_id = academic_years.id
+           AND academic_terms.school_level_id = school_levels.id
+         INNER JOIN users AS students ON students.id = published_final_grades.student_user_id
+           AND students.school_id = published_final_grades.school_id AND students.role = 'student'
+         WHERE published_final_grades.school_id = ? AND academic_years.id = ?
+           AND published_final_grades.section_id IS NULL AND published_final_grades.subject_id IS NULL
+           AND school_levels.level_code = 'shs'
+           AND school_grade_levels.grade_code IN ('grade-11', 'grade-12')
+           AND YEAR(academic_years.start_date) >= 2026
+         GROUP BY school_grade_levels.id, school_grade_levels.display_name,
+           school_grade_levels.sort_order, shs_offerings.subject_name
+         ORDER BY school_grade_levels.sort_order, averageGrade DESC, shs_offerings.subject_name`,
+        [schoolId, academicYear.id]
+      );
+      rows.push(...electiveRows);
+    }
 
     const gradesByLevel = new Map();
     const totals = { passing: 0, total: 0, band90: 0, band80: 0, band75: 0, bandBelow75: 0 };

@@ -1,5 +1,5 @@
-/* Appearance chooser. Loaded last so it also works on the public pages. */
-.tb-theme { position: relative; flex: 0 0 auto; }
+/* Theme toggle. Loaded last so it also works on the public pages. */
+.tb-theme { flex: 0 0 auto; }
 .tb-theme-trigger {
   display: inline-flex; align-items: center; justify-content: center;
   width: 38px; height: 38px; padding: 0;
@@ -7,48 +7,20 @@
   border-radius: var(--radius-sm); background: transparent;
   color: var(--gray-600); cursor: pointer;
 }
-.tb-theme-trigger:hover, .tb-theme-trigger[aria-expanded="true"] {
+.tb-theme-trigger:hover {
   background: transparent; color: var(--theme-accent-text);
 }
-.tb-theme-trigger:focus-visible,
-.tb-theme-choice input:focus-visible + span {
+.tb-theme-trigger:focus-visible {
   outline: 2px solid var(--theme-accent-text); outline-offset: 2px;
 }
-.tb-theme-trigger svg, .tb-theme-choice svg { width: 17px; height: 17px; }
+.tb-theme-trigger svg { width: 17px; height: 17px; }
 .topbar .tb-theme-trigger svg { width: 20px; height: 20px; stroke-width: 1.9; }
-.tb-theme-menu {
-  position: absolute; top: calc(100% + 8px); right: 0;
-  z-index: 500; width: 184px; padding: 8px;
-  background: var(--theme-surface-raised); color: var(--gray-800);
-  border: 1px solid var(--gray-200); border-radius: var(--radius-md);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, .16);
-}
-.tb-theme-menu[hidden] { display: none !important; }
-.tb-theme-heading {
-  padding: 6px 9px 8px; font-size: 10px; font-weight: 800;
-  letter-spacing: .08em; text-transform: uppercase; color: var(--gray-500);
-}
-.tb-theme-choice { display: block; cursor: pointer; }
-.tb-theme-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.tb-theme-choice span {
-  display: flex; align-items: center; gap: 10px;
-  min-height: 38px; padding: 8px 10px; border-radius: var(--radius-sm);
-  font-size: 13px; font-weight: 600;
-}
-.tb-theme-choice:hover span, .tb-theme-choice input:checked + span {
-  background: var(--blue-xpale); color: var(--theme-accent-text);
-}
-.tb-theme-choice input:checked + span::after {
-  content: ''; width: 6px; height: 6px; margin-left: auto;
-  border-radius: 50%; background: currentColor;
-}
 .login-panel { position: relative; }
 .login-panel > .tb-theme { position: absolute; top: 18px; right: 20px; z-index: 10; }
 .login-panel > .tb-theme .tb-theme-trigger { width: 34px; height: 34px; }
 .onboarding-topbar-actions .tb-theme-trigger { width: 34px; height: 34px; }
 @media (max-width: 560px) {
   .topbar-right, .parent-topbar-right, .student-topbar-right { gap: 7px; }
-  .tb-theme-menu { max-width: calc(100vw - 20px); }
 }
 
 /* Keep the browser's native page scrollbar dark in either app theme. */

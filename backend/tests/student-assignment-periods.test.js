@@ -13,7 +13,8 @@ test('student assignments stay within the selected school year and grading perio
   const context = vm.createContext({
     ASSIGNMENTS: [
       { id: 'old', academicPeriodId: '2' },
-      { id: 'current', academicPeriodId: '6' }
+      { id: 'current', academicPeriodId: '6' },
+      { id: 'elective', academicPeriodId: null, electiveClassId: '51', scopeType: 'elective' }
     ],
     ASSIGNMENT_PERIODS: [],
     selectedAssignmentYearId: '',
@@ -32,17 +33,27 @@ test('student assignments stay within the selected school year and grading perio
   assert.equal(context.selectedAssignmentYearId, '2');
   assert.deepEqual(Array.from(context.ASSIGNMENT_PERIODS, term => String(term.id)), ['5', '6', '1', '2']);
   assert.equal(vm.runInContext('getAssignmentsInSelectedPeriod()[0].id', context), 'current');
+  assert.deepEqual(Array.from(vm.runInContext('getAssignmentsForCurrentView().map(item => item.id)', context)), ['current', 'elective']);
   assert.equal(context.ASSIGNMENT_PERIODS.some(term => term.id === 7), false);
 
   vm.runInContext("selectAssignmentYear('1')", context);
   assert.equal(context.selectedAssignmentYearId, '1');
   assert.equal(context.selectedAssignmentPeriodId, '2');
   assert.equal(vm.runInContext('getAssignmentsInSelectedPeriod()[0].id', context), 'old');
+  assert.deepEqual(Array.from(vm.runInContext('getAssignmentsForCurrentView().map(item => item.id)', context)), ['old', 'elective']);
   vm.runInContext("selectAssignmentPeriod('5')", context);
   assert.equal(context.selectedAssignmentYearId, '2');
   assert.equal(context.selectedAssignmentPeriodId, '5');
   vm.runInContext("selectedAssignmentPeriodId = 'missing'; setAssignmentPeriods(terms.map(term => ({ ...term, status: 'closed' })))", context);
   assert.equal(context.selectedAssignmentPeriodId, '6');
+});
+
+test('student assignment view keeps elective work separate from grading-period controls', () => {
+  assert.match(source, /function getAssignmentsForCurrentView\(\)[\s\S]*?ASSIGNMENTS\.filter\(isElectiveAssignment\)/);
+  assert.match(source, /Elective class assignments/);
+  assert.match(source, /function isElectiveAssignment\(assignment\)/);
+  assert.match(source, /assignmentScope/);
+  assert.match(fs.readFileSync(path.join(__dirname, '../../assets/css/student/assignments.css'), 'utf8'), /\.assignment-scope-heading[\s\S]*?grid-column: 1 \/ -1/);
 });
 
 test('student assignment page has a responsive controls panel and desktop period tabs', () => {

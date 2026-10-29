@@ -2,6 +2,7 @@ const { getDatabase } = require('../config/database');
 const { avatarFields } = require('../config/avatars');
 const { assertGradeWriteAccess, upsertStudentScore } = require('./gradesController');
 const { writeAuditLog } = require('../utils/auditLog');
+const { studentCanAccessJournal } = require('../utils/studentJournalAccess');
 
 // Journal schedules are entered in Philippine local time (UTC+08:00).
 // Use one clock regardless of the database server's session time zone.
@@ -119,18 +120,9 @@ function activeJhsSectionSql(sectionAlias) {
 }
 
 async function assertStudentHasJhsPlacement(database, schoolId, studentId) {
-  const [placements] = await database.execute(
-    `SELECT sections.id FROM section_students
-    INNER JOIN sections ON sections.id = section_students.section_id
-      AND sections.school_id = section_students.school_id
-    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
-      AND academic_years.school_id = sections.school_id AND academic_years.status = 'active'
-    WHERE section_students.school_id = ? AND section_students.student_user_id = ?
-      AND section_students.withdrawn_at IS NULL AND sections.status = 'active'
-      AND ${activeJhsSectionSql('sections')} LIMIT 1`,
-    [schoolId, studentId]
-  );
-  if (!placements.length) throw createError('Current Journals are available only to students enrolled in Junior High School.', 403);
+  if (!await studentCanAccessJournal(database, schoolId, studentId)) {
+    throw createError('Journals are available only to eligible Junior High School students taking the journal subject.', 403);
+  }
 }
 
 async function getConfiguredJournalSubject(database, schoolId) {
@@ -621,6 +613,7 @@ async function listJournalHistory(req, res, next) {
     const user = req.user;
     if (!['school_admin', 'teacher', 'student'].includes(user.role) || !user.schoolId) throw createError('You do not have access to journal history.', 403);
     const database = getDatabase();
+    if (user.role === 'student') await assertStudentHasJhsPlacement(database, user.schoolId, user.id);
     const [[settings]] = await database.execute('SELECT journal_subject_id AS subjectId FROM school_settings WHERE school_id = ?', [user.schoolId]);
     const sectionId = req.query.sectionId ? parseId(req.query.sectionId, 'section ID') : null;
     const promptWhere = ['journal_prompts.school_id = ?'];

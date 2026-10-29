@@ -90,10 +90,12 @@ test('student and parent previous-section work share an accessible accordion car
 });
 
 test('parent page displays selected child, periods, status filters, and read-only details', async () => {
+  const elective = { ...assignment(8, 'Elective research project', 'pending', null),
+    scopeType: 'elective', electiveClassId: '51', electiveClassName: 'Academic 11-A', subjectName: 'Contemporary Literature' };
   const page = createPage({ isBackendAvailable: true,
     getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', schoolLevelId: '7', gradeLevel: 'Grade 7', sectionName: 'St. Matthew' }],
     getAcademicTerms: async () => terms,
-    getParentChildAssignments: async () => ({ studentId: '4', assignments: [assignment(1, 'Essay', 'pending'), assignment(2, 'Quiz', 'submitted'), assignment(3, 'Old task', 'not_submitted', '11')] })
+    getParentChildAssignments: async () => ({ studentId: '4', assignments: [assignment(1, 'Essay', 'pending'), assignment(2, 'Quiz', 'submitted'), assignment(3, 'Old task', 'not_submitted', '11'), elective] })
   });
   await page.flush();
   assert.match(page.element('child-switcher').innerHTML, /Juan/);
@@ -109,6 +111,9 @@ test('parent page displays selected child, periods, status filters, and read-onl
   assert.match(page.element('assignmentPeriodTabs').innerHTML, /aria-disabled="true" disabled aria-selected="false" aria-label="Quarter 3, not started"/);
   assert.match(page.element('assignmentList').innerHTML, /Essay/);
   assert.match(page.element('assignmentList').innerHTML, /Quiz/);
+  assert.match(page.element('assignmentList').innerHTML, /Elective class assignments/);
+  assert.match(page.element('assignmentList').innerHTML, /Elective class · Academic 11-A/);
+  assert.match(page.element('assignmentList').innerHTML, /Elective research project/);
   assert.doesNotMatch(page.element('assignmentList').innerHTML, /Old task/);
   page.click('assignmentFilters', { status: 'submitted' });
   assert.doesNotMatch(page.element('assignmentList').innerHTML, /Essay/);
@@ -120,6 +125,21 @@ test('parent page displays selected child, periods, status filters, and read-onl
   assert.equal(page.element('assignmentDetailStatus').textContent, 'Not submitted');
   assert.equal(page.element('assignmentDetailInstructions').textContent, 'Write a report.');
   assert.equal(page.element('assignmentDetailModal').hidden, false);
+});
+
+test('parent can view elective assignments when the child has no grading periods', async () => {
+  const page = createPage({ isBackendAvailable: true,
+    getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', schoolLevelId: '7' }],
+    getAcademicTerms: async () => [],
+    getParentChildAssignments: async () => ({ studentId: '4', assignments: [{
+      ...assignment(9, 'Elective portfolio', 'pending', null), scopeType: 'elective',
+      electiveClassId: '52', electiveClassName: 'TechPro 11-B'
+    }] })
+  });
+  await page.flush();
+  assert.match(page.element('assignmentList').innerHTML, /Elective class assignments/);
+  assert.match(page.element('assignmentList').innerHTML, /Elective portfolio/);
+  assert.doesNotMatch(page.element('assignmentList').innerHTML, /No grading periods available/);
 });
 
 test('period selection stays synchronized between desktop tabs and the mobile dropdown', async () => {

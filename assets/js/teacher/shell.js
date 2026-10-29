@@ -37,8 +37,21 @@ function readTeacherSidebarSnapshot() {
     if (snapshot?.version !== 1
       || String(snapshot.schoolId) !== String(pointer.schoolId)
       || String(snapshot.teacherId) !== String(pointer.teacherId)
-      || !snapshot.access || !Array.isArray(snapshot.sections)) return null;
-    return snapshot;
+      || !snapshot.access || !Array.isArray(snapshot.sections)
+      || (snapshot.shsClasses !== undefined && !Array.isArray(snapshot.shsClasses))) return null;
+    return {
+      ...snapshot,
+      sections: snapshot.sections.map(section => ({
+        id: String(section.id),
+        grade: String(section.grade || ''),
+        name: String(section.name || '')
+      })),
+      shsClasses: Array.isArray(snapshot.shsClasses) ? snapshot.shsClasses.map(item => ({
+        id: String(item?.id || item?.electiveClassId || ''),
+        grade: String(item?.grade || item?.gradeName || '').trim(),
+        name: String(item?.name || item?.className || '').trim()
+      })) : snapshot.shsClasses
+    };
   } catch {
     return null;
   }
@@ -92,10 +105,23 @@ function getActiveTeacherSections(sections) {
   }));
 }
 
+function getAssignedTeacherShsClasses(classes) {
+  return classes.map(item => ({
+    id: String(item.electiveClassId),
+    grade: String(item.gradeName || '').trim(),
+    name: String(item.className || '').trim()
+  }));
+}
+
 function toggleGroup(id) {
   const group = document.getElementById(id);
   if (!group) return;
   group.classList.toggle('open');
+  group.querySelector('.nav-group-toggle')?.setAttribute('aria-expanded', String(group.classList.contains('open')));
+  if (id === 'sections-group') {
+    const snapshot = readTeacherSidebarSnapshot();
+    if (snapshot) saveTeacherSidebarSnapshot({ ...snapshot, classesExpanded: group.classList.contains('open') });
+  }
   if (window.lucide) lucide.createIcons();
 }
 
@@ -127,11 +153,14 @@ function renderTopbarNotifs() {
   const visibleNotifications = getTeacherVisibleNotifications();
   const unreadCount = visibleNotifications.filter(n => !n.read).length;
   const unreadLabel = document.querySelector('.tb-notif-unread-count');
-  if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
   const top5 = [...visibleNotifications]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
+  if (unreadLabel) {
+    unreadLabel.hidden = top5.length === 0;
+    unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
+  }
 
   if (!top5.length) {
     container.innerHTML = `
@@ -231,20 +260,22 @@ function setTeacherSectionNavMessage(container, message) {
   container.replaceChildren(status);
 }
 
-function renderTeacherSectionsNavigation(sections, errorMessage = '') {
+function renderTeacherSectionsNavigation(sections, shsClasses = [], errorMessage = '') {
+  shsClasses = Array.isArray(shsClasses) ? shsClasses : [];
   const containers = document.querySelectorAll('[data-teacher-sections-nav]');
   if (!containers.length) return;
 
-  if (!sections?.length) {
-    const message = errorMessage || 'No subject sections assigned';
+  if (!sections?.length && !shsClasses.length) {
+    const message = errorMessage || 'No classes assigned';
     containers.forEach(container => setTeacherSectionNavMessage(container, message));
     return;
   }
 
   const params = new URLSearchParams(window.location.search);
   const requestedSectionId = params.get('sectionId');
+  const requestedClassId = params.get('classId');
   const isSectionsPage = window.location.pathname.endsWith('edugnay-teacher-sections.html');
-  const activeSectionId = requestedSectionId || (isSectionsPage ? sections[0]?.id : '');
+  const activeSectionId = requestedClassId ? '' : requestedSectionId || (isSectionsPage ? sections[0]?.id : '');
 
   containers.forEach(container => {
     const links = sections.map(section => {
@@ -252,7 +283,7 @@ function renderTeacherSectionsNavigation(sections, errorMessage = '') {
       const sectionId = String(section.id);
       const grade = String(section.grade || section.gradeLevelName || '').trim();
       const name = String(section.name || '').trim();
-      const label = grade && name ? `${grade} – ${name}` : (name || grade || 'Section');
+      const label = [grade, name].filter(Boolean).join(' · ') || 'Section';
       const target = new URL('./edugnay-teacher-sections.html', window.location.href);
 
       target.searchParams.set('sectionId', sectionId);
@@ -265,8 +296,43 @@ function renderTeacherSectionsNavigation(sections, errorMessage = '') {
       link.append(dot, document.createTextNode(label));
       return link;
     });
-    container.replaceChildren(...links);
+    const shsLinks = shsClasses.map(item => {
+      const link = document.createElement('a');
+      const target = new URL('./edugnay-teacher-sections.html', window.location.href);
+      target.searchParams.set('classId', item.id);
+      link.className = `nav-child${isSectionsPage && item.id === requestedClassId ? ' active' : ''}`;
+      link.href = `${target.pathname}${target.search}`;
+      const dot = document.createElement('span');
+      dot.className = 'teacher-section-nav-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      link.append(dot, document.createTextNode([item.grade, item.name].filter(Boolean).join(' · ') || 'SHS class'));
+      return link;
+    });
+    container.replaceChildren(...links, ...shsLinks);
   });
+}
+
+let teacherClassesRestoredBeforePaint = false;
+
+function restoreTeacherClassesNavigation() {
+  const group = document.getElementById('sections-group');
+  if (!group) return;
+  const toggle = group.querySelector('.nav-group-toggle');
+  toggle?.setAttribute('role', 'button');
+  toggle?.setAttribute('tabindex', '0');
+  toggle?.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleGroup('sections-group');
+    }
+  });
+  const snapshot = INITIAL_TEACHER_SIDEBAR_SNAPSHOT;
+  if (typeof snapshot?.classesExpanded === 'boolean') {
+    group.classList.toggle('open', snapshot.classesExpanded);
+  }
+  toggle?.setAttribute('aria-expanded', String(group.classList.contains('open')));
+  if (snapshot) renderTeacherSectionsNavigation(snapshot.sections, snapshot.shsClasses);
+  teacherClassesRestoredBeforePaint = true;
 }
 
 function teacherSidebarSnapshotsMatch(first, second) {
@@ -276,10 +342,15 @@ function teacherSidebarSnapshotsMatch(first, second) {
 
 function applyTeacherSidebarSnapshot(snapshot, { previousSnapshot = null, sectionsError = '' } = {}) {
   setTeacherSidebarPrepaintState(snapshot);
-  if (!previousSnapshot || JSON.stringify(previousSnapshot.sections) !== JSON.stringify(snapshot.sections)) {
-    renderTeacherSectionsNavigation(snapshot.sections, sectionsError);
-  } else if (sectionsError && !snapshot.sections.length) {
-    renderTeacherSectionsNavigation(snapshot.sections, sectionsError);
+  const group = document.getElementById('sections-group');
+  if (group && typeof snapshot.classesExpanded === 'boolean') {
+    group.classList.toggle('open', snapshot.classesExpanded);
+    group.querySelector('.nav-group-toggle')?.setAttribute('aria-expanded', String(snapshot.classesExpanded));
+  }
+  if (!previousSnapshot || JSON.stringify([previousSnapshot.sections, previousSnapshot.shsClasses]) !== JSON.stringify([snapshot.sections, snapshot.shsClasses])) {
+    renderTeacherSectionsNavigation(snapshot.sections, snapshot.shsClasses, sectionsError);
+  } else if (sectionsError && !snapshot.sections.length && !snapshot.shsClasses?.length) {
+    renderTeacherSectionsNavigation(snapshot.sections, snapshot.shsClasses, sectionsError);
   }
 }
 
@@ -301,6 +372,10 @@ function navigate(page, section, tab, subjectId) {
     if (tab) params.set('tab', String(tab));
     const query = params.toString();
     window.location.href = `./edugnay-teacher-sections.html${query ? `?${query}` : ''}`;
+  } else if (page === 'shsClass' && /^\d+$/.test(String(section || ''))) {
+    const target = new URL('./edugnay-teacher-sections.html', window.location.href);
+    target.searchParams.set('classId', String(section));
+    window.location.href = `${target.pathname}${target.search}`;
   } else if (page === 'reports') {
     if (!teacherCanAccess('reports')) return;
     window.location.href = './edugnay-teacher-reports.html';
@@ -341,13 +416,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.lucide) window.lucide.createIcons();
 
   let cachedSnapshot = INITIAL_TEACHER_SIDEBAR_SNAPSHOT;
-  if (cachedSnapshot) applyTeacherSidebarSnapshot(cachedSnapshot);
+  if (cachedSnapshot) applyTeacherSidebarSnapshot(cachedSnapshot, {
+    previousSnapshot: teacherClassesRestoredBeforePaint ? cachedSnapshot : null
+  });
 
   try { await window.EDUGNAY_SCHOOL_READY; }
   catch { showAppToast('School information could not be loaded.', 'error'); }
 
   let session = null;
   let activeSections = null;
+  let assignedShsClasses = null;
   let sectionsError = '';
   let advisorySections = null;
   let journalAccessFresh = false;
@@ -384,6 +462,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       try {
+        const electiveResponse = await window.EDUGNAY_API.getShsTeachingClasses();
+        assignedShsClasses = getAssignedTeacherShsClasses(electiveResponse.classes || []);
+      } catch (error) {
+        if (error.status !== 404 && error.status !== 403) {
+          console.warn('SHS class navigation could not be loaded.');
+        }
+        assignedShsClasses = error.status === 404 || error.status === 403 ? [] : null;
+      }
+
+      try {
         const sections = await window.EDUGNAY_API.getJournalSections();
         teacherJournalAccess = sections.length > 0;
         if (!teacherJournalAccess) {
@@ -409,6 +497,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (cachedSnapshot && !cachedIdentityMatches) {
       clearTeacherSidebarSnapshot();
       cachedSnapshot = null;
+      const group = document.getElementById('sections-group');
+      group?.classList.toggle('open', window.location.pathname.endsWith('edugnay-teacher-sections.html'));
+      group?.querySelector('.nav-group-toggle')?.setAttribute('aria-expanded', String(group.classList.contains('open')));
     }
 
     const activeSchool = window.EDUGNAY_CONFIG?.getActiveSchool?.()
@@ -438,7 +529,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           ? Boolean(cachedIdentityMatches && cachedSnapshot.access.sfTemplates)
           : sfTemplatesEnabled
       },
-      sections: activeSections || (cachedIdentityMatches ? cachedSnapshot.sections : [])
+      sections: activeSections || (cachedIdentityMatches ? cachedSnapshot.sections : []),
+      shsClasses: assignedShsClasses || (cachedIdentityMatches ? cachedSnapshot.shsClasses || [] : []),
+      classesExpanded: document.getElementById('sections-group')?.classList.contains('open') ?? false
     };
     if (!activeSections && !cachedIdentityMatches) sectionsError = 'Assigned sections could not be loaded';
 
@@ -457,7 +550,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       schoolId: getTeacherSchoolId(),
       teacherId: '',
       access: { reports: false, journals: false, sfTemplates: false },
-      sections: []
+      sections: [],
+      shsClasses: [],
+      classesExpanded: document.getElementById('sections-group')?.classList.contains('open') ?? false
     };
     applyTeacherSidebarSnapshot(fallbackSnapshot, { sectionsError: 'Assigned sections could not be loaded' });
   } else if (!window.EDUGNAY_API?.isBackendAvailable) {
@@ -474,7 +569,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       schoolId: String(localSession.schoolId || getTeacherSchoolId() || 'local'),
       teacherId: String(localSession.userId || localSession.id || ''),
       access: { reports: false, journals: false, sfTemplates: teacherSfTemplatesAccess },
-      sections: activeSections || (cachedSnapshot?.sections || [])
+      sections: activeSections || (cachedSnapshot?.sections || []),
+      shsClasses: [],
+      classesExpanded: document.getElementById('sections-group')?.classList.contains('open') ?? false
     };
     if (!teacherSidebarSnapshotsMatch(cachedSnapshot, localSnapshot)) {
       applyTeacherSidebarSnapshot(localSnapshot, { sectionsError });

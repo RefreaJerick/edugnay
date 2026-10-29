@@ -51,6 +51,7 @@
           <span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-student-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
+        <a href="edugnay-student-electives.html" class="nav-item" data-student-access="electives"><div class="nav-icon"><i data-lucide="book-open-check" style="width:16px;height:16px;"></i></div><span class="nav-label">My Electives</span></a>
         <a href="edugnay-student-grades.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">My Grades</span>
@@ -144,13 +145,7 @@
         </div>
 
         <div class="tb-theme" data-theme-control>
-          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-            <div class="tb-theme-heading">Appearance</div>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-          </div>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -267,14 +262,19 @@
     function groupMaterials() {
       Object.keys(MATERIALS_BY_SUBJECT).forEach(key => delete MATERIALS_BY_SUBJECT[key]);
       MATERIAL_RECORDS.forEach(material => {
-        if (!MATERIALS_BY_SUBJECT[material.subjectId]) {
-          MATERIALS_BY_SUBJECT[material.subjectId] = {
-            label: material.subjectName || 'Subject',
+        const isElective = material.scopeType === 'elective' || material.electiveClassId != null;
+        const subjectKey = isElective ? `elective:${material.electiveClassId}` : `subject:${material.subjectId}`;
+        if (!MATERIALS_BY_SUBJECT[subjectKey]) {
+          MATERIALS_BY_SUBJECT[subjectKey] = {
+            label: isElective
+              ? `${material.subjectName || 'Elective'} · ${material.className || 'Elective class'}`
+              : material.subjectName || 'Subject',
             teacher: material.teacherName || 'Subject teacher',
+            elective: isElective,
             items: []
           };
         }
-        MATERIALS_BY_SUBJECT[material.subjectId].items.push(material);
+        MATERIALS_BY_SUBJECT[subjectKey].items.push(material);
       });
       currentSubject = Object.keys(MATERIALS_BY_SUBJECT)[0] || '';
     }
@@ -367,7 +367,8 @@
       const periodGroups = [];
       const grouped = {};
       filtered.forEach(m => {
-        const period = m.academicTermName || PERIOD_LABELS[m.academicPeriodId] || 'Academic Period';
+        const period = m.academicTermName || PERIOD_LABELS[m.academicPeriodId] ||
+          (m.scopeType === 'elective' || m.electiveClassId != null ? 'Elective class materials' : 'Academic Period');
         if (!grouped[period]) { grouped[period] = []; periodGroups.push(period); }
         grouped[period].push(m);
       });

@@ -45,6 +45,7 @@
           <span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-student-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
+        <a href="edugnay-student-electives.html" class="nav-item" data-student-access="electives"><div class="nav-icon"><i data-lucide="book-open-check" style="width:16px;height:16px;"></i></div><span class="nav-label">My Electives</span></a>
         <a href="edugnay-student-grades.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">My Grades</span>
@@ -129,13 +130,7 @@
         </div>
 
         <div class="tb-theme" data-theme-control>
-          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-            <div class="tb-theme-heading">Appearance</div>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-          </div>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -387,6 +382,15 @@
       });
     }
 
+    function isElectiveAssignment(assignment) {
+      return assignment.scopeType === 'elective' || assignment.electiveClassId != null;
+    }
+
+    function getAssignmentsForCurrentView() {
+      return getAssignmentsInSelectedPeriod().filter(function (item) { return !isElectiveAssignment(item); })
+        .concat(ASSIGNMENTS.filter(isElectiveAssignment));
+    }
+
     async function loadBackendAssignments() {
       try {
         if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('The school API is required to load assignments.');
@@ -456,13 +460,13 @@
     }
 
     function getStatusCount(status) {
-      return getAssignmentsInSelectedPeriod().filter(function (item) { return item.status === status; }).length;
+      return getAssignmentsForCurrentView().filter(function (item) { return item.status === status; }).length;
     }
 
     function renderFilterTabs() {
       const filters = document.getElementById('assignmentFilters');
       filters.innerHTML = ASSIGNMENT_FILTERS.map(function (filter) {
-        const count = filter.key === 'all' ? getAssignmentsInSelectedPeriod().length : getStatusCount(filter.key);
+        const count = filter.key === 'all' ? getAssignmentsForCurrentView().length : getStatusCount(filter.key);
         return '<button class="filter-tab assignment-filter-tab' + (currentFilter === filter.key ? ' active' : '') + '" type="button" onclick="setAssignmentFilter(&quot;' + filter.key + '&quot;)">' +
           escapeHtml(filter.label) + '<span class="assignment-filter-count">' + count + '</span></button>';
       }).join('');
@@ -478,7 +482,7 @@
     function getVisibleAssignments() {
       const search = document.getElementById('assignmentSearch').value.trim().toLowerCase();
       const subject = document.getElementById('assignmentSubjectFilter').value;
-      return getAssignmentsInSelectedPeriod().filter(function (item) {
+      return getAssignmentsForCurrentView().filter(function (item) {
         const matchesFilter = currentFilter === 'all' || item.status === currentFilter;
         const matchesSubject = subject === 'all' || item.subject === subject;
         const matchesSearch = !search || (item.title + ' ' + item.subject + ' ' + item.teacher).toLowerCase().includes(search);
@@ -505,27 +509,34 @@
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'clipboard-check',
           title: 'No assignments found',
-          text: selectedAssignmentPeriodId ? 'Try another status, subject, or search term.' : 'Assignments will appear when a grading period is available.'
+          text: selectedAssignmentPeriodId || ASSIGNMENTS.length ? 'Try another status, subject, or search term.' : 'Assignments will appear when a grading period is available.'
         });
         if (window.lucide) lucide.createIcons();
         return;
       }
 
-      list.innerHTML = visible.map(function (item) {
+      function renderAssignmentRow(item) {
         const status = STATUS_META[item.status];
         const onlineLabel = item.onlineSubmissionEnabled ? 'Available' : 'Not available';
         const onlineClass = item.onlineSubmissionEnabled ? 'available' : 'not-available';
         const hasOnlineSubmission = STUDENT_SUBMISSIONS.some(function (record) {
           return record.assignmentId === item.id;
         });
-        const submissionAction = item.onlineSubmissionEnabled
+        const readOnlyElective = isElectiveAssignment(item) && item.electiveMembershipActive === false;
+        const submissionAction = readOnlyElective
+          ? hasOnlineSubmission ? '<button class="top-btn secondary assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">View submission</button>'
+            : '<span class="assignment-action-muted">Enrollment ended</span>'
+          : item.onlineSubmissionEnabled
           ? '<button class="top-btn assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">' +
               '<i data-lucide="file-up" style="width:13px;height:13px;"></i> ' + (hasOnlineSubmission ? 'Replace file' : 'Submit work') + '</button>'
           : '<span class="assignment-action-muted">Submit in class</span>';
+        const assignmentScope = isElectiveAssignment(item)
+          ? 'Elective class' + (item.className ? ' · ' + item.className : '')
+          : '';
         return '<article class="assignment-row assignment-details-trigger" data-assignment-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="View details for ' + escapeHtml(item.title) + '">' +
           '<div class="assignment-row-content">' +
             '<h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
-            '<div class="assignment-row-meta">' + escapeHtml(item.subject) + ' · Due ' + formatDate(item.dueDate) + ' · ' + escapeHtml(item.teacher) + '</div>' +
+            '<div class="assignment-row-meta">' + escapeHtml(item.subject) + ' · Due ' + formatDate(item.dueDate) + ' · ' + escapeHtml(item.teacher) + (assignmentScope ? ' · ' + escapeHtml(assignmentScope) : '') + '</div>' +
           '</div>' +
           '<div class="assignment-online-cell" data-label="Online submission">' +
             '<span class="assignment-online-status ' + onlineClass + '">' + onlineLabel + '</span>' +
@@ -537,7 +548,11 @@
             submissionAction +
           '</div>' +
         '</article>';
-      }).join('');
+      }
+      const electiveRows = visible.filter(isElectiveAssignment);
+      const sectionRows = visible.filter(function (item) { return !isElectiveAssignment(item); });
+      list.innerHTML = sectionRows.map(renderAssignmentRow).join('') +
+        (electiveRows.length ? '<div class="assignment-scope-heading">Elective class assignments</div>' + electiveRows.map(renderAssignmentRow).join('') : '');
       lucide.createIcons();
     }
 
@@ -579,7 +594,7 @@
 
     function populateSubjectFilter() {
       const subjects = [];
-      getAssignmentsInSelectedPeriod().forEach(function (item) {
+      getAssignmentsForCurrentView().forEach(function (item) {
         if (!subjects.includes(item.subject)) subjects.push(item.subject);
       });
       document.getElementById('assignmentSubjectFilter').innerHTML =
@@ -598,14 +613,22 @@
       if (!assignment) return;
 
       activeSubmissionAssignmentId = assignment.id;
-      document.getElementById('assignmentHistoryDownload').hidden = true;
-      const hasOnlineSubmission = STUDENT_SUBMISSIONS.some(function (record) {
+      const ownSubmission = STUDENT_SUBMISSIONS.find(function (record) {
         return record.assignmentId === assignment.id;
       });
-      document.getElementById('submissionModalTitle').textContent = assignment.onlineSubmissionEnabled
+      const hasOnlineSubmission = Boolean(ownSubmission);
+      const readOnlyElective = isElectiveAssignment(assignment) && assignment.electiveMembershipActive === false;
+      const submissionDownload = document.getElementById('assignmentHistoryDownload');
+      submissionDownload.hidden = !(isElectiveAssignment(assignment) && ownSubmission?.fileUrl);
+      submissionDownload.href = submissionDownload.hidden ? '' : ownSubmission.fileUrl;
+      document.getElementById('submissionModalTitle').textContent = readOnlyElective
+        ? 'Elective submission details'
+        : assignment.onlineSubmissionEnabled
         ? hasOnlineSubmission ? 'Replace submission' : 'Submit assignment'
         : 'Assignment details';
-      document.getElementById('submissionModalSub').textContent = assignment.onlineSubmissionEnabled
+      document.getElementById('submissionModalSub').textContent = readOnlyElective
+        ? 'Your earlier submission remains available. New work can no longer be submitted for this class.'
+        : assignment.onlineSubmissionEnabled
         ? 'Review the details and upload your work.'
         : 'Review the assignment details and instructions.';
       document.getElementById('assignmentDetailTitle').textContent = assignment.title || '—';
@@ -619,13 +642,15 @@
 
       const submissionForm = document.getElementById('assignmentSubmissionForm');
       const submitButton = document.getElementById('assignmentSubmissionSubmit');
-      const canSubmitOnline = assignment.onlineSubmissionEnabled === true;
+      const canSubmitOnline = assignment.onlineSubmissionEnabled === true && !readOnlyElective;
       submissionForm.hidden = !canSubmitOnline;
       submitButton.hidden = !canSubmitOnline;
       submitButton.innerHTML = '<i data-lucide="send" style="width:13px;height:13px;"></i> ' +
         (hasOnlineSubmission ? 'Replace file' : 'Submit work');
       const onlineNotice = document.getElementById('assignmentOnlineNotice');
-      onlineNotice.textContent = canSubmitOnline
+      onlineNotice.textContent = readOnlyElective
+        ? hasOnlineSubmission ? 'Enrollment ended · previous submission available' : 'Enrollment ended'
+        : canSubmitOnline
         ? 'Online submission available'
         : 'Submit in class';
       onlineNotice.classList.toggle('is-available', canSubmitOnline);

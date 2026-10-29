@@ -6,7 +6,8 @@ const { getDatabase } = require('../config/database');
 const { getSchoolLogoUrl, logoDirectory, saveSchoolLogo } = require('../config/schoolLogos');
 const { deleteAvatar } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
-const { SHS_STRANDS, SHS_TRACKS } = require('../config/shsCurriculum');
+const { studentCanAccessJournal } = require('../utils/studentJournalAccess');
+const { SHS_TRACKS } = require('../config/shsCurriculum');
 const { schoolDomainCandidate } = require('../utils/schoolEmailDomain');
 const { schoolEmailBase, schoolEmailCandidate } = require('../utils/schoolUserEmail');
 const { DEFAULT_WEEK, normalizeWeekSettings } = require('../utils/reportWeekSettings');
@@ -159,14 +160,7 @@ async function getStructure(database, schoolId) {
   const [tracks] = await database.execute(
     `SELECT school_shs_tracks.id, school_shs_tracks.school_level_id AS schoolLevelId, school_shs_tracks.track_code AS trackCode, school_shs_tracks.display_name AS displayName, school_shs_tracks.is_enabled AS isEnabled
     FROM school_shs_tracks INNER JOIN school_levels ON school_levels.id = school_shs_tracks.school_level_id
-    WHERE school_levels.school_id = ? ORDER BY school_shs_tracks.id`, [schoolId]
-  );
-  const [strands] = await database.execute(
-    `SELECT school_shs_strands.id, school_shs_strands.school_level_id AS schoolLevelId,
-      school_shs_strands.track_id AS trackId, school_shs_strands.strand_code AS strandCode,
-      school_shs_strands.display_name AS displayName, school_shs_strands.is_enabled AS isEnabled
-    FROM school_shs_strands INNER JOIN school_levels ON school_levels.id = school_shs_strands.school_level_id
-    WHERE school_levels.school_id = ? ORDER BY school_shs_strands.id`, [schoolId]
+    WHERE school_levels.school_id = ? AND school_shs_tracks.track_code IN ('academic', 'techpro') ORDER BY school_shs_tracks.id`, [schoolId]
   );
   return levels.map(level => ({
     ...level,
@@ -175,8 +169,7 @@ async function getStructure(database, schoolId) {
     gradeLevels: grades.filter(grade => grade.schoolLevelId === level.id).map(grade => ({ ...grade, isEnabled: Boolean(grade.isEnabled) })),
     tracks: tracks.filter(track => track.schoolLevelId === level.id).map(track => ({
       ...track,
-      isEnabled: Boolean(track.isEnabled),
-      strands: strands.filter(strand => strand.trackId === track.id).map(strand => ({ ...strand, isEnabled: Boolean(strand.isEnabled) }))
+      isEnabled: Boolean(track.isEnabled)
     }))
   }));
 }
@@ -400,10 +393,7 @@ async function registerSchool(req, res, next) {
       }
       if (code === 'shs') {
         for (const trackCode of TRACK_DEFAULTS) {
-          const [trackResult] = await connection.execute('INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, trackCode, trackLabel(trackCode)]);
-          for (const [strandCode, strandName] of (SHS_STRANDS[trackCode] || [])) {
-            await connection.execute('INSERT INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled) VALUES (?, ?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, trackResult.insertId, strandCode, strandName]);
-          }
+          await connection.execute('INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, trackCode, trackLabel(trackCode)]);
         }
       }
     }
@@ -448,8 +438,9 @@ async function registerSchool(req, res, next) {
     await connection.execute('INSERT INTO school_admin_profiles (user_id) VALUES (?)', [adminResult.insertId]);
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
-       VALUES (?, ?, 'school_registration_submitted', 'school', ?, JSON_OBJECT('summary', ?))`,
-      [schoolId, adminResult.insertId, schoolId, `${name} · registration submitted`]
+       VALUES (?, ?, 'school_registration_submitted', 'school', ?,
+         JSON_OBJECT('summary', ?, 'schoolName', ?, 'source', 'school_record'))`,
+      [schoolId, adminResult.insertId, schoolId, `${name} · registration submitted`, name]
     );
     const [platformAdmins] = await connection.execute(`SELECT id, display_name AS displayName, school_email AS schoolEmail, personal_email AS personalEmail FROM users WHERE role = 'platform_admin' AND account_status = 'active'`);
     for (const user of platformAdmins) {
@@ -719,17 +710,6 @@ async function resubmitSchoolRegistration(req, res, next) {
             ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), is_enabled = TRUE`,
             [school.id, level.id, trackCode, trackLabel(trackCode)]
           );
-          const [[storedTrack]] = await connection.execute(
-            'SELECT id FROM school_shs_tracks WHERE school_id = ? AND school_level_id = ? AND track_code = ? LIMIT 1',
-            [school.id, level.id, trackCode]
-          );
-          for (const [strandCode, strandName] of SHS_STRANDS[trackCode] || []) {
-            await connection.execute(
-              `INSERT IGNORE INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
-              VALUES (?, ?, ?, ?, ?, TRUE)`,
-              [school.id, level.id, storedTrack.id, strandCode, strandName]
-            );
-          }
         }
       }
       const [storedTerms] = await connection.execute(
@@ -783,7 +763,8 @@ async function resubmitSchoolRegistration(req, res, next) {
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
       VALUES (?, NULL, 'school_registration_resubmitted', 'school', ?, ?)`,
-      [school.id, school.id, JSON.stringify({ summary: name + ' registration resubmitted', previousRejectionReason: school.rejectionReason || null })]
+      [school.id, school.id, JSON.stringify({ summary: name + ' registration resubmitted',
+        schoolName: name, source: 'school_record', previousRejectionReason: school.rejectionReason || null })]
     );
     const [statusUpdate] = await connection.execute(
       `UPDATE schools SET registration_status = 'pending', approved_at = NULL,
@@ -1161,11 +1142,14 @@ async function getPortalFeatures(req, res, next) {
       'SELECT journal_subject_id AS journalSubjectId FROM school_settings WHERE school_id = ?', [schoolId]
     );
     const journalSubject = await getJournalSubjectEligibility(database, schoolId, settings?.journalSubjectId);
+    const studentJournalEligible = req.user.role === 'student'
+      ? journalSubject.eligible && await studentCanAccessJournal(database, schoolId, req.user.id)
+      : journalSubject.eligible;
     res.status(200).json({
       features: await getFeatures(database, schoolId),
       journalSubjectId: settings?.journalSubjectId || null,
       journalSubjectName: journalSubject.subject?.name || null,
-      journalSubjectEligible: journalSubject.eligible
+      journalSubjectEligible: studentJournalEligible
     });
   } catch (error) { next(error); }
 }
@@ -1287,45 +1271,16 @@ async function updateAcademicStructure(req, res, next) {
         if (new Set(trackCodes).size !== trackCodes.length || trackCodes.some(code => !TRACK_DEFAULTS.includes(code))) {
           throw createError('The SHS track configuration is invalid.');
         }
+        if (level.tracks.some(track => track?.strands?.length || track?.strandCode || track?.strandId)) {
+          throw createError('SHS strands are not part of the Strengthened SHS curriculum.');
+        }
         for (const track of level.tracks) {
           await connection.execute(`INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), is_enabled=VALUES(is_enabled)`, [schoolId, storedLevel.id, track.trackCode, text(track.displayName, 120) || trackLabel(track.trackCode), boolean(track.isEnabled)]);
-          const [[storedTrack]] = await connection.execute(
-            'SELECT id FROM school_shs_tracks WHERE school_id = ? AND school_level_id = ? AND track_code = ? LIMIT 1',
-            [schoolId, storedLevel.id, track.trackCode]
-          );
-          for (const [strandCode, strandName] of SHS_STRANDS[track.trackCode] || []) {
-            await connection.execute(
-              `INSERT IGNORE INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
-              VALUES (?, ?, ?, ?, ?, TRUE)`,
-              [schoolId, storedLevel.id, storedTrack.id, strandCode, strandName]
-            );
-          }
         }
         if (trackCodes.length) {
           await connection.execute(`UPDATE school_shs_tracks SET is_enabled = FALSE WHERE school_level_id = ? AND track_code NOT IN (${trackCodes.map(() => '?').join(', ')})`, [storedLevel.id, ...trackCodes]);
         } else {
           await connection.execute('UPDATE school_shs_tracks SET is_enabled = FALSE WHERE school_level_id = ?', [storedLevel.id]);
-        }
-        for (const track of level.tracks) {
-          if (!Array.isArray(track.strands)) continue;
-          const [[storedTrack]] = await connection.execute('SELECT id FROM school_shs_tracks WHERE school_id = ? AND school_level_id = ? AND track_code = ? FOR UPDATE', [schoolId, storedLevel.id, track.trackCode]);
-          if (!storedTrack) throw createError('A configured SHS track was not found.');
-          const strandCodes = track.strands.map(strand => strand?.strandCode);
-          const allowedStrands = new Set((SHS_STRANDS[track.trackCode] || []).map(([strandCode]) => strandCode));
-          if (new Set(strandCodes).size !== strandCodes.length || strandCodes.some(code => !allowedStrands.has(code))) {
-            throw createError('The SHS strand configuration is invalid.');
-          }
-          for (const strand of track.strands) {
-            await connection.execute(`INSERT INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
-              VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), is_enabled=VALUES(is_enabled)`,
-            [schoolId, storedLevel.id, storedTrack.id, strand.strandCode,
-              text(strand.displayName, 120) || SHS_STRANDS[track.trackCode].find(([code]) => code === strand.strandCode)?.[1], boolean(strand.isEnabled)]);
-          }
-          if (strandCodes.length) {
-            await connection.execute(`UPDATE school_shs_strands SET is_enabled = FALSE WHERE track_id = ? AND strand_code NOT IN (${strandCodes.map(() => '?').join(', ')})`, [storedTrack.id, ...strandCodes]);
-          } else {
-            await connection.execute('UPDATE school_shs_strands SET is_enabled = FALSE WHERE track_id = ?', [storedTrack.id]);
-          }
         }
       }
     }

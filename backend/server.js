@@ -38,9 +38,14 @@ const gradingPeriodReopenRoutes = require('./routes/gradingPeriodReopen');
 const usersRoutes = require('./routes/users');
 const userImportRoutes = require('./routes/userImport');
 const timetablesRoutes = require('./routes/timetables');
+  const shsProgramRoutes = require('./routes/shsProgram');
+const shsSelectionRoutes = require('./routes/shsSelection');
+const shsTeachingRoutes = require('./routes/shsTeaching');
+const shsGradesRoutes = require('./routes/shsGrades');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
+const host = process.env.HOST || undefined;
 const jsonBodyParser = bodyParser.json();
 const schoolFormJsonBodyParser = bodyParser.json({ limit: '4mb' });
 const frontendOrigin = getFrontendOrigin();
@@ -81,6 +86,10 @@ app.use('/api/qr-attendance', qrAttendanceRoutes);
 app.use('/api/profile', profilesRoutes);
 app.use('/api/sections', sectionsRoutes);
 app.use('/api/timetables', timetablesRoutes);
+  app.use('/api/shs-program', shsProgramRoutes);
+app.use('/api/shs-selection', shsSelectionRoutes);
+app.use('/api/shs-teaching', shsTeachingRoutes);
+app.use('/api/shs-grades', shsGradesRoutes);
 app.use('/api/subjects', subjectsRoutes);
 app.use('/api/assignments', assignmentsRoutes);
 app.use('/api', gradesRoutes);
@@ -100,7 +109,7 @@ app.use('/api/users', usersRoutes);
 
 app.use(errorHandler);
 
-const server = app.listen(port, () => {
+const server = app.listen(port, host, () => {
   console.log(`Academix API is running on port ${port}.`);
 });
 
@@ -110,8 +119,10 @@ server.on('error', error => {
   process.exitCode = 1;
 });
 
-startAnnouncementEmailWorker();
-startSchoolRegistrationEmailWorker();
-startParentNotificationWorker();
-startPushNotificationWorker();
-startScheduledAnnouncementWorker();
+if (process.env.DISABLE_BACKGROUND_WORKERS !== 'true') {
+  startAnnouncementEmailWorker();
+  startSchoolRegistrationEmailWorker();
+  startParentNotificationWorker();
+  startPushNotificationWorker();
+  startScheduledAnnouncementWorker();
+}

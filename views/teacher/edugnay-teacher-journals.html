@@ -16,7 +16,7 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/journal-history-viewer.js"></script>
-  <script src="../../assets/js/teacher/shell.js"></script>
+  <script src="../../assets/js/teacher/shell.js?v=4"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -249,16 +249,17 @@
         </a>
         <a href="edugnay-teacher-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
 
-        <!-- My Sections (expandable) -->
+        <!-- My Classes (expandable) -->
         <div class="nav-group" id="sections-group">
           <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
             <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
-            <span>My Sections</span>
+            <span>My Classes</span>
             <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
           </div>
           <div class="nav-children" data-teacher-sections-nav>
-            <div class="teacher-section-nav-message" role="status">Loading assigned sections…</div>
+            <div class="teacher-section-nav-message" role="status">Loading assigned classes…</div>
           </div>
+          <script>restoreTeacherClassesNavigation();</script>
         </div>
 
       </div>
@@ -353,13 +354,7 @@
       </div>
 
       <div class="tb-theme" data-theme-control>
-        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-        <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-          <div class="tb-theme-heading">Appearance</div>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-        </div>
+        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">

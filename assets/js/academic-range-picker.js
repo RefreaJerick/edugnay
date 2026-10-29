@@ -15,7 +15,9 @@
   }
 
   function displayDate(value) {
-    return validDate(value) ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : 'dd/mm/yyyy';
+    return validDate(value)
+      ? `${months[Number(value.slice(5, 7)) - 1].slice(0, 3)} ${value.slice(8, 10)}, ${value.slice(0, 4)}`
+      : '';
   }
 
   function moveDate(value, days) {
@@ -34,6 +36,59 @@
     return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
   }
 
+  function yearBounds(range) {
+    return {
+      min: validDate(range.yearStart) ? Number(range.yearStart.slice(0, 4)) : 1,
+      max: validDate(range.yearEnd) ? Number(range.yearEnd.slice(0, 4)) : 9999
+    };
+  }
+
+  function dateForYear(value, year) {
+    const month = Number(value.slice(5, 7)) - 1;
+    const day = Number(value.slice(8, 10));
+    const lastDay = new Date(0);
+    lastDay.setUTCHours(0, 0, 0, 0);
+    lastDay.setUTCFullYear(year, month + 1, 0);
+    return `${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-${String(Math.min(day, lastDay.getUTCDate())).padStart(2, '0')}`;
+  }
+
+  function utcDate(year, month, day) {
+    const date = new Date(0);
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCFullYear(year, month, day);
+    return date;
+  }
+
+  function setCalendarYear(range, value) {
+    const year = Number(value);
+    const bounds = yearBounds(range);
+    if (!Number.isInteger(year) || year < bounds.min || year > bounds.max) return false;
+    let date = dateForYear(range.active, year);
+    if (validDate(range.yearStart) && date < range.yearStart) date = range.yearStart;
+    if (validDate(range.yearEnd) && date > range.yearEnd) date = range.yearEnd;
+    range.active = date;
+    range.year = Number(date.slice(0, 4));
+    range.month = Number(date.slice(5, 7)) - 1;
+    range.error = '';
+    return true;
+  }
+
+  function inclusiveDayCount(range) {
+    if (!canApply(range)) return null;
+    const start = new Date(`${range.start}T00:00:00Z`).getTime();
+    const end = new Date(`${range.end}T00:00:00Z`).getTime();
+    return Math.floor((end - start) / 86400000) + 1;
+  }
+
+  function updateSelectionSummary(range, selection, counter) {
+    const start = validDate(range.start) ? displayDate(range.start) : 'Select start date';
+    const end = validDate(range.end) ? displayDate(range.end) : 'Select end date';
+    selection.textContent = `${start} – ${end}`;
+    const count = inclusiveDayCount(range);
+    counter.textContent = count === null ? '' : `${count} ${count === 1 ? 'day' : 'days'}`;
+    counter.hidden = count === null;
+  }
+
   function ensurePopup() {
     if (popup) return popup;
     popup = document.createElement('div');
@@ -46,7 +101,7 @@
       <div class="academic-range-navigation">
         <button type="button" data-range-nav="-12" aria-label="Previous year"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5m7 10-5-5 5-5"/></svg></button>
         <button type="button" data-range-nav="-1" aria-label="Previous month"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
-        <strong data-range-month></strong>
+        <div class="academic-range-month-year"><strong data-range-month></strong><input class="academic-range-year-input" type="number" data-range-year min="1" max="9999" step="1" inputmode="numeric" aria-label="Year"></div>
         <button type="button" data-range-nav="1" aria-label="Next month"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
         <button type="button" data-range-nav="12" aria-label="Next year"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 17 5-5-5-5m2 10 5-5-5-5"/></svg></button>
       </div>
@@ -54,9 +109,11 @@
       <div class="academic-range-days" role="group" aria-label="Calendar dates"></div>
       <div class="academic-range-selection"><span>Selected dates</span><strong data-range-selection></strong></div>
       <p class="academic-range-error" data-range-error role="status" hidden></p>
-      <div class="academic-range-actions"><button type="button" class="academic-range-cancel" data-range-action="cancel">Cancel</button><button type="button" class="academic-range-apply" data-range-action="apply">Apply</button></div>`;
+      <div class="academic-range-actions"><span class="academic-range-day-count" data-range-day-count aria-live="polite" hidden></span><button type="button" class="academic-range-cancel" data-range-action="cancel">Cancel</button><button type="button" class="academic-range-apply" data-range-action="apply">Apply</button></div>`;
     document.body.appendChild(popup);
     popup.addEventListener('click', onPopupClick);
+    popup.addEventListener('input', onPopupInput);
+    popup.addEventListener('change', onPopupChange);
     popup.addEventListener('keydown', onPopupKeydown);
     document.addEventListener('pointerdown', event => {
       if (openRange && !popup.contains(event.target) && !openRange.trigger.contains(event.target)) close(false);
@@ -122,17 +179,22 @@
     const range = openRange;
     popup.querySelector('[data-range-title]').textContent = range.name;
     popup.querySelector('[data-range-step]').textContent = range.step === 'start' ? 'Choose start date' : 'Choose end date';
-    popup.querySelector('[data-range-month]').textContent = `${months[range.month]} ${range.year}`;
-    popup.querySelector('[data-range-selection]').textContent = `${displayDate(range.start)}  –  ${displayDate(range.end)}`;
+    popup.querySelector('[data-range-month]').textContent = months[range.month];
+    const yearField = popup.querySelector('[data-range-year]');
+    const bounds = yearBounds(range);
+    yearField.min = String(bounds.min);
+    yearField.max = String(bounds.max);
+    yearField.value = String(range.year).padStart(4, '0');
+    updateSelectionSummary(range, popup.querySelector('[data-range-selection]'), popup.querySelector('[data-range-day-count]'));
     const error = popup.querySelector('[data-range-error]');
     error.textContent = range.error || '';
     error.hidden = !range.error;
-    popup.querySelector('[data-range-action="apply"]').disabled = !canApply(range);
+    popup.querySelector('[data-range-action="apply"]').disabled = !canApply(range) || Boolean(range.error);
 
     const grid = popup.querySelector('.academic-range-days');
     grid.replaceChildren();
-    const firstWeekday = (new Date(Date.UTC(range.year, range.month, 1)).getUTCDay() + 6) % 7;
-    const daysInMonth = new Date(Date.UTC(range.year, range.month + 1, 0)).getUTCDate();
+    const firstWeekday = (utcDate(range.year, range.month, 1).getUTCDay() + 6) % 7;
+    const daysInMonth = utcDate(range.year, range.month + 1, 0).getUTCDate();
     for (let blank = 0; blank < firstWeekday; blank += 1) {
       const spacer = document.createElement('span');
       spacer.setAttribute('aria-hidden', 'true');
@@ -170,7 +232,7 @@
     if (day && !day.disabled) return choose(day.dataset.date);
     const nav = event.target.closest('[data-range-nav]');
     if (nav) {
-      const next = new Date(Date.UTC(openRange.year, openRange.month + Number(nav.dataset.rangeNav), 1));
+      const next = utcDate(openRange.year, openRange.month + Number(nav.dataset.rangeNav), 1);
       openRange.year = next.getUTCFullYear();
       openRange.month = next.getUTCMonth();
       openRange.active = `${String(openRange.year).padStart(4, '0')}-${String(openRange.month + 1).padStart(2, '0')}-01`;
@@ -182,6 +244,40 @@
     const action = event.target.closest('[data-range-action]')?.dataset.rangeAction;
     if (action === 'cancel') close();
     if (action === 'apply') apply();
+  }
+
+  function onPopupChange(event) {
+    if (!openRange || !event.target.matches('[data-range-year]')) return;
+    const bounds = yearBounds(openRange);
+    const year = event.target.value;
+    const currentYear = openRange.year;
+    if (/^\d{1,4}$/.test(year) && Number(year) === currentYear) {
+      openRange.error = '';
+      render();
+      event.target.focus();
+      return;
+    }
+    if (/^\d{1,4}$/.test(year) && setCalendarYear(openRange, year)) {
+      render();
+      event.target.focus();
+      return;
+    }
+    openRange.error = `Enter a year from ${bounds.min} to ${bounds.max}.`;
+    event.target.value = String(currentYear).padStart(4, '0');
+    const error = popup.querySelector('[data-range-error]');
+    error.textContent = openRange.error;
+    error.hidden = false;
+    popup.querySelector('[data-range-action="apply"]').disabled = true;
+  }
+
+  function onPopupInput(event) {
+    if (!openRange || !event.target.matches('[data-range-year]') || !/^\d{4}$/.test(event.target.value)) return;
+    if (!setCalendarYear(openRange, event.target.value)) {
+      const bounds = yearBounds(openRange);
+      openRange.error = `Enter a year from ${bounds.min} to ${bounds.max}.`;
+    }
+    render();
+    event.target.focus();
   }
 
   function onPopupKeydown(event) {

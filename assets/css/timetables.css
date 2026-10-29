@@ -78,6 +78,7 @@ button.timetable-event:focus-visible { outline: none; box-shadow: 0 0 0 3px var(
 .timetable-dialog-body::-webkit-scrollbar-track { background: var(--gray-50); }
 .timetable-dialog-body::-webkit-scrollbar-thumb { border-radius: 6px; background: var(--gray-300); }
 .timetable-dialog-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.timetable-dialog-body > [hidden] { display: none !important; }
 .timetable-error { min-height: 18px; color: var(--theme-danger-dark); font-size: 12px; }
 .timetable-dialog-actions, .timetable-confirm-actions { flex: 0 0 auto; flex-wrap: wrap; }
 .timetable-dialog-actions .row-btn.remove, .timetable-confirm-actions .row-btn.remove { min-height: var(--button-height); padding: 9px var(--button-pad-x); border-radius: var(--button-radius); font-size: 12.5px; }

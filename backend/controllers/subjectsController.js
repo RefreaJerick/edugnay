@@ -1,5 +1,5 @@
 const { getDatabase } = require('../config/database');
-const { LEGACY_SHS_GRADING_GROUPS } = require('../config/shsCurriculum');
+const { SHS_GRADE_ELIGIBILITY, SHS_HOURS_BY_GRADE, SHS_SUBJECT_HOURS, SHS_SUBJECT_TYPES } = require('../config/shsCurriculum');
 const { writeAuditLog } = require('../utils/auditLog');
 
 function createError(message, status = 400) {
@@ -26,7 +26,7 @@ function text(value, maximum, label) {
   return result;
 }
 
-async function validateSubjectScope(connection, schoolId, schoolLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup, allowUnclassified = false) {
+async function validateSubjectScope(connection, schoolId, schoolLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup, shsSubjectType, instructionalHours) {
   if (!gradeLevelIds.length) throw createError('Select at least one grade level for this subject.');
   if (schoolLevelId) {
     const [levels] = await connection.execute('SELECT id FROM school_levels WHERE id = ? AND school_id = ? LIMIT 1', [schoolLevelId, schoolId]);
@@ -35,7 +35,7 @@ async function validateSubjectScope(connection, schoolId, schoolLevelId, gradeLe
   const placeholders = gradeLevelIds.map(() => '?').join(', ');
   const [grades] = await connection.execute(
     `SELECT grades.id, grades.school_level_id AS schoolLevelId, grades.school_id AS schoolId,
-      levels.level_code AS levelCode
+      grades.grade_code AS gradeCode, levels.level_code AS levelCode
       FROM school_grade_levels AS grades INNER JOIN school_levels AS levels ON levels.id = grades.school_level_id
       WHERE grades.school_id = ? AND grades.id IN (${placeholders})`,
     [schoolId, ...gradeLevelIds]
@@ -46,22 +46,29 @@ async function validateSubjectScope(connection, schoolId, schoolLevelId, gradeLe
   const [shsLevels] = await connection.execute("SELECT id FROM school_levels WHERE school_id = ? AND level_code = 'shs' LIMIT 1", [schoolId]);
   const shsLevelId = shsLevels[0] ? Number(shsLevels[0].id) : null;
   const includesShs = grades.some(grade => Number(grade.schoolLevelId) === shsLevelId);
-  if (!includesShs && (trackId || strandId || shsGradingGroup)) throw createError('SHS track, strand, and grading type settings only apply to Senior High School subjects.');
-  if (strandId && !trackId) throw createError('A strand must belong to a selected SHS track.');
-  if (includesShs && !shsGradingGroup && !allowUnclassified) throw createError('Choose a grading type for this SHS subject.');
-  if (includesShs && shsGradingGroup === 'core' && (trackId || strandId)) throw createError('Core subjects are shared across all SHS tracks and strands.');
-  if (includesShs && shsGradingGroup && shsGradingGroup !== 'core' && !trackId) throw createError('Choose the track for this SHS grading type.');
-  if (shsGradingGroup && !Object.hasOwn(LEGACY_SHS_GRADING_GROUPS, shsGradingGroup)) throw createError('Choose a valid SHS grading type.');
+  if (includesShs && grades.some(grade => Number(grade.schoolLevelId) !== shsLevelId)) {
+    throw createError('Set up SHS subjects separately from Elementary and Junior High subjects.');
+  }
+  if (!includesShs && (trackId || strandId || shsGradingGroup || shsSubjectType || instructionalHours)) throw createError('SHS settings only apply to Senior High School subjects.');
+  if (includesShs && strandId) throw createError('Strands are not used by the Strengthened SHS curriculum.');
+  if (includesShs && shsGradingGroup) throw createError('The earlier SHS grading types cannot be used for new subjects.');
+  if (includesShs && !Object.hasOwn(SHS_SUBJECT_TYPES, shsSubjectType)) throw createError('Choose a Strengthened SHS subject type.');
+  if (includesShs && shsSubjectType !== 'core') throw createError('Set up approved electives and Work Immersion in SHS Program.');
+  if (includesShs && !SHS_SUBJECT_HOURS[shsSubjectType].includes(instructionalHours)) throw createError('Choose valid instructional hours for this SHS subject type.');
+  if (includesShs && grades.some(grade => !SHS_GRADE_ELIGIBILITY[shsSubjectType].includes(Number(grade.gradeCode.replace('grade-', ''))))) {
+    throw createError('This SHS subject type is not available in the selected grade.');
+  }
+  if (includesShs && grades.some(grade => !SHS_HOURS_BY_GRADE[Number(grade.gradeCode.replace('grade-', ''))]?.[shsSubjectType]?.includes(instructionalHours))) {
+    throw createError('These instructional hours are not valid for the selected SHS grade.');
+  }
+  if (includesShs && shsSubjectType === 'core' && trackId) throw createError('Core subjects are shared across SHS tracks.');
+  if (includesShs && shsSubjectType !== 'core' && !trackId) throw createError('Choose a track for this SHS elective.');
   if (includesShs && trackId) {
     const [tracks] = await connection.execute('SELECT id, track_code AS trackCode FROM school_shs_tracks WHERE id = ? AND school_id = ? AND school_level_id = ? AND is_enabled = TRUE LIMIT 1', [trackId, schoolId, shsLevelId]);
-    if (!tracks.length) throw createError('The selected SHS track is invalid.', 404);
+    if (!tracks.length || !['academic', 'techpro'].includes(tracks[0].trackCode)) throw createError('Choose an enabled Strengthened SHS track.', 404);
     const trackCode = tracks[0].trackCode;
-    if (['academic_other', 'academic_immersion'].includes(shsGradingGroup) && trackCode !== 'academic') throw createError('Academic grading types require the Academic track.');
-    if (['other_other', 'other_immersion'].includes(shsGradingGroup) && trackCode === 'academic') throw createError('This grading type applies to TVL, Sports, or Arts and Design, not the Academic track.');
-    if (strandId) {
-      const [strands] = await connection.execute('SELECT id FROM school_shs_strands WHERE id = ? AND school_id = ? AND school_level_id = ? AND track_id = ? AND is_enabled = TRUE LIMIT 1', [strandId, schoolId, shsLevelId, trackId]);
-      if (!strands.length) throw createError('The selected strand does not belong to this SHS track.', 404);
-    }
+    if (shsSubjectType === 'academic_elective' && trackCode !== 'academic') throw createError('Academic electives require the Academic track.');
+    if (['techpro_elective', 'work_immersion'].includes(shsSubjectType) && trackCode !== 'techpro') throw createError('TechPro subjects require the TechPro track.');
   }
   return { gradeLevelIds, gradeLevelRows: grades, includesShs, shsLevelId };
 }
@@ -78,7 +85,7 @@ async function listSubjects(req, res, next) {
       throw createError('You do not have access to subjects.', 403);
     }
     if (req.query.schoolLevelId) { where += ' AND subjects.school_level_id = ?'; values.push(parseId(req.query.schoolLevelId, 'school level ID')); }
-    const [subjects] = await database.execute(`SELECT subjects.id, subjects.school_id AS schoolId, subjects.subject_code AS subjectCode, subjects.name, subjects.school_level_id AS schoolLevelId, subjects.grade_level_id AS gradeLevelId, subjects.shs_grading_group AS shsGradingGroup, subjects.is_active AS isActive, school_levels.level_code AS schoolLevelCode, school_levels.display_name AS schoolLevelName, school_grade_levels.grade_code AS gradeCode, school_grade_levels.display_name AS gradeLevelName FROM subjects LEFT JOIN school_levels ON school_levels.id = subjects.school_level_id LEFT JOIN school_grade_levels ON school_grade_levels.id = subjects.grade_level_id WHERE ${where} ORDER BY subjects.name`, values);
+    const [subjects] = await database.execute(`SELECT subjects.id, subjects.school_id AS schoolId, subjects.subject_code AS subjectCode, subjects.name, subjects.school_level_id AS schoolLevelId, subjects.grade_level_id AS gradeLevelId, subjects.shs_grading_group AS shsGradingGroup, subjects.shs_subject_type AS shsSubjectType, subjects.instructional_hours AS instructionalHours, subjects.is_active AS isActive, school_levels.level_code AS schoolLevelCode, school_levels.display_name AS schoolLevelName, school_grade_levels.grade_code AS gradeCode, school_grade_levels.display_name AS gradeLevelName FROM subjects LEFT JOIN school_levels ON school_levels.id = subjects.school_level_id LEFT JOIN school_grade_levels ON school_grade_levels.id = subjects.grade_level_id WHERE ${where} ORDER BY subjects.name`, values);
     const scopes = subjects.length ? await database.execute(
       `SELECT scopes.subject_id AS subjectId, scopes.grade_level_id AS gradeLevelId,
         scopes.track_id AS trackId, scopes.strand_id AS strandId,
@@ -120,11 +127,13 @@ async function createSubject(req, res, next) {
     const trackId = optionalId(req.body.trackId, 'track ID');
     const strandId = optionalId(req.body.strandId, 'strand ID');
     const shsGradingGroup = req.body.shsGradingGroup == null || req.body.shsGradingGroup === '' ? null : String(req.body.shsGradingGroup);
-    const scope = await validateSubjectScope(connection, req.user.schoolId, schoolLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup);
+    const shsSubjectType = req.body.shsSubjectType == null ? null : String(req.body.shsSubjectType);
+    const instructionalHours = req.body.instructionalHours == null || req.body.instructionalHours === '' ? null : Number(req.body.instructionalHours);
+    const scope = await validateSubjectScope(connection, req.user.schoolId, schoolLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup, shsSubjectType, instructionalHours);
     const gradeLevelId = gradeLevelIds.length === 1 ? gradeLevelIds[0] : null;
     await connection.beginTransaction();
     transactionStarted = true;
-    const [result] = await connection.execute('INSERT INTO subjects (school_id, subject_code, name, school_level_id, grade_level_id, shs_grading_group) VALUES (?, ?, ?, ?, ?, ?)', [req.user.schoolId, subjectCode, name, schoolLevelId, gradeLevelId, shsGradingGroup]);
+    const [result] = await connection.execute('INSERT INTO subjects (school_id, subject_code, name, school_level_id, grade_level_id, shs_grading_group, shs_subject_type, instructional_hours) VALUES (?, ?, ?, ?, ?, NULL, ?, ?)', [req.user.schoolId, subjectCode, name, schoolLevelId, gradeLevelId, shsSubjectType, instructionalHours]);
     for (const selectedGradeId of gradeLevelIds) {
       const isShsGrade = scope.gradeLevelRows.some(grade => Number(grade.id) === selectedGradeId && Number(grade.schoolLevelId) === scope.shsLevelId);
       await connection.execute('INSERT INTO subject_grade_scopes (school_id, subject_id, grade_level_id, track_id, strand_id) VALUES (?, ?, ?, ?, ?)', [req.user.schoolId, result.insertId, selectedGradeId, isShsGrade ? trackId : null, isShsGrade ? strandId : null]);
@@ -132,7 +141,7 @@ async function createSubject(req, res, next) {
     await writeAuditLog(connection, req, 'subject_created', 'subject', result.insertId, { summary: name });
     await connection.commit();
     transactionStarted = false;
-    res.status(201).json({ subject: { id: result.insertId, schoolId: req.user.schoolId, subjectCode, name, schoolLevelId, gradeLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup, isActive: true } });
+    res.status(201).json({ subject: { id: result.insertId, schoolId: req.user.schoolId, subjectCode, name, schoolLevelId, gradeLevelId, gradeLevelIds, trackId, strandId: null, shsGradingGroup: null, shsSubjectType, instructionalHours, isActive: true } });
   } catch (error) {
     if (transactionStarted) { try { await connection.rollback(); } catch {} }
     if (error.code === 'ER_DUP_ENTRY') error = createError('A subject with this code already exists.', 409);
@@ -145,7 +154,7 @@ async function updateSubject(req, res, next) {
   let transactionStarted = false;
   try {
     const subjectId = parseId(req.params.subjectId, 'subject ID');
-    const [rows] = await connection.execute('SELECT id, subject_code AS subjectCode, name, school_level_id AS schoolLevelId, grade_level_id AS gradeLevelId, shs_grading_group AS shsGradingGroup, is_active AS isActive FROM subjects WHERE id = ? AND school_id = ? LIMIT 1', [subjectId, req.user.schoolId]);
+    const [rows] = await connection.execute('SELECT id, subject_code AS subjectCode, name, school_level_id AS schoolLevelId, grade_level_id AS gradeLevelId, shs_grading_group AS shsGradingGroup, shs_subject_type AS shsSubjectType, instructional_hours AS instructionalHours, is_active AS isActive FROM subjects WHERE id = ? AND school_id = ? LIMIT 1', [subjectId, req.user.schoolId]);
     const current = rows[0];
     if (!current) throw createError('Subject was not found.', 404);
     const subjectCode = req.body.subjectCode === undefined ? current.subjectCode : text(req.body.subjectCode, 50, 'Subject code').toLowerCase();
@@ -167,15 +176,18 @@ async function updateSubject(req, res, next) {
         ? [...new Set(req.body.gradeLevelIds.map(value => parseId(value, 'grade level ID')))]
         : [optionalId(req.body.gradeLevelId, 'grade level ID')].filter(Boolean);
     const currentShsScope = currentScopes.find(scope => scope.schoolLevelCode === 'shs');
+    if (currentShsScope && (current.shsGradingGroup || !current.shsSubjectType)) throw createError('This subject uses the earlier SHS setup. Clear the SHS test data before editing it.', 409);
     const currentTrackId = currentShsScope?.trackId == null ? null : Number(currentShsScope.trackId);
-    const currentStrandId = currentShsScope?.strandId == null ? null : Number(currentShsScope.strandId);
+    if (currentShsScope?.strandId) throw createError('This subject uses an earlier SHS strand. Clear the SHS test data before editing it.', 409);
     const trackId = req.body.trackId === undefined ? currentTrackId : optionalId(req.body.trackId, 'track ID');
-    const strandId = req.body.strandId === undefined ? currentStrandId : optionalId(req.body.strandId, 'strand ID');
-    const shsGradingGroup = req.body.shsGradingGroup === undefined ? current.shsGradingGroup : (req.body.shsGradingGroup == null || req.body.shsGradingGroup === '' ? null : String(req.body.shsGradingGroup));
+    const strandId = optionalId(req.body.strandId, 'strand ID');
+    const shsGradingGroup = req.body.shsGradingGroup === undefined ? (currentShsScope ? current.shsGradingGroup : null) : (req.body.shsGradingGroup == null || req.body.shsGradingGroup === '' ? null : String(req.body.shsGradingGroup));
+    const shsSubjectType = req.body.shsSubjectType === undefined ? current.shsSubjectType : (req.body.shsSubjectType == null ? null : String(req.body.shsSubjectType));
+    const instructionalHours = req.body.instructionalHours === undefined ? current.instructionalHours : (req.body.instructionalHours == null || req.body.instructionalHours === '' ? null : Number(req.body.instructionalHours));
     const gradeLevelId = gradeLevelIds.length === 1 ? gradeLevelIds[0] : null;
     const isActive = req.body.isActive === undefined ? Boolean(current.isActive) : req.body.isActive;
     if (typeof isActive !== 'boolean') throw createError('Subject activity must use true or false.');
-    const scope = await validateSubjectScope(connection, req.user.schoolId, schoolLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup, true);
+    const scope = await validateSubjectScope(connection, req.user.schoolId, schoolLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup, shsSubjectType, instructionalHours);
     await connection.beginTransaction();
     transactionStarted = true;
     const requestedScopeKey = gradeLevelIds.map(id => {
@@ -196,7 +208,7 @@ async function updateSubject(req, res, next) {
       });
       if (!assignmentStillMatches) throw createError('This subject is assigned to sections outside the requested grade, track, or strand coverage. Remove or correct those assignments first.', 409);
     }
-    await connection.execute('UPDATE subjects SET subject_code=?, name=?, school_level_id=?, grade_level_id=?, shs_grading_group=?, is_active=? WHERE id=?', [subjectCode, name, schoolLevelId, gradeLevelId, shsGradingGroup, isActive, subjectId]);
+    await connection.execute('UPDATE subjects SET subject_code=?, name=?, school_level_id=?, grade_level_id=?, shs_grading_group=NULL, shs_subject_type=?, instructional_hours=?, is_active=? WHERE id=?', [subjectCode, name, schoolLevelId, gradeLevelId, shsSubjectType, instructionalHours, isActive, subjectId]);
     if (requestedScopeKey !== currentScopeKey) {
       await connection.execute('DELETE FROM subject_grade_scopes WHERE school_id = ? AND subject_id = ?', [req.user.schoolId, subjectId]);
       for (const selectedGradeId of gradeLevelIds) {
@@ -208,7 +220,7 @@ async function updateSubject(req, res, next) {
     await writeAuditLog(connection, req, 'subject_updated', 'subject', subjectId, { summary: name });
     await connection.commit();
     transactionStarted = false;
-    res.json({ subject: { id: subjectId, schoolId: req.user.schoolId, subjectCode, name, schoolLevelId, gradeLevelId, gradeLevelIds, trackId, strandId, shsGradingGroup, isActive } });
+    res.json({ subject: { id: subjectId, schoolId: req.user.schoolId, subjectCode, name, schoolLevelId, gradeLevelId, gradeLevelIds, trackId, strandId: null, shsGradingGroup: null, shsSubjectType, instructionalHours, isActive } });
   } catch (error) {
     if (transactionStarted) { try { await connection.rollback(); } catch {} }
     if (error.code === 'ER_DUP_ENTRY') error = createError('A subject with this code already exists.', 409);

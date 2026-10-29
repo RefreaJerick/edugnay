@@ -51,6 +51,7 @@
           <span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-student-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
+        <a href="edugnay-student-electives.html" class="nav-item" data-student-access="electives"><div class="nav-icon"><i data-lucide="book-open-check" style="width:16px;height:16px;"></i></div><span class="nav-label">My Electives</span></a>
         <a href="edugnay-student-grades.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">My Grades</span>
@@ -145,13 +146,7 @@
         </div>
 
         <div class="tb-theme" data-theme-control>
-          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-            <div class="tb-theme-heading">Appearance</div>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-          </div>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -471,46 +466,40 @@
           window.EDUGNAY_API.getPortalFeatures()
         ]);
         if (user?.role !== 'student') throw new Error('Only student accounts can view journal entries.');
-        const history = await window.EDUGNAY_API.getJournalHistory();
-        const showHistoricalOnly = (message, includeDraft = true) => {
+        if (!portal.features.journalsEnabled || !portal.journalSubjectEligible) {
           currentPrompt = null;
           currentEntry = null;
-          panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: message });
-          if (includeDraft) panel.insertAdjacentHTML('beforeend', renderUnsentDraft());
-          pastEntries = history.entries.map(entry => {
-            const prompt = history.prompts.find(item => item.id === entry.promptId);
-            return { ...entry, week: `${entry.journalSubjectName} · Week of ${formatJournalDate(prompt?.weekStartDate || entry.submittedAt)}`, dateRange: formatJournalDate(entry.submittedAt), prompt: prompt?.promptText || entry.promptText || '', excerpt: entry.entryText.slice(0, 96) };
-          });
-          renderHistory();
-        };
-        if (!portal.features.journalsEnabled || !portal.journalSubjectEligible) {
-          showHistoricalOnly('You can still read your submitted entries below.');
+          pastEntries = [];
+          panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: 'Journals are available only to eligible Junior High School students taking the journal subject.' });
           return;
         }
+        const showUnavailable = message => {
+          currentPrompt = null;
+          currentEntry = null;
+          pastEntries = [];
+          panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: message });
+        };
         let subjects;
         try {
           subjects = await window.EDUGNAY_API.getJournalSubjects();
         } catch (error) {
-          const enrollmentDenied = error?.status === 403;
-          const message = enrollmentDenied
-            ? error.message || 'Current Journals are available only to students enrolled in Junior High School.'
-            : `${error.message || 'Current Journals are unavailable.'} You can still read your submitted entries below.`;
-          showHistoricalOnly(message, !enrollmentDenied);
+          showUnavailable(error.message || 'Current Journals are unavailable.');
           return;
         }
         if (!subjects.length) {
-          showHistoricalOnly('Current Journals are not configured. You can still read your submitted entries below.');
+          showUnavailable('Current Journals are not configured.');
           return;
         }
 
-        let prompts, entries;
+        let prompts, entries, history;
         try {
-          [prompts, entries] = await Promise.all([
+          [prompts, entries, history] = await Promise.all([
             window.EDUGNAY_API.getJournalPrompts(),
-            window.EDUGNAY_API.getJournalEntries()
+            window.EDUGNAY_API.getJournalEntries(),
+            window.EDUGNAY_API.getJournalHistory()
           ]);
         } catch (error) {
-          showHistoricalOnly(`${error.message || 'Current Journals are unavailable.'} You can still read your submitted entries below.`);
+          showUnavailable(error.message || 'Current Journals are unavailable.');
           return;
         }
 

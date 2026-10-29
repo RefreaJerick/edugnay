@@ -1,6 +1,7 @@
 const express = require('express');
 const controller = require('../controllers/academicTermsController');
 const subjectGradingController = require('../controllers/subjectGradingController');
+const shsGradingSettingsController = require('../controllers/shsGradingSettingsController');
 const { requireAuth } = require('../middleware/auth');
 const { requireSchoolAdmin, requireSchoolUser } = require('../middleware/authorize');
 
@@ -32,5 +33,8 @@ router.get('/subject-grading-config', requireAuth, requireSchoolUser, (req, res,
 ));
 router.put('/subject-grading-config', ...schoolAdminOnly, subjectGradingController.saveSubjectGradingConfig);
 router.put('/deped-k10/subject-group-config', ...schoolAdminOnly, subjectGradingController.saveK10CatalogSubjectGroupConfig);
+router.get('/shs-grading', ...schoolAdminOnly, shsGradingSettingsController.list);
+router.put('/shs-grading', ...schoolAdminOnly, shsGradingSettingsController.save);
+router.post('/shs-grading/restore', ...schoolAdminOnly, shsGradingSettingsController.restore);
 
 module.exports = router;

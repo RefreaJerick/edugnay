@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="../../assets/js/theme.js"></script>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Electives | Academix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css"><link rel="stylesheet" href="../../assets/css/modal-system.css"><link rel="stylesheet" href="../../assets/css/timetables.css"><link rel="stylesheet" href="../../assets/css/shs-program.css"><link rel="stylesheet" href="../../assets/css/theme.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script><script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js"></script><script src="../../assets/js/student/shell.js"></script><script src="../../assets/js/student/shs-selection.js?v=7" defer></script>
+</head>
+<body data-page-title="My Electives">
+<div class="shell"><div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <aside class="sidebar"><div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo"></div><div><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub">School portal</div></div></div>
+    <div class="nav-section"><div class="nav-section-label">Main</div>
+      <a href="edugnay-student-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
+      <a href="edugnay-student-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days"></i></div><span class="nav-label">My Schedules</span></a>
+      <a href="edugnay-student-electives.html" class="nav-item active" data-student-access="electives"><div class="nav-icon"><i data-lucide="book-open-check"></i></div><span class="nav-label">My Electives</span></a>
+      <a href="edugnay-student-grades.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap"></i></div><span class="nav-label">My Grades</span></a>
+      <a href="edugnay-student-assignments.html" class="nav-item"><div class="nav-icon"><i data-lucide="clipboard-check"></i></div><span class="nav-label">Assignments</span></a>
+      <a href="edugnay-student-attendance.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-check"></i></div><span class="nav-label">Attendance History</span></a>
+      <a href="edugnay-student-materials.html" class="nav-item"><div class="nav-icon"><i data-lucide="folder-open"></i></div><span class="nav-label">Learning Materials</span></a>
+      <a href="edugnay-student-journal.html" class="nav-item"><div class="nav-icon"><i data-lucide="notebook-pen"></i></div><span class="nav-label">Journal Entries</span></a>
+    </div>
+    <div class="nav-section"><div class="nav-section-label">Communication</div><a href="edugnay-student-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span></a></div>
+    <div class="nav-section"><div class="nav-section-label">Account</div><a href="edugnay-student-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span></a></div>
+  </aside>
+  <header class="topbar"><div class="topbar-left"><button class="hamburger" type="button" aria-label="Open navigation" onclick="toggleDrawer(true)"><i data-lucide="menu"></i></button><div class="topbar-context"><div class="topbar-context-copy"><strong>My Electives</strong></div></div></div>
+    <div class="topbar-right"><div class="tb-notif"><button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none"></span></button><div class="tb-notif-panel" id="tbNotifPanel"><div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span></div><button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div><div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty"><div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div><div class="tb-notif-empty-title">No notifications yet</div><div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div></div></div><div class="tb-notif-panel-foot"><a href="edugnay-student-notifications.html">View all notifications</a></div></div></div>
+      <div class="tb-theme" data-theme-control><button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button></div>
+      <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar student"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Student</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-student-profile.html"><i data-lucide="user" style="width:15px;height:15px;" aria-hidden="true"></i> My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;" aria-hidden="true"></i> Sign Out</a></div></div>
+    </div></header>
+  <script>restoreProfileChip();</script>
+  <main class="main"><div class="shs-page"><p class="shs-alert" id="elective-unavailable" role="alert">Checking your elective choices...</p>
+    <div id="elective-content" hidden>
+      <section class="portal-overview" aria-labelledby="elective-page-title"><div class="portal-overview-copy"><div class="portal-overview-kicker">Student workspace</div><h1 class="portal-overview-title" id="elective-page-title">My Electives</h1><p class="portal-overview-description" id="elective-overview-context"></p></div></section>
+      <section class="timetable-card shs-saved-panel" id="elective-saved-panel"><div class="timetable-heading"><div class="timetable-heading-title"><span class="timetable-heading-icon" aria-hidden="true"><i data-lucide="bookmark-check"></i></span><div><h2>Your saved choices</h2></div></div><div class="shs-selection-state" id="elective-selection-state" hidden><span id="elective-status" class="badge badge-gray" role="status"></span></div></div><div class="shs-saved-choices" id="elective-saved-choices"></div></section>
+      <section class="timetable-card shs-available-panel"><div class="timetable-heading"><div class="timetable-heading-title"><span class="timetable-heading-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><div><h2>Available classes</h2><p>Choose the classes you selected with your school. Schedule details appear when available.</p></div></div></div><p class="shs-choice-lock-note" id="elective-guidance-note" role="status" hidden></p><p class="shs-choice-lock-note" id="elective-requirement-note" role="status" hidden></p>
+        <div class="shs-choices" id="elective-classes"></div><div class="shs-selection-footer"><div><span class="shs-catalog-count" id="elective-summary" aria-live="polite"></span><p id="elective-error" role="alert"></p></div><button class="timetable-button" type="button" id="elective-submit">Save my choices</button></div></section>
+    </div>
+  </div></main>
+</div>
+</body>
+</html>

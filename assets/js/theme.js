@@ -13,13 +13,19 @@
   } catch { /* Browser storage may be unavailable. */ }
 
   function apply() {
-    document.documentElement.dataset.theme = mode === 'dark' || (mode === 'system' && system?.matches)
-      ? 'dark' : 'light';
+    const resolvedTheme = mode === 'dark' || (mode === 'system' && system?.matches) ? 'dark' : 'light';
+    document.documentElement.dataset.theme = resolvedTheme;
     document.documentElement.dataset.themeMode = mode;
     document.querySelectorAll('[data-theme-control]').forEach(control => {
       const trigger = control.querySelector('[data-theme-trigger]');
-      if (trigger) trigger.setAttribute('aria-label', `Appearance: ${mode[0].toUpperCase() + mode.slice(1)}`);
-      control.querySelectorAll('input[name="academix-theme"]').forEach(input => { input.checked = input.value === mode; });
+      if (!trigger) return;
+      const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
+      const label = `Switch to ${nextTheme} mode`;
+      const icon = nextTheme === 'dark' ? 'moon' : 'sun';
+      trigger.setAttribute('aria-label', label);
+      trigger.setAttribute('title', label);
+      trigger.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`;
+      window.lucide?.createIcons({ root: trigger });
     });
   }
 
@@ -43,41 +49,13 @@
   window.addEventListener('afterprint', apply);
 
   document.addEventListener('DOMContentLoaded', () => {
-    const controls = [...document.querySelectorAll('[data-theme-control]')];
-    const close = (control, restoreFocus = false) => {
-      const menu = control.querySelector('[data-theme-menu]');
+    document.querySelectorAll('[data-theme-control]').forEach(control => {
       const trigger = control.querySelector('[data-theme-trigger]');
-      if (menu.hidden) return;
-      menu.hidden = true;
-      trigger.setAttribute('aria-expanded', 'false');
-      if (restoreFocus) trigger.focus();
-    };
-    controls.forEach(control => {
-      const trigger = control.querySelector('[data-theme-trigger]');
-      const menu = control.querySelector('[data-theme-menu]');
+      if (!trigger) return;
       trigger.addEventListener('click', () => {
-        const opening = menu.hidden;
-        controls.forEach(other => close(other));
-        menu.hidden = !opening;
-        trigger.setAttribute('aria-expanded', String(opening));
-        if (opening) menu.querySelector('input:checked')?.focus();
+        const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+        setMode(currentTheme === 'dark' ? 'light' : 'dark');
       });
-      menu.addEventListener('change', event => {
-        if (event.target.matches('input[name="academix-theme"]')) {
-          setMode(event.target.value);
-          close(control, true);
-        }
-      });
-      menu.addEventListener('keydown', event => {
-        if (event.key !== 'Tab') return;
-        close(control);
-      });
-    });
-    document.addEventListener('pointerdown', event => {
-      controls.forEach(control => { if (!control.contains(event.target)) close(control); });
-    });
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') controls.forEach(control => close(control, true));
     });
     apply();
   });

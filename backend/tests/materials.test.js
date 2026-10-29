@@ -36,11 +36,11 @@ const database = {
     lastQuery = sql;
     lastValues = values;
     queryLog.push({ sql, values });
-    if (sql.includes('FROM section_teachers')) return [assigned ? [{ id: 8 }] : []];
+    if (sql.includes('FROM section_teachers') && !sql.includes('FROM learning_materials AS materials')) return [assigned ? [{ id: 8 }] : []];
     if (sql.includes('FROM academic_terms')) return [[]];
     if (sql.includes('INSERT INTO learning_materials')) {
-      material.title = values[5];
-      material.status = values[11];
+      material.title = values[6];
+      material.status = values[12];
       return [{ insertId: 42 }];
     }
     if (sql.startsWith('INSERT INTO audit_logs')) {
@@ -112,7 +112,7 @@ test('teacher list is scoped to their own assigned school and subject', async ()
   assert.equal(result.error, null);
   assert.match(lastQuery, /materials\.school_id = \?/);
   assert.match(lastQuery, /section_teachers\.teacher_user_id = \?/);
-  assert.deepEqual(lastValues, [1, 3, 3, 8, 2]);
+  assert.deepEqual(lastValues, [1, 3, 3, 3, 8, 2]);
   assert.equal(result.data.materials[0].storedFileName, undefined);
 });
 
@@ -123,7 +123,7 @@ test('student list is published and enrollment scoped', async () => {
   assert.equal(result.error, null);
   assert.match(lastQuery, /materials\.status = 'published'/);
   assert.match(lastQuery, /section_students\.student_user_id = \?/);
-  assert.deepEqual(lastValues, [1, 12]);
+  assert.deepEqual(lastValues, [1, 12, 12]);
 });
 
 test('assigned student can open a PDF from the private dot-directory', async () => {

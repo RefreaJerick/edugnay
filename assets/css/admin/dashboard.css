@@ -234,6 +234,7 @@
 .act-text strong {
   color: var(--gray-800);
   font-weight: 700;
+  margin-right: 4px;
 }
 .act-time {
   font-size: 11px;

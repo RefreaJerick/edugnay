@@ -640,8 +640,10 @@ function normalizeApiAssignment(record) {
     id: String(record.id),
     apiId: Number(record.id),
     schoolId: record.schoolId == null ? '' : String(record.schoolId),
-    sectionId: String(record.sectionId),
-    subjectId: String(record.subjectId),
+    sectionId: record.sectionId == null ? null : String(record.sectionId),
+    subjectId: record.subjectId == null ? null : String(record.subjectId),
+    electiveClassId: record.electiveClassId == null ? null : String(record.electiveClassId),
+    scopeType: record.electiveClassId == null ? 'section' : 'elective',
     teacherId: String(record.teacherUserId || ''),
     teacher: record.teacherName || '',
     subject: record.subjectName || '',
@@ -654,6 +656,7 @@ function normalizeApiAssignment(record) {
     instructions: record.description || null,
     assignedDate: dueDate,
     dueDate,
+    publicationStatus: record.publicationStatus || record.status || null,
     onlineSubmissionEnabled: record.onlineSubmissionEnabled === undefined
       ? true
       : Boolean(record.onlineSubmissionEnabled),
@@ -663,7 +666,7 @@ function normalizeApiAssignment(record) {
 
 async function getApiAssignments(filters = {}) {
   const params = new URLSearchParams();
-  ['sectionId', 'subjectId', 'status'].forEach(name => {
+  ['sectionId', 'subjectId', 'electiveClassId', 'status'].forEach(name => {
     if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
       params.set(name, String(filters[name]).trim());
     }
@@ -908,8 +911,9 @@ function normalizeApiGradingItem(record) {
     ...record,
     id: String(record.id),
     apiId: Number(record.id),
-    sectionId: String(record.sectionId),
-    subjectId: String(record.subjectId),
+    sectionId: record.sectionId == null ? null : String(record.sectionId),
+    subjectId: record.subjectId == null ? null : String(record.subjectId),
+    electiveClassId: record.electiveClassId == null ? null : String(record.electiveClassId),
     academicTermId: String(record.academicTermId),
     academicPeriodId: String(record.academicTermId),
     gradingCategoryId: record.gradingCategoryId == null ? null : String(record.gradingCategoryId),
@@ -1101,8 +1105,9 @@ function normalizeApiFinalGrade(record) {
     id: String(record.id),
     schoolId: String(record.schoolId),
     studentId: String(record.studentId),
-    sectionId: String(record.sectionId),
-    subjectId: String(record.subjectId),
+    sectionId: record.sectionId == null ? null : String(record.sectionId),
+    subjectId: record.subjectId == null ? null : String(record.subjectId),
+    electiveClassId: record.electiveClassId == null ? null : String(record.electiveClassId),
     academicTermId: String(record.academicTermId),
     academicYearId: String(record.academicYearId),
     finalGrade: Number(record.finalGrade)
@@ -1208,10 +1213,13 @@ function buildApiFinalGradeYears(overview) {
         };
         periodsByKey.set(periodKey, period);
       }
-      if (period.subjects.some(subject => subject.sectionId === grade.sectionId && subject.subjectId === grade.subjectId)) return;
+      if (period.subjects.some(subject => grade.electiveClassId
+        ? subject.electiveClassId === grade.electiveClassId
+        : subject.sectionId === grade.sectionId && subject.subjectId === grade.subjectId)) return;
       period.subjects.push({
         sectionId: grade.sectionId,
         subjectId: grade.subjectId,
+        electiveClassId: grade.electiveClassId || null,
         subjectName: grade.subjectName,
         sectionName: grade.sectionName,
         finalGrade: grade.finalGrade,
@@ -1986,6 +1994,25 @@ window.EDUGNAY_API = {
   request: requestApi,
   getTimetable: (academicYearId) => requestApi(`/timetables${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ''}`),
   getTimetableYears: () => requestApi('/timetables/years').then(result => result.years || []),
+  getShsProgram: academicYearId => requestApi(`/shs-program${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ''}`),
+  getShsSelection: () => requestApi('/shs-selection/mine'),
+  submitShsSelection: values => requestApi('/shs-selection/mine', { method: 'PUT', body: JSON.stringify(values) }),
+  getShsSelectionStudents: values => requestApi(`/shs-selection/students?${new URLSearchParams(values || {})}`),
+  getShsStudentChoices: (studentId, academicYearId) => requestApi(`/shs-selection/students/${encodeURIComponent(studentId)}/choices?academicYearId=${encodeURIComponent(academicYearId)}`),
+  saveShsStudentChoices: (studentId, academicYearId, classIds) => requestApi(`/shs-selection/students/${encodeURIComponent(studentId)}/choices?academicYearId=${encodeURIComponent(academicYearId)}`, {
+    method: 'PUT', body: JSON.stringify({ classIds })
+  }),
+  decideShsSelection: (requestId, values) => requestApi(`/shs-selection/requests/${encodeURIComponent(requestId)}/decision`, { method: 'POST', body: JSON.stringify(values) }),
+  changeApprovedShsSelection: (requestId, values) => requestApi(`/shs-selection/requests/${encodeURIComponent(requestId)}/classes`, { method: 'PUT', body: JSON.stringify(values) }),
+  clearApprovedShsSelection: requestId => requestApi(`/shs-selection/requests/${encodeURIComponent(requestId)}/clear`, { method: 'POST' }),
+  activateShsOffering: values => requestApi('/shs-program/offerings', { method: 'POST', body: JSON.stringify(values) }),
+  setShsOfferingActive: (offeringId, isActive) => requestApi(`/shs-program/offerings/${encodeURIComponent(offeringId)}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
+  createShsClass: values => requestApi('/shs-program/classes', { method: 'POST', body: JSON.stringify(values) }),
+  updateShsClass: (classId, values) => requestApi(`/shs-program/classes/${encodeURIComponent(classId)}`, { method: 'PATCH', body: JSON.stringify(values) }),
+  deleteShsClass: classId => requestApi(`/shs-program/classes/${encodeURIComponent(classId)}`, { method: 'DELETE' }),
+  saveElectiveTimetableMeeting: (classId, meetingId, values) => requestApi(`/timetables/elective-classes/${encodeURIComponent(classId)}/meetings${meetingId ? `/${encodeURIComponent(meetingId)}` : ''}`, {
+    method: meetingId ? 'PATCH' : 'POST', body: JSON.stringify(values)
+  }),
   saveTimetableMeeting: (assignmentId, meetingId, values) => requestApi(`/timetables/assignments/${encodeURIComponent(assignmentId)}/meetings${meetingId ? `/${encodeURIComponent(meetingId)}` : ''}`, {
     method: meetingId ? 'PATCH' : 'POST', body: JSON.stringify(values)
   }),
@@ -2654,8 +2681,7 @@ function applyCurrentDateToGradingBanners() {
       key: 'shs',
       label: 'Senior High School',
       grades: ['Grade 11', 'Grade 12'],
-      tracks: ['Academic', 'Technical-Vocational-Livelihood', 'Arts and Design', 'Sports'],
-      strands: ['STEM', 'HUMSS', 'ABM', 'GAS', 'TVL']
+      tracks: ['Academic', 'Technical Professional (TechPro)']
     }
   ];
 
@@ -2777,7 +2803,7 @@ function applyCurrentDateToGradingBanners() {
       academicPeriods,
       enabledGrades: values.enabledGrades || [...(catalog?.grades || [])],
       tracks: values.tracks || [...(catalog?.tracks || [])],
-      strands: values.strands || [...(catalog?.strands || [])],
+      strands: level === 'shs' ? [] : values.strands || [...(catalog?.strands || [])],
       sections: values.sections || [],
       gradingRules: values.gradingRules || defaultRules,
       passingGradeThreshold: Number.isFinite(Number(values.passingGradeThreshold)) ? Number(values.passingGradeThreshold) : 75,
@@ -2922,7 +2948,7 @@ function applyCurrentDateToGradingBanners() {
 
   function isJournalsEnabled() {
     const features = window.EDUGNAY_API_PORTAL_FEATURES;
-    return Boolean(features?.journalsEnabled && features.journalSubjectEligible !== false && getJournalSubject());
+    return Boolean(features?.journalsEnabled && features.journalSubjectEligible === true && getJournalSubject());
   }
 
   function normalizeApiSection(record) {
@@ -2942,7 +2968,7 @@ function applyCurrentDateToGradingBanners() {
       strandId: record.strandId == null ? null : String(record.strandId),
       strandCode: record.strandCode || '',
       strandName: record.strandName || '',
-      needsStrandReview: Boolean(record.needsStrandReview),
+      needsCurriculumSetup: Boolean(record.needsCurriculumSetup),
       track: record.trackName || '',
       strand: record.strandName || '',
       teacherAssignments: Array.isArray(record.teacherAssignments) ? record.teacherAssignments : [],
@@ -3047,13 +3073,6 @@ function applyCurrentDateToGradingBanners() {
     return normalizeApiSection(response?.section);
   }
 
-  async function classifyApiSectionStrand(sectionId, strandId) {
-    const response = await requestApi(`/sections/${Number(sectionId)}/classify-strand`, {
-      method: 'PATCH', body: JSON.stringify({ strandId: Number(strandId) })
-    });
-    return normalizeApiSection(response?.section);
-  }
-
   async function deleteApiSection(sectionId) {
     const numericId = Number(sectionId);
     if (!Number.isSafeInteger(numericId) || numericId < 1) throw new Error('The section ID is invalid.');
@@ -3144,6 +3163,7 @@ function applyCurrentDateToGradingBanners() {
     const params = new URLSearchParams();
     if (filters.sectionId) params.set('sectionId', filters.sectionId);
     if (filters.subjectId) params.set('subjectId', filters.subjectId);
+    if (filters.electiveClassId) params.set('electiveClassId', filters.electiveClassId);
     const response = await requestApi(`/materials${params.size ? `?${params}` : ''}`);
     return response.materials || [];
   }
@@ -3536,6 +3556,51 @@ function applyCurrentDateToGradingBanners() {
   }
 
   Object.assign(window.EDUGNAY_API, {
+    getShsGradeWorkspace: scope => requestApi(`/shs-grades/workspace?${new URLSearchParams(scope)}`),
+    previewShsGrades: scope => requestApi(`/shs-grades/preview?${new URLSearchParams(scope)}`),
+    createShsGradingItem: values => requestApi('/shs-grades/items', {
+      method: 'POST', body: JSON.stringify(values)
+    }),
+    saveShsScore: values => requestApi('/shs-grades/scores', {
+      method: 'PUT', body: JSON.stringify(values)
+    }),
+    correctShsScore: values => requestApi('/shs-grades/scores/correction', {
+      method: 'PUT', body: JSON.stringify(values)
+    }),
+    publishShsGrades: values => requestApi('/shs-grades/publish', {
+      method: 'POST', body: JSON.stringify(values)
+    }),
+    getShsTeachingClasses: () => requestApi('/shs-teaching/classes'),
+    getShsElectiveRoster: classId => requestApi(`/shs-teaching/classes/${Number(classId)}/roster`),
+    getShsElectiveStudentDetails: (classId, studentId) => requestApi(
+      `/shs-teaching/classes/${Number(classId)}/students/${Number(studentId)}/details`),
+    getShsElectiveAttendance: async (classId, date = '') => {
+      const query = date ? `?date=${encodeURIComponent(date)}` : '';
+      return normalizeApiAttendanceData(await requestApi(`/shs-teaching/classes/${Number(classId)}/attendance${query}`));
+    },
+    saveShsElectiveAttendance: async (classId, values = {}) => normalizeApiAttendanceData(await requestApi(
+      `/shs-teaching/classes/${Number(classId)}/attendance`, {
+        method: 'PUT', body: JSON.stringify({ attendanceDate: values.attendanceDate, records: values.records || [] })
+      })),
+    getShsElectiveAttendanceHistory: classId => requestApi(`/shs-teaching/classes/${Number(classId)}/attendance/history`),
+    getShsElectiveQrAttendance: async classId => normalizeApiAttendanceData(await requestApi(
+      `/shs-teaching/classes/${Number(classId)}/qr-attendance`)),
+    startShsElectiveQrAttendance: async classId => normalizeApiAttendanceData(await requestApi(
+      `/shs-teaching/classes/${Number(classId)}/qr-attendance/start`, { method: 'POST' })),
+    scanShsElectiveQrAttendance: (sessionId, qrToken) => requestApi(
+      `/shs-teaching/qr-sessions/${Number(sessionId)}/scan`, { method: 'POST', body: JSON.stringify({ qrToken }) }),
+    confirmShsElectiveQrAttendance: async (sessionId, records = []) => normalizeApiAttendanceData(await requestApi(
+      `/shs-teaching/qr-sessions/${Number(sessionId)}/confirm`, { method: 'PUT', body: JSON.stringify({ records }) })),
+    createShsElectiveAssignment: (classId, values) => requestApi(`/shs-teaching/classes/${Number(classId)}/assignments`, {
+      method: 'POST', body: JSON.stringify(values || {})
+    }),
+    uploadShsElectiveMaterial: (classId, values = {}) => {
+      const formData = new FormData();
+      formData.append('title', values.title || '');
+      formData.append('status', values.status || 'published');
+      if (values.file) formData.append('file', values.file);
+      return requestApiMultipart(`/shs-teaching/classes/${Number(classId)}/materials`, formData);
+    },
     getMaterials: getApiMaterials,
     uploadMaterial: uploadApiMaterial,
     updateMaterial: updateApiMaterial,
@@ -3549,7 +3614,6 @@ function applyCurrentDateToGradingBanners() {
     getSubjects: getApiSubjects,
     createSection: createApiSection,
     updateSection: updateApiSection,
-    classifySectionStrand: classifyApiSectionStrand,
     deleteSection: deleteApiSection,
     createSubject: createApiSubject,
     updateSubject: updateApiSubject,
@@ -3867,8 +3931,21 @@ function applyCurrentDateToGradingBanners() {
     input.setAttribute('aria-haspopup', 'listbox');
     input.setAttribute('aria-expanded', 'false');
     input.setAttribute('aria-controls', `${baseId}-options`);
-    const label = select.labels?.[0];
+    const labels = Array.from(select.labels || []);
+    const label = labels[0];
     input.setAttribute('aria-label', settings.ariaLabel || select.getAttribute('aria-label') || label?.textContent.trim() || 'Select an option');
+    const labelledBy = [select.getAttribute('aria-labelledby'), ...labels.map((associatedLabel, index) => {
+      if (!associatedLabel.id) associatedLabel.id = `${baseId}-label-${index + 1}`;
+      associatedLabel.addEventListener('click', event => {
+        if (wrapper.contains(event.target)) return;
+        event.preventDefault();
+        if (select.disabled) return;
+        input.focus({ preventScroll: true });
+        openSelect(state);
+      });
+      return associatedLabel.id;
+    })].filter(Boolean).join(' ');
+    if (labelledBy) input.setAttribute('aria-labelledby', labelledBy);
     if (select.hasAttribute('aria-describedby')) input.setAttribute('aria-describedby', select.getAttribute('aria-describedby'));
 
     menu.className = 'searchable-select-menu';
@@ -4356,9 +4433,34 @@ function initSidebarScrollbars() {
       if (!frame) frame = window.requestAnimationFrame(update);
     };
 
-    const stopDragging = () => {
+    const isHoverTarget = target => Boolean(target && (
+      target === sidebar || sidebar.contains(target)
+      || target === scrollbar || scrollbar.contains(target)
+    ));
+
+    if (sidebar.matches?.(':hover')) scrollbar.classList.add('is-hovered');
+
+    const updateHoverState = event => {
+      if (event.type === 'pointerenter') scrollbar.classList.add('is-hovered');
+      else scrollbar.classList.toggle('is-hovered', isHoverTarget(event.relatedTarget));
+      scheduleUpdate();
+    };
+
+    sidebar.addEventListener('pointerenter', updateHoverState);
+    sidebar.addEventListener('pointerleave', updateHoverState);
+    scrollbar.addEventListener('pointerenter', updateHoverState);
+    scrollbar.addEventListener('pointerleave', updateHoverState);
+
+    const stopDragging = event => {
+      if (!dragging) return;
       dragging = false;
       scrollbar.classList.remove('is-dragging');
+      if ((event.type === 'pointerup' || event.type === 'pointercancel')
+        && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
+        const target = document.elementFromPoint?.(event.clientX, event.clientY);
+        if (target) scrollbar.classList.toggle('is-hovered', isHoverTarget(target));
+      }
+      scheduleUpdate();
     };
 
     thumb.addEventListener('pointerdown', event => {

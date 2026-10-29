@@ -23,7 +23,7 @@ test('meeting validation preserves school-local dates and rejects invalid ranges
 test('conflicts require a shared section, teacher, or room and an actual shared weekday', async () => {
   const candidate = { id: 12, startDate: '2026-06-01', endDate: '2026-06-01', room: 'room 204', sectionId: 8, teacherId: 9, sectionName: 'Peter', subjectName: 'Math' };
   let queries = [];
-  const connection = { async execute(sql, values) { queries.push({ sql, values }); return [[candidate]]; } };
+  const connection = { async execute(sql, values) { queries.push({ sql, values }); return sql.includes('student_user_id') ? [[]] : [[candidate]]; } };
   const meeting = { weekday: 1, startTime: '08:00:00', endTime: '09:00:00', startDate: '2026-06-01', endDate: '2026-06-03', room: 'Room 204' };
   assert.equal((await controller.findConflict(connection, 2, 3, { sectionId: 7, teacherId: 4 }, meeting, 0)).id, 12);
   assert.equal(queries[0].values[0], 2);

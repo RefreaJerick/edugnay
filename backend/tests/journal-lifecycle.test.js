@@ -14,6 +14,7 @@ const connection = {
   release() {},
   async execute(sql, values = []) {
     calls.push({ sql, values });
+    if (sql.startsWith('SELECT 1 AS eligible FROM section_students')) return [state.enrolled ? [{ eligible: 1 }] : []];
     if (sql.includes('FROM school_portal_features')) return [[{ id: 7, subjectId: 4 }]];
     if (sql.includes('FROM section_teachers\n')) return [state.assigned ? [{ id: 1 }] : []];
     if (sql.startsWith('SELECT id, max_score AS maxScore FROM grading_items')) return [[{ id: 12, maxScore: 50 }]];

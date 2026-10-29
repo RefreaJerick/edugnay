@@ -133,7 +133,7 @@ test('JHS journal prompt loads on Dashboard and My Journal without schoolLevel i
   assert.ok(journalApi.calls.indexOf('subjects') < journalApi.calls.indexOf('prompts'));
 });
 
-test('student without active JHS enrollment sees past entries and does not load current prompts', async () => {
+test('student without active JHS enrollment sees no past entries or current prompts', async () => {
   const api = createJournalApi({
     history: {
       prompts: [],
@@ -142,23 +142,21 @@ test('student without active JHS enrollment sees past entries and does not load 
         submittedAt: '2025-06-12T05:00:00.000Z', entryText: 'A past reflection.', score: null, maxScore: 25
       }]
     },
-    subjectError: {
-      status: 403,
-      message: 'Current Journals are available only to students enrolled in Junior High School.'
-    }
+    portal: { features: { journalsEnabled: true }, journalSubjectEligible: false }
   });
   const journal = createJournalPageHarness(api.api);
   await journal.context.runJournalLoad();
 
   assert.equal(journal.context.currentPrompt, null);
-  assert.equal(journal.context.pastEntries.length, 1);
-  assert.match(journal.panel.innerHTML, /available only to students enrolled in Junior High School/);
+  assert.equal(journal.context.pastEntries.length, 0);
+  assert.match(journal.panel.innerHTML, /eligible Junior High School students/);
   assert.equal(journal.panel.inserted.length, 0);
   assert.equal(api.calls.includes('prompts'), false);
   assert.equal(api.calls.includes('entries'), false);
+  assert.equal(api.calls.includes('history'), false);
 });
 
-test('disabled school Journals preserve the student history without requesting current subjects', async () => {
+test('disabled school Journals do not request or show student history', async () => {
   const api = createJournalApi({
     portal: { features: { journalsEnabled: false }, journalSubjectEligible: false },
     history: {
@@ -172,8 +170,9 @@ test('disabled school Journals preserve the student history without requesting c
   const journal = createJournalPageHarness(api.api);
   await journal.context.runJournalLoad();
 
-  assert.equal(journal.context.pastEntries.length, 1);
-  assert.match(journal.panel.innerHTML, /You can still read your submitted entries below/);
+  assert.equal(journal.context.pastEntries.length, 0);
+  assert.match(journal.panel.innerHTML, /eligible Junior High School students/);
+  assert.equal(api.calls.includes('history'), false);
   assert.equal(api.calls.includes('subjects'), false);
   assert.equal(api.calls.includes('prompts'), false);
 });

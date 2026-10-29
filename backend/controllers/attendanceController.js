@@ -2,6 +2,7 @@ const { getDatabase } = require('../config/database');
 const { avatarFields } = require('../config/avatars');
 const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 const { getStudentFlags } = require('../utils/studentFlags');
+const { assertElectiveTeacher, getElectiveRoster } = require('../utils/shsTeachingAccess');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
 
@@ -55,6 +56,12 @@ function normalizeRecords(records) {
 
     return { studentId, status, remarks: remarks || null };
   });
+}
+
+function attendanceOutcomeCounts(records) {
+  return Object.fromEntries(['present', 'absent', 'late', 'excused'].map(status => [
+    `${status}Count`, records.filter(record => record.status === status).length
+  ]));
 }
 
 async function getTeachingSection(database, teacher, sectionId, subjectId) {
@@ -297,6 +304,8 @@ async function saveSectionAttendance(req, res, next) {
 
     const section = await getTeachingSection(connection, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
+    const [[subject]] = await connection.execute('SELECT name AS subjectName FROM subjects WHERE id = ? AND school_id = ? LIMIT 1',
+      [subjectId, section.schoolId]);
     await assertAttendanceCanBeEdited(connection, section, attendanceDate);
 
     const studentIds = await getActiveStudentIds(connection, section.schoolId, sectionId);
@@ -356,8 +365,12 @@ async function saveSectionAttendance(req, res, next) {
 
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
-      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?, 'subject_id', ?, 'method', 'manual', 'summary', ?))`,
-      [section.schoolId, req.user.id, sessionId, attendanceDate, subjectId, `${section.name} · Subject ${subjectId} · ${attendanceDate}`]
+      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT(
+        'attendance_date', ?, 'attendanceDate', ?, 'sectionName', ?, 'subjectName', ?, 'method', 'manual',
+        'recordCount', ?, 'presentCount', ?, 'absentCount', ?, 'lateCount', ?, 'excusedCount', ?, 'summary', ?))`,
+      [section.schoolId, req.user.id, sessionId, attendanceDate, attendanceDate, section.name, subject?.subjectName || '',
+        records.length, ...Object.values(attendanceOutcomeCounts(records)),
+        [section.name, subject?.subjectName || `Subject ${subjectId}`, attendanceDate].join(' · ')]
     );
 
     await connection.commit();
@@ -370,6 +383,134 @@ async function saveSectionAttendance(req, res, next) {
   } finally {
     connection?.release();
   }
+}
+
+async function getElectiveAttendance(req, res, next) {
+  try {
+    const classId = parseId(req.params.classId, 'elective class ID');
+    const attendanceDate = req.query.date ? normalizeDate(req.query.date) : getCurrentDate();
+    const database = getDatabase();
+    const electiveClass = await assertElectiveTeacher(database, req.user, classId);
+    const canEdit = await getAttendanceEditPermission(database, electiveClass, attendanceDate);
+    const [sessions] = await database.execute(
+      `SELECT id, method, status, created_by_user_id AS createdByUserId,
+        confirmed_by_user_id AS confirmedByUserId, confirmed_at AS confirmedAt
+       FROM attendance_sessions WHERE school_id = ? AND shs_elective_class_id = ? AND attendance_date = ? LIMIT 1`,
+      [electiveClass.schoolId, classId, attendanceDate]);
+    const session = sessions[0] || null;
+    const members = await getElectiveRoster(database, electiveClass.schoolId, classId);
+    const [records] = await database.execute(
+      `SELECT attendance_records.student_user_id AS studentId,
+        attendance_records.attendance_status AS attendanceStatus, attendance_records.remarks
+       FROM attendance_records WHERE attendance_records.attendance_session_id = ? AND attendance_records.school_id = ?`,
+      [session?.id || 0, electiveClass.schoolId]);
+    const byStudent = new Map(records.map(record => [String(record.studentId), record]));
+    res.json({ electiveClass, attendanceDate, currentDate: getCurrentDate(), canEdit,
+      session: session && { id: session.id, method: session.method, status: session.status,
+        createdByUserId: session.createdByUserId, confirmedByUserId: session.confirmedByUserId, confirmedAt: session.confirmedAt },
+      students: members.map(student => ({ ...student, id: student.studentId,
+        attendanceStatus: byStudent.get(String(student.studentId))?.attendanceStatus || null,
+        remarks: byStudent.get(String(student.studentId))?.remarks || null })) });
+  } catch (error) { next(error); }
+}
+
+async function getElectiveAttendanceHistory(req, res, next) {
+  try {
+    const classId = parseId(req.params.classId, 'elective class ID');
+    const database = getDatabase();
+    const item = await assertElectiveTeacher(database, req.user, classId);
+    const [rows] = await database.execute(
+      `SELECT s.id AS sessionId, DATE_FORMAT(s.attendance_date, '%Y-%m-%d') AS attendanceDate,
+        s.method, s.confirmed_by_user_id AS confirmedByUserId, s.confirmed_at AS confirmedAt,
+        ar.student_user_id AS studentId, u.display_name AS displayName, u.initials,
+        u.avatar_filename AS avatarFilename, u.avatar_version AS avatarVersion,
+        ar.attendance_status AS attendanceStatus, ar.remarks
+       FROM attendance_sessions s LEFT JOIN attendance_records ar
+         ON ar.attendance_session_id = s.id AND ar.school_id = s.school_id
+       LEFT JOIN users u ON u.id = ar.student_user_id AND u.school_id = s.school_id
+       WHERE s.school_id = ? AND s.shs_elective_class_id = ? AND s.status = 'confirmed'
+         AND s.attendance_date BETWEEN ? AND ? AND s.attendance_date <= ?
+       ORDER BY s.attendance_date DESC, u.last_name, u.first_name`,
+      [item.schoolId, classId, item.yearStartDate, item.yearEndDate, getCurrentDate()]);
+    const sessions = new Map();
+    for (const row of rows) {
+      if (!sessions.has(row.attendanceDate)) sessions.set(row.attendanceDate, { attendanceDate: row.attendanceDate,
+        session: { id: String(row.sessionId), method: row.method, status: 'confirmed',
+          confirmedByUserId: row.confirmedByUserId, confirmedAt: row.confirmedAt }, students: [] });
+      if (row.studentId) sessions.get(row.attendanceDate).students.push({ id: String(row.studentId),
+        displayName: row.displayName, initials: row.initials, ...avatarFields({ ...row, id: row.studentId }),
+        attendanceStatus: row.attendanceStatus, remarks: row.remarks });
+    }
+    res.json({ electiveClass: item, sessions: [...sessions.values()] });
+  } catch (error) { next(error); }
+}
+
+async function saveElectiveAttendance(req, res, next) {
+  let connection;
+  try {
+    const classId = parseId(req.params.classId, 'elective class ID');
+    const attendanceDate = normalizeDate(req.body.attendanceDate);
+    const records = normalizeRecords(req.body.records);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    const item = await assertElectiveTeacher(connection, req.user, classId, { write: true });
+    await assertAttendanceCanBeEdited(connection, {
+      ...item,
+      academicYearStartDate: item.yearStartDate,
+      academicYearEndDate: item.yearEndDate
+    }, attendanceDate);
+    const current = await getElectiveRoster(connection, item.schoolId, classId);
+    const expected = current.map(student => Number(student.studentId)).sort((a, b) => a - b);
+    const provided = records.map(record => record.studentId).sort((a, b) => a - b);
+    if (expected.length !== provided.length || expected.some((studentId, index) => studentId !== provided[index])) {
+      throw createError('Attendance must include every currently enrolled elective student.');
+    }
+    const [sessions] = await connection.execute(
+      `SELECT id, method, status FROM attendance_sessions
+       WHERE school_id = ? AND shs_elective_class_id = ? AND attendance_date = ? FOR UPDATE`,
+      [item.schoolId, classId, attendanceDate]);
+    if (sessions[0]?.method === 'qr' && sessions[0].status === 'draft') {
+      throw createError('Review and confirm the QR attendance session before saving manual attendance.', 409);
+    }
+    let sessionId = sessions[0]?.id;
+    if (!sessionId) {
+      const [result] = await connection.execute(
+        `INSERT INTO attendance_sessions (school_id, shs_elective_class_id, attendance_date, method,
+          status, created_by_user_id, confirmed_by_user_id, confirmed_at)
+         VALUES (?, ?, ?, 'manual', 'confirmed', ?, ?, NOW())`,
+        [item.schoolId, classId, attendanceDate, req.user.id, req.user.id]);
+      sessionId = result.insertId;
+    } else {
+      await connection.execute(`UPDATE attendance_sessions SET status = 'confirmed',
+        confirmed_by_user_id = ?, confirmed_at = NOW() WHERE id = ? AND school_id = ?`,
+      [req.user.id, sessionId, item.schoolId]);
+    }
+    for (const record of records) await connection.execute(
+      `INSERT INTO attendance_records (school_id, attendance_session_id, student_user_id,
+        attendance_status, remarks, marked_by_user_id, marked_at) VALUES (?, ?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE attendance_status = VALUES(attendance_status), remarks = VALUES(remarks),
+         marked_by_user_id = VALUES(marked_by_user_id), marked_at = NOW()`,
+      [item.schoolId, sessionId, record.studentId, record.status, record.remarks, req.user.id]);
+    await connection.execute(
+      `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
+       VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?,
+         'attendanceDate', ?, 'className', ?, 'subjectName', ?, 'elective_class_id', ?, 'method', 'manual',
+         'recordCount', ?, 'presentCount', ?, 'absentCount', ?, 'lateCount', ?, 'excusedCount', ?, 'summary', ?))`,
+      [item.schoolId, req.user.id, sessionId, attendanceDate, attendanceDate, item.className, item.subjectName, classId,
+        records.length, ...Object.values(attendanceOutcomeCounts(records)),
+        [item.className, item.subjectName, attendanceDate].join(' · ')]);
+    await connection.commit();
+    const refreshed = await new Promise((resolve, reject) => getElectiveAttendance({
+      params: req.params,
+      query: { date: attendanceDate },
+      user: req.user
+    }, { json: resolve }, reject));
+    res.json(refreshed);
+  } catch (error) {
+    if (connection) await connection.rollback();
+    if (error.code === 'ER_DUP_ENTRY') error = createError('Attendance was saved by another request. Reload this class.', 409);
+    next(error);
+  } finally { connection?.release(); }
 }
 
 async function getParentAttendance(req, res, next) {
@@ -430,9 +571,34 @@ async function getParentAttendance(req, res, next) {
       ORDER BY attendance_sessions.attendance_date DESC, subjects.name`,
       [req.user.schoolId, getCurrentDate(), req.user.id]
     );
+    let electiveRecords = [];
+    if (process.env.SHS_SELECTION_ENABLED === 'true') {
+      [electiveRecords] = await database.execute(
+        `SELECT ar.student_user_id AS studentId,
+          DATE_FORMAT(s.attendance_date, '%Y-%m-%d') AS date,
+          ec.id AS electiveClassId, ec.class_name AS className, o.subject_name AS subjectName,
+          ar.attendance_status AS status, ar.remarks AS remark
+         FROM attendance_records ar JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+           AND s.school_id = ar.school_id
+         JOIN shs_elective_classes ec ON ec.id = s.shs_elective_class_id AND ec.school_id = s.school_id
+         JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
+         JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
+         WHERE ar.school_id = ? AND s.status = 'confirmed' AND s.attendance_date <= ? AND y.status = 'active'
+           AND EXISTS (SELECT 1 FROM shs_elective_class_students em WHERE em.school_id = ar.school_id
+             AND em.elective_class_id = ec.id AND em.student_user_id = ar.student_user_id
+             AND (em.withdrawn_at IS NULL OR s.attendance_date <= DATE(em.withdrawn_at)))
+           AND EXISTS (SELECT 1 FROM student_parent_links pl WHERE pl.school_id = ar.school_id
+             AND pl.student_user_id = ar.student_user_id AND pl.parent_user_id = ?)
+         ORDER BY s.attendance_date DESC, o.subject_name`,
+        [req.user.schoolId, getCurrentDate(), req.user.id]);
+    }
     res.json({ currentDate: getCurrentDate(), children: children.map(({ avatarFilename, avatarVersion, ...child }) => ({
       ...child, ...avatarFields({ id: child.studentId, avatarFilename, avatarVersion }), studentId: String(child.studentId)
-    })), records: records.map(record => ({ ...record, studentId: String(record.studentId), sectionId: String(record.sectionId), subjectId: String(record.subjectId) })) });
+    })), records: [...records.map(record => ({ ...record, studentId: String(record.studentId),
+      sectionId: String(record.sectionId), subjectId: String(record.subjectId) })), ...electiveRecords.map(record => ({
+      ...record, studentId: String(record.studentId), sectionId: null, subjectId: null,
+      electiveClassId: String(record.electiveClassId), scopeType: 'elective'
+    }))] });
   } catch (error) { next(error); }
 }
 
@@ -466,12 +632,32 @@ async function getStudentAttendance(req, res, next) {
       ORDER BY attendance_sessions.attendance_date DESC, subjects.name`,
       [req.user.schoolId, req.user.id, currentDate]
     );
+    let electiveRecords = [];
+    if (process.env.SHS_SELECTION_ENABLED === 'true') {
+      [electiveRecords] = await database.execute(
+        `SELECT ar.student_user_id AS studentId, DATE_FORMAT(s.attendance_date, '%Y-%m-%d') AS date,
+          ec.id AS electiveClassId, ec.class_name AS className, o.subject_name AS subjectName,
+          ar.attendance_status AS status, ar.remarks AS remark
+         FROM attendance_records ar JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+           AND s.school_id = ar.school_id
+         JOIN shs_elective_classes ec ON ec.id = s.shs_elective_class_id AND ec.school_id = s.school_id
+         JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
+         JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
+         WHERE ar.school_id = ? AND ar.student_user_id = ? AND s.status = 'confirmed'
+           AND s.attendance_date <= ? AND y.status = 'active'
+           AND EXISTS (SELECT 1 FROM shs_elective_class_students em WHERE em.school_id = ar.school_id
+             AND em.elective_class_id = ec.id AND em.student_user_id = ar.student_user_id
+             AND (em.withdrawn_at IS NULL OR s.attendance_date <= DATE(em.withdrawn_at)))
+         ORDER BY s.attendance_date DESC, o.subject_name`,
+        [req.user.schoolId, req.user.id, currentDate]);
+    }
     res.json({ currentDate, records: records.map(record => ({
       ...record,
       studentId: String(record.studentId),
       sectionId: String(record.sectionId),
       subjectId: String(record.subjectId)
-    })) });
+    })).concat(electiveRecords.map(record => ({ ...record, studentId: String(record.studentId),
+      sectionId: null, subjectId: null, electiveClassId: String(record.electiveClassId), scopeType: 'elective' }))) });
   } catch (error) { next(error); }
 }
 
@@ -560,4 +746,4 @@ async function getTeacherStudentFlags(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { getParentAttendance, getStudentAttendance, getSchoolAttendanceSummary, getTeacherStudentFlags, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance };
+module.exports = { getParentAttendance, getStudentAttendance, getSchoolAttendanceSummary, getTeacherStudentFlags, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance, getElectiveAttendance, getElectiveAttendanceHistory, saveElectiveAttendance };

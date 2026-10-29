@@ -106,7 +106,10 @@
     if (!list) return;
 
     const unreadCount = notifications.filter(item => !item.read).length;
-    if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
+    if (unreadLabel) {
+      unreadLabel.hidden = notifications.length === 0;
+      unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
+    }
     if (dot) dot.style.display = unreadCount ? '' : 'none';
 
     list.innerHTML = notifications.length

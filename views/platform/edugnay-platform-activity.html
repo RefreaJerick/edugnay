@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
-  <link rel="stylesheet" href="../../assets/css/admin/activity.css">
+  <link rel="stylesheet" href="../../assets/css/admin/activity.css?v=2">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
@@ -76,13 +76,7 @@
           </div>
         </div>
         <div class="tb-theme" data-theme-control>
-          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
-          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
-            <div class="tb-theme-heading">Appearance</div>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
-            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
-          </div>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false">
@@ -235,11 +229,15 @@
         const group = formatDateGroup(activity.createdAt);
         const groupHtml = group !== lastGroup ? `<div class="activity-group-label">${escapeHtml(group)}</div>` : '';
         lastGroup = group;
+        const schoolName = String(activity.schoolName || '');
+        const schoolContext = schoolName && schoolName.toLocaleLowerCase() !== String(activity.actor || '').toLocaleLowerCase()
+          && !String(activity.detail || '').toLocaleLowerCase().includes(schoolName.toLocaleLowerCase()) ? schoolName : '';
+        const context = [activity.detail, schoolContext].filter(Boolean).join(' · ');
         return `${groupHtml}
           <div class="activity-item">
             <div class="act-icon ${escapeHtml(activity.tone)}"><i data-lucide="${escapeHtml(activity.icon)}" style="width:15px;height:15px;"></i></div>
             <div class="act-body">
-              <div class="act-text"><strong>${escapeHtml(activity.actor)}</strong> ${escapeHtml(activity.title)} ${escapeHtml(activity.detail || '')}</div>
+              <div class="act-text"><strong>${escapeHtml(activity.actor || 'System')}</strong> ${escapeHtml(activity.title || 'recorded an activity')}${context ? ` · ${escapeHtml(context)}` : ''}</div>
               <div class="act-time">${escapeHtml(formatTime(activity.createdAt))}</div>
             </div>
             <span class="act-tag">${escapeHtml(activity.type)}</span>

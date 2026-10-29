@@ -1,5 +1,4 @@
 const { getDatabase } = require('../config/database');
-const { LEGACY_SHS_GRADING_GROUPS, LEGACY_SHS_GRADING_TYPES } = require('../config/shsCurriculum');
 const { writeAuditLog } = require('../utils/auditLog');
 const { copyCustomProfilesForward } = require('./subjectGradingController');
 
@@ -361,6 +360,7 @@ async function listGradingCategories(req, res, next) {
       if (!scopeRows.length) throw createError('The section and subject are not assigned to your account.', 404);
       levelId = Number(scopeRows[0].schoolLevelId);
       schoolLevelCode = scopeRows[0].schoolLevelCode;
+      if (schoolLevelCode === 'shs') throw createError('Strengthened SHS grading is not available until the grading phase is complete.', 409);
       shsGradingGroup = scopeRows[0].shsGradingGroup;
       if (req.query.schoolLevelId && Number(req.query.schoolLevelId) !== levelId) {
         throw createError('The selected school level does not match this section.', 409);
@@ -375,7 +375,7 @@ async function listGradingCategories(req, res, next) {
       FROM grading_categories INNER JOIN school_levels ON school_levels.id = grading_categories.school_level_id
       WHERE ${filter} ORDER BY school_levels.id, grading_categories.code`, values
     );
-    const weights = schoolLevelCode === 'shs' ? LEGACY_SHS_GRADING_GROUPS[shsGradingGroup]?.weights : null;
+    const weights = null;
     let publishedShsGradeCount = null;
     if (req.user.role === 'school_admin' && !hasSection) {
       const [[published]] = await database.execute(
@@ -394,8 +394,7 @@ async function listGradingCategories(req, res, next) {
         name: weights && category.code === 'qa' ? 'Examinations' : category.name,
         weight: weights?.[String(category.code).toLowerCase()] ?? Number(category.weight)
       })),
-      ...(schoolLevelCode === 'shs' ? { gradingScale: 'legacy_shs_transmutation' } : {}),
-      shsGradingTypes: LEGACY_SHS_GRADING_TYPES.map(type => ({ ...type, weights: { ...type.weights } })),
+      shsGradingTypes: [],
       ...(publishedShsGradeCount === null ? {} : { publishedShsGradeCount })
     });
   } catch (error) { next(error); }
@@ -424,6 +423,7 @@ async function updateGradingCategories(req, res, next) {
       [schoolLevelId, req.user.schoolId]
     );
     if (!level) throw createError('School level was not found.', 404);
+    if (level.levelCode === 'shs') throw createError('Strengthened SHS grading settings will be available in the grading phase.', 409);
     const [existing] = await connection.execute('SELECT id, code, weight FROM grading_categories WHERE school_id = ? AND school_level_id = ? FOR UPDATE', [req.user.schoolId, schoolLevelId]);
     const existingIds = new Set(existing.map(category => Number(category.id)));
     if (categories.some(category => category.id && !existingIds.has(category.id))) throw createError('A grading category was not found.', 404);

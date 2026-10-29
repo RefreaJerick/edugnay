@@ -312,7 +312,9 @@ async function applyDepedDefaults(req, res, next) {
       summary.added.push({ subjectId: subject.id, subjectName: subject.name });
     }
     await writeAuditLog(connection, req, 'deped_k10_grading_defaults_applied', 'subject_grading_profile', academicYearId, {
-      summary: `${year.academicYearLabel} ${year.levelCode} grading defaults`, added: summary.added.length
+      summary: `${year.academicYearLabel} ${year.levelCode} grading defaults`,
+      schoolYearLabel: year.academicYearLabel, levelCode: year.levelCode,
+      addedCount: summary.added.length
     });
     await connection.commit();
     transactionStarted = false;
@@ -436,6 +438,7 @@ async function saveK10FinalGradeRules(req, res, next) {
     );
     await writeAuditLog(connection, req, 'k10_final_grade_rules_saved', 'school_year_final_grade_rules', academicYearId, {
       summary: `${year.academicYearLabel} ${year.levelCode} final-grade rules`,
+      schoolYearLabel: year.academicYearLabel, levelCode: year.levelCode,
       gradingMode, passingGradeThreshold, gradeRounding
     });
     await connection.commit();

@@ -20,7 +20,11 @@ const connection = {
       if (state.failInsertAt === state.inserts) throw new Error('Insert failed');
       return [{ insertId: state.inserts }];
     }
-    if (sql.startsWith('INSERT INTO audit_logs')) { state.audits++; return [{ insertId: state.audits }]; }
+    if (sql.startsWith('INSERT INTO audit_logs')) {
+      state.audits++;
+      state.auditDetails.push(JSON.parse(values[5]));
+      return [{ insertId: state.audits }];
+    }
     throw new Error(`Unexpected query: ${sql}`);
   }
 };
@@ -29,8 +33,10 @@ const { enrollStudentsBulk } = require('../controllers/sectionsController');
 
 function reset() {
   state = {
-    section: { id: 8, schoolId: 1, name: 'A', status: 'active', academicYearStatus: 'active', academicYearId: 2, studentCount: 5, capacity: 40 },
-    badStudentIds: [], hasEnrollment: false, inserts: 0, audits: 0, commits: 0, rollbacks: 0, failInsertAt: 0, started: false
+    section: { id: 8, schoolId: 1, name: 'A', gradeLevelName: 'Grade 8', academicYearLabel: '2026-2027',
+      status: 'active', academicYearStatus: 'active', academicYearId: 2, studentCount: 5, capacity: 40 },
+    badStudentIds: [], hasEnrollment: false, inserts: 0, audits: 0, auditDetails: [], commits: 0, rollbacks: 0,
+    failInsertAt: 0, started: false
   };
 }
 
@@ -51,6 +57,11 @@ test('bulk enrollment commits all students and audit entries together', async ()
   assert.deepEqual(result.body, { sectionId: 8, studentIds: [11, 12], assignedCount: 2 });
   assert.equal(state.inserts, 2);
   assert.equal(state.audits, 2);
+  assert.deepEqual(state.auditDetails.map(({ summary, ...details }) => details), [
+    { studentName: 'Student 11', sectionName: 'A', sectionId: 8, gradeName: 'Grade 8', schoolYear: '2026-2027' },
+    { studentName: 'Student 12', sectionName: 'A', sectionId: 8, gradeName: 'Grade 8', schoolYear: '2026-2027' }
+  ]);
+  assert.ok(state.auditDetails.every(details => !details.summary.includes('?')));
   assert.equal(state.commits, 1);
 });
 

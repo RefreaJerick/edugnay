@@ -1,6 +1,5 @@
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
-const { LEGACY_SHS_GRADING_GROUPS, transmuteLegacyShsInitialGrade } = require('../config/shsCurriculum');
 const {
   applyDepedK10GradeMethod,
   getDepedK10GradeMethod,
@@ -16,6 +15,66 @@ function parseId(value, label) { const id = Number.parseInt(value, 10); if (!Num
 function text(value, maximum, label) { const result = String(value || '').trim(); if (!result) throw createError(`${label} is required.`); if (result.length > maximum) throw createError(`${label} is too long.`); return result; }
 function optionalText(value, maximum, label) { if (value === undefined || value === null) return null; const result = String(value).trim(); if (result.length > maximum) throw createError(`${label} is too long.`); return result || null; }
 function scoreValue(value, label, required = true) { if (value === undefined || value === null || value === '') { if (required) throw createError(`${label} is required.`); return null; } const score = Number(value); if (!Number.isFinite(score) || score < 0 || score > 1000000) throw createError(`${label} is invalid.`); return Math.round(score * 100) / 100; }
+
+function publishedSectionGradeFilter({ section = 'sections', level = 'school_levels', grade = 'school_grade_levels', year = 'academic_years' } = {}) {
+  if (process.env.SHS_SELECTION_ENABLED !== 'true') return `${level}.level_code <> 'shs'`;
+  const startYear = `YEAR(${year}.start_date)`;
+  return `(${level}.level_code <> 'shs' OR (
+    ${section}.shs_curriculum_code = 'strengthened_2026'
+    AND ${startYear} >= 2026
+    AND ${grade}.grade_code IN ('grade-11', 'grade-12')
+  ))`;
+}
+
+async function loadPublishedElectiveGrades(database, user, { studentId, academicYearId, academicTermId } = {}) {
+  if (process.env.SHS_SELECTION_ENABLED !== 'true') return [];
+  if (!['student', 'parent', 'teacher', 'school_admin'].includes(user?.role)) {
+    throw createError('You do not have access to published grades.', 403);
+  }
+  const where = ['p.school_id = ?', 'p.shs_elective_class_id IS NOT NULL',
+    `YEAR(year.start_date) >= 2026`,
+    `grade.grade_code IN ('grade-11', 'grade-12')`];
+  const values = [user.schoolId];
+  if (studentId) { where.push('p.student_user_id = ?'); values.push(studentId); }
+  if (academicYearId) { where.push('o.academic_year_id = ?'); values.push(academicYearId); }
+  if (academicTermId) { where.push('p.academic_term_id = ?'); values.push(academicTermId); }
+  if (user.role === 'student') {
+    where.push('p.student_user_id = ?'); values.push(user.id);
+  } else if (user.role === 'teacher') {
+    where.push('c.teacher_user_id = ?'); values.push(user.id);
+  } else if (user.role === 'parent') {
+    where.push(`EXISTS (SELECT 1 FROM student_parent_links link
+      WHERE link.school_id = p.school_id AND link.parent_user_id = ?
+        AND link.student_user_id = p.student_user_id)`);
+    values.push(user.id);
+  }
+  const [rows] = await database.execute(
+    `SELECT p.id, p.school_id AS schoolId, p.student_user_id AS studentId,
+      students.display_name AS studentName, p.shs_elective_class_id AS electiveClassId,
+      c.class_name AS className, o.catalog_code AS catalogCode,
+      o.subject_name AS subjectName, p.academic_term_id AS academicTermId,
+      term.name AS academicTermName, term.sequence_number AS academicTermSequenceNumber,
+      year.id AS academicYearId, year.label AS academicYearLabel, year.status AS academicYearStatus,
+      grade.grade_code AS gradeCode, level.grading_period_type AS gradingPeriodType,
+      level.passing_grade_threshold AS passingGradeThreshold,
+      p.final_grade AS finalGrade, p.published_at AS publishedAt
+     FROM published_final_grades p
+     JOIN users students ON students.id = p.student_user_id AND students.school_id = p.school_id
+       AND students.role = 'student'
+     JOIN shs_elective_classes c ON c.id = p.shs_elective_class_id AND c.school_id = p.school_id
+     JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
+     JOIN school_grade_levels grade ON grade.id = o.grade_level_id AND grade.school_id = o.school_id
+     JOIN school_levels level ON level.id = grade.school_level_id AND level.school_id = grade.school_id
+     JOIN academic_years year ON year.id = o.academic_year_id AND year.school_id = o.school_id
+     JOIN academic_terms term ON term.id = p.academic_term_id AND term.school_id = p.school_id
+       AND term.academic_year_id = year.id AND term.school_level_id = level.id
+     WHERE ${where.join(' AND ')}
+     ORDER BY year.start_date DESC, term.sequence_number DESC, o.subject_name, students.last_name, students.first_name`,
+    values
+  );
+  return rows.map(row => ({ ...row, scopeType: 'elective', sectionId: null, subjectId: null,
+    sectionName: `Elective class: ${row.className}` }));
+}
 
 async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId, schoolId) {
   const [rows] = await connection.execute(`SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = sections.school_id INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id AND teachers.school_id = sections.school_id AND teachers.role = 'teacher' AND teachers.account_status = 'active' WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ? AND sections.school_id = ? AND sections.status = 'active' LIMIT 1`, [teacherId, sectionId, subjectId, schoolId]);
@@ -36,7 +95,8 @@ async function assertGradeWriteAccess(connection, user, scope) {
   const [terms] = await connection.execute(
     `SELECT academic_terms.status AS academicTermStatus,
       academic_years.status AS academicYearStatus, academic_years.label AS academicYearLabel,
-      school_grade_levels.grade_code AS gradeCode
+      school_grade_levels.grade_code AS gradeCode,
+      school_levels.level_code AS schoolLevelCode
      FROM academic_terms
      INNER JOIN sections ON sections.id = ?
        AND sections.academic_year_id = academic_terms.academic_year_id
@@ -46,10 +106,13 @@ async function assertGradeWriteAccess(connection, user, scope) {
        AND academic_years.school_id = sections.school_id
      INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
        AND school_grade_levels.school_id = sections.school_id
+     INNER JOIN school_levels ON school_levels.id = sections.school_level_id
+       AND school_levels.school_id = sections.school_id
      WHERE academic_terms.id = ? FOR UPDATE`,
     [scope.sectionId, user.schoolId, scope.academicTermId]
   );
   if (!terms.length) throw createError('The grading period no longer matches this section.', 404);
+  if (terms[0].schoolLevelCode === 'shs') throw createError('Strengthened SHS grading is not available until its grading phase is complete.', 409);
   const gradeBlockReason = getDepedNumericalGradeBlockReason(terms[0].gradeCode, terms[0].academicYearLabel);
   if (gradeBlockReason) throw createError(gradeBlockReason, 409);
   const termStatus = terms[0].academicTermStatus;
@@ -107,6 +170,7 @@ async function validateGradeItemScope(connection, user, section, subjectId, acad
   );
   const usesDepedK10Rules = ['elementary', 'jhs'].includes(gradingYear?.levelCode)
     && isDepedNumericalGradeCode(gradingYear?.gradeCode, gradingYear?.academicYearLabel);
+  if (gradingYear?.levelCode === 'shs') throw createError('Strengthened SHS grading is not available until its grading phase is complete.', 409);
   if (usesDepedK10Rules && (!subjectGradingComponentId || gradingCategoryId)) {
     throw createError('Use this subject’s saved school-year grading configuration for score recording.', 409);
   }
@@ -433,10 +497,11 @@ async function getFinalGradesOverview(req, res, next) {
         AND school_levels.school_id = sections.school_id
       LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
         AND school_grade_levels.school_id = sections.school_id
-      WHERE section_students.student_user_id = ?
+      WHERE section_students.student_user_id = ? AND section_students.school_id = ?
+        AND ${publishedSectionGradeFilter()}
       ORDER BY academicYearStartDate DESC, sectionId DESC,
         enrollmentWithdrawnAt, enrollmentEnrolledAt DESC`,
-      [schoolId, studentId]
+      [schoolId, studentId, schoolId]
     );
 
     const academicYears = [];
@@ -473,6 +538,8 @@ async function getFinalGradesOverview(req, res, next) {
     });
 
     if (sectionMap.size) {
+      const sectionIds = [...sectionMap.keys()];
+      const sectionPlaceholders = sectionIds.map(() => '?').join(', ');
       const [termRows] = await database.execute(
         `SELECT DISTINCT academic_terms.id AS id,
           academic_terms.academic_year_id AS academicYearId,
@@ -485,9 +552,10 @@ async function getFinalGradesOverview(req, res, next) {
           AND sections.school_id = ?
         INNER JOIN academic_terms ON academic_terms.academic_year_id = sections.academic_year_id
           AND academic_terms.school_level_id = sections.school_level_id
-        WHERE section_students.student_user_id = ?
+        WHERE section_students.student_user_id = ? AND section_students.school_id = ?
+          AND sections.id IN (${sectionPlaceholders})
         ORDER BY sequenceNumber`,
-        [schoolId, studentId]
+        [schoolId, studentId, schoolId, ...sectionIds]
       );
       termRows.forEach(term => {
         const year = academicYearMap.get(String(term.academicYearId));
@@ -510,9 +578,10 @@ async function getFinalGradesOverview(req, res, next) {
         INNER JOIN section_teachers ON section_teachers.section_id = sections.id
         INNER JOIN subjects ON subjects.id = section_teachers.subject_id
           AND subjects.school_id = sections.school_id
-        WHERE section_students.student_user_id = ?
+        WHERE section_students.student_user_id = ? AND section_students.school_id = ?
+          AND sections.id IN (${sectionPlaceholders})
         ORDER BY subjectName`,
-        [schoolId, studentId]
+        [schoolId, studentId, schoolId, ...sectionIds]
       );
       subjectRows.forEach(subject => {
         sectionMap.get(String(subject.sectionId))?.subjects.push({
@@ -553,11 +622,14 @@ async function getFinalGradesOverview(req, res, next) {
         AND school_grade_levels.school_id = sections.school_id
       WHERE published_final_grades.school_id = ?
         AND published_final_grades.student_user_id = ?
+        AND ${publishedSectionGradeFilter()}
       ORDER BY academic_years.start_date DESC, academic_terms.sequence_number DESC,
         subjects.name, published_final_grades.published_at DESC`,
       [schoolId, studentId]
     );
 
+    const electiveGradeRows = await loadPublishedElectiveGrades(database, user, { studentId });
+    const allGradeRows = gradeRows.concat(electiveGradeRows);
     const k10PassingThresholds = await getOverviewK10PassingThresholds(database, schoolId, [
       ...enrollmentRows,
       ...gradeRows
@@ -590,15 +662,16 @@ async function getFinalGradesOverview(req, res, next) {
         student: { id: String(student.id), displayName: student.displayName },
         academicYears,
         current,
-        publishedGrades: gradeRows.map(grade => {
+        publishedGrades: allGradeRows.map(grade => {
           const publishedGrade = { ...grade };
           delete publishedGrade.schoolLevelId;
           delete publishedGrade.schoolLevelCode;
           delete publishedGrade.gradeCode;
           return {
             ...publishedGrade,
-            sectionId: String(grade.sectionId),
-            subjectId: String(grade.subjectId),
+            sectionId: grade.sectionId == null ? null : String(grade.sectionId),
+            subjectId: grade.subjectId == null ? null : String(grade.subjectId),
+            electiveClassId: grade.electiveClassId == null ? null : String(grade.electiveClassId),
             academicTermId: String(grade.academicTermId),
             academicYearId: String(grade.academicYearId),
             academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
@@ -749,6 +822,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   );
   const context = contextRows[0];
   if (!context) throw createError('The section, subject, or term is not available to your account.', 404);
+  if (context.schoolLevelCode === 'shs') throw createError('Strengthened SHS grades cannot be calculated or published until the new grading workflow is available.', 409);
   if (context.termStatus !== 'active') throw createError('Grades can only be published for the active term.', 409);
   const gradeBlockReason = getDepedNumericalGradeBlockReason(context.gradeCode, context.academicYearLabel);
   if (gradeBlockReason) throw createError(gradeBlockReason, 409);
@@ -841,24 +915,6 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
       code: 'early_grade_exam_setup_review_required',
       message: 'This Grades 2–3 exam split came from the former suggested default. Ask the school admin to review and save the school-selected exam parts before publishing.'
     });
-  }
-  if (context.schoolLevelCode === 'shs') {
-    if (['academic', 'tvl'].includes(context.trackCode) && !context.strandId) {
-      issues.push({ code: 'unclassified_shs_section', message: 'Ask School Admin to confirm this section’s SHS strand before publishing grades.' });
-    }
-    const configuredWeights = LEGACY_SHS_GRADING_GROUPS[context.shsGradingGroup]?.weights;
-    if (!configuredWeights) {
-      issues.push({ code: 'unclassified_shs_subject', message: 'Ask School Admin to choose a grading type for this SHS subject before grades can be published.' });
-    } else {
-      const requiredCodes = Object.keys(configuredWeights);
-      if (categories.length !== requiredCodes.length || requiredCodes.some(code => !categories.some(category => String(category.code).toLowerCase() === code))) {
-        issues.push({ code: 'invalid_shs_grading_categories', message: 'SHS grading requires Written Work, Performance Task, and Quarterly Assessment categories.' });
-      } else {
-        categories.forEach(category => {
-          category.weight = configuredWeights[String(category.code).toLowerCase()];
-        });
-      }
-    }
   }
   const weightTotal = categories.reduce((sum, category) => sum + category.weight, 0);
 
@@ -1037,16 +1093,14 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
       }))
     })) : [];
     const weightedGrade = categoryAverages.reduce((sum, category) => sum + category.percentage * (category.weight / 100), 0);
-    const initialGrade = complete && (context.schoolLevelCode === 'shs' || usesDepedSubjectRules)
+    const initialGrade = complete && usesDepedSubjectRules
       ? Math.round((weightedGrade + Number.EPSILON) * 100) / 100
       : null;
     const finalGrade = !complete ? null : usesDepedSubjectRules
       ? gradingMethod === 'school_direct'
         ? roundFinalGrade(initialGrade, finalGradeRules.gradeRounding)
         : applyDepedK10GradeMethod(initialGrade, gradingMethod, 'round')
-      : context.schoolLevelCode === 'shs'
-        ? transmuteLegacyShsInitialGrade(initialGrade)
-        : roundFinalGrade(weightedGrade, context.gradeRounding);
+      : roundFinalGrade(weightedGrade, context.gradeRounding);
 
     return {
       studentId: Number(student.studentId),
@@ -1070,7 +1124,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     subjectName: context.subjectName,
     academicTermId: Number(context.academicTermId),
     academicTermName: context.academicTermName,
-    gradingScale: usesDepedSubjectRules ? gradingMethod : context.schoolLevelCode === 'shs' ? 'legacy_shs_transmutation' : null,
+    gradingScale: usesDepedSubjectRules ? gradingMethod : null,
     gradingMethod: usesDepedSubjectRules ? gradingMethod : null,
     gradingMethodLabel: usesDepedSubjectRules ? finalGradeRules.gradingMethodLabel : null,
     periodStructureCompatible,
@@ -1245,6 +1299,7 @@ async function listPublishedFinalGrades(req, res, next) {
 
     const where = ['published_final_grades.school_id = ?'];
     const values = [schoolId];
+    where.push(publishedSectionGradeFilter());
 
     if (user.role === 'student') {
       const studentId = userId;
@@ -1329,6 +1384,8 @@ async function listPublishedFinalGrades(req, res, next) {
         AND students.school_id = published_final_grades.school_id AND students.role = 'student'
       INNER JOIN sections ON sections.id = published_final_grades.section_id
         AND sections.school_id = published_final_grades.school_id
+      INNER JOIN school_levels ON school_levels.id = sections.school_level_id
+        AND school_levels.school_id = sections.school_id
       INNER JOIN subjects ON subjects.id = published_final_grades.subject_id
         AND subjects.school_id = published_final_grades.school_id
       INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
@@ -1336,20 +1393,28 @@ async function listPublishedFinalGrades(req, res, next) {
         AND academic_terms.school_level_id = sections.school_level_id
       INNER JOIN academic_years ON academic_years.id = academic_terms.academic_year_id
         AND academic_years.school_id = published_final_grades.school_id
+      LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+        AND school_grade_levels.school_id = sections.school_id
       WHERE ${where.join(' AND ')}
       ORDER BY academic_years.start_date DESC, academic_terms.sequence_number DESC,
         subjects.name, students.last_name, students.first_name, published_final_grades.published_at DESC`,
       values
     );
 
+    const electiveGrades = parsedFilters.sectionId || parsedFilters.subjectId ? []
+      : await loadPublishedElectiveGrades(database, user, {
+        studentId: requestedStudentId, academicYearId: parsedFilters.academicYearId,
+        academicTermId: parsedFilters.academicTermId
+      });
     res.set('Cache-Control', 'no-store');
-    res.json({ finalGrades: grades.map(grade => ({
+    res.json({ finalGrades: grades.concat(electiveGrades).map(grade => ({
       ...grade,
       id: String(grade.id),
       schoolId: String(grade.schoolId),
       studentId: String(grade.studentId),
-      sectionId: String(grade.sectionId),
-      subjectId: String(grade.subjectId),
+      sectionId: grade.sectionId == null ? null : String(grade.sectionId),
+      subjectId: grade.subjectId == null ? null : String(grade.subjectId),
+      electiveClassId: grade.electiveClassId == null ? null : String(grade.electiveClassId),
       academicTermId: String(grade.academicTermId),
       academicYearId: String(grade.academicYearId),
       finalGrade: Number(grade.finalGrade)
@@ -1414,6 +1479,7 @@ async function updateStudentScore(req, res, next) {
 }
 
 module.exports = {
+  publishedSectionGradeFilter,
   assertGradeWriteAccess,
   validateGradeItemScope,
   createGradingItem,
@@ -1421,6 +1487,7 @@ module.exports = {
   getFinalGradesOverview,
   getTransferReview,
   listGradingItems,
+  loadPublishedElectiveGrades,
   listPublishedFinalGrades,
   listStudentScores,
   previewFinalGrades,

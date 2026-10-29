@@ -312,6 +312,8 @@ async function importUsers(req, res, next) {
       if (role === 'school_admin') await connection.execute('INSERT INTO school_admin_profiles (user_id, employee_number) VALUES (?, ?)', [account.id, account.employeeNo]);
     }
     await writeAuditLog(connection, req, 'users_imported', 'user_import', null, {
+      accountCount: accounts.length,
+      role,
       summary: `${accounts.length} ${role.replace(/_/g, ' ')} accounts`
     }, schoolId);
     await connection.commit();

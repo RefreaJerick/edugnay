@@ -10,6 +10,7 @@ const styles = fs.readFileSync(path.join(root, 'assets/css/academic-range-picker
 const context = { window: {}, Event: class Event { constructor(type, options) { this.type = type; this.options = options; } } };
 const instrumented = source.replace(/\}\)\(\);\s*$/, `window.__academicDatePickerTest = {
   validDate, validMonth, parseDateTime, parseTime, displayDate, displayDateTime, displayTime, inBounds, valueFor,
+  yearBounds, setCalendarYear,
   isValidValue, loadDraft, setTimeDraft, timeFromDraft, draftSummary, validationMessage, canApply,
   apply, close, onPopupInput, onPopupKeydown, sync, wrapValueSetter,
   setState(state, element) { active = state; popup = element; }
@@ -54,13 +55,51 @@ function fakeState(type, value, draft) {
   return state;
 }
 
-test('date values stay timezone-safe and display in day/month/year order', () => {
+test('date values stay timezone-safe and display as abbreviated month, day, and year', () => {
   assert.equal(picker.validDate('2028-02-29'), true);
   assert.equal(picker.validDate('2027-02-29'), false);
-  assert.equal(picker.displayDate('2027-10-04'), '04/10/2027');
+  assert.equal(picker.displayDate('2027-10-04'), 'Oct 04, 2027');
   assert.equal(picker.parseDateTime('2027-10-04T00:05').hour, 0);
-  assert.equal(picker.displayDateTime('2027-10-04T00:05'), '04/10/2027 · 12:05 AM');
-  assert.equal(picker.displayDateTime('2027-10-04T13:45'), '04/10/2027 · 01:45 PM');
+  assert.equal(picker.displayDateTime('2027-10-04T00:05'), 'Oct 04, 2027 · 12:05 AM');
+  assert.equal(picker.displayDateTime('2027-10-04T13:45'), 'Oct 04, 2027 · 01:45 PM');
+});
+
+test('direct year entry preserves month and day, clamps leap days, and honors date bounds', () => {
+  const leapDate = fakeState('date', '', { date: '2024-02-29' });
+  leapDate.input.min = '2020-01-01';
+  leapDate.input.max = '2028-12-31';
+  assert.deepEqual({ ...picker.yearBounds(leapDate) }, { min: 2020, max: 2028 });
+  assert.equal(picker.setCalendarYear(leapDate, '2025'), true);
+  assert.equal(leapDate.date, '2025-02-28');
+  assert.equal(picker.valueFor(leapDate), '2025-02-28');
+  assert.equal(leapDate.input.value, '');
+  assert.equal(picker.setCalendarYear(leapDate, '2029'), false);
+  assert.equal(leapDate.date, '2025-02-28');
+
+  const empty = fakeState('date', '', { date: '2024-06-05' });
+  empty.cleared = true;
+  assert.equal(picker.setCalendarYear(empty, '2025'), true);
+  assert.equal(empty.cleared, true);
+  assert.equal(picker.valueFor(empty), '');
+
+  const bounded = fakeState('date', '', { date: '2024-04-01' });
+  bounded.input.min = '2026-08-15';
+  bounded.input.max = '2028-05-31';
+  assert.equal(picker.setCalendarYear(bounded, '2026'), true);
+  assert.equal(bounded.date, '2026-08-15');
+
+  const month = fakeState('month', '2024-02', { date: '2024-02-01', monthValue: '2024-02' });
+  month.input.min = '2023-07';
+  month.input.max = '2026-04';
+  assert.equal(picker.setCalendarYear(month, '2025'), true);
+  assert.equal(month.monthValue, '2025-02');
+  assert.equal(picker.valueFor(month), '2025-02');
+  assert.match(source, /data-date-year min="1" max="9999" step="1"/);
+  assert.match(source, /academic-range-month-year"><strong data-date-month><\/strong><input class="academic-range-year-input"/);
+  assert.match(source, /aria-label="Year"/);
+  assert.match(source, /popup\.addEventListener\('input', onPopupInput\)/);
+  assert.match(source, /popup\.addEventListener\('change', onPopupChange\)/);
+  assert.match(source, /event\.target\.matches\('\[data-date-year\]'\)/);
 });
 
 test('time-only values keep HH:mm storage and display in 12-hour form', () => {
@@ -323,8 +362,8 @@ test('direct code changes to the native value refresh the visible field', () => 
   picker.wrapValueSetter(state.input, state);
   state.input.value = '2028-02-29';
   assert.equal(state.input.value, '2028-02-29');
-  assert.equal(picker.displayDate(state.input.value), '29/02/2028');
-  assert.equal(text.textContent, '29/02/2028');
+  assert.equal(picker.displayDate(state.input.value), 'Feb 29, 2028');
+  assert.equal(text.textContent, 'Feb 29, 2028');
 });
 
 test('all audited calendar pages load the shared picker and preserve the native controls', () => {

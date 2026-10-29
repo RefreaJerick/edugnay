@@ -29,7 +29,7 @@ test('DepEd catalog review is available on Subjects and refreshes the managed su
   const reviewModal = html.indexOf('id="depedSubjectReviewModal"');
 
   assert.match(html, /id="reviewDepedSubjects"[^>]*hidden/);
-  assert.match(html, /reviewDepedButton\.hidden = !managementSchoolLevels\(\)\.some\(level => \['elementary', 'jhs'\]\.includes\(level\)\)/);
+  assert.match(html, /reviewDepedButton\.hidden = !managementSchoolLevels\(\)\.some\(level => \['elementary', 'jhs', 'shs'\]\.includes\(level\)\)/);
   assert.ok(mainEnd >= 0 && reviewModal > mainEnd, 'review modal is outside the hidden Subjects panel');
   assert.match(html, /window\.EDUGNAY_API\.getDepedSubjectPreview\(\)/);
   assert.match(html, /window\.EDUGNAY_API\.applyDepedSubjectDefaults\(\)/);
@@ -41,20 +41,17 @@ test('DepEd catalog review is available on Subjects and refreshes the managed su
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.deped-subject-grade-list\s*\{\s*grid-template-columns: 1fr;/);
 });
 
-test('subject modal uses concise copy and responsive field layout while keeping strand sharing explicit', () => {
+test('subject modal uses Strengthened SHS type, track, and hours fields', () => {
   const css = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
   assert.match(html, /<div class="modal" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">/);
   assert.match(html, /id="subjectGradeScopeLabel">Grade levels<\/label>/);
-  assert.match(html, /for="subjectShsGroup">Grading type<\/label>/);
+  assert.match(html, /for="subjectShsGroup">Subject type<\/label>/);
   assert.match(html, /for="subjectShsTrack">Track<\/label>/);
-  assert.match(html, /for="subjectShsStrand">Strand<\/label>/);
-  assert.match(html, /subjectShsWeightSummary/);
-  assert.match(html, /getShsGradingTypes\(\)/);
-  assert.match(html, /All strands in this track/);
+  assert.match(html, /for="subjectShsHours">Instructional hours<\/label>/);
+  assert.doesNotMatch(html, /for="subjectShsStrand">/);
   assert.match(html, /textContent = subject \? 'Edit Subject' : 'Add New Subject'/);
   assert.doesNotMatch(html, /id="subjectModalSub"|document\.getElementById\('subjectModalSub'\)|Legacy SHS curriculum|These tags determine|Strand \(optional\)/);
   assert.match(css, /#subjectModalBackdrop \.modal\s*\{\s*max-width:\s*640px;/);
-  assert.match(css, /\.subject-shs-weight-summary\s*\{/);
   assert.match(css, /#subjectModalBackdrop #createSubjectForm > \.form-row-2,[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*?#subjectModalBackdrop \.form-row-2\s*\{\s*grid-template-columns:\s*1fr;/);
 });
@@ -115,7 +112,7 @@ test('Elementary and JHS subject cards and removal details omit type labels whil
     id: 2,
     name: 'Core subject',
     code: 'core-shs',
-    shsGradingGroup: 'core',
+    shsSubjectType: 'core',
     gradeScopes: [{ schoolLevelCode: 'shs', gradeLevelName: 'Grade 11', trackId: null, strandId: null }]
   });
   const elementary = context.managementApiSubjectRecord({
@@ -154,20 +151,20 @@ test('Elementary and JHS subject cards and removal details omit type labels whil
       { schoolLevelCode: 'shs', gradeLevelName: 'Grade 11' }
     ]
   });
-  assert.equal(unclassified.type, 'Needs SHS classification');
-  assert.equal(unclassified.shsGradingGroup, null);
+  assert.equal(unclassified.type, 'Needs Strengthened SHS setup');
+  assert.equal(unclassified.shsSubjectType, null);
   assert.equal(core.type, 'Core subject');
   assert.equal(elementary.type, '');
   assert.equal(jhs.type, '');
-  assert.equal(legacyElementary.type, 'Core subject');
+  assert.equal(legacyElementary.type, '');
   assert.equal(context.managementSubjectDescriptor(elementary), 'eng');
   assert.equal(context.managementSubjectDescriptor(jhs, 'Configured subject'), 'math');
   assert.equal(context.managementSubjectDescriptor(legacyElementary), 'eng-old');
   assert.equal(context.managementSubjectDescriptor(sharedJhsShs), 'shared');
   assert.equal(context.managementSubjectDescriptor(sharedJhsShs, '', 'jhs'), 'shared');
-  assert.equal(context.managementSubjectDescriptor(sharedJhsShs, '', 'shs:grade11'), 'shared · Core subject');
+  assert.equal(context.managementSubjectDescriptor(sharedJhsShs, '', 'shs:grade11'), 'shared · Needs Strengthened SHS setup');
   assert.equal(context.managementSubjectDescriptor(core), 'core-shs · Core subject');
-  assert.equal(context.managementSubjectDescriptor(unclassified), 'legacy-shs · Needs SHS classification');
+  assert.equal(context.managementSubjectDescriptor(unclassified), 'legacy-shs · Needs Strengthened SHS setup');
   assert.match(html, /const descriptor = managementSubjectDescriptor\(subject\)/);
   assert.match(html, /context: managementSubjectDescriptor\(subject, 'Configured subject'\)/);
 });

@@ -656,63 +656,17 @@ test('Grade 2 cannot preview without assignment or publish in a closed term', as
   assert.equal(rolledBack, true);
 });
 
-test('legacy SHS subject groups apply their curriculum weights during grade calculation', async () => {
-  const expected = {
-    core: [25, 50, 25],
-    academic_other: [25, 45, 30],
-    academic_immersion: [35, 40, 25],
-    other_other: [20, 60, 20],
-    other_immersion: [20, 60, 20]
-  };
-  for (const [group, weights] of Object.entries(expected)) {
-    reset();
-    context.schoolLevelCode = 'shs';
-    context.shsGradingGroup = group;
-    const result = await call(grades.previewFinalGrades, { query: scope });
-    assert.equal(result.error, null);
-    assert.deepEqual(result.data.preview.categories.map(category => category.weight), weights);
-    assert.deepEqual(result.data.preview.students[0].categoryAverages.map(category => category.weight), weights);
-  }
-});
-
-test('legacy SHS previews show the weighted initial score and publish its transmuted quarterly grade', async () => {
+test('SHS grade previews and publication wait for the Strengthened SHS grading phase', async () => {
   reset();
   context.schoolLevelCode = 'shs';
   context.shsGradingGroup = 'core';
-  context.gradeRounding = 'truncate';
-  const result = await call(grades.previewFinalGrades, { query: scope });
-  const preview = result.data.preview;
-  assert.equal(preview.gradingScale, 'legacy_shs_transmutation');
-  assert.equal(preview.students[0].initialGrade, 80);
-  assert.equal(preview.students[0].finalGrade, 87);
-  assert.equal(preview.students[0].isPassing, true);
-});
-
-test('unclassified legacy SHS subjects cannot calculate or publish grades', async () => {
-  reset();
-  context.schoolLevelCode = 'shs';
-  context.shsGradingGroup = null;
   const preview = await call(grades.previewFinalGrades, { query: scope });
-  assert.equal(preview.error, null);
-  assert.equal(preview.data.preview.readyToPublish, false);
-  assert.ok(preview.data.preview.issues.some(issue => issue.code === 'unclassified_shs_subject'));
-  assert.equal(preview.data.preview.students[0].finalGrade, null);
+  assert.equal(preview.error?.status, 409);
+  assert.match(preview.error.message, /Strengthened SHS/);
 
   const publish = await call(grades.publishFinalGrades, { body: scope });
   assert.equal(publish.error?.status, 409);
   assert.equal(savedGrades.length, 0);
-});
-
-test('unclassified Academic and TVL sections cannot publish SHS grades', async () => {
-  reset();
-  context.schoolLevelCode = 'shs';
-  context.shsGradingGroup = 'core';
-  context.trackCode = 'academic';
-  context.strandId = null;
-  const preview = await call(grades.previewFinalGrades, { query: scope });
-  assert.equal(preview.data.preview.readyToPublish, false);
-  assert.ok(preview.data.preview.issues.some(issue => issue.code === 'unclassified_shs_section'));
-  assert.equal(preview.data.preview.students[0].finalGrade, null);
 });
 
 test('transferred scores require review acknowledgment before publication', async () => {

@@ -9,6 +9,8 @@ router.get('/years', requireRole('school_admin', 'teacher', 'student'), controll
 router.get('/', requireRole('school_admin', 'teacher', 'student'), controller.list);
 router.post('/assignments/:assignmentId/meetings', requireSchoolAdmin, controller.save);
 router.patch('/assignments/:assignmentId/meetings/:meetingId', requireSchoolAdmin, controller.save);
+router.post('/elective-classes/:classId/meetings', requireSchoolAdmin, controller.saveElective);
+router.patch('/elective-classes/:classId/meetings/:meetingId', requireSchoolAdmin, controller.saveElective);
 router.delete('/meetings/:meetingId', requireSchoolAdmin, controller.remove);
 
 module.exports = router;

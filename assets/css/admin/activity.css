@@ -205,7 +205,7 @@
 .act-icon.purple { background: var(--purple-pale); color: var(--theme-purple-text); }
 .act-body { flex: 1; min-width: 0; }
 .act-text { font-size: 13px; color: var(--gray-700); line-height: 1.45; }
-.act-text strong { color: var(--gray-800); font-weight: 700; }
+.act-text strong { color: var(--gray-800); font-weight: 700; margin-right: 4px; }
 .act-time { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
 .act-tag {
   letter-spacing: 0.3px;
