@@ -31,10 +31,13 @@ test('School Calendar contains only notice management and direct links to the no
   assert.match(calendarRenderer, /Manage holidays and no-class notices\./);
   assert.match(calendarRenderer, /aria-label="School calendar notices"/);
   assert.match(calendarRenderer, /Add notice/);
+  assert.doesNotMatch(calendarRenderer, /Close form/);
   assert.doesNotMatch(calendarRenderer, /Narrative report week|weekStartDay|weekEndDay|Save report week/);
   assert.doesNotMatch(settingsPage, /function saveReportWeekSettings/);
   assert.match(settingsStyles, /\.school-workspace\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s);
-  assert.match(settingsStyles, /@media \(max-width: 760px\)[\s\S]*?\.school-calendar-form-grid\s*\{[^}]*grid-template-columns/s);
+  assert.match(settingsStyles, /\.school-form-grid\.school-calendar-form-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s);
+  assert.match(settingsStyles, /@media \(max-width: 760px\)[\s\S]*?\.school-form-grid\.school-calendar-form-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+  assert.match(settingsStyles, /@media \(max-width: 560px\)[\s\S]*?\.school-form-grid\.school-calendar-form-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
   checkInlineScript(settingsPage, 'edugnay-admin-schools.inline.js');
 });
 

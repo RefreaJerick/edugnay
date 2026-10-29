@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/schools.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/academic-range-picker.js"></script>
@@ -2512,14 +2512,15 @@
       setSettingsHeading('School Calendar', 'Manage holidays and no-class notices.');
       document.getElementById('schoolSettingsBody').innerHTML = `<section class="school-calendar-settings" aria-label="School calendar notices">
         <div class="school-calendar-notices">
-        <div class="school-calendar-toolbar"><button class="top-btn primary" id="toggleCalendarNoticeForm" type="button" aria-controls="calendarNoticeFormPanel" aria-expanded="${state.calendarFormOpen}"><i data-lucide="${state.calendarFormOpen ? 'x' : 'plus'}"></i> ${state.calendarFormOpen ? 'Close form' : 'Add notice'}</button></div>
+        ${state.calendarFormOpen ? '' : '<div class="school-calendar-toolbar"><button class="top-btn primary" id="toggleCalendarNoticeForm" type="button" aria-controls="calendarNoticeFormPanel" aria-expanded="false"><i data-lucide="plus"></i> Add notice</button></div>'}
         <div class="calendar-list" id="calendarNoticeList" aria-live="polite"></div>
         <div class="school-calendar-form-panel" id="calendarNoticeFormPanel" ${state.calendarFormOpen ? '' : 'hidden'}>
           <form id="holidayForm" class="school-calendar-form"><div class="school-form-grid school-calendar-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" maxlength="255" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today." maxlength="2000"></div></div><div class="school-form-footer"><button class="top-btn secondary" id="cancelCalendarNotice" type="button">Cancel</button><button class="top-btn primary" type="submit"><i data-lucide="check"></i> Save notice</button></div></form>
         </div>
         </div>
       </section>`;
-      document.getElementById('toggleCalendarNoticeForm').addEventListener('click', () => setCalendarNoticeFormOpen(!state.calendarFormOpen));
+      const toggleFormButton = document.getElementById('toggleCalendarNoticeForm');
+      if (toggleFormButton) toggleFormButton.addEventListener('click', () => setCalendarNoticeFormOpen(true));
       document.getElementById('cancelCalendarNotice').addEventListener('click', () => setCalendarNoticeFormOpen(false));
       document.getElementById('holidayForm').addEventListener('submit', addHoliday);
       renderCalendarNoticesList();
