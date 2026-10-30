@@ -2,7 +2,7 @@
   const api = window.EDUGNAY_API;
   const $ = id => document.getElementById(id);
   const escape = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
-  const state = { sections: [], evidence: null, reports: [], settings: null,
+  const state = { sections: [], evidence: null, reports: [], settings: null, weekRequestId: 0,
     generationEnabled: false, generationSwitchEnabled: false, aiEvidenceApproved: false, reportsEnabled: false,
     releaseEnabled: false, selectedReportId: null, busy: false, regenerateConfirmOpen: false, modalReturnFocus: new Map() };
 
@@ -131,6 +131,12 @@
     $('count-follow-up').textContent = reports.filter(report => report.status === 'confirmed' && report.isAtRisk).length;
   }
 
+  function renderCountSkeletons() {
+    ['count-total', 'count-drafts', 'count-confirmed', 'count-follow-up'].forEach(id => {
+      $(id).innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading report count' });
+    });
+  }
+
   function renderCards() {
     if (!state.evidence) return;
     const students = state.evidence.students || [];
@@ -187,21 +193,22 @@
   async function loadWeek() {
     const sectionId = $('report-section').value;
     const startDate = $('report-week').value;
+    const requestId = ++state.weekRequestId;
     if (!sectionId || !startDate) return;
     $('report-week-notice').hidden = true;
     state.evidence = null;
     state.reports = [];
-    $('reports-grid').innerHTML = '';
+    $('reports-grid').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading weekly reports', rows: 3 });
     setGenerationButtonState(true, 'Loading the selected week.');
-    $('week-caption').textContent = 'Loading selected week…';
-    renderCounts();
-    setMessage('reports-message', 'Loading weekly evidence and drafts…');
+    $('week-caption').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading selected report week' });
+    renderCountSkeletons();
+    setMessage('reports-message', '');
     try {
       const query = `sectionId=${encodeURIComponent(sectionId)}&startDate=${encodeURIComponent(startDate)}`;
       const [evidence, drafts] = await Promise.all([
         api.request(`/reports/weekly-evidence?${query}`), api.request(`/reports/weekly-drafts?${query}`)
       ]);
-      if ($('report-section').value !== sectionId || $('report-week').value !== startDate) return;
+      if (requestId !== state.weekRequestId || $('report-section').value !== sectionId || $('report-week').value !== startDate) return;
       state.evidence = evidence;
       state.reports = drafts.reports || [];
       const label = `${formatDate(evidence.reportWeek.startDate)}–${formatDate(evidence.reportWeek.endDate)}`;
@@ -219,7 +226,10 @@
       renderCards();
       updateGenerationControl();
     } catch (error) {
-      setMessage('reports-message', error.message || 'Weekly reports could not be loaded.', true);
+      if (requestId !== state.weekRequestId) return;
+      ['count-total', 'count-drafts', 'count-confirmed', 'count-follow-up'].forEach(id => { $(id).textContent = '—'; });
+      $('week-caption').textContent = 'Weekly report data unavailable.';
+      renderEmptyState('cloud-off', 'Weekly reports unavailable', error.message || 'Weekly reports could not be loaded.');
       setGenerationButtonState(true, 'Weekly report data could not be loaded.');
     }
   }

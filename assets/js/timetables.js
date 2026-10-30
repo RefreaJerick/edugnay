@@ -426,42 +426,8 @@
     await load(state);
   }
 
-  async function initPreview(preview) {
-    const list = preview.querySelector('.timetable-preview-list');
-    const showState = (icon, title, text) => {
-      list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon, title, text });
-    };
-    showState('calendar-days', "Loading today's schedule", "Please wait while today's classes are loaded.");
-    try {
-      const expectedRole = window.location.pathname.includes('/views/teacher/') ? 'teacher' : 'student';
-      const currentUser = await api().getCurrentUser();
-      if (currentUser?.role !== expectedRole) { preview.hidden = true; return; }
-      const data = await api().getTimetable();
-      const now = today();
-      const meetings = (data.meetings || []).filter(item => activeOn(item, now)).sort(byTime);
-      if (!meetings.length) {
-        showState('calendar-check', 'No classes today', 'Your schedule is clear for today.');
-        return;
-      }
-      list.innerHTML = meetings.map(item => {
-        const details = (expectedRole === 'teacher'
-          ? [item.gradeName, item.sectionName, item.room]
-          : [item.teacherName, item.room]).filter(Boolean).map(escape).join(' · ');
-        return `<div class="timetable-preview-item" role="listitem">
-          <span class="timetable-preview-time"><time datetime="${escape(item.startTime)}">${escape(timeLabel(item.startTime))}</time><span class="timetable-preview-time-separator" aria-hidden="true">–</span><time datetime="${escape(item.endTime)}">${escape(timeLabel(item.endTime))}</time></span>
-          <span class="timetable-preview-copy"><strong>${escape(item.subjectName)}</strong>${details ? `<span class="timetable-preview-details">${details}</span>` : ''}</span>
-        </div>`;
-      }).join('');
-      list.setAttribute('role', 'list');
-    } catch {
-      showState('cloud-off', 'Schedule unavailable', 'Today’s classes could not be loaded.');
-    }
-  }
-
   document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('timetable-page');
     if (page) initPage(page);
-    const preview = document.querySelector('.timetable-preview');
-    if (preview) initPreview(preview);
   });
 })();

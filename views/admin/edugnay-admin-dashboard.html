@@ -12,11 +12,11 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/admin/dashboard.css?v=2">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/admin/student-multi-select.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
@@ -283,7 +283,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -424,7 +424,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar admin"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Admin</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -467,7 +467,7 @@
               </div>
               <div>
                 <div class="grading-period-label">Active grading period</div>
-                <div class="grading-period-value" data-active-academic-period>Loading academic period...</div>
+                <div class="grading-period-value" data-active-academic-period data-skeleton-kind="line" data-skeleton-label="Loading academic period">Loading academic period...</div>
               </div>
             </div>
           </div>
@@ -1082,10 +1082,12 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       dashboardStudentPicker = window.createStudentMultiSelect(document.getElementById('dashboardStudentPicker'), handleDashboardStudentChange);
+      if (ADMIN_DASHBOARD_API_ENABLED) {
+        document.getElementById('admin-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'stat-cards', label: 'Loading dashboard totals', rows: 4 });
+        document.getElementById('activityList').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading recent activity', rows: 4 });
+      }
       await window.EDUGNAY_COMMUNICATION_READY;
       if (ADMIN_DASHBOARD_API_ENABLED) {
-        document.getElementById('admin-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading dashboard data', text: 'Please wait while school records are loaded.' });
-        document.getElementById('activityList').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading activity', text: 'Please wait while recent activity is loaded.' });
         try {
           await loadAdminDashboardData();
         } catch (error) {

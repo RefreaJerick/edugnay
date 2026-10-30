@@ -20,7 +20,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
       id, value: id === 'type-filter' ? 'all' : '', hidden: id === 'materialPreviewModal',
       innerHTML: '', textContent: '', listeners: {}, children: [],
       addEventListener(name, callback) { this.listeners[name] = callback; },
-      replaceChildren() { this.children = []; },
+      replaceChildren(...children) { this.children = children; },
       append(child) { this.children.push(child); },
       querySelector() { return null; },
       querySelectorAll() { return []; },
@@ -58,7 +58,8 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
       },
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
-        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`
+        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
+        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status">${label}</div>`
       }
     },
     records

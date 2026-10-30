@@ -249,9 +249,20 @@ function navigate(page) {
 }
 
 function applyParentReportAccess(enabled) {
-  document.querySelectorAll('.report-hero, .report-hero-link').forEach(item => {
-    item.hidden = !enabled;
-  });
+  const hero = document.querySelector('.report-hero');
+  if (hero) {
+    hero.dataset.reportsEnabled = String(Boolean(enabled));
+    hero.hidden = !enabled || hero.dataset.currentReportAvailable !== 'true';
+  }
+  const link = document.querySelector('.report-hero-link');
+  if (link) link.hidden = !enabled || link.dataset.reportAvailable !== 'true';
+  if (!enabled) {
+    const reportError = document.getElementById('report-hero-error');
+    if (reportError) {
+      reportError.textContent = '';
+      reportError.hidden = true;
+    }
+  }
 }
 
 function applyParentSidebarAccess(snapshot, verified = false) {

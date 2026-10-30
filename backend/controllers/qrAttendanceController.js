@@ -256,6 +256,7 @@ async function getActiveQrSession(database, teacher, sessionId, lockSession = fa
     FROM attendance_sessions
     INNER JOIN sections ON sections.id = attendance_sessions.section_id
     INNER JOIN subjects ON subjects.id = attendance_sessions.subject_id AND subjects.school_id = attendance_sessions.school_id
+      AND subjects.is_active = TRUE
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
     WHERE attendance_sessions.id = ?
       AND attendance_sessions.method = 'qr'

@@ -22,7 +22,8 @@ const assignment = {
 };
 
 async function executeQuery(sql) {
-  if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1')) return [[assignment]];
+  if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ?')
+      && sql.includes('FROM assignments')) return [[assignment]];
   if (sql.includes('FROM assignment_submissions INNER JOIN users AS students')) return [listedSubmissionRows];
   if (sql.includes('SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions')) {
     return [submissionFilePath ? [{ fileName: path.basename(submissionFilePath), filePath: submissionFilePath }] : []];

@@ -12,12 +12,12 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/parent/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -38,7 +38,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -142,7 +142,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar parent" id="parent-topbar-initials" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name" id="parent-topbar-name" data-parent-name>Loading profile...</div>
+              <div class="tb-profile-name" id="parent-topbar-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -195,10 +195,10 @@
           </div>
         </div>
         <div class="profile-header-info">
-          <div class="profile-header-name" id="parent-profile-name">Loading profile...</div>
+          <div class="profile-header-name" id="parent-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
           <div class="profile-header-meta">
-            <span><i data-lucide="users" style="width:13px;height:13px;"></i> <span id="parent-profile-child-count">Loading...</span></span>
-            <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="parent-profile-school-email">Loading...</span></span>
+            <span><i data-lucide="users" style="width:13px;height:13px;"></i> <span id="parent-profile-child-count" data-skeleton-kind="line" data-skeleton-label="Loading linked children count">Loading...</span></span>
+            <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="parent-profile-school-email" data-skeleton-kind="line" data-skeleton-label="Loading school email">Loading...</span></span>
           </div>
         </div>
       </div>
@@ -445,10 +445,17 @@
       const parent = parentApiUser;
       if (!parent) {
         const loading = !parentProfileError;
-        setParentText('parent-profile-name', loading ? 'Loading profile...' : 'Profile unavailable');
-        setParentText('parent-profile-child-count', loading ? 'Loading linked children...' : 'Profile unavailable');
-        setParentText('parent-profile-school-email', loading ? 'Loading...' : 'Not available');
-        renderLinkedChildren([], parentProfileError || 'Loading linked children...');
+        if (loading) {
+          document.getElementById('parent-profile-name').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading profile name' });
+          document.getElementById('parent-profile-child-count').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading linked children count' });
+          document.getElementById('parent-profile-school-email').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading school email' });
+          renderLinkedChildren([], 'Loading linked children...');
+        } else {
+          setParentText('parent-profile-name', 'Profile unavailable');
+          setParentText('parent-profile-child-count', 'Profile unavailable');
+          setParentText('parent-profile-school-email', 'Not available');
+          renderLinkedChildren([], parentProfileError);
+        }
         return;
       }
 
@@ -565,11 +572,9 @@
       const list = document.getElementById('linked-children-list');
       if (!list) return;
       if (statusMessage) {
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: parentProfileError ? 'circle-alert' : 'loader-circle',
-          title: parentProfileError ? 'Parent data unavailable' : 'Loading linked children',
-          text: escapeProfileHtml(statusMessage)
-        });
+        list.innerHTML = parentProfileError
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Parent data unavailable', text: escapeProfileHtml(statusMessage) })
+          : window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading linked children', rows: 2 });
         lucide.createIcons();
         return;
       }

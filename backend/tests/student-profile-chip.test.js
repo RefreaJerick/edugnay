@@ -235,7 +235,7 @@ test('every signed-in portal header restores its chip before main content', () =
       checked += 1;
     }
   }
-  assert.equal(checked, 47);
+  assert.equal(checked, 46);
 
   const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
   assert.match(styles, /html\.profile-chip-page \.tb-profile-trigger \{ width: 215px; \}/);
@@ -250,5 +250,5 @@ test('every signed-in portal header restores its chip before main content', () =
     assert.match(profilePage, /if \(user\.id\) document\.querySelectorAll\('\.tb-profile-name'\)/);
   }
   const studentProfile = fs.readFileSync(path.join(root, 'views/student/edugnay-student-profile.html'), 'utf8');
-  assert.match(studentProfile, /if \(!document\.documentElement\.classList\.contains\('profile-chip-restored'\)\) \{\s*setStudentText\('student-topbar-name'/);
+  assert.match(studentProfile, /if \(!document\.documentElement\.classList\.contains\('profile-chip-restored'\)\) \{\s*if \(studentProfileLoading\) setStudentSkeleton\('student-topbar-name', 'Loading account'\);\s*else setStudentText\('student-topbar-name'/);
 });

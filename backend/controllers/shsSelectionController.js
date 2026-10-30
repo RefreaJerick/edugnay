@@ -132,10 +132,11 @@ async function homeMeetings(db, schoolId, sectionId, studentId, yearId, excludeC
       DATE_FORMAT(m.end_date, '%Y-%m-%d') AS endDate, sub.name AS subjectName
      FROM timetable_meetings m JOIN scheduled_classes sc ON sc.id = m.scheduled_class_id AND sc.school_id = m.school_id
      LEFT JOIN section_teachers a ON a.id = sc.assignment_id AND a.school_id = sc.school_id
-     LEFT JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id
+     LEFT JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id AND sub.is_active = TRUE
      LEFT JOIN shs_elective_classes c ON c.id = sc.shs_elective_class_id AND c.school_id = sc.school_id
      LEFT JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
-     WHERE m.school_id = ? AND (a.section_id = ? OR (o.academic_year_id = ? ${excludedClasses} AND EXISTS
+     WHERE m.school_id = ? AND (sc.assignment_id IS NULL OR sub.id IS NOT NULL)
+       AND (a.section_id = ? OR (o.academic_year_id = ? ${excludedClasses} AND EXISTS
        (SELECT 1 FROM shs_elective_class_students e WHERE e.school_id = m.school_id
          AND e.elective_class_id = c.id AND e.student_user_id = ? AND e.withdrawn_at IS NULL)))`,
     [schoolId, sectionId, yearId, ...excludeClassIds, studentId]);

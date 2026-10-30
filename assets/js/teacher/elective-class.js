@@ -101,9 +101,11 @@
     document.getElementById('sectionSubjectSelect').hidden = true;
     document.getElementById('sectionStudentCount').textContent = String(Number(electiveClass.enrolledCount || 0));
     document.getElementById('sectionAdviserMeta').innerHTML = `<i data-lucide="user-round" aria-hidden="true"></i>${escapeHtml(electiveClass.teacherName || 'Assigned teacher')}`;
-    document.getElementById('sectionPeriodName').textContent = electiveClass.activePeriodName || 'Loading grading period…';
+    if (electiveClass.activePeriodName) document.getElementById('sectionPeriodName').textContent = electiveClass.activePeriodName;
+    else document.getElementById('sectionPeriodName').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading grading period' });
     document.querySelector('[data-school-year]').textContent = electiveClass.schoolYear || '';
-    document.getElementById('sectionEncodingStatus').textContent = canEdit() ? 'Loading grade status…' : 'Read only';
+    document.getElementById('sectionEncodingStatus').innerHTML = canEdit()
+      ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading grade status' }) : 'Read only';
     document.querySelector('#tab-students .tab-count').textContent = String(electiveClass.enrolledCount || 0);
     document.querySelector('#tab-assignments .tab-count').textContent = '0';
     document.querySelector('#tab-materials .tab-count').textContent = '0';
@@ -156,7 +158,7 @@
       { key: 'attendanceRate', label: 'Attendance Rate', render: student => `<span class="badge badge-${student.attendanceTone || 'gray'}">${escapeHtml(student.attendanceRate ?? '—')}</span>` },
       { key: 'grade', label: 'Final Grade', periodName: 'Current period', render: student => `<span class="published-grade-value ${student.grade == null ? 'grade-unavailable' : student.gradeTone || ''}">${student.grade == null ? '—' : escapeHtml(student.grade)}</span>` }
     ];
-    window.TeacherClassViews.renderStudents({ columns, meta: 'Loading class roster...', empty: { icon: 'loader-circle', title: 'Loading students', text: 'The class roster is loading.' } });
+    window.TeacherClassViews.renderStudents({ columns, loading: true });
     try {
       const data = await window.EDUGNAY_API.getShsElectiveRoster(electiveClass.electiveClassId);
       const students = data.students || [];
@@ -227,8 +229,8 @@
   async function loadAttendance(date = '') {
     const panel = document.querySelector('#content-attendance .attendance-entry-panel');
     if (!panel) return;
-    document.getElementById('attendancePanelSub').textContent = 'Loading class roster...';
-    window.TeacherClassViews.renderAttendanceRows({ empty: { icon: 'loader-circle', title: 'Loading attendance', text: 'The class roster is loading.' } });
+    document.getElementById('attendancePanelSub').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading attendance roster' });
+    window.TeacherClassViews.renderAttendanceRows({ loading: true });
     try {
       attendance = await window.EDUGNAY_API.getShsElectiveAttendance(electiveClass.electiveClassId, date);
       roster = attendance.students || [];
@@ -498,7 +500,7 @@
   }
 
   async function loadAssignments() {
-    window.TeacherClassViews.renderAssignments([], { icon: 'loader-circle', title: 'Loading assignments', text: 'Assignments for this class are loading.' });
+    window.TeacherClassViews.renderAssignments([], { loading: true, label: 'Loading assignments', rows: 3 });
     try {
       const data = await window.EDUGNAY_API.getAssignments({ electiveClassId: electiveClass.electiveClassId });
       assignments = Array.isArray(data) ? data : [];
@@ -649,7 +651,7 @@
   }
 
   async function loadMaterials() {
-    window.TeacherClassViews.renderMaterials([], { icon: 'loader-circle', title: 'Loading materials', text: 'Materials for this class are loading.' });
+    window.TeacherClassViews.renderMaterials([], { loading: true, label: 'Loading learning materials', rows: 3 });
     try {
       const data = await window.EDUGNAY_API.getMaterials({ electiveClassId: electiveClass.electiveClassId });
       const materials = Array.isArray(data) ? data : [];

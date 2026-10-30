@@ -27,7 +27,7 @@
 
   function renderChildren() {
     if (loading && !children.length) {
-      element('child-switcher').textContent = 'Loading linked children...';
+      element('child-switcher').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'child-switcher', label: 'Loading linked children', rows: 2 });
       return;
     }
     if (error && !children.length) {
@@ -56,7 +56,11 @@
   }
 
   function assignmentsForCurrentView() {
-    return assignments.filter(item => String(item.academicTermId) === selectedTerm || isElectiveAssignment(item));
+    return assignments.filter(item => String(item.academicTermId) === selectedTerm);
+  }
+
+  function assignmentSubjectKey(item) {
+    return isElectiveAssignment(item) ? `elective:${String(item.electiveClassId)}` : `subject:${String(item.subjectId)}`;
   }
 
   function latestTermInYear(yearTerms) {
@@ -109,12 +113,18 @@
       return `<button class="grade-tab ${active ? 'active' : ''}" type="button" role="tab"${unavailable ? ' aria-disabled="true" disabled' : ` data-academic-period-id="${escape(term.id)}"`} aria-selected="${active}"${accessibleName}><span>${escape(term.name)}</span>${upcoming ? '<i class="grade-tab-status-icon" data-lucide="lock" aria-hidden="true"></i>' : ''}</button>`;
     }).join('');
     window.lucide?.createIcons();
-    const subjects = [...new Set(assignmentsForCurrentView().map(item => item.subjectName).filter(Boolean))].sort();
+    const subjects = new Map();
+    assignmentsForCurrentView().forEach(item => {
+      const key = assignmentSubjectKey(item);
+      if (!subjects.has(key)) subjects.set(key, isElectiveAssignment(item)
+        ? [item.subjectName, item.electiveClassName].filter(Boolean).join(' · ')
+        : item.subjectName);
+    });
     const subject = element('assignmentSubjectFilter');
     const previous = subject.value;
-    subject.innerHTML = '<option value="all">All subjects</option>' + subjects.map(name => `<option value="${escape(name)}">${escape(name)}</option>`).join('');
-    subject.value = subjects.includes(previous) ? previous : 'all';
-    subject.disabled = !subjects.length || loading || Boolean(error);
+    subject.innerHTML = '<option value="all">All subjects</option>' + [...subjects].map(([key, label]) => `<option value="${escape(key)}">${escape(label || 'Subject')}</option>`).join('');
+    subject.value = subjects.has(previous) ? previous : 'all';
+    subject.disabled = !subjects.size || loading || Boolean(error);
     element('assignmentSearch').disabled = loading || Boolean(error) || !selectedChild;
   }
 
@@ -128,24 +138,22 @@
 
   function renderList() {
     const list = element('assignmentList');
-    if (loading) { list.innerHTML = empty('loader-circle', 'Loading assignments', 'Please wait while assignments are loaded.'); return; }
+    if (loading) { list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading assignments', rows: 4 }); return; }
     if (error) {
       list.innerHTML = `<div class="parent-assignment-error">${empty('triangle-alert', 'Assignments unavailable', error)}<button class="top-btn secondary" type="button" id="assignmentRetry">Try again</button></div>`;
       element('assignmentRetry').addEventListener('click', loadPage);
       return;
     }
     if (!selectedChild) { list.innerHTML = empty('users', 'No linked children', 'Ask your school to link a student account to yours.'); return; }
-    const periodAssignments = assignments.filter(item => !isElectiveAssignment(item) && String(item.academicTermId) === selectedTerm);
-    const electiveAssignments = assignments.filter(isElectiveAssignment);
-    if (!availableTerms().length && !electiveAssignments.length) { list.innerHTML = empty('calendar-x', 'No grading periods available', 'Grading periods for this student’s school level will appear here when configured.'); return; }
-    if (!selectedTerm && !electiveAssignments.length) { list.innerHTML = empty('clipboard-check', 'No assignments yet', 'Published assignments will appear here when a grading period is available.'); return; }
-    const inPeriod = periodAssignments.concat(electiveAssignments);
+    const inPeriod = assignmentsForCurrentView();
+    if (!availableTerms().length) { list.innerHTML = empty('calendar-x', 'No grading periods available', 'Grading periods for this student’s school level will appear here when configured.'); return; }
+    if (!selectedTerm) { list.innerHTML = empty('clipboard-check', 'No assignments yet', 'Published assignments will appear here when a grading period is available.'); return; }
     if (!inPeriod.length) { list.innerHTML = empty('clipboard-check', 'No assignments in this grading period', 'There are no published assignments for this child in the selected period.'); return; }
     const search = element('assignmentSearch').value.trim().toLowerCase();
     const subject = element('assignmentSubjectFilter').value;
     const visible = inPeriod.filter(item =>
       (selectedStatus === 'all' || item.submissionStatus === selectedStatus)
-      && (subject === 'all' || item.subjectName === subject)
+      && (subject === 'all' || assignmentSubjectKey(item) === subject)
       && (!search || `${item.title} ${item.subjectName} ${item.teacherName}`.toLowerCase().includes(search)));
     if (!visible.length) {
       list.innerHTML = empty('clipboard-check', 'No assignments found', 'Try another status, subject, or search term.');
@@ -164,10 +172,7 @@
         <div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary parent-assignment-view" type="button" data-assignment-id="${escape(item.id)}" aria-label="View details for ${escape(item.title)}">View details</button></div>
       </article>`;
     }
-    const visibleElectives = visible.filter(isElectiveAssignment);
-    const visibleSectionAssignments = visible.filter(item => !isElectiveAssignment(item));
-    list.innerHTML = visibleSectionAssignments.map(renderAssignmentRow).join('') +
-      (visibleElectives.length ? `<div class="assignment-scope-heading">Elective class assignments</div>${visibleElectives.map(renderAssignmentRow).join('')}` : '');
+    list.innerHTML = visible.map(renderAssignmentRow).join('');
     window.lucide?.createIcons();
   }
 

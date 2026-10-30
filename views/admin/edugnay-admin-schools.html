@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/admin/schools.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/academic-range-picker.js"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/journal-history-viewer.js"></script>
@@ -34,7 +34,7 @@
             onerror="this.style.display='none'" /></div>
         <div>
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
       <div class="nav-section">
@@ -127,7 +127,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar admin"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Admin</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -564,16 +564,15 @@
     }
 
     function renderSettingsApiState() {
-      const title = state.apiLoading ? 'Loading school settings' : 'School settings unavailable';
-      const text = state.apiLoading
-        ? 'Reading the authenticated school workspace.'
-        : (state.apiError || 'Sign in as a school administrator and try again.');
-      setSettingsHeading(title, text);
-      document.getElementById('schoolSettingsBody').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-        icon: state.apiLoading ? 'loader-circle' : 'triangle-alert',
-        title,
-        text
-      });
+      const title = state.apiLoading ? 'School settings' : 'School settings unavailable';
+      const text = state.apiError || 'Sign in as a school administrator and try again.';
+      setSettingsHeading(title, state.apiLoading ? '' : text);
+      if (state.apiLoading) {
+        document.getElementById('settingsSubtitle').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading school settings' });
+        document.getElementById('schoolSettingsBody').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'profile', label: 'Loading school settings', rows: 4 });
+      } else {
+        document.getElementById('schoolSettingsBody').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title, text });
+      }
     }
 
     function renderProfilePane() {
@@ -1953,7 +1952,10 @@
         return `<tr><td><span class="school-k10-grading-subject-name">${escape(item.name)}</span></td><td data-label="Grade level"><span class="school-k10-grading-grade-list">${escape(item.gradeCode.replace('grade-', 'Grade '))}</span></td><td data-label="Components and weights">${weightList}</td><td data-label="DepEd alignment">${alignment}</td><td data-label="Setup status"><span class="badge ${item.locked ? 'badge-gray' : item.ruleAvailable ? 'badge-green' : 'badge-gray'}">${setupStatus}</span></td><td>${action}</td></tr>`;
       }).join('');
       const empty = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No SHS subjects yet', text: 'Add Grade 11 core subjects in Class Management, or add approved electives in SHS Program.' });
-      body.innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${state.shsGradingError ? `<div class="school-k10-grading-warning" role="alert">${escape(state.shsGradingError)} <button class="top-btn secondary" type="button" id="shsGradingRetry">Retry</button></div>` : state.shsGradingLoading && !rows.length ? '<p class="term-modal-message" role="status">Loading SHS grading rules…</p>' : `<div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject</th><th>Grade level</th><th>Components and weights</th><th>DepEd alignment</th><th>Setup status</th><th>Action</th></tr></thead><tbody>${tableRows || `<tr><td colspan="6">${empty}<div class="school-k10-empty-state-actions"><a class="top-btn secondary" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','subjects')">Manage core subjects</a><a class="top-btn secondary" href="edugnay-admin-shs-program.html">Open SHS Program</a></div></td></tr>`}</tbody></table></div>`}</div></div>`;
+      const shsTableRows = state.shsGradingLoading && !rows.length
+        ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading SHS grading rules', rows: 4, columns: 6 })
+        : tableRows || `<tr><td colspan="6">${empty}<div class="school-k10-empty-state-actions"><a class="top-btn secondary" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','subjects')">Manage core subjects</a><a class="top-btn secondary" href="edugnay-admin-shs-program.html">Open SHS Program</a></div></td></tr>`;
+      body.innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${state.shsGradingError ? `<div class="school-k10-grading-warning" role="alert">${escape(state.shsGradingError)} <button class="top-btn secondary" type="button" id="shsGradingRetry">Retry</button></div>` : `<div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject</th><th>Grade level</th><th>Components and weights</th><th>DepEd alignment</th><th>Setup status</th><th>Action</th></tr></thead><tbody>${shsTableRows}</tbody></table></div>`}</div></div>`;
       bindDivisionSwitcher();
       body.querySelector('#shsGradingRetry')?.addEventListener('click', () => { state.shsGradingError = ''; renderShsGradingPane(activeSchool()); });
       body.querySelectorAll('[data-shs-grade-edit]').forEach(button => button.addEventListener('click', () => openShsGradingEditor(button)));
@@ -2214,8 +2216,9 @@
             return;
           }
           if (!state.k10GradingLoading) loadK10GradingPreview(apiLevel.id, year.id);
-          setSettingsHeading('Grading rules', 'Loading subject assessment rules.');
-          document.getElementById('schoolSettingsBody').innerHTML = '<div class="school-pane school-grading-pane active"><div class="term-modal-message" role="status">Loading subject grading settings…</div></div>';
+          setSettingsHeading('Grading rules', '');
+          document.getElementById('settingsSubtitle').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading subject assessment rules' });
+          document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-grading-pane active">${window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading subject grading settings', rows: 4 })}</div>`;
           bindDivisionSwitcher();
           return;
         }
@@ -2501,7 +2504,7 @@
       const list = document.getElementById('calendarNoticeList');
       if (!list) return;
       const holidays = state.calendarNotices;
-      list.innerHTML = `<div class="calendar-list-title">Notices</div>${state.calendarLoading ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading notices', text: 'Please wait.' }) : state.calendarError ? `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Notices unavailable', text: state.calendarError })}<button class="top-btn" type="button" id="retryCalendarNotices">Retry</button>` : holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${window.EDUGNAY_CONFIG.escapeHtml(day.date)}</div><div><div class="holiday-title">${window.EDUGNAY_CONFIG.escapeHtml(day.title)}</div><div class="holiday-detail">${window.EDUGNAY_CONFIG.escapeHtml(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${window.EDUGNAY_CONFIG.escapeHtml(day.id)}" title="Remove notice" aria-label="Remove ${window.EDUGNAY_CONFIG.escapeHtml(day.title)} notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
+      list.innerHTML = `<div class="calendar-list-title">Notices</div>${state.calendarLoading ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading notices', rows: 3 }) : state.calendarError ? `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Notices unavailable', text: state.calendarError })}<button class="top-btn" type="button" id="retryCalendarNotices">Retry</button>` : holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${window.EDUGNAY_CONFIG.escapeHtml(day.date)}</div><div><div class="holiday-title">${window.EDUGNAY_CONFIG.escapeHtml(day.title)}</div><div class="holiday-detail">${window.EDUGNAY_CONFIG.escapeHtml(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${window.EDUGNAY_CONFIG.escapeHtml(day.id)}" title="Remove notice" aria-label="Remove ${window.EDUGNAY_CONFIG.escapeHtml(day.title)} notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
       list.querySelectorAll('[data-remove-holiday]').forEach(button => button.addEventListener('click', () => removeHoliday(button.dataset.removeHoliday)));
       list.querySelector('#retryCalendarNotices')?.addEventListener('click', loadCalendarNotices);
       if (window.lucide) lucide.createIcons();
@@ -3133,7 +3136,7 @@
       const modal = document.getElementById('schoolJournalHistoryModal');
       const list = document.getElementById('schoolJournalHistoryList');
       if (!modal.classList.contains('open')) schoolJournalHistoryReturnFocus = document.activeElement;
-      list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'history', title: 'Loading journal history', text: 'Prompts and entries are being loaded.' });
+      list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading journal history', rows: 4 });
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
       modal.querySelector('.modal-close').focus();

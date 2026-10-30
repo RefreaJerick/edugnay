@@ -12,15 +12,15 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/teacher/sections.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js?v=7"></script>
-  <script src="../../assets/js/teacher/shs-gradebook.js?v=13"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
+  <script src="../../assets/js/teacher/shs-gradebook.js?v=15"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/teacher/shell.js?v=4"></script>
-  <script src="../../assets/js/teacher/elective-class.js?v=13" defer></script>
+  <script src="../../assets/js/teacher/elective-class.js?v=15" defer></script>
   <script src="../../assets/vendor/zxing/zxing-browser.min.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
@@ -652,7 +652,7 @@
         </div>
         <div>
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -677,7 +677,7 @@
               <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
             </div>
             <div class="nav-children" data-teacher-sections-nav>
-              <div class="teacher-section-nav-message" role="status">Loading assigned classes…</div>
+              <div class="teacher-section-nav-message" role="status" data-skeleton-kind="line" data-skeleton-label="Loading assigned classes">Loading assigned classes…</div>
             </div>
             <script>restoreTeacherClassesNavigation();</script>
           </div>
@@ -780,7 +780,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar faculty"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Faculty</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -817,7 +817,7 @@
           <div class="section-header-left">
             <div class="section-badge" id="sectionGradeBadge" aria-hidden="true">G7</div>
             <div class="section-info">
-              <h2 class="section-name" id="sectionHeaderName">Loading section...</h2>
+              <h2 class="section-name" id="sectionHeaderName" data-skeleton-kind="line" data-skeleton-label="Loading class name">Loading section...</h2>
               <div class="section-subject">
                 <i data-lucide="book-open"></i>
                 <span>Subject:</span>
@@ -883,7 +883,7 @@
             <div class="panel-head">
               <div>
                 <div class="panel-title">Student List</div>
-                <div class="panel-sub" id="studentListMeta">Loading section...</div>
+                <div class="panel-sub" id="studentListMeta" data-skeleton-kind="line" data-skeleton-label="Loading student list">Loading section...</div>
               </div>
             </div>
             <div class="search-toolbar">
@@ -943,7 +943,7 @@
             <div class="panel-head">
               <div>
                 <div class="panel-title" id="scorePanelTitle">Score Recording: Values Education</div>
-                <div class="panel-sub"><span id="scoreSectionName">Loading section...</span> · <span
+                <div class="panel-sub"><span id="scoreSectionName" data-skeleton-kind="line" data-skeleton-label="Loading class name">Loading section...</span> · <span
                     id="scorePanelPeriodName">Current period</span> · Weights: <span id="scorePanelWeights">WW — · PT —
                     · QA —</span></div>
               </div>
@@ -1039,7 +1039,7 @@
               </table>
             </div>
             <div class="score-list-footer">
-              <span id="scoreListFooter">Loading students…</span>
+              <span id="scoreListFooter" data-skeleton-kind="line" data-skeleton-label="Loading content">Loading students…</span>
               <div class="score-save-feedback" id="scoreSaveFeedback">
                 <span id="scoreSaveStatus" role="status" aria-live="polite">Scores save automatically</span>
                 <button class="score-save-retry" id="scoreSaveRetry" type="button" onclick="retryFailedScoreSaves()"
@@ -1055,7 +1055,7 @@
             <div class="panel-head attendance-entry-head">
               <div>
                 <div class="panel-title" id="attPanelTitle">Attendance: Today</div>
-                <div class="panel-sub" id="attendancePanelSub">Loading section...</div>
+                <div class="panel-sub" id="attendancePanelSub" data-skeleton-kind="line" data-skeleton-label="Loading class attendance">Loading section...</div>
               </div>
               <div class="panel-head-actions attendance-entry-actions">
                 <button class="top-btn secondary" id="qrAttendanceButton" type="button" onclick="openQrAttendance()">
@@ -1164,7 +1164,7 @@
             <div class="panel-head">
               <div>
                 <div class="panel-title" id="assignmentPanelTitle">Assignments: Values Education</div>
-                <div class="panel-sub" id="assignmentPanelSub">Loading section...</div>
+                <div class="panel-sub" id="assignmentPanelSub" data-skeleton-kind="line" data-skeleton-label="Loading assignments">Loading section...</div>
               </div>
               <div class="panel-head-actions">
                 <button class="top-btn primary" data-requires-subject onclick="openModal('addAssignmentModal')">
@@ -1374,7 +1374,7 @@
       const studentId = teacherStudentDetailsStudentId;
       const requestId = ++teacherStudentDetailsRequestId;
       const body = document.getElementById('teacherStudentDetailsBody');
-      body.innerHTML = '<div class="teacher-student-details-message" role="status">Loading student details…</div>';
+      body.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'modal', label: 'Loading student details', rows: 4 });
 
       try {
         const details = teacherStudentDetailsClassId
@@ -2377,7 +2377,7 @@
       }
     }
 
-    function renderSharedStudentTable({ students = [], columns = [], meta = '', empty = {}, details = false } = {}) {
+    function renderSharedStudentTable({ students = [], columns = [], meta = '', empty = {}, details = false, loading = false } = {}) {
       const table = document.getElementById('studentTable');
       const tbody = document.getElementById('studentTbody');
       const head = table?.querySelector('thead tr');
@@ -2396,6 +2396,14 @@
           ? String(column.label).slice(0, -' Final Grade'.length) : 'Current period');
         return `<th><span id="studentGradePeriodName">${window.EDUGNAY_CONFIG.escapeHtml(periodName)}</span> Final Grade</th>`;
       }).join('');
+      const metaNode = document.getElementById('studentListMeta');
+      if (loading) {
+        tbody.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading students', rows: 4, columns: Math.max(1, columns.length) });
+        if (metaNode) metaNode.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading student list' });
+        const loadingFooter = document.getElementById('studentListFooter');
+        if (loadingFooter) loadingFooter.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading student count' });
+        return;
+      }
       tbody.innerHTML = students.length ? students.map((student, index) => {
         const cells = columns.map(column => {
           if (column.key === 'number') return `<td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>`;
@@ -2414,7 +2422,6 @@
         icon: empty.icon || 'users', title: empty.title || 'No students enrolled', text: empty.text || 'Students assigned to this class will appear here.'
       })}</td></tr>`;
       const count = String(students.length);
-      const metaNode = document.getElementById('studentListMeta');
       if (metaNode && meta) metaNode.textContent = meta;
       const footer = document.getElementById('studentListFooter');
       if (footer) footer.textContent = `Showing ${count} students`;
@@ -2425,9 +2432,15 @@
       window.lucide?.createIcons?.();
     }
 
-    function renderSharedAttendanceRows({ students = [], recordsByStudent = {}, editable = true, empty = {} } = {}) {
+    function renderSharedAttendanceRows({ students = [], recordsByStudent = {}, editable = true, empty = {}, loading = false } = {}) {
       const tbody = document.getElementById('attTbody');
       if (!tbody) return;
+      if (loading) {
+        tbody.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading attendance', rows: 4, columns: 4 });
+        const footer = document.getElementById('attendanceListFooter');
+        if (footer) footer.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading attendance count' });
+        return;
+      }
       const labels = { P: 'Present', A: 'Absent', L: 'Late', E: 'Excused' };
       tbody.innerHTML = students.length ? students.map((student, index) => {
         const record = recordsByStudent[String(student.id)] || student;
@@ -2451,10 +2464,15 @@
       const uniqueDates = [...new Set(dates.filter(Boolean))];
       head.innerHTML = `<th class="sticky-col">Student</th>${uniqueDates.map(date => `<th class="center">${window.EDUGNAY_CONFIG.escapeHtml(new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))}</th>`).join('')}<th class="center" style="background:var(--blue-xpale);color:var(--blue-mid);">Total Absences</th>`;
       const colspan = uniqueDates.length + 2;
-      if (error || loading || !students.length || !uniqueDates.length) {
+      if (loading) {
+        body.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading attendance history', rows: 4, columns: colspan });
+        window.lucide?.createIcons?.();
+        return;
+      }
+      if (error || !students.length || !uniqueDates.length) {
         body.innerHTML = `<tr class="panel-empty-row"><td colspan="${colspan}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: error ? 'triangle-alert' : loading ? 'loader-circle' : 'calendar', title: error ? 'Attendance history unavailable' : loading ? 'Loading attendance history' : 'No attendance history',
-          text: error || (loading ? 'Attendance records for this class are loading.' : emptyText)
+          icon: error ? 'triangle-alert' : 'calendar', title: error ? 'Attendance history unavailable' : 'No attendance history',
+          text: error || emptyText
         })}</td></tr>`;
         window.lucide?.createIcons?.();
         return;
@@ -2542,6 +2560,10 @@
     function renderSharedAssignmentCards(items = [], empty = {}) {
       const list = document.getElementById('assignmentList');
       if (!list) return;
+      if (empty.loading) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: empty.label || 'Loading assignments', rows: Number(empty.rows) || 3 });
+        return;
+      }
       const callbacks = new Map();
       let actionNumber = 0;
       const renderAction = action => {
@@ -2596,6 +2618,10 @@
     function renderSharedMaterials(items = [], empty = {}) {
       const list = document.getElementById('teacherMaterialsList');
       if (!list) return;
+      if (empty.loading) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: empty.label || 'Loading learning materials', rows: Number(empty.rows) || 3 });
+        return;
+      }
       const metaByType = TEACHER_MATERIAL_TYPE_META;
       list.innerHTML = items.length ? items.map(item => {
         const extension = String(item.type || 'pdf').toLowerCase().replace(/^.*\./, '');
@@ -2625,12 +2651,15 @@
       if (!head || !body) return;
       if (subtitle) document.getElementById('assignmentSubmissionsModalSub').textContent = subtitle;
       head.innerHTML = columns.map(column => `<th>${window.EDUGNAY_CONFIG.escapeHtml(column.label || '')}</th>`).join('');
-      if (error || loading || !rows.length) {
+      if (loading) {
+        body.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading submissions', rows: 4, columns: Math.max(1, columns.length) });
+        window.lucide?.createIcons?.();
+        return;
+      }
+      if (error || !rows.length) {
         const state = error
           ? { icon: 'triangle-alert', title: 'Submissions unavailable', text: error }
-          : loading
-            ? { icon: 'loader-circle', title: 'Loading submissions', text: 'Assignment submissions are loading.' }
-            : { icon: 'inbox', title: 'No submissions yet', text: 'Student submissions will appear here.', ...empty };
+          : { icon: 'inbox', title: 'No submissions yet', text: 'Student submissions will appear here.', ...empty };
         body.innerHTML = `<tr class="panel-empty-row"><td colspan="${Math.max(1, columns.length)}">${window.EDUGNAY_CONFIG.renderPanelEmptyState(state)}</td></tr>`;
         window.lucide?.createIcons?.();
         return;
@@ -2683,10 +2712,16 @@
     }
 
     function renderSharedScoreTable({ host, items = [], students = [], metricHeaders = [], getScore = () => null,
-      getMetrics = () => [], writable = true, onScoreInput = () => { }, scoreEvent = 'change', empty = {} } = {}) {
+      getMetrics = () => [], writable = true, onScoreInput = () => { }, scoreEvent = 'change', empty = {}, loading = false } = {}) {
       const thead = host?.querySelector('#scoreTheadRow');
       const tbody = host?.querySelector('#scoreTbody');
       if (!thead || !tbody) return;
+      if (loading) {
+        tbody.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading grades', rows: 4, columns: 5 });
+        const footer = host.querySelector('#scoreListFooter');
+      if (footer) footer.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading grade records' });
+        return;
+      }
       thead.innerHTML = '<th class="sticky-col" style="min-width:180px;"># Student</th>' + items.map(item => {
         const code = String(item.categoryCode || '').toUpperCase();
         const tone = code === 'PT' ? 'type-pt' : code === 'QA' ? 'type-qa' : 'type-ww';
@@ -3999,7 +4034,7 @@
       }
 
       if (isBackendAttendanceMode()) {
-        document.getElementById('attendanceListFooter').textContent = 'Loading attendance…';
+        document.getElementById('attendanceListFooter').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading attendance count' });
         try {
           const data = await loadBackendAttendanceForDate(dateStr);
           if (requestedToday && data?.attendanceDate) dateStr = data.attendanceDate;
@@ -4935,9 +4970,7 @@
     }
 
     async function loadBackendAssignments() {
-      window.TeacherClassViews.renderAssignments([], {
-        icon: 'loader-circle', title: 'Loading assignments', text: 'Assignments for this class are loading.'
-      });
+      document.getElementById('assignmentList').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading assignments', rows: 3 });
       if (!window.EDUGNAY_API?.isBackendAvailable || !CURRENT_BACKEND_SECTION
         || !CURRENT_SUBJECT_ASSIGNMENT || !hasValidBackendSubjectAssignment()) {
         BACKEND_ASSIGNMENTS = [];
@@ -4955,7 +4988,7 @@
         BACKEND_SUBMISSION_ERRORS.clear();
         BACKEND_SUBMISSIONS_LOADING = true;
         const subtitle = document.getElementById('assignmentPanelSub');
-        if (subtitle) subtitle.textContent = 'Loading submission counts...';
+        if (subtitle) subtitle.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading submission counts' });
         renderAssignments();
         const results = await Promise.allSettled(assignments.map(assignment =>
           window.EDUGNAY_API.getAssignmentSubmissions(assignment.id)));
@@ -5571,12 +5604,12 @@
       }
 
       if (window.EDUGNAY_API?.isBackendAvailable) {
-        document.getElementById('teacherMaterialsList').innerHTML = '<div class="panel-empty-state" role="status">Loading learning materials...</div>';
+        document.getElementById('teacherMaterialsList').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading learning materials', rows: 3 });
       }
       const attendanceDateInput = document.getElementById('attDate');
       attendanceDateInput.value = APP_TODAY;
       attendanceDateInput.max = APP_TODAY;
-      document.getElementById('attendanceListFooter').textContent = 'Loading attendance…';
+      document.getElementById('attendanceListFooter').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading attendance count' });
 
       USE_SHS_CORE_GRADEBOOK = CURRENT_LEVEL === 'shs'
         && CURRENT_SUBJECT_ASSIGNMENT?.shsSubjectType === 'core'

@@ -11,15 +11,13 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css">
-  <link rel="stylesheet" href="../../assets/css/timetables.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/teacher/shell.js?v=4"></script>
-  <script src="../../assets/js/timetables.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -218,7 +216,7 @@
         </div>
         <div>
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -240,7 +238,7 @@
               <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
             </div>
             <div class="nav-children" data-teacher-sections-nav>
-              <div class="teacher-section-nav-message" role="status">Loading assigned classes…</div>
+              <div class="teacher-section-nav-message" role="status" data-skeleton-kind="line" data-skeleton-label="Loading assigned classes">Loading assigned classes…</div>
             </div>
           <script>restoreTeacherClassesNavigation();</script>
           </div>
@@ -342,7 +340,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar faculty"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Faculty</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -381,21 +379,13 @@
               <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i></div>
               <div>
                 <div class="grading-period-label">Active grading period</div>
-                <div class="grading-period-value" data-active-academic-period>Loading academic period...</div>
+                <div class="grading-period-value" data-active-academic-period data-skeleton-kind="line" data-skeleton-label="Loading academic period">Loading academic period...</div>
               </div>
             </div>
           </div>
 
           <!-- TEACHER SUMMARY CARDS -->
           <div class="stat-grid teacher-summary-grid" id="teacher-summary-cards" aria-label="Teacher summary"></div>
-          <section class="timetable-preview" aria-labelledby="teacher-today-schedule-title">
-            <div class="timetable-preview-head">
-              <div class="timetable-preview-heading"><span class="timetable-preview-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><h2 id="teacher-today-schedule-title">Today's Schedule</h2></div>
-              <a class="panel-action" href="edugnay-teacher-schedules.html">View all <i data-lucide="arrow-right" aria-hidden="true"></i></a>
-            </div>
-            <div class="timetable-preview-list" aria-live="polite">Loading today's classes...</div>
-          </section>
-
           <!-- My Classes -->
           <div class="panel panel-sections">
             <div class="panel-head">
@@ -403,7 +393,7 @@
                 <div class="panel-title">My Classes</div>
               </div>
               <div class="section-panel-meta">
-                <span class="section-count" id="teacherSectionCount">Loading classes</span>
+                <span class="section-count" id="teacherSectionCount" data-skeleton-kind="line" data-skeleton-label="Loading class count">Loading classes</span>
                 <a class="panel-action" onclick="navigate('section')">
                   View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
                 </a>
@@ -417,7 +407,7 @@
               <button class="section-filter-btn" data-grade="9" onclick="filterSections('9', this)">Grade 9</button>
             </div>
 
-            <div class="section-cards" id="sectionCardsContainer">
+            <div class="section-cards" id="sectionCardsContainer" data-skeleton-kind="section-cards" data-skeleton-label="Loading classes" data-skeleton-rows="3">
               <p>Loading records...</p>
             </div>
           </div>
@@ -430,7 +420,7 @@
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
-            <div class="ann-list" id="teacher-dashboard-announcements">
+            <div class="ann-list" id="teacher-dashboard-announcements" data-skeleton-kind="list" data-skeleton-label="Loading announcements" data-skeleton-rows="3">
               <p>Loading records...</p>
             </div>
           </div>
@@ -1093,26 +1083,16 @@
 
       const announcements = document.getElementById('teacher-dashboard-announcements');
       if (announcements) {
-        const visibleAnnouncements = TEACHER_DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || teacherCanAccess(item.access));
+        const visibleAnnouncements = TEACHER_DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || teacherCanAccess(item.access)).slice(0, 3);
         announcements.innerHTML = TEACHER_ANNOUNCEMENTS_LOADING
-          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' })
+          ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading announcements', rows: 3 })
           : TEACHER_ANNOUNCEMENTS_ERROR
           ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Announcements unavailable', text: TEACHER_ANNOUNCEMENTS_ERROR })
           : visibleAnnouncements.map(item => `
           <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${window.EDUGNAY_CONFIG.escapeHtml(item.tagClass)}">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}<div class="ann-item-body">${window.EDUGNAY_CONFIG.escapeHtml(item.body)}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.time)} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.author)}</div></div>`).join('');
         if (!TEACHER_ANNOUNCEMENTS_LOADING && !TEACHER_ANNOUNCEMENTS_ERROR && !visibleAnnouncements.length) announcements.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
-      const actions = document.getElementById('teacher-quick-actions');
-      if (actions) {
-        actions.innerHTML = TEACHER_QUICK_ACTIONS.length
-          ? TEACHER_QUICK_ACTIONS.map(action => `
-              <a href="#" class="qa-item" onclick="${action.action}">
-                <div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div>
-                <div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div>
-                <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
-              </a>`).join('')
-          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here.' });
-      }
+      renderTeacherQuickActions();
 
       const flagList = document.getElementById('flagGridSingle');
       if (flagList) {
@@ -1143,6 +1123,20 @@
             </div>`).join('')
             : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or academic criteria.' });
       }
+      lucide.createIcons();
+    }
+
+    function renderTeacherQuickActions() {
+      const actions = document.getElementById('teacher-quick-actions');
+      if (!actions) return;
+      actions.innerHTML = TEACHER_QUICK_ACTIONS.length
+        ? TEACHER_QUICK_ACTIONS.map(action => `
+            <a href="#" class="qa-item" onclick="${action.action}">
+              <div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div>
+              <div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div>
+              <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+            </a>`).join('')
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here.' });
       lucide.createIcons();
     }
 
@@ -1291,14 +1285,14 @@
       }
     }
     document.addEventListener('DOMContentLoaded', async () => {
-      document.getElementById('flagGridSingle').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-        icon: 'loader-circle', title: 'Loading student indicators',
-        text: 'Checking confirmed attendance and published grades.'
-      });
+      renderWeekCalendar();
+      renderTeacherQuickActions();
+      document.getElementById('teacher-todo-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading to-do items', rows: 3 });
+      document.getElementById('flagGridSingle').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading student indicators', rows: 3 });
       if (TEACHER_DASHBOARD_API_ENABLED) {
-        document.getElementById('teacher-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading dashboard data', text: 'Please wait while your assigned sections are loaded.' });
-        document.getElementById('sectionCardsContainer').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading classes', text: 'Please wait while your assigned classes are loaded.' });
-        document.getElementById('teacher-dashboard-announcements').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' });
+        document.getElementById('teacher-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'stat-cards', label: 'Loading teacher totals', rows: 3 });
+        document.getElementById('sectionCardsContainer').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'section-cards', label: 'Loading classes', rows: 3 });
+        document.getElementById('teacher-dashboard-announcements').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading announcements', rows: 3 });
         try {
           await loadTeacherDashboardData();
         } catch (error) {
@@ -1355,8 +1349,6 @@
       renderTeacherTodos();
       initTeacherMaterialTargets();
       applySectionFilter();
-      renderWeekCalendar();
-
       const currentDate = document.getElementById('currentDate');
       if (currentDate) {
         currentDate.textContent = new Date().toLocaleDateString('en-US', {

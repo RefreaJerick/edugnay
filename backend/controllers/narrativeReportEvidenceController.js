@@ -2,7 +2,10 @@ const { getDatabase } = require('../config/database');
 const { avatarFields } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
 const { buildStudentFlags } = require('../utils/studentFlags');
-const { DEFAULT_WEEK, normalizeWeekSettings } = require('../utils/reportWeekSettings');
+const {
+  DEFAULT_WEEK, addDays, isoWeekday, normalizeDate, normalizeWeekSettings,
+  readWeekSettings, reportWeekRange, schoolToday
+} = require('../utils/reportWeekSettings');
 
 const WEEKDAY_LABELS = Object.freeze({ 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday' });
 
@@ -16,57 +19,6 @@ function parseId(value, label) {
   const id = Number(value);
   if (!Number.isSafeInteger(id) || id < 1) throw createError(`Invalid ${label}.`);
   return id;
-}
-
-function normalizeDate(value, label = 'Report week start date') {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw createError(`${label} must use YYYY-MM-DD.`);
-  const date = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw createError(`${label} is invalid.`);
-  return value;
-}
-
-function isoWeekday(value) {
-  const day = new Date(`${value}T00:00:00.000Z`).getUTCDay();
-  return day === 0 ? 7 : day;
-}
-
-function addDays(value, days) {
-  const date = new Date(`${value}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function schoolToday() {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: process.env.SCHOOL_TIME_ZONE || 'Asia/Manila',
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
-function reportWeekRange(startDate, settings) {
-  const normalizedStart = normalizeDate(startDate);
-  if (isoWeekday(normalizedStart) !== Number(settings.weekStartDay)) {
-    throw createError(`Report weeks must start on ${WEEKDAY_LABELS[settings.weekStartDay]}.`);
-  }
-  const days = (Number(settings.weekEndDay) - Number(settings.weekStartDay) + 7) % 7;
-  if (!days) throw createError('Report week start and end days must be different.');
-  return { startDate: normalizedStart, endDate: addDays(normalizedStart, days) };
-}
-
-async function readWeekSettings(database, schoolId) {
-  const [rows] = await database.execute(
-    `SELECT narrative_report_week_start_day AS weekStartDay,
-      narrative_report_week_end_day AS weekEndDay
-    FROM school_settings WHERE school_id = ? LIMIT 1`,
-    [schoolId]
-  );
-  const row = rows[0];
-  return row ? {
-    weekStartDay: Number(row.weekStartDay) || DEFAULT_WEEK.weekStartDay,
-    weekEndDay: Number(row.weekEndDay) || DEFAULT_WEEK.weekEndDay
-  } : { ...DEFAULT_WEEK };
 }
 
 async function getWeeklySettings(req, res, next) {
@@ -230,9 +182,11 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           records.attendance_status AS attendanceStatus, records.remarks
         FROM attendance_sessions AS sessions
         LEFT JOIN subjects ON subjects.id = sessions.subject_id AND subjects.school_id = sessions.school_id
+          AND subjects.is_active = TRUE
         LEFT JOIN attendance_records AS records ON records.attendance_session_id = sessions.id
           AND records.school_id = sessions.school_id AND records.student_user_id IN (${placeholders})
         WHERE sessions.school_id = ? AND sessions.section_id = ? AND sessions.status = 'confirmed'
+          AND (sessions.subject_id IS NULL OR subjects.id IS NOT NULL)
           AND sessions.attendance_date BETWEEN ? AND ?
         ORDER BY sessions.attendance_date, sessions.id, records.student_user_id`,
         [...studentIds, schoolId, sectionId, evidenceStartDate, evidenceEndDate]
@@ -324,6 +278,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           DATE_FORMAT(assignment_submissions.updated_at, '%Y-%m-%dT%H:%i:%s') AS statusUpdatedAt
         FROM assignments
         INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+          AND subjects.is_active = TRUE
         INNER JOIN section_students ON section_students.school_id = assignments.school_id
           AND section_students.section_id = assignments.section_id
           AND DATE(section_students.enrolled_at) <= DATE(assignments.due_at)
@@ -410,7 +365,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           INNER JOIN journal_subjects ON journal_subjects.id = entries.journal_subject_id
             AND journal_subjects.school_id = entries.school_id AND journal_subjects.is_active = TRUE
           INNER JOIN subjects ON subjects.id = journal_subjects.subject_id
-            AND subjects.school_id = journal_subjects.school_id
+            AND subjects.school_id = journal_subjects.school_id AND subjects.is_active = TRUE
           WHERE entries.school_id = ? AND entries.section_id = ?
             AND journal_subjects.subject_id = ?
             AND entries.submitted_at >= ? AND entries.submitted_at < DATE_ADD(?, INTERVAL 1 DAY)
@@ -441,7 +396,9 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         INNER JOIN attendance_records AS records ON records.attendance_session_id = sessions.id
           AND records.school_id = sessions.school_id
         LEFT JOIN subjects ON subjects.id = sessions.subject_id AND subjects.school_id = sessions.school_id
+          AND subjects.is_active = TRUE
         WHERE sessions.school_id = ? AND sessions.section_id = ? AND sessions.status = 'confirmed'
+          AND (sessions.subject_id IS NULL OR subjects.id IS NOT NULL)
           AND sessions.attendance_date BETWEEN ? AND ?
         ORDER BY sessions.attendance_date, sessions.id`,
         [schoolId, sectionId, evidenceStartDate, evidenceEndDate]
@@ -463,6 +420,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         INNER JOIN school_grade_levels AS grade_levels ON grade_levels.school_id = grades.school_id
           AND grade_levels.id = ?
         INNER JOIN subjects ON subjects.id = grades.subject_id AND subjects.school_id = grades.school_id
+          AND subjects.is_active = TRUE
         WHERE grades.school_id = ? AND grades.section_id = ?
           AND DATE(grades.published_at) BETWEEN ? AND ?
           AND grades.student_user_id IN (${placeholders})
@@ -480,6 +438,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         INNER JOIN academic_terms AS terms ON terms.id = items.academic_term_id
           AND terms.academic_year_id = ?
         INNER JOIN subjects ON subjects.id = items.subject_id AND subjects.school_id = items.school_id
+          AND subjects.is_active = TRUE
         WHERE scores.school_id = ? AND scores.student_user_id IN (${placeholders})
           AND scores.score IS NOT NULL
           AND DATE(items.recorded_at) BETWEEN ? AND ?

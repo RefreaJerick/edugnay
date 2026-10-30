@@ -610,7 +610,7 @@ async function openTemplatePreview(templateId, sheetName = '') {
   sfElements.previewSubtitle.textContent = template.mappingStatus === 'ready'
     ? 'This template passed its workbook and mapping checks.'
     : 'Preview available. Generation requires a verified mapping for this form, level, and version.';
-  sfElements.previewContent.innerHTML = '<div class="sf-preview-loading">Opening workbook...</div>';
+  sfElements.previewContent.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'modal', label: 'Loading workbook preview', rows: 3 });
   sfElements.editButton.disabled = true;
   sfElements.downloadButton.disabled = true;
   sfElements.downloadButton.innerHTML = '<i data-lucide="download"></i> Download XLSX';
@@ -908,8 +908,8 @@ async function initializeSfTemplatesPage() {
     document.querySelector('.sf-info-banner-text').textContent = 'Connect to the school API to use templates.';
     return;
   }
-  sfElements.count.textContent = 'Loading templates...';
-  sfElements.list.innerHTML = '<div class="sf-preview-loading" role="status">Loading official templates...</div>';
+  sfElements.count.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading template count' });
+  sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading official templates', rows: 4 });
 
   try {
     await window.EDUGNAY_SCHOOL_READY;

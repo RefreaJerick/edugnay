@@ -245,15 +245,19 @@ async function deleteSubject(req, res, next) {
 
     const [[references]] = await connection.execute(
       `SELECT
-        (SELECT COUNT(*) FROM section_teachers WHERE subject_id = ?) +
-        (SELECT COUNT(*) FROM assignments WHERE subject_id = ?) +
-        (SELECT COUNT(*) FROM grading_items WHERE subject_id = ?) +
-        (SELECT COUNT(*) FROM published_final_grades WHERE subject_id = ?) +
-        (SELECT COUNT(*) FROM attendance_sessions WHERE subject_id = ?) +
-        (SELECT COUNT(*) FROM grading_period_reopen_requests WHERE subject_id = ?) +
-        (SELECT COUNT(*) FROM learning_materials WHERE subject_id = ?) +
-        (SELECT COUNT(*) FROM journal_subjects WHERE subject_id = ?) AS total`,
-      Array(8).fill(subjectId)
+        (SELECT COUNT(*) FROM section_teachers WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM assignments WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM grading_items WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM published_final_grades WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM attendance_sessions WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM grading_period_reopen_requests WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM learning_materials WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM journal_subjects WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM subject_grading_profiles WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM shs_grading_profiles WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM shs_grade_publication_history WHERE school_id = ? AND subject_id = ?) +
+        (SELECT COUNT(*) FROM school_settings WHERE school_id = ? AND journal_subject_id = ?) AS total`,
+      Array.from({ length: 12 }, () => [req.user.schoolId, subjectId]).flat()
     );
 
     if (Number(references.total) > 0) {

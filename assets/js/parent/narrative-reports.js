@@ -1,7 +1,7 @@
 (() => {
   const api = window.EDUGNAY_API;
   const escape = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
-  const state = { children: [], childId: null, reports: [], requestId: 0, returnFocus: null };
+  const state = { children: [], childId: null, reports: [], currentReportWeek: null, requestId: 0, returnFocus: null };
   const $ = id => document.getElementById(id);
 
   function message(text, error = false) {
@@ -115,16 +115,31 @@
     }
     $('parent-reports-empty').hidden = true;
     $('parent-reports-content').hidden = false;
-    const latest = state.reports[0];
+    const latest = state.reports.find(isCurrentWeekReport);
+    if (!latest) {
+      $('latest-report').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'notebook-pen', title: 'No report for this week',
+        text: 'A report for the current reporting week will appear here when released.'
+      });
+      renderPastReports();
+      message('');
+      window.lucide?.createIcons?.();
+      return;
+    }
     $('latest-report').innerHTML = `<div class="lr-head"><div class="lr-head-left"><span class="lr-icon" aria-hidden="true"><i data-lucide="notebook-pen"></i></span><div><div class="lr-eyebrow">Weekly report</div><h2 class="lr-week" id="latest-report-title">${escape(weekTitle(latest))}</h2></div></div>${correctionNotice(latest)}</div><span class="lr-quote-mark" aria-hidden="true">“</span><p class="lr-text">${escape(parentSummary(latest))}</p>${actionsMarkup(latest)}<div class="lr-foot"><div class="lr-meta">${authorMark(latest.adviserName)}<span>${escape(releaseMeta(latest))}</span></div></div>`;
     renderPastReports();
     message('');
     window.lucide?.createIcons?.();
   }
 
+  function isCurrentWeekReport(report) {
+    const week = state.currentReportWeek;
+    return Boolean(week?.startDate && week?.endDate
+      && report.weekStartDate === week.startDate && report.weekEndDate === week.endDate);
+  }
+
   function renderPastReports() {
-    if (!state.reports.length) return;
-    const past = state.reports.slice(1);
+    const past = state.reports.filter(report => !isCurrentWeekReport(report));
     const timeline = $('parent-report-list');
     timeline.classList.toggle('report-timeline-empty', !past.length);
     if (!past.length) {
@@ -174,14 +189,17 @@
     const currentRequest = ++state.requestId;
     state.reports = [];
     renderChildren();
-    $('parent-reports-content').hidden = true;
+    $('parent-reports-content').hidden = false;
+    $('latest-report').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading latest report', rows: 1 });
+    $('parent-report-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading shared reports', rows: 3 });
     $('parent-reports-empty').hidden = true;
     if (syncUrl) updateUrl();
-    message('Loading shared reports…');
+    message('');
     try {
       const response = await api.request('/reports/parent/children/' + encodeURIComponent(child.studentId));
       if (currentRequest !== state.requestId) return;
       state.reports = response.reports || [];
+      state.currentReportWeek = response.currentReportWeek || null;
       let linkedReport = null;
       let unavailable = false;
       if (reportId) {

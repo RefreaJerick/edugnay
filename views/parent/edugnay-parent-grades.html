@@ -12,12 +12,12 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/grades.css">
-  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
+  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css?v=20261030-child-switcher">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -35,7 +35,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -131,7 +131,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar parent" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name" data-parent-name>Loading profile...</div>
+              <div class="tb-profile-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -159,7 +159,7 @@
         </div>
       </section>
 
-      <div class="child-switcher" id="parentGradeChildSwitcher" aria-label="Select a student"></div>
+      <div class="child-switcher" id="parentGradeChildSwitcher" aria-label="Select a student" data-skeleton-kind="child-switcher" data-skeleton-label="Loading linked children" data-skeleton-rows="2"></div>
 
       <div class="grades-workspace">
         <div class="grade-controls" aria-label="Select school year and grading period">
@@ -167,7 +167,7 @@
             <span>School year</span>
             <select id="parentGradeYearSelect" aria-label="School year" disabled></select>
           </label>
-          <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-label="Grading period"></div>
+          <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-label="Grading period" data-skeleton-kind="tabs" data-skeleton-label="Loading grading periods" data-skeleton-rows="3"></div>
         </div>
 
         <section class="panel grades-subject-panel" aria-labelledby="parentSubjectGradesTitle">
@@ -180,7 +180,7 @@
               </div>
             </div>
           </div>
-          <div class="grade-subject-list" id="parentGradeSubjectList"></div>
+          <div class="grade-subject-list" id="parentGradeSubjectList" data-skeleton-kind="list" data-skeleton-label="Loading published grades" data-skeleton-rows="3"></div>
         </section>
       </div>
 
@@ -398,9 +398,8 @@
       }
       document.getElementById('parentSubjectGradesSub').textContent = `${child.displayName}'s marks by subject`;
       if (gradeLoading) {
-        tabs.replaceChildren();
-        list.setAttribute('role', 'status');
-        list.textContent = 'Loading grades...';
+        tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'tabs', label: 'Loading grading periods', rows: 3 });
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading published grades', rows: 3 });
         note.textContent = '';
         return;
       }
@@ -506,10 +505,9 @@
       updateGradeTabOrientation();
       wideGradeLayout.addEventListener('change', updateGradeTabOrientation);
       document.getElementById('parentGradeYearSelect').addEventListener('change', event => selectAcademicYear(event.target.value));
-      switcher.setAttribute('role', 'status');
-      switcher.textContent = 'Loading linked children...';
+      switcher.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'child-switcher', label: 'Loading linked children', rows: 2 });
       document.getElementById('parentGradeSubjectList').setAttribute('aria-live', 'polite');
-      document.getElementById('parentGradeSubjectList').textContent = 'Loading published grades...';
+      document.getElementById('parentGradeSubjectList').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading published grades', rows: 3 });
       await loadBackendParentChildren();
       if (gradeAccessRedirecting) return;
       setInitialSelection();

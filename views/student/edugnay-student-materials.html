@@ -12,11 +12,11 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/student/materials.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <style>
 
@@ -40,7 +40,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -151,7 +151,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar student"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Student</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -184,13 +184,13 @@
       </section>
 
       <!-- Subject tabs are rendered from the shared learning-material records. -->
-      <div class="subject-tab-bar" id="subject-tabs"></div>
+      <div class="subject-tab-bar" id="subject-tabs" data-skeleton-kind="tabs" data-skeleton-label="Loading material subjects" data-skeleton-rows="4"></div>
 
       <section class="panel materials-panel">
         <div class="panel-head">
           <div>
             <div class="panel-title" id="panel-title">Mathematics Materials</div>
-            <div class="panel-sub" id="panel-sub">Loading materials...</div>
+            <div class="panel-sub" id="panel-sub" data-skeleton-kind="line" data-skeleton-label="Loading content">Loading materials...</div>
           </div>
         </div>
 
@@ -215,7 +215,7 @@
           </select>
         </div>
 
-        <div id="materials-container">
+        <div id="materials-container" data-skeleton-kind="cards" data-skeleton-label="Loading learning materials" data-skeleton-rows="3">
           <!-- JS renders week groups + material rows here -->
         </div>
       </section>
@@ -456,8 +456,9 @@
       const content = document.getElementById('materialPreviewContent');
       document.getElementById('materialPreviewTitle').textContent = material.title;
       document.getElementById('materialPreviewType').textContent = (TYPE_META[material.type]?.label || 'Material') + ' preview';
-      message.textContent = 'Preparing preview...';
-      message.hidden = false;
+      content.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'modal', label: 'Loading material preview', rows: 3 });
+      message.textContent = '';
+      message.hidden = true;
       modal.hidden = false;
       document.body.classList.add('material-preview-open');
       document.getElementById('materialPreviewClose').focus();
@@ -468,9 +469,9 @@
         video.preload = 'metadata';
         video.crossOrigin = 'use-credentials';
         video.addEventListener('loadedmetadata', () => { if (request === previewRequest) message.hidden = true; });
-        video.addEventListener('error', () => { if (request === previewRequest) message.textContent = 'The video could not be loaded. Try Download.'; });
+        video.addEventListener('error', () => { if (request === previewRequest) { message.textContent = 'The video could not be loaded. Try Download.'; message.hidden = false; } });
         video.src = window.EDUGNAY_API.materialFileUrl(material.id);
-        content.append(video);
+        content.replaceChildren(video);
         return;
       }
 
@@ -484,14 +485,18 @@
         viewer.addEventListener('load', () => { if (request === previewRequest) message.hidden = true; });
         viewer.addEventListener('error', () => { if (request === previewRequest) message.textContent = 'The preview could not be displayed. Try Download.'; });
         viewer.src = previewObjectUrl;
-        content.append(viewer);
+        content.replaceChildren(viewer);
       } catch (error) {
-        if (request === previewRequest) message.textContent = error.message || 'The preview could not be loaded. Try Download.';
+        if (request === previewRequest) {
+          content.replaceChildren();
+          message.textContent = error.message || 'The preview could not be loaded. Try Download.';
+          message.hidden = false;
+        }
       }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      document.getElementById('materials-container').innerHTML = '<div class="panel-empty-state" role="status">Loading learning materials...</div>';
+      document.getElementById('materials-container').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading learning materials', rows: 3 });
       try {
         if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The school API is unavailable. Try again when the connection is ready.');
         await window.EDUGNAY_SCHOOL_READY;

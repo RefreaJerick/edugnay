@@ -242,6 +242,13 @@ test('subject deletion deactivates linked subjects and permanently removes unuse
     assert.equal(result.status, 200);
     assert.equal(result.body.deleted, false);
     assert.ok(calls.some(call => call.sql?.includes('UPDATE subjects SET is_active = FALSE')));
+    const referenceCheck = calls.find(call => call.sql?.includes('FROM school_settings WHERE school_id = ? AND journal_subject_id = ?'));
+    assert.ok(referenceCheck);
+    assert.match(referenceCheck.sql, /FROM subject_grading_profiles WHERE school_id = \? AND subject_id = \?/);
+    assert.match(referenceCheck.sql, /FROM shs_grading_profiles WHERE school_id = \? AND subject_id = \?/);
+    assert.match(referenceCheck.sql, /FROM shs_grade_publication_history WHERE school_id = \? AND subject_id = \?/);
+    assert.equal(referenceCheck.values.length, 24);
+    assert.ok(referenceCheck.values.every((value, index) => index % 2 ? value === 6 : value === 1));
     assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM subjects')));
   });
   await t.test('unused subject is deleted', async () => {

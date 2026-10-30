@@ -176,6 +176,7 @@ async function getStudentFlags(database, { schoolId, yearId, teacherId = null })
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
       AND academic_years.school_id = sections.school_id
     INNER JOIN subjects ON subjects.id = sessions.subject_id AND subjects.school_id = sessions.school_id
+      AND subjects.is_active = TRUE
     WHERE sessions.school_id = ? AND sections.academic_year_id = ?
       AND sessions.section_id IN (${placeholders})
       AND records.student_user_id IN (${studentPlaceholders})
@@ -204,6 +205,7 @@ async function getStudentFlags(database, { schoolId, yearId, teacherId = null })
       AND academic_terms.academic_year_id = sections.academic_year_id
       AND academic_terms.school_level_id = sections.school_level_id
     INNER JOIN subjects ON subjects.id = published_final_grades.subject_id
+      AND subjects.is_active = TRUE
       AND subjects.school_id = published_final_grades.school_id
     WHERE published_final_grades.school_id = ? AND sections.academic_year_id = ?
       AND sections.id IN (${placeholders})
@@ -249,6 +251,7 @@ async function getStudentFlags(database, { schoolId, yearId, teacherId = null })
     INNER JOIN academic_terms AS terms ON terms.id = items.academic_term_id
       AND terms.academic_year_id = ?
     INNER JOIN subjects ON subjects.id = items.subject_id AND subjects.school_id = items.school_id
+      AND subjects.is_active = TRUE
     WHERE scores.school_id = ? AND items.section_id IN (${placeholders})
       AND scores.student_user_id IN (${studentPlaceholders}) AND scores.score IS NOT NULL
       AND DATE(items.recorded_at) BETWEEN ? AND ? AND DATE(scores.recorded_at) <= ?`,

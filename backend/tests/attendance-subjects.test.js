@@ -54,14 +54,14 @@ const database = {
     if (sql.includes('FROM student_parent_links') && sql.includes('INNER JOIN users AS students')) {
       return [[{ studentId: 4, displayName: 'Student', initials: 'ST', gradeLevel: 'Grade 7', sectionName: 'St. Matthew' }]];
     }
-    if (sql.includes('FROM attendance_records') && sql.includes('INNER JOIN subjects')) {
-      return [[{ studentId: 4, sectionId: 8, subjectId: 1, subjectName: 'Mathematics', date: '2026-09-27', status: 'absent' }]];
-    }
     if (sql.includes('FROM attendance_records') && sql.includes('GROUP BY sections.id')) {
       return [[
         { sectionId: 8, sectionName: 'St. Matthew', grade: 'Grade 7', studentId: 4, status: 'absent', total: 1 },
         { sectionId: 8, sectionName: 'St. Matthew', grade: 'Grade 7', studentId: 4, status: 'present', total: 1 }
       ]];
+    }
+    if (sql.includes('FROM attendance_records') && sql.includes('INNER JOIN subjects')) {
+      return [[{ studentId: 4, sectionId: 8, subjectId: 1, subjectName: 'Mathematics', date: '2026-09-27', status: 'absent' }]];
     }
     throw new Error(`Unexpected query: ${sql}`);
   },

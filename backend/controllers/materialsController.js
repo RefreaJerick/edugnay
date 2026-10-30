@@ -23,6 +23,8 @@ async function teacherAssignment(database, user, sectionId, subjectId) {
     `SELECT sections.id FROM section_teachers
      INNER JOIN sections ON sections.id = section_teachers.section_id
        AND sections.school_id = section_teachers.school_id
+     INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+       AND subjects.school_id = section_teachers.school_id AND subjects.is_active = TRUE
      WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
        AND section_teachers.subject_id = ? AND section_teachers.teacher_user_id = ? LIMIT 1`,
     [sectionId, user.schoolId, subjectId, user.id]
@@ -111,7 +113,10 @@ function materialAuditDetails(material, status, extra = {}) {
 
 async function listMaterials(req, res, next) {
   try {
-    const where = ['materials.school_id = ?', "materials.status <> 'archived'"];
+    const where = ['materials.school_id = ?', "materials.status <> 'archived'",
+      `((materials.shs_elective_class_id IS NOT NULL AND materials.section_id IS NULL)
+        OR (materials.shs_elective_class_id IS NULL AND materials.section_id IS NOT NULL
+          AND materials.subject_id IS NOT NULL AND subjects.is_active = TRUE))`];
     const values = [req.user.schoolId];
     if (process.env.SHS_SELECTION_ENABLED !== 'true') where.push('materials.shs_elective_class_id IS NULL');
     if (req.user.role === 'teacher') {
@@ -238,7 +243,10 @@ async function createMaterial(req, res, next) {
 
 async function findMaterial(req, database, lock = false) {
   const materialId = id(req.params.materialId, 'material ID');
-  const where = ['materials.id = ?', 'materials.school_id = ?', "materials.status <> 'archived'"];
+  const where = ['materials.id = ?', 'materials.school_id = ?', "materials.status <> 'archived'",
+    `((materials.shs_elective_class_id IS NOT NULL AND materials.section_id IS NULL)
+      OR (materials.shs_elective_class_id IS NULL AND materials.section_id IS NOT NULL
+        AND materials.subject_id IS NOT NULL AND subjects.is_active = TRUE))`];
   const values = [materialId, req.user.schoolId];
   if (process.env.SHS_SELECTION_ENABLED !== 'true') where.push('materials.shs_elective_class_id IS NULL');
   if (req.user.role === 'teacher') {

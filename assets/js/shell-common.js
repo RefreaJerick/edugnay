@@ -2009,6 +2009,9 @@ function setApiSchoolContext(school, features = null) {
     ? { ...(window.EDUGNAY_API_SCHOOL_CONTEXT || {}), ...school }
     : null;
   if (features) window.EDUGNAY_API_PORTAL_FEATURES = features;
+  document.dispatchEvent(new CustomEvent('edugnay:school-context-updated', {
+    detail: window.EDUGNAY_API_SCHOOL_CONTEXT
+  }));
 }
 
 function setApiPortalFeatures(features) {
@@ -2027,7 +2030,6 @@ async function getApiSchoolContext() {
     sfTemplatesEnabled: response.school.sfTemplatesEnabled,
     journalSubjectId: response.school.journalSubjectId
   });
-  document.dispatchEvent(new CustomEvent('edugnay:school-context-updated', { detail: school }));
   return school;
 }
 
@@ -2401,7 +2403,11 @@ function applyCurrentUserToShell(session) {
 
 function setCurrentUserShellStatus(label, roleLabel = '') {
   document.querySelectorAll('[data-current-user-name], .tb-profile-name').forEach(element => {
-    element.textContent = label;
+    if (/^loading\b/i.test(label) && window.EDUGNAY_CONFIG?.renderPanelSkeleton) {
+      element.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading account' });
+    } else {
+      element.textContent = label;
+    }
   });
   document.querySelectorAll('[data-current-user-role], .tb-profile-role').forEach(element => {
     element.textContent = roleLabel;
@@ -3595,6 +3601,80 @@ function applyCurrentDateToGradingBanners() {
     else Promise.resolve().then(render);
   }
 
+  const PANEL_SKELETON_KINDS = new Set(['cards', 'child-switcher', 'stat-cards', 'section-cards', 'table-rows', 'list', 'calendar', 'profile', 'modal', 'tabs', 'chart', 'donut', 'line']);
+
+  function renderPanelSkeleton(options = {}) {
+    const kind = PANEL_SKELETON_KINDS.has(options.kind) ? options.kind : 'list';
+    const label = String(options.label || options.title || 'Loading');
+    const requestedRows = Number(options.rows);
+    const rows = Number.isFinite(requestedRows) ? Math.max(1, Math.min(8, Math.floor(requestedRows))) : 3;
+    const requestedColumns = Number(options.columns);
+    const columns = Number.isFinite(requestedColumns) ? Math.max(1, Math.min(7, Math.floor(requestedColumns))) : 4;
+    const shape = (className = '') => `<span class="panel-skeleton-shape ${className}"></span>`;
+    let content = '';
+
+    if (kind === 'child-switcher') {
+      content = Array.from({ length: rows }, () => `<div class="child-card panel-skeleton-child-card"><span class="panel-skeleton-shape panel-skeleton-child-avatar"></span><span class="child-info panel-skeleton-child-info"><span class="panel-skeleton-shape panel-skeleton-child-name"></span><span class="panel-skeleton-shape panel-skeleton-child-section"></span></span></div>`).join('');
+    } else if (kind === 'cards') {
+      content = Array.from({ length: rows }, () => `<div class="panel-skeleton-card">${shape('panel-skeleton-title')}${shape()}${shape('panel-skeleton-short')}</div>`).join('');
+    } else if (kind === 'stat-cards') {
+      content = Array.from({ length: rows }, () => `<div class="stat-card panel-skeleton-stat-card"><span class="panel-skeleton-shape panel-skeleton-stat-icon"></span><span class="panel-skeleton-shape panel-skeleton-stat-value"></span><span class="panel-skeleton-shape panel-skeleton-stat-label"></span></div>`).join('');
+    } else if (kind === 'section-cards') {
+      content = Array.from({ length: rows }, () => `<article class="section-card panel-skeleton-section-card"><div class="card-body"><div class="card-head">${shape('panel-skeleton-title')}</div>${shape()}${shape('panel-skeleton-short')}</div></article>`).join('');
+    } else if (kind === 'table-rows') {
+      const cells = () => Array.from({ length: columns }, (_, index) => `<td aria-hidden="true"><span class="panel-skeleton-shape${index === 0 ? ' panel-skeleton-title' : ''}"></span></td>`).join('');
+      content = Array.from({ length: rows }, (_, index) => `<tr class="panel-skeleton-table-tr"${index === 0 ? ` role="status" aria-live="polite" aria-busy="true" aria-label="${escapeHtml(label)}"` : ' aria-hidden="true"'}>${cells()}</tr>`).join('');
+    } else if (kind === 'calendar') {
+      content = Array.from({ length: 35 }, () => `<span class="cal-day panel-skeleton-calendar-day">${shape('panel-skeleton-day')}</span>`).join('');
+    } else if (kind === 'profile') {
+      content = `<span class="panel-skeleton-profile-head">${shape('panel-skeleton-avatar')}<span class="panel-skeleton-copy">${shape('panel-skeleton-title')}${shape('panel-skeleton-short')}</span></span><span class="panel-skeleton-profile-details">${Array.from({ length: rows }, () => `<span>${shape('panel-skeleton-short')}${shape()}</span>`).join('')}</span>`;
+    } else if (kind === 'modal') {
+      content = `<span class="panel-skeleton-modal-head">${shape('panel-skeleton-icon')}<span class="panel-skeleton-copy">${shape('panel-skeleton-title')}${shape('panel-skeleton-short')}</span></span>${Array.from({ length: rows }, () => `<span class="panel-skeleton-field">${shape('panel-skeleton-label')}${shape('panel-skeleton-input')}</span>`).join('')}`;
+    } else if (kind === 'tabs') {
+      content = Array.from({ length: rows }, (_, index) => `<span class="panel-skeleton-tab${index === 0 ? ' is-active' : ''}">${shape(index === 0 ? 'panel-skeleton-tab-label' : '')}</span>`).join('');
+    } else if (kind === 'chart') {
+      content = `<span class="panel-skeleton-chart-axis">${shape('panel-skeleton-chart-label')}${shape('panel-skeleton-chart-label')}${shape('panel-skeleton-chart-label')}</span><span class="panel-skeleton-chart-bars">${Array.from({ length: columns }, (_, index) => `<span class="panel-skeleton-chart-bar" style="--panel-skeleton-bar-height:${32 + ((index * 29) % 58)}%">${shape('panel-skeleton-chart-fill')}</span>`).join('')}</span>`;
+    } else if (kind === 'donut') {
+      content = `<span class="panel-skeleton-donut-ring"></span><span class="panel-skeleton-donut-legend">${Array.from({ length: rows }, () => `<span>${shape('panel-skeleton-icon')}${shape('panel-skeleton-short')}</span>`).join('')}</span>`;
+    } else if (kind === 'line') {
+      content = shape('panel-skeleton-short');
+    } else {
+      const rowInsetClass = options.rowInset === 'flush' ? ' panel-skeleton-row--flush' : '';
+      content = Array.from({ length: rows }, () => `<span class="panel-skeleton-row${rowInsetClass}">${shape('panel-skeleton-icon')}<span class="panel-skeleton-copy">${shape('panel-skeleton-title')}${shape('panel-skeleton-short')}</span></span>`).join('');
+    }
+
+    if (kind === 'table-rows') return content;
+
+    const wrapper = kind === 'line' ? 'span' : 'div';
+    const visual = kind === 'line' ? 'span' : 'div';
+    const columnStyle = kind === 'table' ? ` style="--panel-skeleton-columns:${columns}"` : '';
+    const displayContentsKind = ['cards', 'child-switcher', 'stat-cards', 'section-cards', 'calendar', 'list', 'tabs'].includes(kind);
+    const status = displayContentsKind ? `<span class="panel-skeleton-status" role="status" aria-live="polite" aria-busy="true" aria-label="${escapeHtml(label)}">${escapeHtml(label)}</span>` : '';
+    const wrapperClass = `panel-skeleton panel-skeleton--${kind}`;
+    const statusAttributes = displayContentsKind ? '' : ' role="status" aria-live="polite"';
+    return `<${wrapper} class="${wrapperClass}"${columnStyle}${statusAttributes} aria-busy="true" aria-label="${escapeHtml(label)}">${status}<${visual} class="panel-skeleton-visual" aria-hidden="true">${content}</${visual}></${wrapper}>`;
+  }
+
+  function initializeDeclaredPanelSkeletons() {
+    const renderDeclared = () => {
+      document.querySelectorAll('[data-skeleton-kind]').forEach(element => {
+        const kind = element.getAttribute('data-skeleton-kind');
+        const label = element.getAttribute('data-skeleton-label') || String(element.textContent || '').trim() || 'Loading content';
+        const rows = element.getAttribute('data-skeleton-rows');
+        const columns = element.getAttribute('data-skeleton-columns');
+        const rowInset = element.getAttribute('data-skeleton-row-inset');
+        element.innerHTML = renderPanelSkeleton({ kind, label, rows, columns, rowInset });
+        element.removeAttribute('data-skeleton-kind');
+        element.removeAttribute('data-skeleton-label');
+        element.removeAttribute('data-skeleton-rows');
+        element.removeAttribute('data-skeleton-columns');
+        element.removeAttribute('data-skeleton-row-inset');
+      });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderDeclared, { once: true });
+    else renderDeclared();
+  }
+
   /* Shared empty-state markup for data panels. */
   function renderPanelEmptyState(options = {}) {
     const icon = String(options.icon || 'inbox').replace(/[^a-z0-9-]/gi, '');
@@ -3715,8 +3795,10 @@ function applyCurrentDateToGradingBanners() {
     formatDateTime,
     escapeHtml,
     getInitials,
-    renderPanelEmptyState
+    renderPanelEmptyState,
+    renderPanelSkeleton
   };
+  initializeDeclaredPanelSkeletons();
 })();
 
 /* Shared searchable select enhancement. The native select stays in the form
@@ -4211,12 +4293,16 @@ function applyActiveSchoolToShell() {
 
   const config = window.EDUGNAY_CONFIG;
   const school = window.EDUGNAY_API_SCHOOL_CONTEXT || config.getActiveSchool();
-  if (!school) return;
+  const brandLabels = document.querySelectorAll('.brand-sub:not([data-platform-brand])');
+  if (!school) {
+    brandLabels.forEach(element => { element.textContent = ''; });
+    return;
+  }
   const typeLabel = config.getSchoolTypeInfo(school.schoolLevels).label;
   const schoolYear = String(school.schoolYear || '').trim();
 
-  document.querySelectorAll('.brand-sub:not([data-platform-brand])').forEach(element => {
-    element.textContent = school.shortName;
+  brandLabels.forEach(element => {
+    element.textContent = String(school.shortName || '').trim();
   });
   document.querySelectorAll('[data-school-name]').forEach(element => {
     element.textContent = school.name;
@@ -4245,6 +4331,8 @@ function applyActiveSchoolToShell() {
   document.body.dataset.schoolType = school.schoolType;
   document.body.dataset.gradesPageEnabled = String(config.isGradesPageEnabled(school));
 }
+
+document.addEventListener('edugnay:school-context-updated', applyActiveSchoolToShell);
 
 /* Keep the grade portal policy in one place so every student and parent page
    responds to the same school setting. The server should enforce this policy
@@ -4588,6 +4676,7 @@ document.addEventListener('click', event => {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initToastSoundToggle();
+  if (!isPublicPage()) applyActiveSchoolToShell();
   let apiSession = null;
   if (!isPublicPage() && EDUGNAY_API_BASE_URL) {
     if (!document.documentElement.classList.contains('profile-chip-restored')) {

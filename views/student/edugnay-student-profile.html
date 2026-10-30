@@ -9,13 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/student/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/vendor/qrcode/qrcode.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js?v=5"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -37,7 +37,7 @@
       </div>
       <div class="brand-text">
         <div class="brand-name">Acade<span>Mix</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        <div class="brand-sub"></div>
       </div>
     </div>
 
@@ -147,7 +147,7 @@
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
           <div class="tb-avatar student" id="student-topbar-initials">--</div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name" id="student-topbar-name">Loading profile...</div>
+            <div class="tb-profile-name" id="student-topbar-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
             <div class="tb-profile-role">Student</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -200,11 +200,11 @@
         </div>
       </div>
       <div class="profile-header-info">
-        <div class="profile-header-name" id="student-profile-name">Loading profile...</div>
+        <div class="profile-header-name" id="student-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
         <div class="profile-header-meta">
-          <span><i data-lucide="badge-check" style="width:13px;height:13px;"></i> LRN <span id="student-profile-lrn">Loading...</span></span>
-          <span><i data-lucide="door-open" style="width:13px;height:13px;"></i> <span id="student-profile-placement">Loading...</span></span>
-          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="student-profile-school-email">Loading...</span></span>
+          <span><i data-lucide="badge-check" style="width:13px;height:13px;"></i> LRN <span id="student-profile-lrn" data-skeleton-kind="line" data-skeleton-label="Loading learner number">Loading...</span></span>
+          <span><i data-lucide="door-open" style="width:13px;height:13px;"></i> <span id="student-profile-placement" data-skeleton-kind="line" data-skeleton-label="Loading class placement">Loading...</span></span>
+          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="student-profile-school-email" data-skeleton-kind="line" data-skeleton-label="Loading school email">Loading...</span></span>
         </div>
       </div>
     </div>
@@ -240,19 +240,19 @@
         <div class="info-grid">
           <div class="info-cell">
             <div class="info-label">LRN</div>
-            <div class="info-value" id="student-record-lrn">Loading...</div>
+            <div class="info-value" id="student-record-lrn" data-skeleton-kind="line" data-skeleton-label="Loading learner number">Loading...</div>
           </div>
           <div class="info-cell">
             <div class="info-label">Grade & Section</div>
-            <div class="info-value" id="student-record-placement">Loading...</div>
+            <div class="info-value" id="student-record-placement" data-skeleton-kind="line" data-skeleton-label="Loading class placement">Loading...</div>
           </div>
           <div class="info-cell">
             <div class="info-label">Class Adviser</div>
-            <div class="info-value" id="student-record-adviser">Loading...</div>
+            <div class="info-value" id="student-record-adviser" data-skeleton-kind="line" data-skeleton-label="Loading adviser">Loading...</div>
           </div>
           <div class="info-cell">
             <div class="info-label">School Year</div>
-            <div class="info-value" id="student-record-school-year">Loading...</div>
+            <div class="info-value" id="student-record-school-year" data-skeleton-kind="line" data-skeleton-label="Loading school year">Loading...</div>
           </div>
         </div>
       </div>
@@ -266,7 +266,7 @@
             </div>
           </div>
         </div>
-        <div id="student-subject-list">
+        <div id="student-subject-list" data-skeleton-kind="list" data-skeleton-label="Loading subjects" data-skeleton-rows="4">
           <p>Loading subjects...</p>
         </div>
       </div>
@@ -555,6 +555,11 @@ function setStudentText(id, value, fallback = 'Not provided') {
   if (element) element.textContent = value || fallback;
 }
 
+function setStudentSkeleton(id, label) {
+  const element = document.getElementById(id);
+  if (element) element.innerHTML = STUDENT_CONFIG.renderPanelSkeleton({ kind: 'line', label });
+}
+
 function setStudentInput(id, value) {
   const element = document.getElementById(id);
   if (element) element.value = id === 'student-birth-date' && value ? String(value).slice(0, 10) : value || '';
@@ -563,15 +568,23 @@ function setStudentInput(id, value) {
 function renderStudentProfile() {
   const student = studentApiUser;
   if (!student) {
-    const profileMessage = studentProfileLoading ? 'Loading profile...' : 'Profile unavailable';
-    setStudentText('student-profile-name', profileMessage);
-    if (!document.documentElement.classList.contains('profile-chip-restored')) {
-      setStudentText('student-topbar-name', profileMessage);
+    const profileMessage = 'Profile unavailable';
+    if (studentProfileLoading) {
+      setStudentSkeleton('student-profile-name', 'Loading profile name');
+      setStudentSkeleton('student-profile-lrn', 'Loading learner number');
+      setStudentSkeleton('student-profile-school-email', 'Loading school email');
+      setStudentSkeleton('student-record-lrn', 'Loading learner number');
+    } else {
+      setStudentText('student-profile-name', profileMessage);
+      setStudentText('student-profile-lrn', 'Not available');
+      setStudentText('student-profile-school-email', 'Not available');
+      setStudentText('student-record-lrn', 'Not available');
     }
-    setStudentText('student-profile-lrn', 'Not available');
+    if (!document.documentElement.classList.contains('profile-chip-restored')) {
+      if (studentProfileLoading) setStudentSkeleton('student-topbar-name', 'Loading account');
+      else setStudentText('student-topbar-name', profileMessage);
+    }
     renderStudentClassContext(null);
-    setStudentText('student-profile-school-email', 'Not available');
-    setStudentText('student-record-lrn', 'Not available');
     renderStudentLinkedParents('');
     return;
   }
@@ -626,10 +639,10 @@ function renderStudentProfile() {
 
 function renderStudentClassContext(student) {
   if (studentClassLoading) {
-    setStudentText('student-profile-placement', 'Loading class placement...');
-    setStudentText('student-record-placement', 'Loading...');
-    setStudentText('student-record-adviser', 'Loading...');
-    setStudentText('student-record-school-year', 'Loading...');
+    setStudentSkeleton('student-profile-placement', 'Loading class placement');
+    setStudentSkeleton('student-record-placement', 'Loading class placement');
+    setStudentSkeleton('student-record-adviser', 'Loading adviser');
+    setStudentSkeleton('student-record-school-year', 'Loading school year');
     return;
   }
   if (studentClassError) {
@@ -774,11 +787,9 @@ function renderStudentLinkedParents(studentId) {
 
   if (studentLinkedParentsLoading || studentLinkedParentsError) {
     const loading = studentLinkedParentsLoading;
-    list.innerHTML = STUDENT_CONFIG.renderPanelEmptyState({
-      icon: loading ? 'loader-circle' : 'circle-alert',
-      title: loading ? 'Loading linked parents' : 'Linked parents could not be loaded',
-      text: loading ? 'Reading parent links from your school account.' : studentLinkedParentsError
-    });
+    list.innerHTML = loading
+      ? STUDENT_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading linked parents', rows: 2 })
+      : STUDENT_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Linked parents could not be loaded', text: studentLinkedParentsError });
     lucide.createIcons();
     return;
   }
@@ -821,7 +832,7 @@ function renderStudentSubjects() {
   const list = document.getElementById('student-subject-list');
   if (!list) return;
   if (studentClassLoading) {
-    list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading subjects', text: 'Reading your class assignments.' });
+    list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading subjects', rows: 4 });
   } else if (studentClassError) {
     list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Subjects could not be loaded', text: studentClassError });
   } else {

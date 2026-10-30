@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/teacher/journals.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/journal-history-viewer.js"></script>
   <script src="../../assets/js/teacher/shell.js?v=4"></script>
@@ -32,7 +32,7 @@
         <div class="modal-heading-icon modal-avatar" id="modal-avatar"></div>
         <div class="modal-heading-copy">
           <div class="modal-title" id="modal-student-name">Student</div>
-          <div class="modal-sub" id="modal-meta">Loading journal...</div>
+          <div class="modal-sub" id="modal-meta" data-skeleton-kind="line" data-skeleton-label="Loading journal details">Loading journal...</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -66,7 +66,7 @@
         <div class="modal-section-label">
           <i data-lucide="notebook-pen" style="width:11px;height:11px;"></i> Student Entry
         </div>
-        <div class="entry-body" id="modal-entry-body">Loading…</div>
+        <div class="entry-body" id="modal-entry-body" data-skeleton-kind="modal" data-skeleton-label="Loading journal entry" data-skeleton-rows="3">Loading…</div>
       </div>
 
       <!-- Score -->
@@ -126,7 +126,7 @@
           <i data-lucide="message-square-text" style="width:12px;height:12px;"></i>
           This Week's Prompt
         </div>
-        <div class="settings-block-hint" id="settings-section-name">Loading section...</div>
+        <div class="settings-block-hint" id="settings-section-name" data-skeleton-kind="line" data-skeleton-label="Loading section">Loading section...</div>
         <textarea class="settings-textarea" id="settings-prompt-input" rows="3" maxlength="220" oninput="updatePromptCounter()"></textarea>
         <div class="settings-char-count"><span id="prompt-char-count">0</span>/220</div>
       </div>
@@ -235,7 +235,7 @@
       </div>
       <div>
         <div class="brand-name">Acade<span>Mix</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        <div class="brand-sub"></div>
       </div>
     </div>
 
@@ -257,7 +257,7 @@
             <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
           </div>
           <div class="nav-children" data-teacher-sections-nav>
-            <div class="teacher-section-nav-message" role="status">Loading assigned classes…</div>
+            <div class="teacher-section-nav-message" role="status" data-skeleton-kind="line" data-skeleton-label="Loading assigned classes">Loading assigned classes…</div>
           </div>
           <script>restoreTeacherClassesNavigation();</script>
         </div>
@@ -360,7 +360,7 @@
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
           <div class="tb-avatar faculty"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Loading account...</div>
+            <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
             <div class="tb-profile-role">Faculty</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -392,10 +392,10 @@
     </section>
 
     <!-- Summary strip -->
-    <div class="summary-strip" id="journal-summary-strip"></div>
+    <div class="summary-strip" id="journal-summary-strip" data-skeleton-kind="stat-cards" data-skeleton-label="Loading journal summary" data-skeleton-rows="3"></div>
 
     <!-- Section tabs -->
-    <div class="section-tab-bar" id="journal-section-tabs">
+    <div class="section-tab-bar" id="journal-section-tabs" data-skeleton-kind="tabs" data-skeleton-label="Loading journal sections" data-skeleton-rows="3">
       <div class="panel-empty-state" role="status">Loading your journal sections…</div>
     </div>
 
@@ -1009,7 +1009,7 @@ function renderJournalHistory() {
 async function openJournalHistory() {
   const list = document.getElementById('journalHistoryList');
   if (!document.getElementById('journalHistoryModal').classList.contains('open')) journalHistoryReturnFocus = document.activeElement;
-  list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'history', title: 'Loading journal history', text: 'Your prompts and entries are being loaded.' });
+  list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading journal history', rows: 4 });
   openModal('journalHistoryModal');
   document.querySelector('#journalHistoryModal .modal-close').focus();
   try {
@@ -1072,7 +1072,7 @@ async function loadTeacherJournals() {
   const noPrompt = document.getElementById('noPromptState');
   const previousSection = currentSection;
   const previousPromptId = currentPromptId;
-  tabs.innerHTML = '<div class="panel-empty-state" role="status">Loading your journal sections…</div>';
+  tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'tabs', label: 'Loading journal sections', rows: 3 });
   try {
     const [user, subjects, sections, prompts] = await Promise.all([
       window.EDUGNAY_API.getCurrentUser(),

@@ -14,13 +14,13 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/parent/dashboard.css">
-  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
+  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css?v=20261030-child-switcher">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
-  <script src="../../assets/js/parent/shell.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
+  <script src="../../assets/js/parent/shell.js?v=20261030-report-card-no-flash"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
@@ -40,7 +40,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -144,7 +144,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar parent" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name" data-parent-name>Loading profile...</div>
+              <div class="tb-profile-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -183,29 +183,31 @@
               </div>
               <div>
                 <div class="grading-period-label">Active grading period</div>
-                <div class="grading-period-value" data-active-academic-period>Loading academic period...</div>
+                <div class="grading-period-value" data-active-academic-period data-skeleton-kind="line" data-skeleton-label="Loading academic period">Loading academic period...</div>
               </div>
             </div>
           </div>
 
           <!-- Child switcher (student selection) -->
           <!-- children[]: loop -->
-          <div class="child-switcher" id="child-switcher"></div>
+          <div class="child-switcher" id="child-switcher" data-skeleton-kind="child-switcher" data-skeleton-label="Loading linked children" data-skeleton-rows="2"></div>
           <!-- end children[] loop -->
 
           <!-- Latest report that the adviser has released to this parent -->
           <!-- Page JavaScript loads the selected child's dashboard data and renders this HTML shell. -->
-          <section class="report-hero" aria-labelledby="report-status-title">
-            <div class="report-hero-head">
-              <div class="report-hero-kicker">Weekly report</div>
-              <a href="edugnay-parent-reports.html" class="report-hero-link" id="report-hero-link">
-                View report <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
-              </a>
+          <section class="report-hero" aria-label="Weekly report" aria-busy="false" data-current-report-available="false" hidden>
+            <div id="report-hero-content" hidden>
+              <div class="report-hero-head">
+                <div class="report-hero-kicker">Weekly report</div>
+                <a href="edugnay-parent-reports.html" class="report-hero-link" id="report-hero-link" data-report-available="false" hidden>
+                  View report <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
+                </a>
+              </div>
+              <h2 class="report-hero-title" id="report-status-title"></h2>
+              <p class="report-hero-description"></p>
             </div>
-            <h2 class="report-hero-title" id="report-status-title"></h2>
-            <p class="report-hero-description">Review attendance, grades, and teacher notes.</p>
           </section>
-          <!-- Empty report state is rendered when no report has been released. -->
+          <p id="report-hero-error" role="status" aria-live="polite" hidden></p>
 
           <!-- Daily attendance & assignments — LIVE, not report-gated -->
           <section class="panel panel-daily-activity" aria-labelledby="dailyActivityTitle">
@@ -280,9 +282,9 @@
     function renderDashboardAnnouncements() {
       const list = document.getElementById('parent-dashboard-announcements');
       if (!list) return;
-      const visibleAnnouncements = DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false);
+      const visibleAnnouncements = DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false).slice(0, 3);
       list.innerHTML = DASHBOARD_ANNOUNCEMENTS_LOADING
-        ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' })
+        ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading announcements', rows: 3 })
         : DASHBOARD_ANNOUNCEMENTS_ERROR
         ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Announcements unavailable', text: DASHBOARD_ANNOUNCEMENTS_ERROR })
         : visibleAnnouncements.length ? visibleAnnouncements.map(item => `
@@ -357,7 +359,7 @@
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
       switcher.innerHTML = PARENT_CHILDREN_LOADING
-        ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading linked children', text: 'Please wait while linked student accounts are loaded.' })
+        ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'child-switcher', label: 'Loading linked children', rows: 2 })
         : PARENT_CHILDREN_ERROR
         ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Children unavailable', text: PARENT_CHILDREN_ERROR })
         : PARENT_CHILDREN.length ? PARENT_CHILDREN.map(link => {
@@ -388,38 +390,72 @@
         window.refreshEdUgnayShellContext?.();
       }
       const hero = document.querySelector('.report-hero');
-      const showEmptyReport = (title, text) => {
-        if (!hero) return;
-        hero.classList.add('is-empty');
-        hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'file-text', title, text });
-        if (window.lucide) lucide.createIcons();
+      const reportContent = document.getElementById('report-hero-content');
+      const reportTitle = document.getElementById('report-status-title');
+      const reportDescription = reportContent?.querySelector('.report-hero-description');
+      const reportLink = document.getElementById('report-hero-link');
+      const reportError = document.getElementById('report-hero-error');
+      const clearReportHero = () => {
+        if (!hero || !reportContent || !reportTitle || !reportDescription || !reportLink) return;
+        hero.dataset.currentReportAvailable = 'false';
+        hero.hidden = true;
+        hero.setAttribute('aria-busy', 'false');
+        reportContent.hidden = true;
+        reportTitle.textContent = '';
+        reportDescription.textContent = '';
+        reportLink.dataset.reportAvailable = 'false';
+        reportLink.hidden = true;
+        reportLink.removeAttribute('href');
+        if (reportError) {
+          reportError.textContent = '';
+          reportError.hidden = true;
+        }
+      };
+      const showReportError = () => {
+        clearReportHero();
+        if (!reportError) return;
+        reportError.textContent = 'Weekly report could not be loaded. Try again later.';
+        reportError.hidden = false;
       };
       const requestVersion = ++reportRequestVersion;
-      if (!child || !window.EDUGNAY_API?.isBackendAvailable) {
-        showEmptyReport('No shared report yet', 'Reports released by the adviser will appear here.');
+      clearReportHero();
+      if (!child) {
         return;
       }
-      const reportLink = document.getElementById('report-hero-link');
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        showReportError();
+        return;
+      }
+      hero?.setAttribute('aria-busy', 'true');
       try {
         const response = await window.EDUGNAY_API.request('/reports/parent/children/' + encodeURIComponent(child.id));
         if (requestVersion !== reportRequestVersion) return;
-        const report = response.reports?.[0];
+        const currentWeek = response.currentReportWeek;
+        const report = response.reports?.find(item => currentWeek?.startDate && currentWeek?.endDate
+          && item.weekStartDate === currentWeek.startDate && item.weekEndDate === currentWeek.endDate);
         if (!report) {
-          showEmptyReport('No shared report yet', 'Reports released by the adviser will appear here.');
+          hero?.setAttribute('aria-busy', 'false');
           return;
         }
         const start = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
           .format(new Date(report.weekStartDate + 'T00:00:00.000Z'));
         const end = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
           .format(new Date(report.weekEndDate + 'T00:00:00.000Z'));
-        hero.classList.remove('is-empty');
-        document.getElementById('report-status-title').textContent = 'Week of ' + start + ' – ' + end;
-        hero.querySelector('.report-hero-description').textContent = 'A weekly progress report is available for ' + child.displayName + '.';
+        if (!hero || !reportContent || !reportTitle || !reportDescription || !reportLink) return;
+        hero.dataset.currentReportAvailable = 'true';
+        hero.hidden = hero.dataset.reportsEnabled === 'false';
+        hero.setAttribute('aria-busy', 'false');
+        reportContent.hidden = false;
+        reportTitle.textContent = 'Week of ' + start + ' – ' + end;
+        reportDescription.textContent = 'A weekly progress report is available for ' + child.displayName + '.';
         const query = new URLSearchParams({ studentId: child.id, reportId: report.id });
         reportLink.href = 'edugnay-parent-reports.html?' + query.toString();
-      } catch (error) {
+        reportLink.dataset.reportAvailable = 'true';
+        reportLink.hidden = hero.hidden;
+        window.lucide?.createIcons?.();
+      } catch {
         if (requestVersion !== reportRequestVersion) return;
-        showEmptyReport('Reports unavailable', error.message || 'Shared reports could not be loaded.');
+        showReportError();
       }
     }
 
@@ -531,7 +567,7 @@
         return;
       }
 
-      container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Please wait while this day is checked.' });
+      container.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading assignments', rows: 3 });
       lucide.createIcons();
 
       let tasks;
@@ -631,8 +667,8 @@
       if (window.EDUGNAY_API?.isBackendAvailable) {
         renderChildSwitcher();
         renderDashboardAnnouncements();
-        document.getElementById('attendance-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading attendance', text: 'Please wait while records are loaded.' });
-        document.getElementById('assignments-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Please wait while records are loaded.' });
+        document.getElementById('attendance-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading attendance', rows: 3 });
+        document.getElementById('assignments-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading assignments', rows: 3 });
       } else {
         PARENT_CHILDREN_LOADING = false;
         PARENT_CHILDREN_ERROR = 'The backend is required to load linked children.';

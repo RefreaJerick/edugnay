@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { currentReportWeekRange, readWeekSettings } = require('../utils/reportWeekSettings');
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -77,9 +78,13 @@ async function listChildReports(req, res, next) {
   try {
     const database = getDatabase();
     const child = await linkedChild(database, req);
-    const reports = await readPublicReports(database, req.user.schoolId, child.studentId);
+    const [reports, settings] = await Promise.all([
+      readPublicReports(database, req.user.schoolId, child.studentId),
+      readWeekSettings(database, req.user.schoolId)
+    ]);
+    const currentReportWeek = currentReportWeekRange(settings);
     res.set('Cache-Control', 'no-store');
-    res.json({ child, reports });
+    res.json({ child, reports, currentReportWeek });
   } catch (error) { next(error); }
 }
 

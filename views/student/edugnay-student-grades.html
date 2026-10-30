@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/grades.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -34,7 +34,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -136,7 +136,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar student"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Student</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -170,7 +170,7 @@
             <span>School year</span>
             <select id="gradeYearSelect" aria-label="School year" disabled></select>
           </label>
-          <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Grading period"></div>
+          <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Grading period" data-skeleton-kind="tabs" data-skeleton-label="Loading grading periods" data-skeleton-rows="3"></div>
         </div>
 
         <section class="panel grades-subject-panel" aria-labelledby="subjectGradesTitle">
@@ -183,7 +183,7 @@
               </div>
             </div>
           </div>
-          <div class="grade-subject-list" id="gradeSubjectList" aria-live="polite"></div>
+          <div class="grade-subject-list" id="gradeSubjectList" aria-live="polite" data-skeleton-kind="list" data-skeleton-label="Loading published grades" data-skeleton-rows="3"></div>
         </section>
       </div>
 
@@ -398,8 +398,7 @@
       updateGradeTabOrientation();
       wideGradeLayout.addEventListener('change', updateGradeTabOrientation);
       document.getElementById('gradeYearSelect').addEventListener('change', event => selectAcademicYear(event.target.value));
-      list.textContent = 'Loading published grades...';
-      list.setAttribute('role', 'status');
+      list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading published grades', rows: 3 });
 
       try {
         await loadStudentGradesFromApi();

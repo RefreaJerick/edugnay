@@ -207,6 +207,8 @@ async function getTeacherSectionSubject(connection, teacherId, sectionId, subjec
       sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId, sections.status
     FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id
       AND sections.school_id = section_teachers.school_id
+    INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+      AND subjects.school_id = section_teachers.school_id AND subjects.is_active = TRUE
     WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ?
       AND sections.status = 'active' LIMIT 1`,
     [teacherId, sectionId, subjectId]
@@ -216,7 +218,11 @@ async function getTeacherSectionSubject(connection, teacherId, sectionId, subjec
 
 async function getAssignmentForManagement(connection, user, assignmentId, lock = false) {
   if (!['school_admin', 'teacher'].includes(user.role)) return null;
-  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1${lock ? ' FOR UPDATE' : ''}`, [assignmentId, user.schoolId]);
+  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ?
+    AND ((assignments.shs_elective_class_id IS NOT NULL AND assignments.section_id IS NULL)
+      OR (assignments.shs_elective_class_id IS NULL AND assignments.section_id IS NOT NULL
+        AND assignments.subject_id IS NOT NULL AND subjects.is_active = TRUE))
+    LIMIT 1${lock ? ' FOR UPDATE' : ''}`, [assignmentId, user.schoolId]);
   const assignment = assignments[0];
   if (!assignment || (assignment.electiveClassId && process.env.SHS_SELECTION_ENABLED !== 'true')) return null;
   if (user.role === 'teacher') {
@@ -264,7 +270,9 @@ async function validateTermAndCategory(connection, section, subjectId, academicT
 async function listAssignments(req, res, next) {
   try {
     const database = getDatabase();
-    const where = ['assignments.school_id = ?'];
+    const where = ['assignments.school_id = ?', `((assignments.shs_elective_class_id IS NOT NULL AND assignments.section_id IS NULL)
+      OR (assignments.shs_elective_class_id IS NULL AND assignments.section_id IS NOT NULL
+        AND assignments.subject_id IS NOT NULL AND subjects.is_active = TRUE))`];
     const values = [req.user.schoolId];
     if (process.env.SHS_SELECTION_ENABLED !== 'true') where.push('assignments.shs_elective_class_id IS NULL');
     if (req.user.role === 'teacher') {
@@ -278,6 +286,19 @@ async function listAssignments(req, res, next) {
     }
     else if (req.user.role === 'student') {
       where.push("assignments.status = 'published'");
+      where.push(`(assignments.shs_elective_class_id IS NULL OR EXISTS (
+        SELECT 1 FROM shs_elective_classes period_class
+        JOIN shs_offerings period_offering ON period_offering.id = period_class.offering_id
+          AND period_offering.school_id = period_class.school_id
+        JOIN school_grade_levels period_grade ON period_grade.id = period_offering.grade_level_id
+          AND period_grade.school_id = period_offering.school_id
+        JOIN academic_terms period_term ON period_term.id = assignments.academic_term_id
+          AND period_term.school_id = assignments.school_id
+          AND period_term.academic_year_id = period_offering.academic_year_id
+          AND period_term.school_level_id = period_grade.school_level_id
+        WHERE period_class.id = assignments.shs_elective_class_id
+          AND period_class.school_id = assignments.school_id AND assignments.academic_term_id IS NOT NULL
+      ))`);
       where.push(`((assignments.shs_elective_class_id IS NULL AND EXISTS (
         SELECT 1 FROM section_students ss WHERE ss.school_id = assignments.school_id
           AND ss.section_id = assignments.section_id AND ss.student_user_id = ? AND ss.withdrawn_at IS NULL
@@ -294,6 +315,19 @@ async function listAssignments(req, res, next) {
       values.push(req.user.id);
     } else if (req.user.role === 'parent') {
       where.push("assignments.status = 'published'");
+      where.push(`(assignments.shs_elective_class_id IS NULL OR EXISTS (
+        SELECT 1 FROM shs_elective_classes period_class
+        JOIN shs_offerings period_offering ON period_offering.id = period_class.offering_id
+          AND period_offering.school_id = period_class.school_id
+        JOIN school_grade_levels period_grade ON period_grade.id = period_offering.grade_level_id
+          AND period_grade.school_id = period_offering.school_id
+        JOIN academic_terms period_term ON period_term.id = assignments.academic_term_id
+          AND period_term.school_id = assignments.school_id
+          AND period_term.academic_year_id = period_offering.academic_year_id
+          AND period_term.school_level_id = period_grade.school_level_id
+        WHERE period_class.id = assignments.shs_elective_class_id
+          AND period_class.school_id = assignments.school_id AND assignments.academic_term_id IS NOT NULL
+      ))`);
       where.push(`((assignments.shs_elective_class_id IS NULL AND EXISTS (
         SELECT 1 FROM section_students ss JOIN student_parent_links pl
           ON pl.school_id = ss.school_id AND pl.student_user_id = ss.student_user_id
@@ -320,6 +354,30 @@ async function listAssignments(req, res, next) {
     }
     const [assignments] = await database.execute(`${assignmentSelect()} WHERE ${where.join(' AND ')} ORDER BY assignments.due_at IS NULL, assignments.due_at, assignments.created_at DESC`, values);
     let formatted = assignments.map(formatAssignment);
+    if (req.user.role === 'student' && formatted.length) {
+      const assignmentIds = formatted.map(item => Number(item.id));
+      const placeholders = assignmentIds.map(() => '?').join(', ');
+      const [submissionRows] = await database.execute(
+        `SELECT assignment_id AS assignmentId, submission_status AS savedStatus,
+          file_path AS filePath, DATE_FORMAT(submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+         FROM assignment_submissions WHERE school_id = ? AND student_user_id = ?
+           AND assignment_id IN (${placeholders})`,
+        [req.user.schoolId, req.user.id, ...assignmentIds]
+      );
+      const submissionsByAssignment = new Map(submissionRows.map(row => [String(row.assignmentId), row]));
+      const currentDate = getSchoolCurrentDate();
+      formatted = formatted.map(item => {
+        const submission = submissionsByAssignment.get(String(item.id)) || {};
+        const submissionStatus = parentSubmissionStatus({
+          savedStatus: submission.savedStatus,
+          filePath: submission.filePath,
+          onlineSubmissionEnabled: item.onlineSubmissionEnabled,
+          dueDate: item.dueAt ? String(item.dueAt).slice(0, 10) : null
+        }, currentDate);
+        return { ...item, submissionStatus,
+          submittedAt: submissionStatus === 'submitted' ? submission.submittedAt || null : null };
+      });
+    }
     if (req.user.role === 'student' && process.env.SHS_SELECTION_ENABLED === 'true') {
       const electiveIds = [...new Set(formatted.filter(item => item.electiveClassId).map(item => Number(item.electiveClassId)))];
       if (electiveIds.length) {
@@ -368,6 +426,7 @@ async function getPreviousSectionWork(database, schoolId, studentId, currentDate
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
     INNER JOIN academic_terms ON academic_terms.id = assignments.academic_term_id
     INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+      AND subjects.is_active = TRUE
     INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id
     WHERE assignment_submissions.school_id = ? AND assignment_submissions.student_user_id = ?
         AND assignments.status = 'published'
@@ -436,6 +495,7 @@ async function getParentChildAssignments(req, res, next) {
         AND section_students.school_id = assignments.school_id
         AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL
       INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+        AND subjects.is_active = TRUE
       INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id
       LEFT JOIN assignment_submissions ON assignment_submissions.assignment_id = assignments.id
         AND assignment_submissions.school_id = assignments.school_id
@@ -462,6 +522,9 @@ async function getParentChildAssignments(req, res, next) {
          JOIN shs_elective_classes ec ON ec.id = a.shs_elective_class_id AND ec.school_id = a.school_id
          JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
          JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
+         JOIN school_grade_levels gl ON gl.id = o.grade_level_id AND gl.school_id = o.school_id
+         JOIN academic_terms term ON term.id = a.academic_term_id AND term.school_id = a.school_id
+           AND term.academic_year_id = o.academic_year_id AND term.school_level_id = gl.school_level_id
          JOIN users t ON t.id = ec.teacher_user_id AND t.school_id = ec.school_id
          LEFT JOIN assignment_submissions sub ON sub.school_id = a.school_id
            AND sub.assignment_id = a.id AND sub.student_user_id = ?
@@ -522,6 +585,7 @@ async function getParentAssignmentActivity(req, res, next) {
       INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
       INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+        AND subjects.is_active = TRUE
       INNER JOIN section_students ON section_students.section_id = assignments.section_id
         AND section_students.school_id = assignments.school_id
         AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL
@@ -550,6 +614,9 @@ async function getParentAssignmentActivity(req, res, next) {
          FROM assignments a JOIN shs_elective_classes ec ON ec.id = a.shs_elective_class_id AND ec.school_id = a.school_id
          JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
          JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id AND y.status = 'active'
+         JOIN school_grade_levels gl ON gl.id = o.grade_level_id AND gl.school_id = o.school_id
+         JOIN academic_terms term ON term.id = a.academic_term_id AND term.school_id = a.school_id
+           AND term.academic_year_id = o.academic_year_id AND term.school_level_id = gl.school_level_id
          JOIN shs_elective_class_students em ON em.school_id = a.school_id
            AND em.elective_class_id = ec.id AND em.student_user_id = ?
            AND (em.withdrawn_at IS NULL OR a.created_at <= em.withdrawn_at)
@@ -959,6 +1026,22 @@ async function getStudentAssignment(connection, schoolId, studentId, assignmentI
   if (electiveCondition) values.push(studentId);
   const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ?
     AND assignments.school_id = ? AND assignments.status = 'published'
+    AND ((assignments.shs_elective_class_id IS NOT NULL AND assignments.section_id IS NULL)
+      OR (assignments.shs_elective_class_id IS NULL AND assignments.section_id IS NOT NULL
+        AND assignments.subject_id IS NOT NULL AND subjects.is_active = TRUE))
+    AND (assignments.shs_elective_class_id IS NULL OR EXISTS (
+      SELECT 1 FROM shs_elective_classes period_class
+      JOIN shs_offerings period_offering ON period_offering.id = period_class.offering_id
+        AND period_offering.school_id = period_class.school_id
+      JOIN school_grade_levels period_grade ON period_grade.id = period_offering.grade_level_id
+        AND period_grade.school_id = period_offering.school_id
+      JOIN academic_terms period_term ON period_term.id = assignments.academic_term_id
+        AND period_term.school_id = assignments.school_id
+        AND period_term.academic_year_id = period_offering.academic_year_id
+        AND period_term.school_level_id = period_grade.school_level_id
+      WHERE period_class.id = assignments.shs_elective_class_id
+        AND period_class.school_id = assignments.school_id AND assignments.academic_term_id IS NOT NULL
+    ))
     AND (EXISTS (SELECT 1 FROM section_students WHERE section_students.school_id = assignments.school_id
       AND section_students.section_id = assignments.section_id AND section_students.student_user_id = ?
       AND section_students.withdrawn_at IS NULL) ${electiveCondition}) LIMIT 1`, values);
@@ -972,6 +1055,11 @@ async function createElectiveAssignment(req, res, next) {
     await connection.beginTransaction();
     const electiveClass = await assertElectiveTeacher(connection, req.user,
       parseId(req.params.classId, 'elective class ID'), { write: true });
+    const [activeTerms] = await connection.execute(
+      `SELECT id FROM academic_terms WHERE school_id = ? AND academic_year_id = ?
+        AND school_level_id = ? AND status = 'active' ORDER BY sequence_number`,
+      [electiveClass.schoolId, electiveClass.academicYearId, electiveClass.schoolLevelId]);
+    if (activeTerms.length !== 1) throw createError('This class needs exactly one active grading period before assignments can be created.', 409);
     if (req.body.maxScore !== undefined && req.body.maxScore !== null && req.body.maxScore !== '')
       throw createError('Elective assignments cannot be graded in this phase.', 409);
     if (req.body.gradingCategoryId || req.body.subjectGradingComponentId || req.body.subjectGradingExamPartId || req.body.gradingItemId)
@@ -983,10 +1071,10 @@ async function createElectiveAssignment(req, res, next) {
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const [result] = await connection.execute(
-      `INSERT INTO assignments (school_id, shs_elective_class_id, teacher_user_id, title, description,
+      `INSERT INTO assignments (school_id, shs_elective_class_id, academic_term_id, teacher_user_id, title, description,
         due_at, max_score, online_submission_enabled, status)
-       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-      [electiveClass.schoolId, electiveClass.id, req.user.id, title, description, dueAt, onlineSubmissionEnabled, status]);
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+      [electiveClass.schoolId, electiveClass.id, activeTerms[0].id, req.user.id, title, description, dueAt, onlineSubmissionEnabled, status]);
     if (req.body.grade) await createLinkedAssignmentItem(connection, req, electiveClass.id, result.insertId,
       { ...req.body.grade, title });
     const [rows] = await connection.execute(
@@ -1118,6 +1206,18 @@ async function downloadOwnHistoricalSubmission(req, res, next) {
           WHERE em.school_id = assignments.school_id AND em.elective_class_id = assignments.shs_elective_class_id
             AND em.student_user_id = assignment_submissions.student_user_id
             AND (em.withdrawn_at IS NULL OR assignments.created_at <= em.withdrawn_at)
+        ) AND EXISTS (
+          SELECT 1 FROM shs_elective_classes period_class
+          JOIN shs_offerings period_offering ON period_offering.id = period_class.offering_id
+            AND period_offering.school_id = period_class.school_id
+          JOIN school_grade_levels period_grade ON period_grade.id = period_offering.grade_level_id
+            AND period_grade.school_id = period_offering.school_id
+          JOIN academic_terms period_term ON period_term.id = assignments.academic_term_id
+            AND period_term.school_id = assignments.school_id
+            AND period_term.academic_year_id = period_offering.academic_year_id
+            AND period_term.school_level_id = period_grade.school_level_id
+          WHERE period_class.id = assignments.shs_elective_class_id
+            AND period_class.school_id = assignments.school_id AND assignments.academic_term_id IS NOT NULL
         ))` : '';
     const [rows] = await getDatabase().execute(
       `SELECT assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath
@@ -1127,6 +1227,12 @@ async function downloadOwnHistoricalSubmission(req, res, next) {
       WHERE assignment_submissions.assignment_id = ? AND assignment_submissions.school_id = ?
         AND assignment_submissions.student_user_id = ?
         AND assignments.status = 'published'
+        AND ((assignments.shs_elective_class_id IS NOT NULL AND assignments.section_id IS NULL)
+          OR (assignments.shs_elective_class_id IS NULL AND assignments.section_id IS NOT NULL
+            AND assignments.subject_id IS NOT NULL AND EXISTS (
+              SELECT 1 FROM subjects WHERE subjects.id = assignments.subject_id
+                AND subjects.school_id = assignments.school_id AND subjects.is_active = TRUE
+            )))
         AND ((EXISTS (SELECT 1 FROM section_students
           WHERE section_students.school_id = assignments.school_id
             AND section_students.section_id = assignments.section_id

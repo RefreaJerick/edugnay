@@ -5,13 +5,13 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>My Schedules | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css"><link rel="stylesheet" href="../../assets/css/modal-system.css"><link rel="stylesheet" href="../../assets/css/timetables.css">
-  <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script><script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js"></script><script src="../../assets/js/student/shell.js"></script><script src="../../assets/js/timetable-export.js"></script><script src="../../assets/js/timetables.js"></script>
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2"><link rel="stylesheet" href="../../assets/css/modal-system.css"><link rel="stylesheet" href="../../assets/css/timetables.css">
+  <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script><script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js?v=11"></script><script src="../../assets/js/student/shell.js"></script><script src="../../assets/js/timetable-export.js"></script><script src="../../assets/js/timetables.js?v=20261030-skeleton-regions"></script>
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 <body data-page-title="My Schedules">
 <div class="shell"><div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
-  <aside class="sidebar"><div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo"></div><div><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub">School portal</div></div></div>
+  <aside class="sidebar"><div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo"></div><div><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub"></div></div></div>
     <div class="nav-section"><div class="nav-section-label">Main</div>
       <a href="edugnay-student-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
       <a href="edugnay-student-schedules.html" class="nav-item active"><div class="nav-icon"><i data-lucide="calendar-days"></i></div><span class="nav-label">My Schedules</span></a>
@@ -30,7 +30,7 @@
       <div class="tb-theme" data-theme-control>
         <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
-        <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar student"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Student</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-student-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
+        <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar student"></div><div class="tb-profile-info"><div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div><div class="tb-profile-role">Student</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-student-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
     </div></header>
   <script>restoreProfileChip();</script>
   <main class="main"><div class="timetable-page" id="timetable-page" data-role="student">

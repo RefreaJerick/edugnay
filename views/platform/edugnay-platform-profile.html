@@ -9,13 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <link rel="stylesheet" href="../../assets/css/platform/profile.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=10"></script>
   <script src="../../assets/js/platform/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
@@ -28,7 +28,7 @@
         <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="Academix" /></div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub" data-platform-brand>PLATFORM ADMINISTRATION</div>
+          <div class="brand-sub" data-platform-brand >PLATFORM ADMINISTRATION</div>
         </div>
       </div>
 
@@ -75,7 +75,7 @@
           <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
-          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Administrator</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div><div class="tb-profile-role">Administrator</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
           <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-platform-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a></div>
         </div>
       </div>
@@ -107,8 +107,8 @@
           </div>
         </div>
         <div class="profile-header-info">
-          <div class="profile-header-name" id="profile-header-name">Loading profile...</div>
-          <div class="profile-header-meta"><span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i><span class="profile-email-value" id="profileEmail"></span></span></div>
+          <div class="profile-header-name" id="profile-header-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
+          <div class="profile-header-meta"><span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i><span class="profile-email-value" id="profileEmail" data-skeleton-kind="line" data-skeleton-label="Loading email"></span></span></div>
         </div>
       </section>
 

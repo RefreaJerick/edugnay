@@ -10,12 +10,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/student/assignments.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
@@ -34,7 +34,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -136,7 +136,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar student"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Student</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -387,8 +387,11 @@
     }
 
     function getAssignmentsForCurrentView() {
-      return getAssignmentsInSelectedPeriod().filter(function (item) { return !isElectiveAssignment(item); })
-        .concat(ASSIGNMENTS.filter(isElectiveAssignment));
+      return getAssignmentsInSelectedPeriod();
+    }
+
+    function assignmentSubjectKey(item) {
+      return isElectiveAssignment(item) ? 'elective:' + String(item.electiveClassId) : 'subject:' + String(item.subjectId);
     }
 
     async function loadBackendAssignments() {
@@ -419,7 +422,7 @@
           });
           const submitted = submission?.status === 'submitted' && submission.fileName;
           const pastDue = assignment.dueDate && assignment.dueDate < today;
-          return { ...assignment, status: submitted ? 'submitted' : pastDue ? 'not_submitted' : 'pending' };
+          return { ...assignment, status: assignment.submissionStatus || (submitted ? 'submitted' : pastDue ? 'not_submitted' : 'pending') };
         });
         setAssignmentPeriods(terms);
         backendAssignmentsError = '';
@@ -484,7 +487,7 @@
       const subject = document.getElementById('assignmentSubjectFilter').value;
       return getAssignmentsForCurrentView().filter(function (item) {
         const matchesFilter = currentFilter === 'all' || item.status === currentFilter;
-        const matchesSubject = subject === 'all' || item.subject === subject;
+        const matchesSubject = subject === 'all' || assignmentSubjectKey(item) === subject;
         const matchesSearch = !search || (item.title + ' ' + item.subject + ' ' + item.teacher).toLowerCase().includes(search);
         return matchesFilter && matchesSubject && matchesSearch;
       });
@@ -494,7 +497,7 @@
       renderAssignmentHistory();
       const list = document.getElementById('assignmentList');
       if (BACKEND_ASSIGNMENTS_ENABLED && backendAssignmentsLoading) {
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Reading assignments from your classes.' });
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading assignments', rows: 4 });
         lucide.createIcons();
         return;
       }
@@ -593,14 +596,20 @@
     }
 
     function populateSubjectFilter() {
-      const subjects = [];
+      const subjects = new Map();
       getAssignmentsForCurrentView().forEach(function (item) {
-        if (!subjects.includes(item.subject)) subjects.push(item.subject);
+        const key = assignmentSubjectKey(item);
+        if (!subjects.has(key)) {
+          const label = isElectiveAssignment(item)
+            ? [item.subjectName || item.subject, item.className].filter(Boolean).join(' · ')
+            : item.subjectName || item.subject;
+          subjects.set(key, label || 'Subject');
+        }
       });
       document.getElementById('assignmentSubjectFilter').innerHTML =
         '<option value="all">All subjects</option>' +
-        subjects.map(function (subject) {
-          return '<option value="' + escapeHtml(subject) + '">' + escapeHtml(subject) + '</option>';
+        Array.from(subjects.entries()).map(function ([key, label]) {
+          return '<option value="' + escapeHtml(key) + '">' + escapeHtml(label) + '</option>';
         }).join('');
     }
 

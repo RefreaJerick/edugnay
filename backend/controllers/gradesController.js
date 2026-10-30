@@ -142,12 +142,12 @@ async function loadConfirmedElectiveClasses(database, schoolId, studentId) {
 }
 
 async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId, schoolId) {
-  const [rows] = await connection.execute(`SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = sections.school_id INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id AND teachers.school_id = sections.school_id AND teachers.role = 'teacher' AND teachers.account_status = 'active' WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ? AND sections.school_id = ? AND sections.status = 'active' LIMIT 1`, [teacherId, sectionId, subjectId, schoolId]);
+  const [rows] = await connection.execute(`SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id AND teachers.school_id = sections.school_id AND teachers.role = 'teacher' AND teachers.account_status = 'active' WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ? AND sections.school_id = ? AND sections.status = 'active' LIMIT 1`, [teacherId, sectionId, subjectId, schoolId]);
   return rows[0] || null;
 }
 
 async function getManagedGradingItem(connection, user, gradingItemId) {
-  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
+  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN subjects ON subjects.id = grading_items.subject_id AND subjects.school_id = grading_items.school_id AND subjects.is_active = TRUE INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
   const item = rows[0];
   if (!item || (user.role === 'teacher' && Number(item.teacherUserId) !== Number(user.id))) return null;
   if (item.academicYearStatus === 'archived') throw createError('Records from an archived school year are read-only.', 409);
@@ -189,7 +189,7 @@ async function assertGradeWriteAccess(connection, user, scope) {
        INNER JOIN sections ON sections.id = section_teachers.section_id
          AND sections.school_id = ? AND sections.status = 'active'
        INNER JOIN subjects ON subjects.id = section_teachers.subject_id
-         AND subjects.school_id = sections.school_id
+         AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
        INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id
          AND teachers.school_id = sections.school_id AND teachers.role = 'teacher'
          AND teachers.account_status = 'active'
@@ -293,7 +293,7 @@ async function listGradingItems(req, res, next) {
       values.push(req.user.id);
     } else if (req.user.role !== 'school_admin') throw createError('You do not have access to grading items.', 403);
     if (req.query.sectionId) { where.push('grading_items.section_id = ?'); values.push(parseId(req.query.sectionId, 'section ID')); }
-    const [items] = await getDatabase().execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, grading_items.recorded_at AS recordedAt, subjects.name AS subjectName, academic_terms.name AS academicTermName, grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName, subject_grading_exam_parts.code AS subjectGradingExamPartCode, subject_grading_exam_parts.name AS subjectGradingExamPartName, journal_prompts.id AS journalPromptId, school_settings.journal_subject_id AS currentJournalSubjectId FROM grading_items INNER JOIN sections ON sections.id=grading_items.section_id INNER JOIN subjects ON subjects.id=grading_items.subject_id INNER JOIN academic_terms ON academic_terms.id=grading_items.academic_term_id LEFT JOIN grading_categories ON grading_categories.id=grading_items.grading_category_id LEFT JOIN subject_grading_components ON subject_grading_components.id=grading_items.subject_grading_component_id AND subject_grading_components.school_id=grading_items.school_id LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id=grading_items.subject_grading_exam_part_id AND subject_grading_exam_parts.school_id=grading_items.school_id LEFT JOIN journal_prompts ON journal_prompts.grading_item_id=grading_items.id AND journal_prompts.school_id=grading_items.school_id LEFT JOIN school_settings ON school_settings.school_id=grading_items.school_id WHERE ${where.join(' AND ')} ORDER BY grading_items.recorded_at DESC`, values);
+    const [items] = await getDatabase().execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, grading_items.recorded_at AS recordedAt, subjects.name AS subjectName, academic_terms.name AS academicTermName, grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName, subject_grading_exam_parts.code AS subjectGradingExamPartCode, subject_grading_exam_parts.name AS subjectGradingExamPartName, journal_prompts.id AS journalPromptId, school_settings.journal_subject_id AS currentJournalSubjectId FROM grading_items INNER JOIN sections ON sections.id=grading_items.section_id INNER JOIN subjects ON subjects.id=grading_items.subject_id AND subjects.is_active = TRUE INNER JOIN academic_terms ON academic_terms.id=grading_items.academic_term_id LEFT JOIN grading_categories ON grading_categories.id=grading_items.grading_category_id LEFT JOIN subject_grading_components ON subject_grading_components.id=grading_items.subject_grading_component_id AND subject_grading_components.school_id=grading_items.school_id LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id=grading_items.subject_grading_exam_part_id AND subject_grading_exam_parts.school_id=grading_items.school_id LEFT JOIN journal_prompts ON journal_prompts.grading_item_id=grading_items.id AND journal_prompts.school_id=grading_items.school_id LEFT JOIN school_settings ON school_settings.school_id=grading_items.school_id WHERE ${where.join(' AND ')} ORDER BY grading_items.recorded_at DESC`, values);
     res.json({ gradingItems: items.map(item => ({ ...item, maxScore: Number(item.maxScore), usedInPublishedGrades: Boolean(item.usedInPublishedGrades), subjectGradingComponentId: item.subjectGradingComponentId == null ? null : Number(item.subjectGradingComponentId), subjectGradingExamPartId: item.subjectGradingExamPartId == null ? null : Number(item.subjectGradingExamPartId) })) });
   } catch (error) { next(error); }
 }
@@ -441,7 +441,7 @@ async function listStudentScores(req, res, next) {
     if (req.query.studentId) {
       where.push('student_scores.student_user_id = ?'); values.push(parseId(req.query.studentId, 'student ID'));
     }
-    const [scores] = await getDatabase().execute(`SELECT student_scores.id, student_scores.grading_item_id AS gradingItemId, student_scores.student_user_id AS studentId, students.display_name AS studentName, student_scores.score, student_scores.remarks, student_scores.recorded_at AS recordedAt, grading_items.title AS gradingItemTitle, grading_items.max_score AS maxScore FROM student_scores INNER JOIN grading_items ON grading_items.id=student_scores.grading_item_id INNER JOIN sections ON sections.id=grading_items.section_id INNER JOIN users AS students ON students.id=student_scores.student_user_id WHERE ${where.join(' AND ')} ORDER BY students.last_name, students.first_name, grading_items.recorded_at DESC`, values);
+    const [scores] = await getDatabase().execute(`SELECT student_scores.id, student_scores.grading_item_id AS gradingItemId, student_scores.student_user_id AS studentId, students.display_name AS studentName, student_scores.score, student_scores.remarks, student_scores.recorded_at AS recordedAt, grading_items.title AS gradingItemTitle, grading_items.max_score AS maxScore FROM student_scores INNER JOIN grading_items ON grading_items.id=student_scores.grading_item_id INNER JOIN sections ON sections.id=grading_items.section_id INNER JOIN subjects ON subjects.id=grading_items.subject_id AND subjects.school_id=grading_items.school_id AND subjects.is_active=TRUE INNER JOIN users AS students ON students.id=student_scores.student_user_id WHERE ${where.join(' AND ')} ORDER BY students.last_name, students.first_name, grading_items.recorded_at DESC`, values);
     res.json({ studentScores: scores.map(score => ({ ...score, score: score.score === null ? null : Number(score.score), maxScore: Number(score.maxScore) })) });
   } catch (error) { next(error); }
 }
@@ -643,7 +643,7 @@ async function getFinalGradesOverview(req, res, next) {
           AND sections.school_id = ?
         INNER JOIN section_teachers ON section_teachers.section_id = sections.id
         INNER JOIN subjects ON subjects.id = section_teachers.subject_id
-          AND subjects.school_id = sections.school_id
+          AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
         WHERE section_students.student_user_id = ? AND section_students.school_id = ?
           AND sections.id IN (${sectionPlaceholders})
         ORDER BY subjectName`,
@@ -676,7 +676,7 @@ async function getFinalGradesOverview(req, res, next) {
       INNER JOIN sections ON sections.id = published_final_grades.section_id
         AND sections.school_id = published_final_grades.school_id
       INNER JOIN subjects ON subjects.id = published_final_grades.subject_id
-        AND subjects.school_id = published_final_grades.school_id
+        AND subjects.school_id = published_final_grades.school_id AND subjects.is_active = TRUE
       INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
         AND academic_terms.academic_year_id = sections.academic_year_id
         AND academic_terms.school_level_id = sections.school_level_id
@@ -880,7 +880,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     FROM section_teachers
     INNER JOIN sections ON sections.id = section_teachers.section_id
     INNER JOIN subjects ON subjects.id = section_teachers.subject_id
-      AND subjects.school_id = sections.school_id
+      AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
       AND (subjects.school_level_id IS NULL OR subjects.school_level_id = sections.school_level_id)
       AND EXISTS (
         SELECT 1 FROM subject_grade_scopes AS subject_scopes
@@ -1471,7 +1471,7 @@ async function listPublishedFinalGrades(req, res, next) {
       INNER JOIN school_levels ON school_levels.id = sections.school_level_id
         AND school_levels.school_id = sections.school_id
       INNER JOIN subjects ON subjects.id = published_final_grades.subject_id
-        AND subjects.school_id = published_final_grades.school_id
+        AND subjects.school_id = published_final_grades.school_id AND subjects.is_active = TRUE
       INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
         AND academic_terms.academic_year_id = sections.academic_year_id
         AND academic_terms.school_level_id = sections.school_level_id

@@ -75,7 +75,7 @@ const REQUEST_JOINS = `
   INNER JOIN sections ON sections.id = grading_period_reopen_requests.section_id
     AND sections.school_id = grading_period_reopen_requests.school_id
   INNER JOIN subjects ON subjects.id = grading_period_reopen_requests.subject_id
-    AND subjects.school_id = grading_period_reopen_requests.school_id
+    AND subjects.school_id = grading_period_reopen_requests.school_id AND subjects.is_active = TRUE
   INNER JOIN academic_terms ON academic_terms.id = grading_period_reopen_requests.academic_term_id
     AND academic_terms.academic_year_id = sections.academic_year_id
     AND academic_terms.school_level_id = sections.school_level_id`;
@@ -156,6 +156,7 @@ async function getScope(connection, schoolId, sectionId, subjectId, academicTerm
      INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
        AND academic_years.school_id = sections.school_id
      INNER JOIN subjects ON subjects.id = ? AND subjects.school_id = sections.school_id
+       AND subjects.is_active = TRUE
      INNER JOIN academic_terms ON academic_terms.academic_year_id = sections.academic_year_id
        AND academic_terms.school_level_id = sections.school_level_id
        AND academic_terms.id = ?
@@ -171,7 +172,7 @@ async function requireTeacherAssignment(connection, teacherId, sectionId, subjec
      INNER JOIN sections ON sections.id = section_teachers.section_id
        AND sections.school_id = ? AND sections.status = 'active'
      INNER JOIN subjects ON subjects.id = section_teachers.subject_id
-       AND subjects.school_id = sections.school_id
+       AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
      INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id
        AND teachers.school_id = sections.school_id AND teachers.role = 'teacher'
        AND teachers.account_status = 'active'

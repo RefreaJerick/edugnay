@@ -4,8 +4,12 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
+const databaseModule = require('../config/database');
+let activeParentDatabase;
+databaseModule.getDatabase = () => activeParentDatabase;
 const { releaseConfirmedReport } = require('../controllers/narrativeReportReviewController');
-const { linkedChild, readPublicReports } = require('../controllers/narrativeReportParentController');
+const { linkedChild, listChildReports, readPublicReports } = require('../controllers/narrativeReportParentController');
+const { currentReportWeekRange } = require('../utils/reportWeekSettings');
 
 function releaseRequest(reportId = '101') {
   return {
@@ -162,6 +166,39 @@ test('parent cannot read an unlinked child and report output is limited to relea
   assert.deepEqual(directValues, [1, 44, 900]);
 });
 
+test('parent report list includes the school-configured current report week', async () => {
+  const settings = { weekStartDay: 5, weekEndDay: 2 };
+  const reportRows = [{
+    id: 101, studentId: 4, weekStartDate: '2026-10-23', weekEndDate: '2026-10-27',
+    summary: 'A released report.', parentActions: '[]', versionNumber: 1,
+    releasedAt: '2026-10-28T10:00:00', adviserName: 'Adviser'
+  }];
+  activeParentDatabase = {
+    async execute(sql) {
+      if (sql.includes('FROM student_parent_links AS links')) {
+        return [[{ studentId: 4, displayName: 'Linked Learner', reportsEnabled: 1 }]];
+      }
+      if (sql.includes('FROM narrative_reports AS reports')) return [reportRows];
+      if (sql.includes('FROM school_settings')) return [[settings]];
+      throw new Error(`Unexpected query: ${sql}`);
+    }
+  };
+  const response = { headers: {} };
+  try {
+    await listChildReports({ user: { id: 8, schoolId: 2 }, params: { studentId: '4' } }, {
+      set(name, value) { response.headers[name] = value; },
+      json(body) { response.body = body; }
+    }, error => { response.error = error; });
+  } finally {
+    activeParentDatabase = null;
+  }
+  assert.equal(response.error, undefined);
+  assert.equal(response.body.child.displayName, 'Linked Learner');
+  assert.equal(response.body.reports.length, 1);
+  assert.deepEqual(response.body.currentReportWeek, currentReportWeekRange(settings));
+  assert.equal(response.headers['Cache-Control'], 'no-store');
+});
+
 test('release flag defaults off and parent routes require parent authorization', () => {
   const root = path.join(__dirname, '../..');
   const envExample = fs.readFileSync(path.join(__dirname, '../.env.example'), 'utf8');
@@ -186,13 +223,13 @@ test('release flag defaults off and parent routes require parent authorization',
 
 test('parent page features the latest report and shows every past report without exposing private fields', async () => {
   const reports = [
-    { id: '101', studentId: '4', weekStartDate: '2026-10-12', weekEndDate: '2026-10-17',
+    { id: '101', studentId: '4', weekStartDate: '2026-10-26', weekEndDate: '2026-10-31',
       summary: 'Approved summary for Sam: latest approved summary. In Values Education, Sam scored 6/10, 7/10, and 5/10 this week.', parentActions: [], adviserName: 'Ms. Adviser',
-      releasedAt: '2026-10-18T10:00:00', correctedAt: '2026-10-18T10:00:00', versionNumber: 2,
+      releasedAt: '2026-10-30T10:00:00', correctedAt: '2026-10-30T10:00:00', versionNumber: 2,
       teacherNote: 'PRIVATE NOTE' },
-    { id: '99', studentId: '4', weekStartDate: '2025-06-02', weekEndDate: '2025-06-07',
+    { id: '99', studentId: '4', weekStartDate: '2026-10-19', weekEndDate: '2026-10-24',
       summary: 'Approved summary for Lee:  older approved summary', parentActions: ['Read together'], adviserName: 'Mr. Former Adviser',
-      releasedAt: '2025-06-08T09:00:00', followUpSuggestion: 'PRIVATE FOLLOW-UP' },
+      releasedAt: '2026-10-30T09:00:00', followUpSuggestion: 'PRIVATE FOLLOW-UP' },
     { id: '98', studentId: '4', weekStartDate: '2025-05-26', weekEndDate: '2025-05-31',
       summary: 'ordinary report summary', parentActions: [], adviserName: 'Mr. Former Adviser',
       releasedAt: '2025-06-01T09:00:00' }
@@ -232,21 +269,25 @@ test('parent page features the latest report and shows every past report without
       async getParentChildren() { return [
         { studentId: '4', displayName: 'Lee Learner' },
         { studentId: '5', displayName: 'Sam Learner' },
-        { studentId: '6', displayName: 'One Report Learner' }
+        { studentId: '6', displayName: 'One Report Learner' },
+        { studentId: '7', displayName: 'Older Report Learner' }
       ]; },
       async request(url) {
         if (url.endsWith('/99')) return { report: reports[1] };
         if (/\/\d+\/\d+$/.test(url)) throw Object.assign(new Error('Not found'), { status: 404 });
-        if (url.endsWith('/5')) return { reports: [] };
-        if (url.endsWith('/6')) return { reports: [{ ...reports[0], versionNumber: 1, correctedAt: null }] };
-        return { reports };
+        const currentReportWeek = { startDate: '2026-10-26', endDate: '2026-10-31' };
+        if (url.endsWith('/5')) return { reports: [], currentReportWeek };
+        if (url.endsWith('/6')) return { reports: [{ ...reports[0], versionNumber: 1, correctedAt: null }], currentReportWeek };
+        if (url.endsWith('/7')) return { reports: reports.slice(1), currentReportWeek };
+        return { reports, currentReportWeek };
       }
     },
     EDUGNAY_CONFIG: {
       escapeHtml(value) { return value.replace(/[&<>"']/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       })[char]); },
-      renderPanelEmptyState({ title }) { return `<div class="panel-empty-state">${title}</div>`; }
+      renderPanelEmptyState({ title }) { return `<div class="panel-empty-state">${title}</div>`; },
+      renderPanelSkeleton({ label }) { return `<div class="panel-skeleton">${label}</div>`; }
     },
     EDUGNAY_AVATAR: { html() { return '<span class="child-avatar"></span>'; }, hydrate() {} },
     lucide: { createIcons() {} }
@@ -259,7 +300,7 @@ test('parent page features the latest report and shows every past report without
   await listeners.DOMContentLoaded();
   assert.match(get('latest-report').innerHTML, /Latest approved summary/);
   assert.match(get('latest-report').innerHTML, /Values Education.*6\/10, 7\/10, and 5\/10/);
-  assert.match(get('latest-report').innerHTML, /Updated on October 18, 2026/);
+  assert.match(get('latest-report').innerHTML, /Updated on October 30, 2026/);
   assert.match(get('latest-report').innerHTML, /class="lr-head"[\s\S]*?class="report-correction-notice"[\s\S]*?<\/div><span class="lr-quote-mark"/);
   assert.doesNotMatch(get('latest-report').innerHTML, /Approved summary for Sam:/);
   assert.doesNotMatch(get('latest-report').innerHTML, /Older approved summary|PRIVATE NOTE/);
@@ -310,4 +351,10 @@ test('parent page features the latest report and shows every past report without
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(get('parent-reports-empty').hidden, true);
   assert.match(get('latest-report').innerHTML, /Latest approved summary/);
+  get('parentReportChildSwitcher').listeners.click({ target: { closest: () => ({ dataset: { studentId: '7' } }) } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(get('parent-reports-content').hidden, false);
+  assert.match(get('latest-report').innerHTML, /No report for this week/);
+  assert.match(get('parent-report-list').innerHTML, /Older approved summary/);
+  assert.equal((get('parent-report-list').innerHTML.match(/class="timeline-entry"/g) || []).length, 2);
 });

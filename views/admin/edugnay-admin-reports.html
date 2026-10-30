@@ -12,11 +12,11 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/admin/reports.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -36,7 +36,7 @@
         </div>
         <div>
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -150,7 +150,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar admin"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Admin</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -192,7 +192,7 @@
       </div>
 
       <!-- Stat cards: rendered from REPORTS_DATA -->
-      <div class="stat-grid" id="report-stat-grid"></div>
+      <div class="stat-grid" id="report-stat-grid" data-skeleton-kind="stat-cards" data-skeleton-label="Loading report summaries" data-skeleton-rows="2"></div>
 
       <!-- Academic Performance + Attendance -->
       <div class="section-title">
@@ -290,7 +290,7 @@
       return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
         .format(new Date(`${date}T00:00:00Z`));
     };
-    document.getElementById('school-release-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading report history', text: 'Released weekly reports are being loaded.' });
+    document.getElementById('school-release-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading report history', rows: 3 });
     document.getElementById('school-release-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'mouse-pointer-click', title: 'Select a report', text: 'Choose a released report to view its versions and correction history.' });
     window.lucide?.createIcons?.();
 
@@ -316,7 +316,7 @@
       document.querySelectorAll('#school-release-list [data-release-report-id]').forEach(button => {
         button.setAttribute('aria-pressed', String(button.dataset.releaseReportId === String(reportId)));
       });
-      detail.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading report history', text: 'Released versions and correction history are being loaded.' });
+      detail.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading report history', rows: 3 });
       window.lucide?.createIcons?.();
       try {
         const history = await window.EDUGNAY_API.request(`/reports/weekly-drafts/${encodeURIComponent(reportId)}/history`);
@@ -379,17 +379,20 @@
 
     function buildReportSummary(data = REPORTS_DATA) {
       const outcome = data.gradeOutcome;
-      const passingRate = reportsLoading ? 'Loading…' : gradeSummaryError ? 'Unavailable' : outcome?.total ? `${Math.round((outcome.passing / outcome.total) * 100)}%` : '—';
-      const attendanceRate = reportsLoading ? 'Loading…' : attendanceSummaryError ? 'Unavailable' : data.attendanceRate == null ? '—' : `${data.attendanceRate}%`;
+      const passingRate = reportsLoading ? '' : gradeSummaryError ? 'Unavailable' : outcome?.total ? `${Math.round((outcome.passing / outcome.total) * 100)}%` : '—';
+      const attendanceRate = reportsLoading ? '' : attendanceSummaryError ? 'Unavailable' : data.attendanceRate == null ? '—' : `${data.attendanceRate}%`;
       return [
-        { tone: 'green', icon: 'check-circle', value: passingRate, label: 'Published grades meeting threshold', sub: reportsLoading ? 'Loading school reports' : outcome ? `${outcome.passing} of ${outcome.total} published subject marks met the configured threshold` : 'No published subject grades for this school year' },
-        { tone: 'blue', icon: 'user-check', value: attendanceRate, label: 'Subject attendance rate', sub: reportsLoading ? 'Loading school reports' : attendanceSummaryError ? 'Attendance summary is unavailable' : `${Number(data.attendanceRecordCount) || 0} confirmed subject records` }
+        { tone: 'green', icon: 'check-circle', value: passingRate, label: 'Published grades meeting threshold', sub: reportsLoading ? '' : outcome ? `${outcome.passing} of ${outcome.total} published subject marks met the configured threshold` : 'No published subject grades for this school year' },
+        { tone: 'blue', icon: 'user-check', value: attendanceRate, label: 'Subject attendance rate', sub: reportsLoading ? '' : attendanceSummaryError ? 'Attendance summary is unavailable' : `${Number(data.attendanceRecordCount) || 0} confirmed subject records` }
       ];
     }
 
     function renderReportSummary(data = REPORTS_DATA) {
-      document.getElementById('report-stat-grid').innerHTML = buildReportSummary(data).map(card => `
-      <div class="stat-card ${window.EDUGNAY_CONFIG.escapeHtml(card.tone)}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(card.icon)}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${window.EDUGNAY_CONFIG.escapeHtml(card.value)}</div><div class="stat-card-label">${window.EDUGNAY_CONFIG.escapeHtml(card.label)}</div><div class="stat-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(card.sub)}</div></div>`).join('');
+      document.getElementById('report-stat-grid').innerHTML = buildReportSummary(data).map(card => {
+        const value = reportsLoading ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading report summary' }) : window.EDUGNAY_CONFIG.escapeHtml(card.value);
+        const sub = reportsLoading ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading report summary' }) : window.EDUGNAY_CONFIG.escapeHtml(card.sub);
+        return `<div class="stat-card ${window.EDUGNAY_CONFIG.escapeHtml(card.tone)}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(card.icon)}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${value}</div><div class="stat-card-label">${window.EDUGNAY_CONFIG.escapeHtml(card.label)}</div><div class="stat-card-sub">${sub}</div></div>`;
+      }).join('');
     }
 
     function renderSubjectPerformance(data = REPORTS_DATA) {
@@ -399,7 +402,7 @@
         return;
       }
       if (reportsLoading) {
-        chart.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school reports', text: 'Published grade data is being loaded.' });
+        chart.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'chart', label: 'Loading subject performance chart', rows: 4, columns: 6 });
         return;
       }
       const groups = Array.isArray(data.subjectPerformance) ? data.subjectPerformance : [];
@@ -419,9 +422,8 @@
         return;
       }
       if (reportsLoading) {
-        const loading = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school reports', text: 'Published grade data is being loaded.' });
-        donut.innerHTML = loading;
-        distributionElement.innerHTML = loading;
+        donut.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'donut', label: 'Loading grade outcomes', rows: 3 });
+        distributionElement.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'chart', label: 'Loading grade distribution', columns: 6 });
         return;
       }
       const outcome = data.gradeOutcome || {};
@@ -451,8 +453,9 @@
         return;
       }
       if (reportsLoading) {
-        const loading = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school reports', text: 'Confirmed subject attendance is being loaded.' });
-        [chart, donut, triggersElement].forEach(element => { element.innerHTML = loading; });
+        chart.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'chart', label: 'Loading attendance rates', columns: 6 });
+        donut.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'donut', label: 'Loading attendance breakdown', rows: 4 });
+        triggersElement.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading absence reasons', rows: 3 });
         return;
       }
       const byGrade = Array.isArray(data.attendanceByGrade) ? data.attendanceByGrade : [];
@@ -490,7 +493,7 @@
         return;
       }
       if (reportsLoading && !FLAGGED_STUDENTS_PREVIEW) {
-        panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading student indicators', text: 'Checking confirmed attendance and published grades.' });
+        panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading student indicators', rows: 3 });
         return;
       }
       const flagged = FLAGGED_STUDENTS_PREVIEW ? SAMPLE_FLAGGED_STUDENTS

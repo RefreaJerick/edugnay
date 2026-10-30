@@ -1218,6 +1218,244 @@ html.parent-nav-hide-reports .sidebar a[href*="edugnay-parent-reports.html"] {
 }
 
 
+/* Shared data-loading skeletons use the same theme surfaces as their panels. */
+.panel-skeleton {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  color: inherit;
+}
+
+.panel-skeleton-visual {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+}
+
+.panel-skeleton--cards,
+.panel-skeleton--stat-cards,
+.panel-skeleton--section-cards,
+.panel-skeleton--calendar,
+.panel-skeleton--cards .panel-skeleton-visual,
+.panel-skeleton--stat-cards .panel-skeleton-visual,
+.panel-skeleton--section-cards .panel-skeleton-visual,
+.panel-skeleton--calendar .panel-skeleton-visual {
+  display: contents;
+}
+
+.panel-skeleton-status {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.panel-skeleton-shape {
+  display: block;
+  min-width: 0;
+  height: 12px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(100deg, var(--gray-100) 30%, var(--theme-surface-soft) 50%, var(--gray-100) 70%);
+  background-size: 220% 100%;
+  animation: panel-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.panel-skeleton-title { height: 15px; width: 58%; }
+.panel-skeleton-short { width: 38%; }
+.panel-skeleton-icon { width: 34px; height: 34px; border-radius: var(--radius-sm); }
+
+.panel-skeleton--line {
+  display: inline-flex;
+  width: min(100%, 150px);
+  min-height: 12px;
+  vertical-align: middle;
+}
+
+.panel-skeleton--line .panel-skeleton-visual,
+.panel-skeleton--line .panel-skeleton-shape { height: 10px; }
+
+.panel-skeleton--tabs,
+.panel-skeleton--tabs .panel-skeleton-visual,
+.panel-skeleton--list,
+.panel-skeleton--list .panel-skeleton-visual { display: contents; }
+
+.panel-skeleton--tabs .panel-skeleton-tab {
+  display: grid;
+  min-height: 42px;
+  min-width: 92px;
+  align-content: center;
+  padding: 0 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-bg);
+}
+
+.panel-skeleton--tabs .panel-skeleton-tab.is-active {
+  background: var(--blue-xpale);
+  border-color: var(--blue-pale);
+}
+
+.panel-skeleton-tab-label { width: 78px; height: 12px; }
+
+.panel-skeleton--chart .panel-skeleton-visual {
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+  min-height: 220px;
+  padding: 18px;
+}
+
+.panel-skeleton-chart-axis {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 0 24px;
+}
+
+.panel-skeleton-chart-label { height: 8px; width: 28px; }
+
+.panel-skeleton-chart-bars {
+  display: flex;
+  height: 100%;
+  align-items: end;
+  justify-content: space-around;
+  gap: 14px;
+  padding: 4px 8px 24px;
+  border-bottom: 1px solid var(--panel-divider);
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(25% - 1px), var(--panel-divider) calc(25% - 1px), var(--panel-divider) 25%);
+}
+
+.panel-skeleton-chart-bar {
+  display: flex;
+  width: min(9%, 42px);
+  height: var(--panel-skeleton-bar-height, 60%);
+  align-items: end;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: var(--theme-surface-soft);
+}
+
+.panel-skeleton-chart-fill { width: 100%; height: 100%; border-radius: inherit; }
+
+.panel-skeleton--donut .panel-skeleton-visual {
+  min-height: 180px;
+  grid-template-columns: minmax(100px, 0.8fr) minmax(120px, 1fr);
+  align-items: center;
+  justify-items: center;
+  padding: 20px;
+}
+
+.panel-skeleton-donut-ring {
+  display: block;
+  width: min(126px, 100%);
+  aspect-ratio: 1;
+  border: 18px solid var(--theme-surface-soft);
+  border-right-color: var(--gray-100);
+  border-bottom-color: var(--panel-border);
+  border-radius: 50%;
+}
+
+.panel-skeleton-donut-legend { display: grid; width: 100%; gap: 16px; }
+.panel-skeleton-donut-legend > span { display: grid; width: 100%; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 10px; }
+.panel-skeleton-donut-legend .panel-skeleton-icon { width: 10px; height: 10px; border-radius: 50%; }
+
+.panel-skeleton-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px 20px;
+}
+
+.panel-skeleton-row--flush { padding-right: 0; padding-left: 0; }
+
+.panel-skeleton-copy { display: grid; min-width: 0; gap: 8px; }
+
+.panel-skeleton--cards .panel-skeleton-visual {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  align-items: stretch;
+}
+
+.panel-skeleton-card {
+  display: grid;
+  min-width: 0;
+  min-height: 94px;
+  align-content: start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  background: var(--panel-bg);
+}
+
+.panel-skeleton-stat-card {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  justify-items: start;
+  gap: 12px;
+}
+
+.panel-skeleton-stat-icon { width: 34px; height: 34px; border-radius: var(--radius-sm); }
+.panel-skeleton-stat-value { width: 42%; height: 27px; }
+.panel-skeleton-stat-label { width: 70%; height: 11px; }
+
+.panel-skeleton-section-card .card-head { min-height: 18px; }
+.panel-skeleton-section-card .panel-skeleton-shape { margin-bottom: 9px; }
+
+.panel-skeleton-calendar-day { pointer-events: none; }
+.panel-skeleton-calendar-day .panel-skeleton-day { width: 16px; height: 10px; }
+
+.panel-skeleton-table-tr td { padding-top: 13px; padding-bottom: 13px; }
+.panel-skeleton-table-tr .panel-skeleton-shape { height: 11px; }
+
+.panel-skeleton--profile .panel-skeleton-visual { gap: 18px; }
+.panel-skeleton-profile-head,
+.panel-skeleton-modal-head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.panel-skeleton-avatar { width: 44px; height: 44px; border-radius: var(--radius-circle); }
+.panel-skeleton-profile-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.panel-skeleton-profile-details > span { display: grid; gap: 8px; }
+
+.panel-skeleton--modal {
+  padding: 20px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  background: var(--panel-bg);
+}
+
+.panel-skeleton--modal .panel-skeleton-visual { gap: 18px; }
+.panel-skeleton-modal-head { margin-bottom: 4px; }
+.panel-skeleton-icon { width: 40px; height: 40px; }
+.panel-skeleton-field { display: grid; gap: 8px; }
+.panel-skeleton-label { width: 30%; height: 9px; }
+.panel-skeleton-input { height: 38px; border: 1px solid var(--panel-border); background-color: var(--theme-surface-soft); }
+
+@keyframes panel-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-skeleton-shape { animation: none; background-position: 50% 0; }
+}
+
+@media (max-width: 760px) {
+  .panel-skeleton-row { padding-right: 14px; padding-left: 14px; }
+}
+
 /* ── Topbar Profile Dropdown ── */
 .topbar-profile { position: relative; display: none; }
 

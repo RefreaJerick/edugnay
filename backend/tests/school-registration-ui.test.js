@@ -455,7 +455,7 @@ test('report dashboards do not present unavailable reports as empty backend coun
   assert.match(teacherDashboard, /EDUGNAY_API\.request\('\/reports\/weekly-drafts\/pending-count'\)/);
   assert.match(teacherDashboard, /label: 'Reports to Confirm'/);
   assert.match(teacherDashboard, /value: TEACHER_PENDING_REPORTS_ERROR \? '—' : TEACHER_PENDING_REPORTS/);
-  assert.match(parentDashboard, /showEmptyReport\('Reports unavailable'/);
+  assert.match(parentDashboard, /showReportState\('error', 'Reports unavailable'/);
   assert.match(parentDashboard, /No shared report yet/);
   assert.doesNotMatch(parentReports, /reports\[\]|frontend report generation|frontend report array/);
 });

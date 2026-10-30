@@ -16,7 +16,7 @@ async function checkAssignments(database) {
       AND sections.status = 'active'
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
     INNER JOIN subjects ON subjects.id = assignments.subject_id
-      AND subjects.school_id = assignments.school_id
+      AND subjects.school_id = assignments.school_id AND subjects.is_active = TRUE
     INNER JOIN section_students ON section_students.section_id = assignments.section_id
       AND section_students.school_id = assignments.school_id
       AND section_students.withdrawn_at IS NULL AND section_students.enrolled_at <= assignments.due_at

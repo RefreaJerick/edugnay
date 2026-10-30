@@ -8,6 +8,18 @@
   scroll-snap-type: x proximity;
 }
 .child-switcher::-webkit-scrollbar { display: none; }
+.panel-skeleton--child-switcher,
+.panel-skeleton--child-switcher .panel-skeleton-visual { display: contents; }
+.panel-skeleton-child-card { cursor: default; pointer-events: none; }
+.panel-skeleton-child-avatar {
+  width: 35px;
+  height: 35px;
+  min-width: 35px;
+  border-radius: var(--radius-circle);
+}
+.panel-skeleton-child-info { display: grid; flex: 1; gap: 6px; }
+.panel-skeleton-child-name { width: 68%; height: 13px; }
+.panel-skeleton-child-section { width: 54%; height: 10px; }
 .child-card {
   position: relative;
   flex: 0 0 auto;

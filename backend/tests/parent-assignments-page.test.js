@@ -28,7 +28,11 @@ function createPage(api) {
   };
   const context = vm.createContext({ document, window: {
     EDUGNAY_API: api, EDUGNAY_SCHOOL_READY: Promise.resolve(),
-    EDUGNAY_CONFIG: { escapeHtml: value => String(value), renderPanelEmptyState: ({ title }) => title },
+    EDUGNAY_CONFIG: {
+      escapeHtml: value => String(value),
+      renderPanelEmptyState: ({ title }) => title,
+      renderPanelSkeleton: ({ kind, rows }) => `<div data-skeleton="${kind}" data-rows="${rows}"></div>`
+    },
     EDUGNAY_AVATAR: { html: child => `<span>${child.displayName}</span>` },
     lucide: { createIcons() {} }
   } });
@@ -90,7 +94,7 @@ test('student and parent previous-section work share an accessible accordion car
 });
 
 test('parent page displays selected child, periods, status filters, and read-only details', async () => {
-  const elective = { ...assignment(8, 'Elective research project', 'pending', null),
+  const elective = { ...assignment(8, 'Elective research project', 'pending', '22'),
     scopeType: 'elective', electiveClassId: '51', electiveClassName: 'Academic 11-A', subjectName: 'Contemporary Literature' };
   const page = createPage({ isBackendAvailable: true,
     getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', schoolLevelId: '7', gradeLevel: 'Grade 7', sectionName: 'St. Matthew' }],
@@ -111,7 +115,7 @@ test('parent page displays selected child, periods, status filters, and read-onl
   assert.match(page.element('assignmentPeriodTabs').innerHTML, /aria-disabled="true" disabled aria-selected="false" aria-label="Quarter 3, not started"/);
   assert.match(page.element('assignmentList').innerHTML, /Essay/);
   assert.match(page.element('assignmentList').innerHTML, /Quiz/);
-  assert.match(page.element('assignmentList').innerHTML, /Elective class assignments/);
+  assert.doesNotMatch(page.element('assignmentList').innerHTML, /Elective class assignments/);
   assert.match(page.element('assignmentList').innerHTML, /Elective class · Academic 11-A/);
   assert.match(page.element('assignmentList').innerHTML, /Elective research project/);
   assert.doesNotMatch(page.element('assignmentList').innerHTML, /Old task/);
@@ -127,7 +131,7 @@ test('parent page displays selected child, periods, status filters, and read-onl
   assert.equal(page.element('assignmentDetailModal').hidden, false);
 });
 
-test('parent can view elective assignments when the child has no grading periods', async () => {
+test('parent page hides an SHS assignment that has no saved grading period', async () => {
   const page = createPage({ isBackendAvailable: true,
     getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', schoolLevelId: '7' }],
     getAcademicTerms: async () => [],
@@ -137,9 +141,22 @@ test('parent can view elective assignments when the child has no grading periods
     }] })
   });
   await page.flush();
-  assert.match(page.element('assignmentList').innerHTML, /Elective class assignments/);
-  assert.match(page.element('assignmentList').innerHTML, /Elective portfolio/);
-  assert.doesNotMatch(page.element('assignmentList').innerHTML, /No grading periods available/);
+  assert.match(page.element('assignmentList').innerHTML, /No grading periods available/);
+  assert.doesNotMatch(page.element('assignmentList').innerHTML, /Elective portfolio/);
+});
+
+test('parent page does not show an SHS assignment with no period in a selected term', async () => {
+  const page = createPage({ isBackendAvailable: true,
+    getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', schoolLevelId: '7' }],
+    getAcademicTerms: async () => terms,
+    getParentChildAssignments: async () => ({ studentId: '4', assignments: [{
+      ...assignment(9, 'Elective portfolio', 'pending', null), scopeType: 'elective',
+      electiveClassId: '52', electiveClassName: 'TechPro 11-B'
+    }] })
+  });
+  await page.flush();
+  assert.match(page.element('assignmentList').innerHTML, /No assignments in this grading period/);
+  assert.doesNotMatch(page.element('assignmentList').innerHTML, /Elective portfolio/);
 });
 
 test('period selection stays synchronized between desktop tabs and the mobile dropdown', async () => {

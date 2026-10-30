@@ -12,15 +12,15 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/timetables.css">
   <link rel="stylesheet" href="../../assets/css/parent/attendance.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
-  <script src="../../assets/js/attendance-history.js?v=20261029-attendance-navigation"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
+  <script src="../../assets/js/attendance-history.js?v=20261030-skeleton-calendar"></script>
   <script src="../../assets/js/parent/shell.js"></script>
-  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
+  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css?v=20261030-child-switcher">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
@@ -40,7 +40,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -144,7 +144,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar parent" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name" data-parent-name>Loading profile...</div>
+              <div class="tb-profile-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -181,10 +181,10 @@
         <span id="attendance-load-message"></span>
         <button class="top-btn secondary" id="attendance-retry" type="button" onclick="loadAttendance()" hidden>Try again</button>
       </div>
-      <div class="child-switcher" id="child-switcher"></div>
+      <div class="child-switcher" id="child-switcher" data-skeleton-kind="child-switcher" data-skeleton-label="Loading linked children" data-skeleton-rows="2"></div>
 
       <!-- Stat strip — recomputed per month, per child -->
-      <div class="stat-grid attendance-stat-grid" id="summary-strip">
+      <div class="stat-grid attendance-stat-grid" id="summary-strip" data-skeleton-kind="stat-cards" data-skeleton-label="Loading monthly attendance summary" data-skeleton-rows="3">
         <!-- JS generated -->
       </div>
 
@@ -220,7 +220,7 @@
               <div class="cal-weekday">Sat</div>
               <div class="cal-weekday">Sun</div>
             </div>
-            <div class="cal-grid" id="cal-grid">
+            <div class="cal-grid" id="cal-grid" data-skeleton-kind="calendar" data-skeleton-label="Loading attendance calendar">
               <!-- JS generated -->
             </div>
           </div>
@@ -240,7 +240,7 @@
                 <div class="panel-sub">Absences this month</div>
               </div>
             </div>
-            <div id="flagged-list">
+            <div id="flagged-list" data-skeleton-kind="list" data-skeleton-label="Loading flagged attendance days" data-skeleton-rows="3">
               <!-- JS generated -->
             </div>
           </div>
@@ -313,7 +313,7 @@
 
     async function loadAttendance() {
       attendanceHistory.setLoading();
-      document.getElementById('child-switcher').textContent = 'Loading linked children...';
+      document.getElementById('child-switcher').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'child-switcher', label: 'Loading linked children', rows: 2 });
       try {
         if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The attendance API is not configured.');
         const children = await window.EDUGNAY_API.getParentChildren();

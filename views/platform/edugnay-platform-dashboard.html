@@ -9,13 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/platform/dashboard.css?v=2">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/shell-common.js?v=10"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -90,7 +90,7 @@
         <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="Academix" /></div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub" data-platform-brand>PLATFORM ADMINISTRATION</div>
+          <div class="brand-sub" data-platform-brand >PLATFORM ADMINISTRATION</div>
         </div>
       </div>
 
@@ -144,7 +144,7 @@
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false">
             <div class="tb-avatar admin"></div>
-            <div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Administrator</div></div>
+            <div class="tb-profile-info"><div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div><div class="tb-profile-role">Administrator</div></div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
           </button>
           <div class="tb-dropdown" id="tbProfileDropdown">
@@ -167,7 +167,7 @@
             </div>
             <div class="grading-period-card" aria-label="Current platform scope">
               <div class="grading-period-icon"><i data-lucide="layers-3" style="width:17px;height:17px;"></i></div>
-              <div><div class="grading-period-label">Platform scope</div><div class="grading-period-value">All registered schools</div></div>
+              <div><div class="grading-period-label">Platform scope</div><div class="grading-period-value" data-skeleton-kind="line" data-skeleton-label="Loading academic period">All registered schools</div></div>
             </div>
           </section>
 
@@ -513,9 +513,9 @@
       const summaryCards = document.getElementById('platform-summary-cards');
       const schoolList = document.getElementById('platform-school-list');
       if (window.EDUGNAY_API?.isBackendAvailable) {
-        summaryCards.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school records', text: 'Please wait while the platform data is loaded.' });
-        schoolList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school records', text: 'Please wait while the platform data is loaded.' });
-        document.getElementById('platform-activity-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading activity', text: 'Please wait while recent activity is loaded.' });
+        summaryCards.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'stat-cards', label: 'Loading platform totals', rows: 3 });
+        schoolList.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading school accounts', rows: 4 });
+        document.getElementById('platform-activity-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading recent activity', rows: 4 });
       }
 
       let schools = [];

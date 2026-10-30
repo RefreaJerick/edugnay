@@ -41,7 +41,12 @@ function createPage(api, attendanceEnabled = true) {
       EDUGNAY_API: api,
       EDUGNAY_SCHOOL_READY: Promise.resolve(),
       EDUGNAY_API_PORTAL_FEATURES: { attendanceEnabled },
-      EDUGNAY_CONFIG: { escapeHtml: value => String(value), renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`, isAttendanceEnabled: () => true },
+      EDUGNAY_CONFIG: {
+        escapeHtml: value => String(value),
+        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
+        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status" aria-busy="true">${label}</div>`,
+        isAttendanceEnabled: () => true
+      },
       lucide: { createIcons() {} },
       location: { replace: value => redirected.push(value) }
     },

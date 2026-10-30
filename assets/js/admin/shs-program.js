@@ -333,7 +333,7 @@
     state.choicePreviousOverflow = document.body.style.overflow;
     setChoiceDialogCopy(item.status, item);
     $('shs-choice-subtitle').textContent = `${item.studentName || 'Learner'} · Grade ${item.gradeCode.replace('grade-', '')} · ${item.sectionName} · ${item.trackCode === 'academic' ? 'Academic' : 'TechPro'}`;
-    $('shs-choice-classes').textContent = 'Loading classes…';
+    $('shs-choice-classes').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading learner choices', rows: 3 });
     $('shs-choice-error').textContent = '';
     $('shs-choice-decision-note').value = '';
     $('shs-choice-save').disabled = true;

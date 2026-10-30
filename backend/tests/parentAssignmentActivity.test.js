@@ -51,7 +51,7 @@ async function executeQuery(sql, values = []) {
     childAssignmentQuery = { sql, values };
     return [childAssignmentRows];
   }
-  if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1')) {
+  if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ?') && sql.includes('FROM assignments')) {
     return [[{ ...assignment, onlineSubmissionEnabled: assignmentOnline ? 1 : 0 }]];
   }
   if (sql.includes('SELECT online_submission_enabled AS onlineSubmissionEnabled FROM assignments')) {

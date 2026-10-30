@@ -68,7 +68,10 @@ function createJournalPageHarness(api) {
   const context = vm.createContext({
     window: {
       EDUGNAY_API: api,
-      EDUGNAY_CONFIG: { renderPanelEmptyState: ({ title, text }) => `${title}: ${text}` }
+      EDUGNAY_CONFIG: {
+        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
+        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status">${label}</div>`
+      }
     },
     document: {
       getElementById(id) {
@@ -102,7 +105,11 @@ function createDashboardJournalHarness(api) {
   const context = vm.createContext({
     window: {
       EDUGNAY_API: api,
-      EDUGNAY_CONFIG: { escapeHtml: value => String(value), renderPanelEmptyState: ({ title, text }) => `${title}: ${text}` },
+      EDUGNAY_CONFIG: {
+        escapeHtml: value => String(value),
+        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
+        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status">${label}</div>`
+      },
       lucide: { createIcons() {} }
     },
     document: { getElementById: id => id === 'student-journal-card' ? card : null },

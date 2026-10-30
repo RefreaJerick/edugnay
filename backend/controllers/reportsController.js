@@ -72,7 +72,7 @@ async function getSchoolGradeSummary(req, res, next) {
       INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
         AND school_grade_levels.school_level_id = sections.school_level_id
       INNER JOIN subjects ON subjects.id = published_final_grades.subject_id
-        AND subjects.school_id = published_final_grades.school_id
+        AND subjects.school_id = published_final_grades.school_id AND subjects.is_active = TRUE
       INNER JOIN users AS students ON students.id = published_final_grades.student_user_id
         AND students.school_id = published_final_grades.school_id
         AND students.role = 'student'

@@ -339,6 +339,7 @@ async function getTeacherSubjectGradingConfig(req, res, next) {
       FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id
         AND sections.school_id = section_teachers.school_id AND sections.status = 'active'
       INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = sections.school_id
+        AND subjects.is_active = TRUE
       INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
         AND school_grade_levels.school_id = sections.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.school_id = sections.school_id

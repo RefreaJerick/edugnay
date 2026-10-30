@@ -260,7 +260,7 @@
     const modal = document.getElementById('publishModal');
     modal.querySelector('.modal-title').textContent = 'Grade preview';
     document.getElementById('publishGradeWarning').hidden = true;
-    document.getElementById('publishGradeSummary').textContent = 'Loading grade preview...';
+    document.getElementById('publishGradeSummary').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading grade preview' });
     document.getElementById('publishGradeMethodNote').hidden = true;
     document.getElementById('publishPreviewStudentList').hidden = true;
     document.getElementById('publishGradesConfirmButton').hidden = true;
@@ -395,7 +395,7 @@
       setVisible(host.querySelector('#exportScoresButton'), false);
       window.TeacherClassViews.renderScoreTable({
         host,
-        empty: { noItems: { icon: 'loader-circle', title: 'Loading grades', text: 'Score records for this class are loading.' } }
+        loading: true
       });
       try {
         const query = { ...scope };

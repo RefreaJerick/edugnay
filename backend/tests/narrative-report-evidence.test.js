@@ -8,6 +8,7 @@ const {
   addDays, getWeeklyEvidence, getWeeklySettings, normalizeWeekSettings,
   reportWeekRange, reportSubmissionStatus, updateWeeklySettings
 } = require('../controllers/narrativeReportEvidenceController');
+const { currentReportWeekRange } = require('../utils/reportWeekSettings');
 const { buildModelEvidence } = require('../services/narrativeReportAi');
 
 test('assignment completion respects the evidence cutoff and later status changes', () => {
@@ -64,6 +65,18 @@ test('report week settings validate weekdays and support a week that crosses Sun
   assert.throws(() => normalizeWeekSettings({ weekStartDay: [1], weekEndDay: 6 }), /weekday from 1 to 7/);
   assert.throws(() => normalizeWeekSettings({ weekStartDay: 1, weekEndDay: 6, extra: true }), /start and end weekdays/);
   assert.throws(() => reportWeekRange('2026-10-20', { weekStartDay: 1, weekEndDay: 6 }), /must start on Monday/);
+});
+
+test('current report week uses configured weekdays across week and year boundaries', () => {
+  assert.deepEqual(currentReportWeekRange({ weekStartDay: 1, weekEndDay: 6 }, '2026-10-30'), {
+    startDate: '2026-10-26', endDate: '2026-10-31'
+  });
+  assert.deepEqual(currentReportWeekRange({ weekStartDay: 5, weekEndDay: 2 }, '2027-01-03'), {
+    startDate: '2027-01-01', endDate: '2027-01-05'
+  });
+  assert.deepEqual(currentReportWeekRange({ weekStartDay: 1, weekEndDay: 6 }, '2027-01-01'), {
+    startDate: '2026-12-28', endDate: '2027-01-02'
+  });
 });
 
 test('weekly evidence keeps the configured week and stops at today or the week end', async () => {
@@ -422,6 +435,10 @@ test('journal evidence is collected only for configured JHS sections', async () 
     assert.equal(calls.some(call => call.sql.includes('FROM student_journal_entries AS entries')),
       scenario.expected, scenario.level);
     assert.equal(result.body.students[0].journal.entries.length, scenario.expected ? 1 : 0, scenario.level);
+    if (scenario.expected) {
+      const journalQuery = calls.find(call => call.sql.includes('FROM student_journal_entries AS entries'));
+      assert.match(journalQuery.sql, /subjects\.is_active = TRUE/);
+    }
   }
 });
 

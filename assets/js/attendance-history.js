@@ -32,7 +32,9 @@
         const message = loading ? 'Loading attendance...' : error ? 'Attendance is unavailable.'
           : !selected ? 'Select a linked child to view attendance.' : '';
         strip.hidden = !message;
-        strip.textContent = message;
+        if (loading) {
+          strip.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'stat-cards', label: 'Loading monthly attendance summary', rows: 3 });
+        } else strip.textContent = message;
         return;
       }
       strip.hidden = false;
@@ -58,8 +60,10 @@
         prev.disabled = true;
         next.disabled = true;
         element('cal-today').disabled = true;
-        grid.innerHTML = empty('calendar', loading ? 'Loading attendance' : error ? 'Attendance unavailable' : 'No attendance calendar',
-          error ? 'Try loading the attendance records again.' : selected ? 'No subject attendance has been recorded.' : 'Attendance dates will appear here when a child account is linked.');
+        grid.innerHTML = loading
+          ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'calendar', label: 'Loading attendance calendar' })
+          : empty('calendar', error ? 'Attendance unavailable' : 'No attendance calendar',
+            error ? 'Try loading the attendance records again.' : selected ? 'No subject attendance has been recorded.' : 'Attendance dates will appear here when a child account is linked.');
         return;
       }
       const [year, monthNumber] = monthKey.split('-').map(Number);
@@ -87,8 +91,10 @@
     function renderFlagged(month) {
       const list = element('flagged-list');
       if (!month) {
-        list.innerHTML = empty('calendar-x', loading ? 'Loading attendance' : error ? 'Attendance unavailable' : 'No flagged days',
-          error ? 'Try loading the attendance records again.' : selected ? 'No subject absences have been recorded for this month.' : 'Absence details will appear here when a child account is linked.');
+        list.innerHTML = loading
+          ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading flagged attendance days', rows: 3 })
+          : empty('calendar-x', error ? 'Attendance unavailable' : 'No flagged days',
+            error ? 'Try loading the attendance records again.' : selected ? 'No subject absences have been recorded for this month.' : 'Absence details will appear here when a child account is linked.');
         return;
       }
       const flagged = Object.keys(month).filter(day => month[day].some(record => record.status === 'absent')).sort((a, b) => Number(a) - Number(b));
@@ -128,10 +134,10 @@
 
     function render() {
       const state = element('attendance-load-state');
-      state.hidden = !loading && !error;
+      state.hidden = loading || !error;
       state.classList.toggle('is-error', Boolean(error));
       state.setAttribute('role', error ? 'alert' : 'status');
-      element('attendance-load-message').textContent = error || 'Loading attendance...';
+      element('attendance-load-message').textContent = error || '';
       element('attendance-retry').hidden = !error;
       const allMonths = months();
       const month = allMonths[monthKey];

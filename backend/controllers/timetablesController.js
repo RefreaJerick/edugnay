@@ -59,7 +59,7 @@ async function getAssignment(connection, schoolId, assignmentId) {
     FROM section_teachers a
     JOIN sections s ON s.id = a.section_id AND s.school_id = a.school_id
     JOIN school_grade_levels g ON g.id = s.grade_level_id AND g.school_id = s.school_id
-    JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id
+    JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id AND sub.is_active = TRUE
     JOIN users teacher ON teacher.id = a.teacher_user_id AND teacher.school_id = a.school_id
     JOIN academic_years y ON y.id = s.academic_year_id AND y.school_id = a.school_id
     WHERE a.id = ? AND a.school_id = ? LIMIT 1`, [assignmentId, schoolId]
@@ -151,7 +151,7 @@ async function list(req, res, next) {
        FROM section_teachers a
        JOIN sections s ON s.id = a.section_id AND s.school_id = a.school_id
        JOIN school_grade_levels g ON g.id = s.grade_level_id AND g.school_id = a.school_id
-       JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id
+       JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id AND sub.is_active = TRUE
        JOIN users teacher ON teacher.id = a.teacher_user_id AND teacher.school_id = a.school_id
        LEFT JOIN scheduled_classes c ON c.assignment_id = a.id AND c.school_id = a.school_id
        LEFT JOIN timetable_meetings m ON m.scheduled_class_id = c.id AND m.school_id = c.school_id
@@ -240,10 +240,11 @@ async function findConflict(connection, schoolId, yearId, assignment, meeting, e
     JOIN scheduled_classes c ON c.id = m.scheduled_class_id AND c.school_id = m.school_id
     LEFT JOIN section_teachers a ON a.id = c.assignment_id AND a.school_id = c.school_id
     LEFT JOIN sections s ON s.id = a.section_id AND s.school_id = a.school_id
-    LEFT JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id
+    LEFT JOIN subjects sub ON sub.id = a.subject_id AND sub.school_id = a.school_id AND sub.is_active = TRUE
     LEFT JOIN shs_elective_classes ec ON ec.id = c.shs_elective_class_id AND ec.school_id = c.school_id
     LEFT JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
-    WHERE m.school_id = ? AND COALESCE(s.academic_year_id, o.academic_year_id) = ? AND m.weekday = ?
+    WHERE m.school_id = ? AND COALESCE(s.academic_year_id, o.academic_year_id) = ?
+      AND (a.id IS NULL OR sub.id IS NOT NULL) AND m.weekday = ?
       AND m.start_time < ? AND m.end_time > ? AND m.start_date <= ? AND m.end_date >= ?
       AND m.id <> ?`,
     [schoolId, yearId, meeting.weekday, meeting.endTime, meeting.startTime, meeting.endDate, meeting.startDate, excludeId || 0]

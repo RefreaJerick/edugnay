@@ -190,3 +190,80 @@ test('calendar create and delete commit school-scoped changes', async () => {
   assert.deepEqual(queries[2][1], [53, 7]);
   assert.equal(commits, 2);
 });
+
+test('school portal sidebars begin without a tenant name and load the shared shell update', () => {
+  for (const role of ['admin', 'teacher', 'student', 'parent']) {
+    const directory = path.join(__dirname, '../../views', role);
+    for (const filename of fs.readdirSync(directory).filter(name => name.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(directory, filename), 'utf8');
+      assert.doesNotMatch(html, /ST\. COLUMBAN'S COLLEGE/);
+      for (const [, content] of html.matchAll(/<div class="brand-sub"[^>]*>([\s\S]*?)<\/div>/g)) {
+        assert.equal(content.trim(), '', role + '/' + filename + ' should not show a school before context loads');
+      }
+      if (html.includes('shell-common.js')) {
+        assert.doesNotMatch(html, /shell-common\.js\?v=10/, role + '/' + filename + ' should fetch the updated shell');
+        assert.match(html, /shell-common\.js\?v=11/, role + '/' + filename + ' should use the updated shell version');
+      }
+    }
+  }
+});
+
+test('school-context events apply the current short name immediately and clear stale names', () => {
+  const setContextSource = shell.match(/function setApiSchoolContext\(school, features = null\) \{[\s\S]*?\n\}/)[0];
+  const applySource = shell.match(/function applyActiveSchoolToShell\(\) \{[\s\S]*?\n\}/)[0];
+  const brand = { textContent: '' };
+  const listeners = new Map();
+  const document = {
+    body: { dataset: {} },
+    addEventListener(name, callback) { listeners.set(name, callback); },
+    dispatchEvent(event) { listeners.get(event.type)?.(event); },
+    querySelectorAll(selector) {
+      return selector === '.brand-sub:not([data-platform-brand])' ? [brand] : [];
+    }
+  };
+  const window = {
+    EDUGNAY_API_SCHOOL_CONTEXT: null,
+    EDUGNAY_CONFIG: {
+      getActiveSchool: () => window.EDUGNAY_API_SCHOOL_CONTEXT,
+      getSchoolTypeInfo: () => ({ label: 'Junior High School' }),
+      getCurrentAcademicPeriod: () => null,
+      isGradesPageEnabled: () => true
+    }
+  };
+  const context = {
+    document,
+    window,
+    CustomEvent: class CustomEvent {
+      constructor(type, options = {}) { this.type = type; this.detail = options.detail; }
+    }
+  };
+  vm.runInNewContext(
+    setContextSource + '\n' + applySource + '\ndocument.addEventListener(\'edugnay:school-context-updated\', applyActiveSchoolToShell);',
+    context
+  );
+
+  vm.runInNewContext('applyActiveSchoolToShell();', context);
+  assert.equal(brand.textContent, '');
+
+  context.setApiSchoolContext({ id: 12, name: 'Current School', shortName: 'CURRENT SCHOOL', schoolType: 'jhs', schoolLevels: [] });
+  assert.equal(brand.textContent, 'CURRENT SCHOOL');
+
+  context.setApiSchoolContext(null);
+  assert.equal(brand.textContent, '');
+
+  brand.textContent = 'PLATFORM ADMINISTRATION';
+  document.body.dataset.platformPortal = 'true';
+  vm.runInNewContext('applyActiveSchoolToShell();', context);
+  assert.equal(brand.textContent, 'PLATFORM ADMINISTRATION');
+});
+
+test('the school label updates before shared startup waits for the account request', () => {
+  const readyHandlerStart = shell.indexOf("document.addEventListener('DOMContentLoaded', async () => {");
+  assert.notEqual(readyHandlerStart, -1);
+  const readyHandler = shell.slice(readyHandlerStart);
+  const labelUpdate = readyHandler.indexOf('applyActiveSchoolToShell();');
+  const accountWait = readyHandler.indexOf('await getCurrentUser()');
+  assert.notEqual(labelUpdate, -1);
+  assert.notEqual(accountWait, -1);
+  assert.ok(labelUpdate < accountWait, 'the sidebar name should not wait for /auth/me');
+});

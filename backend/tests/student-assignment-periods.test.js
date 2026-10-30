@@ -33,14 +33,14 @@ test('student assignments stay within the selected school year and grading perio
   assert.equal(context.selectedAssignmentYearId, '2');
   assert.deepEqual(Array.from(context.ASSIGNMENT_PERIODS, term => String(term.id)), ['5', '6', '1', '2']);
   assert.equal(vm.runInContext('getAssignmentsInSelectedPeriod()[0].id', context), 'current');
-  assert.deepEqual(Array.from(vm.runInContext('getAssignmentsForCurrentView().map(item => item.id)', context)), ['current', 'elective']);
+  assert.deepEqual(Array.from(vm.runInContext('getAssignmentsForCurrentView().map(item => item.id)', context)), ['current']);
   assert.equal(context.ASSIGNMENT_PERIODS.some(term => term.id === 7), false);
 
   vm.runInContext("selectAssignmentYear('1')", context);
   assert.equal(context.selectedAssignmentYearId, '1');
   assert.equal(context.selectedAssignmentPeriodId, '2');
   assert.equal(vm.runInContext('getAssignmentsInSelectedPeriod()[0].id', context), 'old');
-  assert.deepEqual(Array.from(vm.runInContext('getAssignmentsForCurrentView().map(item => item.id)', context)), ['old', 'elective']);
+  assert.deepEqual(Array.from(vm.runInContext('getAssignmentsForCurrentView().map(item => item.id)', context)), ['old']);
   vm.runInContext("selectAssignmentPeriod('5')", context);
   assert.equal(context.selectedAssignmentYearId, '2');
   assert.equal(context.selectedAssignmentPeriodId, '5');
@@ -48,8 +48,9 @@ test('student assignments stay within the selected school year and grading perio
   assert.equal(context.selectedAssignmentPeriodId, '6');
 });
 
-test('student assignment view keeps elective work separate from grading-period controls', () => {
-  assert.match(source, /function getAssignmentsForCurrentView\(\)[\s\S]*?ASSIGNMENTS\.filter\(isElectiveAssignment\)/);
+test('student elective assignments also follow the selected grading period', () => {
+  assert.match(source, /function getAssignmentsForCurrentView\(\)\s*\{\s*return getAssignmentsInSelectedPeriod\(\);/);
+  assert.doesNotMatch(source, /getAssignmentsForCurrentView\(\)[\s\S]{0,180}ASSIGNMENTS\.filter\(isElectiveAssignment\)/);
   assert.match(source, /Elective class assignments/);
   assert.match(source, /function isElectiveAssignment\(assignment\)/);
   assert.match(source, /assignmentScope/);

@@ -37,7 +37,7 @@ async function resolveScope(db, user, input, write = false) {
      JOIN school_grade_levels g ON g.id = s.grade_level_id AND g.school_id = s.school_id
      JOIN academic_years y ON y.id = s.academic_year_id AND y.school_id = s.school_id
      JOIN school_levels l ON l.id = s.school_level_id AND l.school_id = s.school_id
-     JOIN subjects sub ON sub.id = st.subject_id AND sub.school_id = st.school_id
+     JOIN subjects sub ON sub.id = st.subject_id AND sub.school_id = st.school_id AND sub.is_active = TRUE
      JOIN users t ON t.id = st.teacher_user_id AND t.school_id = st.school_id
      WHERE st.school_id = ? AND st.teacher_user_id = ? AND st.section_id = ? AND st.subject_id = ?
        AND t.account_status = 'active' AND s.status = 'active'

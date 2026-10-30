@@ -41,7 +41,8 @@ function createPage(api) {
       EDUGNAY_AVATAR: { html: person => `<span>${String(person.displayName || '')}</span>` },
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
-        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`
+        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
+        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status" aria-busy="true">${label}</div>`
       }
     },
     lucide: { createIcons() {} }

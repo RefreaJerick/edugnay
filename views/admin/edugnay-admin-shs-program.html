@@ -7,19 +7,19 @@
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css"><link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2"><link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/timetables.css"><link rel="stylesheet" href="../../assets/css/shs-program.css?v=2">
   <link rel="stylesheet" href="../../assets/css/theme.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
-  <script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
-  <script src="../../assets/js/admin/shell.js"></script><script src="../../assets/js/admin/shs-program.js?v=2"></script>
+  <script src="../../assets/js/admin/shell.js"></script><script src="../../assets/js/admin/shs-program.js?v=3"></script>
 </head>
 <body data-page-title="SHS Program">
 <div class="shell">
   <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
   <aside class="sidebar">
-    <div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo"></div><div><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub">School portal</div></div></div>
+    <div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo"></div><div><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub"></div></div></div>
     <div class="nav-section"><div class="nav-section-label">Main</div>
       <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
       <a href="edugnay-admin-users.html" class="nav-item"><div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span></a>
@@ -41,7 +41,7 @@
   <header class="topbar"><div class="topbar-left"><button class="hamburger" type="button" aria-label="Open navigation" onclick="toggleDrawer(true)"><i data-lucide="menu"></i></button><div class="topbar-context"><div class="topbar-context-copy"><strong>SHS Program</strong></div></div></div>
     <div class="topbar-right"><div class="tb-notif"><button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none"></span></button><div class="tb-notif-panel" id="tbNotifPanel"><div class="tb-notif-panel-head"><span class="tb-notif-panel-title">Notifications</span><button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">Mark all read</button></div><div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty">No notifications yet.</div></div><div class="tb-notif-panel-foot"><a href="edugnay-admin-notifications.html">View all notifications</a></div></div></div>
       <div class="tb-theme" data-theme-control><button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button></div>
-      <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Admin</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-admin-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
+      <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div><div class="tb-profile-role">Admin</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-admin-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
     </div></header>
   <script>restoreProfileChip();</script>
   <main class="main"><div class="shs-page" id="shs-program-page">
@@ -60,7 +60,7 @@
           <div class="timetable-field"><label for="shs-track">Track</label><select id="shs-track"><option value="">All tracks</option></select></div>
           <button class="timetable-button" id="shs-activate" type="button"><i data-lucide="plus" aria-hidden="true"></i> Add subject</button>
         </div>
-        <div class="shs-offerings" id="shs-offerings" aria-live="polite">Loading subject classes...</div>
+        <div class="shs-offerings" id="shs-offerings" aria-live="polite" data-skeleton-kind="cards" data-skeleton-label="Loading subject classes" data-skeleton-rows="3">Loading subject classes...</div>
       </section>
     </section>
     <section id="shs-panel-choices" role="tabpanel" aria-labelledby="shs-tab-choices" hidden>
@@ -70,7 +70,7 @@
           <div class="timetable-field"><label for="shs-student-grade">Grade</label><select id="shs-student-grade"><option value="">All grades</option><option value="grade-11">Grade 11</option><option value="grade-12">Grade 12</option></select></div>
           <div class="timetable-field"><label for="shs-student-status">Choice status</label><select id="shs-student-status"><option value="all">All statuses</option><option value="not_recorded">Not recorded</option><option value="pending">Waiting for school confirmation</option><option value="approved">Confirmed by school</option><option value="rejected">Changes requested</option></select></div>
         </div>
-        <div class="shs-reviews" id="shs-reviews" aria-live="polite"><p class="shs-roster-loading">Loading learner choices...</p></div>
+        <div class="shs-reviews" id="shs-reviews" aria-live="polite" data-skeleton-kind="cards" data-skeleton-label="Loading learner choices" data-skeleton-rows="2"><p class="shs-roster-loading">Loading learner choices...</p></div>
         <div class="shs-roster-pagination" id="shs-roster-pagination" hidden><span id="shs-roster-page" aria-live="polite"></span><div><button class="timetable-button secondary" type="button" id="shs-roster-prev">Previous</button><button class="timetable-button secondary" type="button" id="shs-roster-next">Next</button></div></div>
       </section>
     </section>

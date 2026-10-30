@@ -90,6 +90,7 @@ async function loadCoreSubjects(db, schoolId, section, studentId, terms) {
       sub.instructional_hours AS instructionalHours
      FROM section_teachers st
      JOIN subjects sub ON sub.id = st.subject_id AND sub.school_id = st.school_id
+       AND sub.is_active = TRUE
      WHERE st.school_id = ? AND st.section_id = ? AND sub.shs_subject_type = 'core'
      GROUP BY sub.id, sub.name, sub.instructional_hours ORDER BY sub.name`,
     [schoolId, section.sectionId]

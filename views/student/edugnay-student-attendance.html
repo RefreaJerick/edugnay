@@ -10,13 +10,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
   <link rel="stylesheet" href="../../assets/css/timetables.css">
   <link rel="stylesheet" href="../../assets/css/parent/attendance.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js"></script>
-  <script src="../../assets/js/attendance-history.js?v=20261029-attendance-navigation"></script>
+  <script src="../../assets/js/shell-common.js?v=11"></script>
+  <script src="../../assets/js/attendance-history.js?v=20261030-skeleton-calendar"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -36,7 +36,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
-          <div class="brand-sub">Loading school...</div>
+          <div class="brand-sub"></div>
         </div>
       </div>
 
@@ -138,7 +138,7 @@
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar student"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
               <div class="tb-profile-role">Student</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -173,7 +173,7 @@
       </div>
 
       <!-- Summary is recomputed for each recorded month. -->
-      <div class="stat-grid attendance-stat-grid" id="summary-strip">
+      <div class="stat-grid attendance-stat-grid" id="summary-strip" data-skeleton-kind="stat-cards" data-skeleton-label="Loading monthly attendance summary" data-skeleton-rows="3">
         <!-- JS generated -->
       </div>
 
@@ -209,7 +209,7 @@
               <div class="cal-weekday">Sat</div>
               <div class="cal-weekday">Sun</div>
             </div>
-            <div class="cal-grid" id="cal-grid">
+            <div class="cal-grid" id="cal-grid" data-skeleton-kind="calendar" data-skeleton-label="Loading attendance calendar">
               <!-- JS generated -->
             </div>
           </div>
@@ -229,7 +229,7 @@
                 <div class="panel-sub">Absences this month</div>
               </div>
             </div>
-            <div id="flagged-list">
+            <div id="flagged-list" data-skeleton-kind="list" data-skeleton-label="Loading flagged attendance days" data-skeleton-rows="3">
               <!-- JS generated -->
             </div>
           </div>

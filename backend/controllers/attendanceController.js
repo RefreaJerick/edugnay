@@ -552,7 +552,7 @@ async function getParentAttendance(req, res, next) {
       INNER JOIN attendance_sessions ON attendance_sessions.id = attendance_records.attendance_session_id
         AND attendance_sessions.school_id = attendance_records.school_id
       INNER JOIN subjects ON subjects.id = attendance_sessions.subject_id
-        AND subjects.school_id = attendance_sessions.school_id
+        AND subjects.school_id = attendance_sessions.school_id AND subjects.is_active = TRUE
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
         AND sections.school_id = attendance_sessions.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
@@ -618,7 +618,7 @@ async function getStudentAttendance(req, res, next) {
       INNER JOIN attendance_sessions ON attendance_sessions.id = attendance_records.attendance_session_id
         AND attendance_sessions.school_id = attendance_records.school_id
       INNER JOIN subjects ON subjects.id = attendance_sessions.subject_id
-        AND subjects.school_id = attendance_sessions.school_id
+        AND subjects.school_id = attendance_sessions.school_id AND subjects.is_active = TRUE
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
         AND sections.school_id = attendance_sessions.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
@@ -679,6 +679,8 @@ async function getSchoolAttendanceSummary(req, res, next) {
       FROM attendance_records
       INNER JOIN attendance_sessions ON attendance_sessions.id = attendance_records.attendance_session_id
         AND attendance_sessions.school_id = attendance_records.school_id
+      INNER JOIN subjects ON subjects.id = attendance_sessions.subject_id
+        AND subjects.school_id = attendance_sessions.school_id AND subjects.is_active = TRUE
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
         AND sections.school_id = attendance_sessions.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
