@@ -74,8 +74,11 @@
     }
 
     .login-eyebrow {
-      color: var(--blue-mid);
       letter-spacing: 1.5px;
+    }
+
+    html[data-theme="dark"] .login-brand-description {
+      color: var(--theme-muted-blue);
     }
 
     .login-title {
@@ -142,16 +145,12 @@
       text-align: center;
     }
 
-    .login-footer p {
-      color: var(--gray-500);
-    }
-
     .school-onboarding-link {
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      margin-top: 20px;
-      color: var(--blue-mid);
+      margin-top: 0;
+      color: var(--theme-accent-text);
       font-size: 12px;
       font-weight: 800;
       text-decoration: none;
@@ -159,6 +158,49 @@
 
     .school-onboarding-link:hover {
       color: var(--blue);
+    }
+
+    html[data-theme="dark"] .school-onboarding-link:hover,
+    html[data-theme="dark"] .login-meta-row a:hover {
+      color: var(--white);
+    }
+
+    .login-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+
+    .login-meta-row a {
+      color: var(--theme-accent-text);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .login-meta-row a:hover {
+      color: var(--blue);
+      text-decoration: underline;
+    }
+
+    .school-onboarding-link:focus-visible,
+    .login-meta-row a:focus-visible {
+      border-radius: var(--radius-xs);
+      outline: 2px solid var(--theme-accent-text);
+      outline-offset: 3px;
+    }
+
+    .login-meta-separator {
+      width: 1px;
+      height: 13px;
+      background: var(--gray-300);
+    }
+
+    .login-meta-copyright {
+      color: var(--gray-500);
     }
 
     .auth-back,
@@ -320,15 +362,6 @@
     <div class="login-brand-panel" aria-label="Academix">
       <img class="login-brand-watermark" src="./assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
       <div class="login-brand-content">
-        <div class="system-mark">
-          <div class="system-crest">
-            <img src="./assets/images/edUgnay-logo-circle.png" alt="Academix logo" />
-          </div>
-          <div class="system-info">
-            <div class="brand-name">Acade<span>Mix</span></div>
-          </div>
-        </div>
-
         <div class="login-brand-copy">
           <div class="login-brand-kicker">One connected school community</div>
           <h2 class="login-brand-heading">
@@ -385,13 +418,15 @@
         </form>
 
         <div class="login-footer">
-          <p>
-            Contact your administrator if you cannot log in.
-          </p>
           <a class="school-onboarding-link" href="./views/onboarding/edugnay-school-onboarding.html">
             <i data-lucide="building-2" style="width:14px;height:14px;"></i>
             Create an account for an organization/school
           </a>
+          <div class="login-meta-row">
+            <a href="./views/onboarding/edugnay-privacy-policy.html">Privacy Policy</a>
+            <span class="login-meta-separator" aria-hidden="true"></span>
+            <span class="login-meta-copyright">© 2026 Academix</span>
+          </div>
         </div>
       </section>
 

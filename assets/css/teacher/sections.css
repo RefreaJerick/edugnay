@@ -387,7 +387,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 10px;
   /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--theme-surface) 70%); */
@@ -434,7 +434,7 @@ thead th {
   padding: 10px 16px;
   text-align: left;
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   white-space: nowrap;
 }
 
@@ -451,7 +451,7 @@ thead th.sticky-col {
 }
 
 tbody tr {
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   transition: background 0.15s;
 }
 
@@ -511,7 +511,7 @@ tbody tr:hover td.sticky-col {
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
 }
 
@@ -581,7 +581,7 @@ tbody tr:hover td.sticky-col {
   display: flex;
   gap: 6px;
   padding: 14px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
 }
 
@@ -641,7 +641,7 @@ tbody tr:hover td.sticky-col {
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   justify-content: space-between;
 }
@@ -1141,7 +1141,7 @@ thead tr:hover .comp-delete-btn {
   align-items: center;
   gap: 10px;
   padding: 14px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
 }
 
@@ -1185,7 +1185,7 @@ thead tr:hover .comp-delete-btn {
   display: flex;
   gap: 12px;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
 }
 
@@ -1296,7 +1296,7 @@ thead tr:hover .comp-delete-btn {
 
 .attendance-list-footer {
   padding: 12px 24px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   color: var(--gray-400);
   font-size: 12px;
 }
@@ -1307,7 +1307,7 @@ thead tr:hover .comp-delete-btn {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 24px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   color: var(--gray-500);
   font-size: 12px;
 }
@@ -1361,7 +1361,7 @@ thead tr:hover .comp-delete-btn {
   display: flex;
   gap: 4px;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .att-hist-tab {
@@ -1387,7 +1387,7 @@ thead tr:hover .comp-delete-btn {
   align-items: center;
   gap: 12px;
   padding: 10px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   background: var(--gray-50);
 }
 
@@ -1455,7 +1455,7 @@ thead tr:hover .comp-delete-btn {
   align-items: center;
   gap: 14px;
   padding: 13px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   transition: background 0.15s;
 }
 
@@ -1543,7 +1543,7 @@ thead tr:hover .comp-delete-btn {
 
 .modal-head {
   padding: 22px 28px 18px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -2900,7 +2900,7 @@ thead tr:hover .comp-delete-btn {
 .att-toolbar {
   padding: 11px 20px;
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .search-toolbar .search-input,
@@ -2985,7 +2985,7 @@ tbody tr:hover td.sticky-col {
   margin: 0;
   padding: 13px 24px;
   border: 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   border-radius: 0;
   background: transparent;
   transition: background 0.15s ease;
@@ -3545,7 +3545,7 @@ tbody tr:hover td.sticky-col {
 
 .transfer-review-detail {
   padding-top: 9px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .transfer-review-kind {

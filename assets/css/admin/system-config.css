@@ -20,7 +20,7 @@
 }
 .config-nav-title {
   padding: 14px 16px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   font-size: 10px;
   font-weight: 700;
   color: var(--gray-400);
@@ -108,7 +108,7 @@
   align-items: center;
   gap: 14px;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 .cph-icon {
   width: 38px;
@@ -231,7 +231,7 @@
   align-items: center;
   gap: 16px;
   padding: 16px 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 .trigger-row:last-child {
   border-bottom: none;
@@ -326,7 +326,7 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 24px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   background: var(--gray-50);
 }
 .btn {
@@ -371,7 +371,7 @@
   display: flex;
   gap: 6px;
   padding: 14px 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .reopen-filter {
@@ -400,7 +400,7 @@
   align-items: flex-start;
   gap: 14px;
   padding: 16px 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .reopen-request-row:last-child {

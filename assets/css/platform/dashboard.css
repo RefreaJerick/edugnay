@@ -29,7 +29,7 @@
   min-height: 68px;
   padding: 16px 18px;
   background: var(--theme-surface);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .platform-dashboard .week-title-wrap {
@@ -326,7 +326,7 @@
   align-items: center;
   gap: 18px;
   padding: 16px 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .platform-dashboard .school-directory-row:last-child {

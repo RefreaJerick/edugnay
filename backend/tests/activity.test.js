@@ -88,6 +88,8 @@ test('all activity categories are accepted and filtered by stored action types',
     assert.match(queries.at(-1).sql, /audit_logs\.action_type IN/);
     assert.equal(queries.at(-1).values[0], 4);
   }
+  const shsProgramQuery = queries[categories.indexOf('shs_program')].sql;
+  assert.match(shsProgramQuery, /JSON_UNQUOTE\(JSON_EXTRACT\(audit_logs\.details, '\$\.schoolLevelCode'\)\) = 'shs'/);
   assert.equal(queries.length, categories.length);
 });
 
@@ -164,6 +166,67 @@ test('teacher assignment messages name the teacher change and its subject once',
   });
   assert.equal(updated.title, 'changed the teacher for English');
   assert.equal(updated.detail, 'From Carlo Reyes to Maya Santos');
+});
+
+test('SHS teacher assignment messages use each saved name once for new and legacy records', () => {
+  const subjectName = 'Effective Communication / Mabisang Komunikasyon';
+  const assigned = activity.formatActivity({
+    id: 1, actionType: 'teacher_assigned', entityType: 'section_teacher', actor: 'Alex Test Admin',
+    details: {
+      teacherName: 'Maya Santos', subjectName, sectionName: 'QA-only', sectionId: 7,
+      schoolLevelCode: 'shs', summary: `Maya Santos · QA-only · ${subjectName}`
+    }
+  });
+  assert.equal(assigned.title, `assigned Maya Santos to teach ${subjectName} in QA-only`);
+  assert.equal(assigned.detail, '');
+  assert.equal(assigned.category, 'shs_program');
+  assert.equal(assigned.actor, 'Alex Test Admin');
+
+  const legacyAssigned = activity.formatActivity({
+    id: 2, actionType: 'teacher_assigned', entityType: 'section_teacher', isLegacyShs: 1,
+    details: { summary: `Maya Santos ?? QA-only ?? ${subjectName}` }
+  });
+  assert.equal(legacyAssigned.title, `assigned Maya Santos to teach ${subjectName} in QA-only`);
+  assert.equal(legacyAssigned.detail, '');
+
+  const legacyUpdated = activity.formatActivity({
+    id: 3, actionType: 'teacher_assignment_updated', entityType: 'section_teacher', isLegacyShs: 1,
+    details: { summary: `Carlo Reyes â†’ Maya Santos Â· QA-only Â· ${subjectName}` }
+  });
+  assert.equal(legacyUpdated.title, `changed the teacher for ${subjectName} in QA-only from Carlo Reyes to Maya Santos`);
+  assert.equal(legacyUpdated.detail, '');
+
+  const legacyRemoved = activity.formatActivity({
+    id: 4, actionType: 'teacher_unassigned', entityType: 'section_teacher', isLegacyShs: 1,
+    details: { summary: `Maya Santos ?? QA-only ?? ${subjectName}` }
+  });
+  assert.equal(legacyRemoved.title, `removed Maya Santos as teacher for ${subjectName} in QA-only`);
+  assert.equal(legacyRemoved.detail, '');
+
+  const incomplete = activity.formatActivity({
+    id: 5, actionType: 'teacher_assigned', entityType: 'section_teacher', isLegacyShs: 1,
+    details: { summary: 'Maya Santos' }
+  });
+  assert.equal(incomplete.title, 'assigned Maya Santos to teach an SHS subject');
+  assert.equal(incomplete.detail, '');
+
+  const missingTeacher = activity.formatActivity({
+    id: 6, actionType: 'teacher_assigned', entityType: 'section_teacher',
+    details: { subjectName, sectionName: 'QA-only', schoolLevelCode: 'shs' }
+  });
+  assert.equal(missingTeacher.title, `assigned a teacher to teach ${subjectName} in QA-only`);
+
+  const missingSection = activity.formatActivity({
+    id: 7, actionType: 'teacher_unassigned', entityType: 'section_teacher',
+    details: { teacherName: 'Maya Santos', subjectName, schoolLevelCode: 'shs' }
+  });
+  assert.equal(missingSection.title, `removed Maya Santos as teacher for ${subjectName}`);
+
+  for (const event of [assigned, legacyAssigned, legacyUpdated, legacyRemoved]) {
+    assert.equal(event.title.split('Maya Santos').length - 1, event.title.includes('Maya Santos') ? 1 : 0);
+    assert.equal(event.title.split(subjectName).length - 1, event.title.includes(subjectName) ? 1 : 0);
+    assert.equal(event.title.split('QA-only').length - 1, 1);
+  }
 });
 
 test('representative SHS, announcement, settings, and grading events show accurate saved context', () => {

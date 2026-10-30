@@ -964,6 +964,30 @@ body:has(.onboarding-pending-page) {
   flex: 0 0 auto;
 }
 
+.onboarding-topbar-privacy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: var(--button-radius);
+  color: var(--theme-accent-text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.onboarding-topbar-privacy:hover,
+.onboarding-topbar-privacy:focus-visible {
+  color: var(--theme-blue-deep);
+  background: var(--theme-surface-soft);
+}
+
+.onboarding-topbar-privacy:focus-visible {
+  outline: 2px solid var(--theme-accent-text);
+  outline-offset: 2px;
+}
+
 .onboarding-topbar-signin {
   display: inline-flex;
   align-items: center;
@@ -994,6 +1018,10 @@ body:has(.onboarding-pending-page) {
 .onboarding-showcase-shell {
   border-bottom: 1px solid var(--gray-200);
   background: var(--theme-surface);
+}
+
+html[data-theme="dark"] .onboarding-showcase-shell {
+  background: var(--theme-canvas);
 }
 
 .onboarding-showcase-inner {
@@ -1102,6 +1130,15 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   border-color: var(--blue);
   background: var(--blue);
   color: var(--white);
+}
+
+html[data-theme="dark"] .onboarding-showcase-action-primary {
+  border-color: var(--gray-200);
+}
+
+html[data-theme="dark"] .onboarding-showcase-action-primary:hover,
+html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
+  border-color: var(--blue);
 }
 
 .onboarding-showcase-action:focus-visible {

@@ -7,6 +7,7 @@ const { getSchoolLogoUrl, logoDirectory, saveSchoolLogo } = require('../config/s
 const { deleteAvatar } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
 const { studentCanAccessJournal } = require('../utils/studentJournalAccess');
+const { findStudentShsPlacementRows, getStudentShsPlacementIssue } = require('../utils/shsSelectionPlacement');
 const { SHS_TRACKS } = require('../config/shsCurriculum');
 const { schoolDomainCandidate } = require('../utils/schoolEmailDomain');
 const { schoolEmailBase, schoolEmailCandidate } = require('../utils/schoolUserEmail');
@@ -1145,11 +1146,15 @@ async function getPortalFeatures(req, res, next) {
     const studentJournalEligible = req.user.role === 'student'
       ? journalSubject.eligible && await studentCanAccessJournal(database, schoolId, req.user.id)
       : journalSubject.eligible;
+    const electivesEligible = req.user.role === 'student' && process.env.SHS_SELECTION_ENABLED === 'true'
+      ? !getStudentShsPlacementIssue(await findStudentShsPlacementRows(database, schoolId, req.user.id))
+      : false;
     res.status(200).json({
       features: await getFeatures(database, schoolId),
       journalSubjectId: settings?.journalSubjectId || null,
       journalSubjectName: journalSubject.subject?.name || null,
-      journalSubjectEligible: studentJournalEligible
+      journalSubjectEligible: studentJournalEligible,
+      electivesEligible
     });
   } catch (error) { next(error); }
 }

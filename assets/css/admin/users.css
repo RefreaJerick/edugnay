@@ -214,7 +214,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 10px;
 }
@@ -261,7 +261,7 @@ thead th {
   padding: 10px 20px;
   text-align: left;
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   white-space: nowrap;
 }
 
@@ -275,7 +275,7 @@ thead th.sortable:hover {
 }
 
 tbody tr {
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   transition: background 0.15s;
   cursor: default;
 }
@@ -409,7 +409,7 @@ tbody td {
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -503,7 +503,7 @@ tbody td {
 
 .modal-head {
   padding: 24px 28px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -560,7 +560,7 @@ tbody td {
 
 .account-form-section + .account-form-section {
   padding-top: 18px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .account-form-section:last-child {
@@ -757,7 +757,7 @@ button.role-opt {
 .import-preview-table th,
 .import-preview-table td {
   padding: 7px 8px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   text-align: left;
   vertical-align: top;
   white-space: nowrap;
@@ -1259,7 +1259,7 @@ button.role-opt {
   align-items: center;
   gap: 14px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .user-details-profile-copy {
@@ -1294,7 +1294,7 @@ button.role-opt {
 
 .user-details-section + .user-details-section {
   margin-top: 20px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .user-details-section-head {
@@ -1357,7 +1357,7 @@ button.role-opt {
 }
 
 .user-details-linked-list {
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .user-details-linked-row {
@@ -1367,7 +1367,7 @@ button.role-opt {
   gap: 14px;
   min-height: 48px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .user-details-linked-row:last-child {
@@ -1565,7 +1565,7 @@ button.role-opt {
 .credential-batch-list {
   max-height: 280px;
   overflow-y: auto;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .credential-batch-row {
@@ -1575,7 +1575,7 @@ button.role-opt {
   gap: 14px;
   min-height: 48px;
   padding: 9px 2px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .credential-batch-row strong,

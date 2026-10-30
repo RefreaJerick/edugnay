@@ -498,7 +498,8 @@ async function getApiPortalFeatures() {
     features: response?.features || {},
     journalSubjectId: response?.journalSubjectId || null,
     journalSubjectName: response?.journalSubjectName || null,
-    journalSubjectEligible: Boolean(response?.journalSubjectEligible)
+    journalSubjectEligible: Boolean(response?.journalSubjectEligible),
+    electivesEligible: Boolean(response?.electivesEligible)
   };
 }
 

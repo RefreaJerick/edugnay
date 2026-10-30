@@ -92,7 +92,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 10px;
 }
@@ -133,7 +133,7 @@
 .school-release-item-meta > span + span::before { content: "·"; margin-right: 8px; color: var(--gray-300); }
 .school-release-meta { display: flex; flex-wrap: wrap; gap: 3px 10px; color: var(--gray-500); font-size: 11px; line-height: 1.45; }
 .school-release-version { min-width: 0; padding: 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--theme-surface); color: var(--gray-700); overflow-wrap: anywhere; }
-.school-release-version-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 14px; padding-bottom: 9px; border-bottom: 1px solid var(--gray-100); }
+.school-release-version-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 14px; padding-bottom: 9px; border-bottom: 1px solid var(--panel-divider); }
 .school-release-version-head h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; color: var(--gray-800); font-size: 14px; line-height: 1.4; }
 .school-release-current { padding: 3px 8px; border: 1px solid var(--blue-pale); border-radius: 999px; background: var(--blue-xpale); color: var(--theme-accent-text); font-size: 10px; font-weight: 700; }
 .school-release-summary { padding: 10px 0 2px; }
@@ -331,7 +331,7 @@
   letter-spacing: 0.6px;
   margin-bottom: 8px;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .bar-group .bar-row {
@@ -622,7 +622,7 @@
 .bar-group {
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 .bar-group:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 .bar-group-label {
@@ -653,7 +653,7 @@
 .grade-distribution,
 .absence-triggers {
   padding: 0 20px 18px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 .grade-distribution > div:first-child,
 .absence-triggers > div:first-child {
@@ -708,7 +708,7 @@
 .legend-total {
   margin-top: 2px;
   padding-top: 10px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 .distribution-title {
   padding-top: 14px;

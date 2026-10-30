@@ -33,6 +33,7 @@ function createState(overrides = {}) {
       sfTemplatesEnabled: 1
     },
     studentJhsPlacement: true,
+    shsPlacementRows: [],
     committed: false,
     rolledBack: false,
     ...overrides
@@ -57,6 +58,7 @@ const connection = {
   release() {},
   async execute(sql, values = []) {
     calls.push({ sql, values });
+    if (sql.includes('SELECT s.id AS sectionId')) return [state.shsPlacementRows || []];
     if (sql.startsWith('SELECT 1 AS eligible FROM section_students')) return [state.studentJhsPlacement ? [{ eligible: 1 }] : []];
     if (sql.startsWith('INSERT INTO school_portal_features')) {
       state.featureRowPresent = true;
@@ -174,6 +176,17 @@ async function loadFeatures(user = { id: 3, schoolId: 1, role: 'school_admin' })
   return result;
 }
 
+async function withShsSelectionEnabled(value, action) {
+  const previous = process.env.SHS_SELECTION_ENABLED;
+  if (value === null) delete process.env.SHS_SELECTION_ENABLED;
+  else process.env.SHS_SELECTION_ENABLED = value;
+  try { return await action(); }
+  finally {
+    if (previous === undefined) delete process.env.SHS_SELECTION_ENABLED;
+    else process.env.SHS_SELECTION_ENABLED = previous;
+  }
+}
+
 test('portal features return the saved journal subject', async () => {
   calls = [];
   state = createState();
@@ -198,6 +211,48 @@ test('student portal features include current Journal access, not just school co
   state = createState({ studentJhsPlacement: true });
   const allowed = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
   assert.equal(allowed.body.journalSubjectEligible, true);
+});
+
+test('portal features expose SHS elective eligibility from the shared placement rules', async () => {
+  await withShsSelectionEnabled('true', async () => {
+    calls = [];
+    state = createState({ shsPlacementRows: [{ sectionId: 22, yearId: 2027, gradeCode: 'grade-11' }] });
+    const eligible = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
+    assert.equal(eligible.body.electivesEligible, true);
+    assert.ok(calls.some(call => call.sql?.includes('SELECT s.id AS sectionId')));
+
+    calls = [];
+    state = createState({ shsPlacementRows: [{ sectionId: 23, yearId: 2027, gradeCode: 'grade-10' }] });
+    const wrongGrade = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
+    assert.equal(wrongGrade.body.electivesEligible, false);
+
+    calls = [];
+    state = createState({ shsPlacementRows: [
+      { sectionId: 23, yearId: 2027, gradeCode: 'grade-11' },
+      { sectionId: 24, yearId: 2027, gradeCode: 'grade-12' }
+    ] });
+    const duplicatePlacement = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
+    assert.equal(duplicatePlacement.body.electivesEligible, false);
+
+    calls = [];
+    state = createState({ shsPlacementRows: [] });
+    const noPlacement = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
+    assert.equal(noPlacement.body.electivesEligible, false);
+
+    calls = [];
+    state = createState();
+    const staff = await loadFeatures({ id: 9, schoolId: 1, role: 'teacher' });
+    assert.equal(staff.body.electivesEligible, false);
+    assert.equal(calls.some(call => call.sql?.includes('SELECT s.id AS sectionId')), false);
+  });
+
+  await withShsSelectionEnabled('false', async () => {
+    calls = [];
+    state = createState({ shsPlacementRows: [{ sectionId: 22, yearId: 2027, gradeCode: 'grade-11' }] });
+    const disabled = await loadFeatures({ id: 8, schoolId: 1, role: 'student' });
+    assert.equal(disabled.body.electivesEligible, false);
+    assert.equal(calls.some(call => call.sql?.includes('SELECT s.id AS sectionId')), false);
+  });
 });
 
 test('SF Templates can be enabled and disabled, with changes returned after reload', async () => {

@@ -459,7 +459,8 @@ test('student choices remain gated, pathway-free, and separate from confirmed me
   }
   assert.match(read('assets/css/styles.css'), /html\.student-nav-hide-electives \.sidebar a\[data-student-access="electives"\]/);
   for (const page of studentPages) assert.doesNotMatch(read(`views/student/${page}`), />Elective Selection</);
-  assert.match(read('assets/js/student/shell.js'), /await window\.EDUGNAY_API\.getShsSelection\(\)/);
+  assert.match(read('assets/js/student/shell.js'), /portalElectivesEligible && identity/);
+  assert.doesNotMatch(read('assets/js/student/shell.js'), /getShsSelection\(\)/);
   const controllerSource = read('backend/controllers/shsSelectionController.js');
   const adminClient = read('assets/js/admin/shs-program.js');
   assert.match(adminClient, /class="sf-template-choice shs-choice shs-review-choice/);

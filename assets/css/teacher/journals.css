@@ -123,7 +123,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 10px;
   /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--theme-surface) 70%); */
@@ -392,7 +392,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .settings-toggle-row:last-child {
@@ -458,7 +458,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   flex-shrink: 0;
 }
 
@@ -491,7 +491,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
 }
 
@@ -596,7 +596,7 @@ thead th {
   padding: 10px 20px;
   text-align: left;
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   white-space: nowrap;
 }
 
@@ -605,7 +605,7 @@ thead th.center {
 }
 
 tbody tr {
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   transition: background 0.15s;
   cursor: pointer;
 }
@@ -700,7 +700,7 @@ tbody td.center {
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: var(--gray-500);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 /* ── MODAL ── */
@@ -743,7 +743,7 @@ tbody td.center {
 
 .modal-head {
   padding: 22px 28px 18px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -925,7 +925,7 @@ tbody td.center {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   flex-wrap: wrap;
 }
 
@@ -1104,7 +1104,7 @@ tbody tr.reviewed td {
   .summary-item {
     min-width: 100%;
     border-right: none;
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 1px solid var(--panel-divider);
   }
 
   .summary-item:last-child {

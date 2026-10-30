@@ -185,8 +185,7 @@ function createStudentShellHarness({
   cachedSnapshot = null,
   pathname = '/views/student/edugnay-student-dashboard.html',
   deferPortal = false,
-  electivesEnabled = true,
-  deferElectives = false
+  electivesEligible = false
 } = {}) {
   const storage = new Map();
   if (cachedSnapshot) {
@@ -229,8 +228,7 @@ function createStudentShellHarness({
   };
   let releasePortal;
   const portalPromise = deferPortal ? new Promise(resolve => { releasePortal = resolve; }) : null;
-  let releaseElectives;
-  const electivesPromise = deferElectives ? new Promise(resolve => { releaseElectives = resolve; }) : null;
+  let electiveSelectionCalls = 0;
   let activeFeatures = null;
   const location = { pathname, href: `http://localhost${pathname}`, redirect: '' };
   location.replace = target => { location.redirect = target; };
@@ -272,11 +270,10 @@ function createStudentShellHarness({
     getPortalFeatures: async () => {
       if (failures.portal) throw new Error('portal request failed');
       if (portalPromise) return portalPromise;
-      return { features: { gradesEnabled, journalsEnabled }, journalSubjectId: 3, journalSubjectName: 'English', journalSubjectEligible: true };
+      return { features: { gradesEnabled, journalsEnabled }, journalSubjectId: 3, journalSubjectName: 'English', journalSubjectEligible: true, electivesEligible };
     },
     getShsSelection: async () => {
-      if (failures.electives || !electivesEnabled) throw new Error('elective selection unavailable');
-      if (electivesPromise) return electivesPromise;
+      electiveSelectionCalls += 1;
       return {};
     },
     setPortalFeatures(features) { activeFeatures = features; },
@@ -296,7 +293,7 @@ function createStudentShellHarness({
     listeners,
     location,
     releasePortal,
-    releaseElectives,
+    get electiveSelectionCalls() { return electiveSelectionCalls; },
     getCachedSnapshot() {
       const pointer = JSON.parse(storage.get(`${studentNavPrefix}current`) || 'null');
       if (!pointer) return null;
@@ -562,6 +559,8 @@ test('student navigation pre-paints cached access on every portal page', () => {
     const html = fs.readFileSync(path.join(studentViews, filename), 'utf8');
     assert.match(html, /assets\/js\/student\/shell\.js/, `${filename} should use the shared student shell`);
     assert.match(html, /data-student-access="electives"/, `${filename} should use the shared elective access state`);
+    assert.match(html, /href="edugnay-student-electives\.html"[^>]*data-student-access="electives"/,
+      `${filename} should link eligible students to My Electives`);
   }
   assert.match(styles, /html\.student-nav-hide-grades[\s\S]*?edugnay-student-grades\.html[\s\S]*?display:\s*none !important/);
   assert.match(styles, /html\.student-nav-hide-journals[\s\S]*?edugnay-student-journal\.html[\s\S]*?display:\s*none !important/);
@@ -569,7 +568,9 @@ test('student navigation pre-paints cached access on every portal page', () => {
   assert.match(studentShell, /let cachedStudentSidebarSnapshot = readStudentSidebarSnapshot\(\);/);
   assert.match(studentShell, /setStudentSidebarPrepaintState\(cachedStudentSidebarSnapshot\);/);
   assert.match(studentShell, /student-nav-hide-electives/);
-  assert.match(studentShell, /electives: Boolean\(matchingSnapshot && cachedStudentSidebarSnapshot\.access\.electives === true\)/);
+  assert.match(studentShell, /electives: Boolean\(portalElectivesEligible && identity/);
+  assert.doesNotMatch(studentShell, /getShsSelection\(\)/, 'the shared sidebar must not probe elective selection');
+  assert.match(commonShell, /electivesEligible: Boolean\(response\?\.electivesEligible\)/);
   assert.doesNotMatch(studentShell, /student-electives-available/);
   assert.match(commonShell, /function clearStudentSidebarCache\(\)/);
   assert.match(commonShell, /confirmLogout\(\)[\s\S]*?clearStudentSidebarCache\(\)/);
@@ -606,21 +607,22 @@ test('student sidebar uses a cached snapshot only for pre-paint, then refreshes 
     features: { gradesEnabled: true, journalsEnabled: false },
     journalSubjectId: 3,
     journalSubjectName: 'English',
-    journalSubjectEligible: true
+    journalSubjectEligible: true,
+    electivesEligible: true
   });
   await initialization;
   await new Promise(resolve => setImmediate(resolve));
 
   assert.equal(harness.rootClasses.has('student-nav-hide-grades'), false, 'fresh grade access replaces the cached state');
   assert.equal(harness.rootClasses.has('student-nav-hide-journals'), true, 'fresh Journal denial removes the stale cached link');
-  assert.equal(harness.rootClasses.has('student-nav-hide-electives'), false, 'confirmed elective access stays visible after the API check');
+  assert.equal(harness.rootClasses.has('student-nav-hide-electives'), false, 'portal features confirm elective access');
   assert.equal(harness.accessItems.grades.hidden, false);
   assert.equal(harness.accessItems.journals.hidden, true);
   assert.equal(harness.location.redirect, './edugnay-student-dashboard.html', 'fresh access still guards the Journal page');
   assert.deepEqual(harness.getCachedSnapshot().access, { grades: true, journals: false, electives: true });
 });
 
-test('student elective navigation keeps its cached visibility while access refreshes and hides on denial', async () => {
+test('student elective navigation refreshes from portal features and fails closed', async () => {
   const cachedSnapshot = {
     version: 1,
     role: 'student',
@@ -628,24 +630,38 @@ test('student elective navigation keeps its cached visibility while access refre
     studentId: '70',
     access: { grades: true, journals: true, electives: true }
   };
-  const allowed = createStudentShellHarness({ cachedSnapshot, deferElectives: true });
+  const allowed = createStudentShellHarness({ cachedSnapshot, electivesEligible: true });
   assert.equal(allowed.rootClasses.has('student-nav-hide-electives'), false, 'cached elective access pre-paints the link');
   const initialization = allowed.listeners.get('DOMContentLoaded')();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(allowed.rootClasses.has('student-nav-hide-electives'), false, 'the cached link stays visible during refresh');
-  allowed.releaseElectives({});
   await initialization;
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(allowed.rootClasses.has('student-nav-hide-electives'), false);
+  assert.equal(allowed.rootClasses.has('student-nav-hide-electives'), false, 'eligible SHS students see My Electives');
   assert.equal(allowed.getCachedSnapshot().access.electives, true);
+  assert.equal(allowed.electiveSelectionCalls, 0, 'the sidebar never requests elective selection data');
 
-  const denied = createStudentShellHarness({ cachedSnapshot, electivesEnabled: false });
+  const denied = createStudentShellHarness({ cachedSnapshot, electivesEligible: false });
   assert.equal(denied.rootClasses.has('student-nav-hide-electives'), false, 'the last verified state is used before refresh');
   const denialInitialization = denied.listeners.get('DOMContentLoaded')();
   await denialInitialization;
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(denied.rootClasses.has('student-nav-hide-electives'), true, 'the link hides after access is denied');
+  assert.equal(denied.rootClasses.has('student-nav-hide-electives'), true, 'the link hides after portal features denies access');
   assert.equal(denied.getCachedSnapshot().access.electives, false);
+
+  const failed = createStudentShellHarness({ cachedSnapshot, failures: { portal: true } });
+  const failedInitialization = failed.listeners.get('DOMContentLoaded')();
+  await failedInitialization;
+  assert.equal(failed.rootClasses.has('student-nav-hide-electives'), true, 'a failed portal-features request hides the link');
+  assert.equal(failed.getCachedSnapshot().access.electives, false);
+  assert.equal(failed.electiveSelectionCalls, 0);
+
+  for (const pathname of [
+    '/views/student/edugnay-student-dashboard.html',
+    '/views/student/edugnay-student-assignments.html'
+  ]) {
+    const jhs = createStudentShellHarness({ pathname, electivesEligible: false });
+    await jhs.listeners.get('DOMContentLoaded')();
+    assert.equal(jhs.rootClasses.has('student-nav-hide-electives'), true, `${pathname} keeps My Electives hidden for JHS`);
+    assert.equal(jhs.electiveSelectionCalls, 0, `${pathname} makes no elective-selection request`);
+  }
 });
 
 test('student sidebar cache is discarded on account changes and session expiry', async () => {
@@ -670,8 +686,8 @@ test('student sidebar cache is discarded on account changes and session expiry',
   assert.equal(switchHarness.getCachedSnapshot().studentId, '71');
   assert.equal(switchHarness.rootClasses.has('student-nav-hide-grades'), true);
   assert.equal(switchHarness.rootClasses.has('student-nav-hide-journals'), true);
-  assert.equal(switchHarness.rootClasses.has('student-nav-hide-electives'), false, 'the new student link appears after their own access check');
-  assert.equal(switchHarness.getCachedSnapshot().access.electives, true);
+  assert.equal(switchHarness.rootClasses.has('student-nav-hide-electives'), true, 'the new student link stays hidden without their own eligibility');
+  assert.equal(switchHarness.getCachedSnapshot().access.electives, false);
 
   const expiredHarness = createStudentShellHarness({ cachedSnapshot, failures: { session: true, sessionStatus: 401 } });
   const expiredInitialization = expiredHarness.listeners.get('DOMContentLoaded')();

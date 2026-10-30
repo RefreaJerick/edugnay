@@ -69,7 +69,7 @@
 .modal-backdrop.open .modal { transform: translateY(0); }
 .modal-head {
   padding: 22px 28px 18px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;

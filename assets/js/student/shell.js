@@ -250,32 +250,6 @@ function applyStudentGradesAccess(enabled) {
   });
 }
 
-async function revealStudentElectiveSelection() {
-  const session = window.EDUGNAY_STUDENT.currentUser;
-  const identity = getStudentSidebarIdentity(session);
-  if (session?.role !== 'student' || !identity) return;
-
-  const updateAccess = enabled => {
-    const currentSession = window.EDUGNAY_STUDENT.currentUser;
-    const currentIdentity = getStudentSidebarIdentity(currentSession);
-    if (currentSession?.role !== 'student'
-      || !studentSidebarSnapshotMatchesIdentity(cachedStudentSidebarSnapshot, currentSession)
-      || currentIdentity?.schoolId !== identity.schoolId
-      || currentIdentity?.studentId !== identity.studentId) return;
-    cachedStudentSidebarSnapshot.access.electives = enabled;
-    saveStudentSidebarSnapshot(cachedStudentSidebarSnapshot);
-    setStudentSidebarPrepaintState(cachedStudentSidebarSnapshot, true);
-    window.EDUGNAY_REFRESH_SIDEBAR_SCROLLBAR?.();
-  };
-
-  try {
-    await window.EDUGNAY_API.getShsSelection();
-    updateAccess(true);
-  } catch {
-    updateAccess(false);
-  }
-}
-
 function applyStudentAttendanceAccess() {
   const enabled = window.EDUGNAY_CONFIG?.isAttendanceEnabled?.() !== false;
   document.querySelectorAll('a[href*="edugnay-student-attendance.html"]').forEach(link => {
@@ -299,6 +273,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   catch { showAppToast('School information could not be loaded.', 'error'); }
   await window.EDUGNAY_COMMUNICATION_READY;
   const backendEnabled = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+  let portalElectivesEligible = false;
+  let portalElectivesIdentity = null;
   if (backendEnabled) {
     if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-student-profile.html', 'student')) return;
 
@@ -330,6 +306,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const portal = await window.EDUGNAY_API.getPortalFeatures();
+      portalElectivesEligible = session?.role === 'student' && portal.electivesEligible === true;
+      portalElectivesIdentity = getStudentSidebarIdentity(session);
       window.EDUGNAY_API.setPortalFeatures({ ...portal.features, journalSubjectId: portal.journalSubjectId,
         journalSubjectName: portal.journalSubjectName, journalSubjectEligible: portal.journalSubjectEligible });
     } catch {
@@ -339,12 +317,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const session = window.EDUGNAY_STUDENT.currentUser;
   const identity = getStudentSidebarIdentity(session);
-  const matchingSnapshot = session?.role === 'student'
-    && studentSidebarSnapshotMatchesIdentity(cachedStudentSidebarSnapshot, session);
   const freshAccess = {
     grades: window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() !== false,
     journals: studentCanAccess('journals'),
-    electives: Boolean(matchingSnapshot && cachedStudentSidebarSnapshot.access.electives === true)
+    electives: Boolean(portalElectivesEligible && identity
+      && portalElectivesIdentity?.schoolId === identity.schoolId
+      && portalElectivesIdentity?.studentId === identity.studentId)
   };
   const freshSnapshot = identity && session?.role === 'student' ? {
     version: 1,
@@ -361,6 +339,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   studentSidebarAccessReady = true;
   applyStudentJournalAccess();
   applyStudentAttendanceAccess();
-  void revealStudentElectiveSelection();
   renderTopbarNotifs();
 });

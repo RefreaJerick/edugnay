@@ -73,7 +73,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .section-list .badge {
@@ -85,7 +85,7 @@
   min-height: 48px;
   padding: 12px 4px;
   border: 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   border-radius: 0;
   background: transparent;
   color: var(--gray-800);
@@ -122,7 +122,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 10px;
   /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--theme-surface) 70%); */
@@ -169,7 +169,7 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 24px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .form-hint {
@@ -250,7 +250,7 @@
 .modal-backdrop.open .modal { transform: translateY(0); }
 .modal-head {
   padding: 22px 28px 18px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -317,7 +317,7 @@
   min-height: 50px;
   padding: 11px 4px;
   border: 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   border-radius: 0;
   background: transparent;
   color: var(--gray-800);

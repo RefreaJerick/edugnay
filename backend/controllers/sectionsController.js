@@ -739,7 +739,11 @@ async function assignTeacher(req, res, next) {
     await connection.beginTransaction();
     transactionStarted = true;
     const [result] = await connection.execute('INSERT INTO section_teachers (school_id, section_id, teacher_user_id, subject_id) VALUES (?, ?, ?, ?)', [req.user.schoolId, sectionId, teacherId, subjectId]);
-    await writeAuditLog(connection, req, 'teacher_assigned', 'section_teacher', result.insertId, { summary: `${teachers[0].displayName} · ${section.name} · ${subjects[0].name}` });
+    await writeAuditLog(connection, req, 'teacher_assigned', 'section_teacher', result.insertId, {
+      teacherName: teachers[0].displayName, sectionName: section.name, sectionId: Number(section.id),
+      subjectName: subjects[0].name, schoolLevelCode: section.schoolLevelCode,
+      summary: `${teachers[0].displayName} · ${section.name} · ${subjects[0].name}`
+    });
     await connection.commit();
     transactionStarted = false;
     res.status(201).json({ assignmentId: result.insertId, sectionId, teacherId, subjectId });
@@ -773,7 +777,11 @@ async function removeTeacherAssignment(req, res, next) {
     if (scheduled.length) throw createError('Remove this subject assignment’s scheduled meetings in Timetables first.', 409);
     const [result] = await connection.execute('DELETE FROM section_teachers WHERE id = ? AND section_id = ?', [assignmentId, sectionId]);
     if (!result.affectedRows) throw createError('Teacher assignment was not found.', 404);
-    await writeAuditLog(connection, req, 'teacher_unassigned', 'section_teacher', assignmentId, { summary: `${assignments[0].teacherName} · ${section.name} · ${assignments[0].subjectName}` });
+    await writeAuditLog(connection, req, 'teacher_unassigned', 'section_teacher', assignmentId, {
+      teacherName: assignments[0].teacherName, sectionName: section.name, sectionId: Number(section.id),
+      subjectName: assignments[0].subjectName, schoolLevelCode: section.schoolLevelCode,
+      summary: `${assignments[0].teacherName} · ${section.name} · ${assignments[0].subjectName}`
+    });
     await connection.commit();
     transactionStarted = false;
     res.status(204).send();
@@ -801,7 +809,12 @@ async function updateTeacherAssignment(req, res, next) {
     await assertTeacherScheduleAvailable(connection, req.user.schoolId, section.academicYearId, assignmentId, sectionId, teacherId);
     const [result] = await connection.execute('UPDATE section_teachers SET teacher_user_id=? WHERE id=? AND section_id=?', [teacherId, assignmentId, sectionId]);
     if (!result.affectedRows) throw createError('Teacher assignment was not found.', 404);
-    await writeAuditLog(connection, req, 'teacher_assignment_updated', 'section_teacher', assignmentId, { summary: `${currentRows[0].previousTeacher} → ${teachers[0].displayName} · ${section.name} · ${currentRows[0].subjectName}` });
+    await writeAuditLog(connection, req, 'teacher_assignment_updated', 'section_teacher', assignmentId, {
+      previousTeacher: currentRows[0].previousTeacher, teacherName: teachers[0].displayName,
+      sectionName: section.name, sectionId: Number(section.id), subjectName: currentRows[0].subjectName,
+      schoolLevelCode: section.schoolLevelCode,
+      summary: `${currentRows[0].previousTeacher} → ${teachers[0].displayName} · ${section.name} · ${currentRows[0].subjectName}`
+    });
     await connection.commit();
     transactionStarted = false;
     res.json({ assignmentId, sectionId, teacherId });

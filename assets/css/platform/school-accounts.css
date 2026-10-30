@@ -462,7 +462,7 @@
   align-items: center;
   gap: 12px;
   padding-bottom: 18px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .platform-school-accounts .account-review-logo {
@@ -543,7 +543,7 @@
 .platform-school-accounts .account-review-section {
   margin-top: 20px;
   padding-top: 18px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .platform-school-accounts .account-review-section-head {
@@ -584,7 +584,7 @@
 }
 
 .platform-school-accounts .account-review-feature-list {
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .platform-school-accounts .account-review-feature-row {
@@ -594,7 +594,7 @@
   gap: 14px;
   min-height: 40px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .platform-school-accounts .account-review-feature-row:last-child {

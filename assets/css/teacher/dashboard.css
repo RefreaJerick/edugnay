@@ -34,7 +34,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 10px;
 }
@@ -86,12 +86,12 @@ thead th {
   padding: 10px 20px;
   text-align: left;
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   white-space: nowrap;
 }
 
 tbody tr {
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   transition: background 0.15s;
   cursor: pointer;
 }
@@ -181,7 +181,7 @@ tbody td {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   padding: 16px 18px 18px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   background: var(--surface-blue-soft);
 }
 
@@ -271,7 +271,7 @@ tbody td {
   width: 100%;
   margin-top: 13px;
   padding: 11px 0 0;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .section-stat {
@@ -427,7 +427,7 @@ tbody td {
   position: relative;
   padding: 14px 20px;
   border: 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   border-radius: 0;
   background: transparent;
   transition: background .18s ease;
@@ -475,7 +475,7 @@ tbody td {
   font-size: 10.5px;
   color: var(--gray-400);
   padding-top: 8px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 /* Responsive */
@@ -605,7 +605,7 @@ tbody td {
   min-height: 68px;
   padding: 16px 18px;
   background: var(--theme-surface);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .week-title-wrap {
@@ -731,7 +731,7 @@ tbody td {
   margin: 0;
   padding: 13px 16px;
   border: 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   border-radius: 0;
   background: var(--theme-surface);
   box-shadow: none;
@@ -741,14 +741,14 @@ tbody td {
 .teacher-notif-panel .tb-notif-item:last-child { border-bottom: 0; }
 
 .teacher-notif-panel .tb-notif-item:hover {
-  border-color: var(--gray-100);
+  border-color: var(--panel-divider);
   background: var(--gray-50);
   box-shadow: none;
   padding-left: 19px;
 }
 
 .teacher-notif-panel .tb-notif-item.unread {
-  border-color: var(--gray-100);
+  border-color: var(--panel-divider);
   background: var(--blue-xpale);
 }
 

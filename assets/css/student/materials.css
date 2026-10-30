@@ -62,7 +62,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 22px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
 }
 
@@ -140,7 +140,7 @@
 
 .panel-head {
   padding: 16px 22px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -170,7 +170,7 @@
   text-transform: uppercase;
   color: var(--gray-400);
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 /* ── Material rows ── */
@@ -179,7 +179,7 @@
   align-items: center;
   gap: 13px;
   padding: 14px 22px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   transition: background 0.15s;
 }
 

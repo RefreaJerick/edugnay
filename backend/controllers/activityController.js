@@ -69,6 +69,8 @@ const LEGACY_SHS_ACTIVITY_SQL = `(
       JOIN school_levels legacy_level ON legacy_level.id = legacy_section.school_level_id AND legacy_level.school_id = legacy_section.school_id
       WHERE legacy_assignment.id = CAST(audit_logs.entity_id AS UNSIGNED)
         AND legacy_assignment.school_id = audit_logs.school_id AND legacy_level.level_code = 'shs'))
+  OR (audit_logs.action_type IN ('teacher_assigned', 'teacher_assignment_updated', 'teacher_unassigned')
+    AND JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.schoolLevelCode')) = 'shs')
   OR (audit_logs.action_type IN ('timetable_meeting_created', 'timetable_meeting_updated', 'timetable_meeting_deleted')
     AND (JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.summary')) LIKE 'Elective class %'
       OR EXISTS (SELECT 1 FROM timetable_meetings legacy_meeting
@@ -415,8 +417,12 @@ function shsProgramActivity(row, details, fallbackTitle) {
   const className = String(details.className || details.electiveClassName || '')
     .replace(/^(?:created|updated|deleted|removed)\s+(?:an?\s+)?SHS\s+class\s*:\s*/i, '').trim();
   const teacherName = String(details.teacherName || '').trim();
+  const sectionName = String(details.sectionName || row.sectionName || '').trim();
   const grade = shsGrade(details);
   const track = shsTrack(details);
+  const isTeacherAssignment = ['teacher_assigned', 'teacher_assignment_updated', 'teacher_unassigned'].includes(action);
+  const isShsTeacherAssignment = /^shs_teacher_(assigned|assignment_updated|unassigned)$/.test(action)
+    || (isTeacherAssignment && (row.isLegacyShs || details.schoolLevelCode === 'shs'));
   const subjects = Array.isArray(details.subjects)
     ? details.subjects.map(subject => String(subject?.subjectName || '').trim()).filter(Boolean) : [];
   let title = fallbackTitle;
@@ -502,17 +508,24 @@ function shsProgramActivity(row, details, fallbackTitle) {
       : /deactivated$/.test(action) ? 'deactivated' : 'removed';
     title = subjectName ? `${verb} SHS core subject ${subjectName}` : fallbackTitle;
     context = grade;
-  } else if (/^shs_teacher_(assigned|assignment_updated|unassigned)$/.test(action)
-    || (row.isLegacyShs && /^(teacher_assigned|teacher_assignment_updated|teacher_unassigned)$/.test(action))) {
+  } else if (isShsTeacherAssignment) {
     const unassigned = /unassigned$/.test(action);
     const updated = /assignment_updated$/.test(action);
-    title = subjectName && teacherName
-      ? unassigned ? `removed ${teacherName} from ${subjectName}`
-        : updated ? `changed the teacher for ${subjectName}` : `assigned ${teacherName} to ${subjectName}`
-      : subjectName ? `${unassigned ? 'removed a teacher from' : updated ? 'changed the teacher for' : 'assigned a teacher to'} ${subjectName}`
-        : fallbackTitle;
-    context = updated && details.previousTeacher && teacherName
-      ? `${details.previousTeacher} to ${teacherName}` : '';
+    const target = subjectName || 'an SHS subject';
+    const inSection = sectionName ? ` in ${sectionName}` : '';
+    if (updated) {
+      const teacherChange = details.previousTeacher && teacherName
+        ? ` from ${details.previousTeacher} to ${teacherName}` : '';
+      title = `changed the teacher for ${target}${inSection}${teacherChange}`;
+    } else if (unassigned) {
+      title = teacherName
+        ? `removed ${teacherName} as teacher for ${target}${inSection}`
+        : `removed the teacher for ${target}${inSection}`;
+    } else {
+      title = teacherName
+        ? `assigned ${teacherName} to teach ${target}${inSection}`
+        : `assigned a teacher to teach ${target}${inSection}`;
+    }
   } else if (!ACTION_LABELS[action] && (String(row.entityType || '').startsWith('shs_') || action.startsWith('shs_'))) {
     if (/pause|deactiv/i.test(action) || /^paused$/i.test(summary)) title = 'paused an SHS subject or class';
     else if (/activ/i.test(action) || /^activated$/i.test(summary)) title = 'activated an SHS subject or class';
@@ -522,11 +535,11 @@ function shsProgramActivity(row, details, fallbackTitle) {
     else title = 'updated the SHS Program';
   }
 
-  if (!context && action !== 'shs_elective_class_updated') {
+  if (!context && action !== 'shs_elective_class_updated' && !isShsTeacherAssignment) {
     context = [className, subjectName, grade, track].find(part => part
       && !title.toLocaleLowerCase().includes(String(part).toLocaleLowerCase())) || '';
   }
-  if (!context && summary && action !== 'shs_offering_activated'
+  if (!context && summary && action !== 'shs_offering_activated' && !isShsTeacherAssignment
     && !/^(?:activated|paused|updated|deleted|created)$/i.test(summary)) {
     const legacyContext = readableSummaryContext(action, summary);
     if (legacyContext && !title.toLocaleLowerCase().includes(legacyContext.toLocaleLowerCase())) context = legacyContext;
@@ -709,7 +722,7 @@ function formatActivity(row) {
     || String(row.entityType || '').startsWith('shs_') || details.schoolLevelCode === 'shs';
   const shsDetails = isShsActivity ? structuredActivityDetails(row.actionType, details) : details;
   if (isShsActivity) category = 'shs_program';
-  if (row.isLegacyShs) {
+  if (row.isLegacyShs || details.schoolLevelCode === 'shs') {
     const labels = {
       subject_created: ['added an SHS subject', 'book-plus', 'blue'],
       subject_updated: ['updated an SHS subject', 'book-open-check', 'blue'],
@@ -741,7 +754,7 @@ function formatActivity(row) {
   const sectionChange = ['student_moved', 'student_withdrawn'].includes(row.actionType)
     ? sectionChangeActivity(row, details, title) : null;
   const isTeacherAssignment = ['teacher_assigned', 'teacher_assignment_updated', 'teacher_unassigned'].includes(row.actionType)
-    && !row.isLegacyShs;
+    && !isShsActivity;
   const teacherAssignment = isTeacherAssignment ? teacherAssignmentActivity(row, details) : null;
   const isTimetableAction = ['timetable_meeting_created', 'timetable_meeting_updated', 'timetable_meeting_deleted'].includes(row.actionType)
     && !isShsActivity;

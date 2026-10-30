@@ -442,7 +442,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 17px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -487,13 +487,13 @@ thead th {
   color: var(--gray-500);
   padding: 11px 20px;
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   white-space: nowrap;
 }
 
 tbody td {
   padding: 14px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   color: var(--gray-700);
   vertical-align: middle;
 }
@@ -972,7 +972,7 @@ tbody tr:hover {
 }
 
 .subject-list {
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   padding: 0 10px 4px;
   background: var(--gray-50);
 }
@@ -1228,7 +1228,7 @@ tbody tr:hover {
   justify-content: space-between;
   align-items: center;
   padding: 17px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -1248,7 +1248,7 @@ tbody tr:hover {
 
 .enrolled-search {
   padding: 12px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   position: relative;
   background: var(--gray-50);
 }
@@ -1446,7 +1446,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   flex-shrink: 0;
 }
 
@@ -1491,7 +1491,7 @@ tbody tr:hover {
   justify-content: flex-end;
   gap: 10px;
   flex-shrink: 0;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
 }
 
 .deped-subject-modal .modal {
@@ -1564,7 +1564,7 @@ tbody tr:hover {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   color: var(--gray-700);
   font-size: 11px;
 }
@@ -1926,7 +1926,7 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     padding: 10px;
-    border-top: 1px solid var(--gray-100);
+    border-top: 1px solid var(--panel-divider);
   }
 
   .section-block:not(.collapsed) .subject-row {
@@ -1989,7 +1989,7 @@ tbody tr:hover {
   margin: 0;
   padding: 17px 18px 15px;
   background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
 }
 
 .section-card-title-row {
@@ -2029,7 +2029,7 @@ tbody tr:hover {
   margin: 0;
   padding: 14px 10px;
   border: 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--panel-divider);
   border-radius: 0;
   background: var(--theme-surface);
 }
@@ -2054,7 +2054,7 @@ tbody tr:hover {
 
 .section-card .card-foot {
   padding: 12px 18px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--panel-divider);
   background: var(--gray-50);
 }
 
@@ -2305,6 +2305,6 @@ tbody tr:hover {
     width: 100%;
     margin-top: 14px;
     padding-top: 11px;
-    border-top: 1px solid var(--gray-100);
+    border-top: 1px solid var(--panel-divider);
   }
 }
