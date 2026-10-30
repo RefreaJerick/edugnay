@@ -13,7 +13,7 @@ const SCHOOL_DOMAIN = 'capstone-shs-test.academix.invalid';
 const QA_STUDENT_EMAIL = `phase3-qa@${SCHOOL_DOMAIN}`;
 const apiBase = process.env.QA_API_BASE || 'http://127.0.0.1:3001/api';
 const apiUrl = new URL(apiBase);
-const frontendOrigin = process.env.QA_FRONTEND_ORIGIN || 'http://127.0.0.1:5500';
+const frontendOrigin = process.env.QA_FRONTEND_ORIGIN || 'http://127.0.0.1:3000';
 const db = getDatabase();
 
 if (apiUrl.protocol !== 'http:' || apiUrl.hostname !== '127.0.0.1' || !apiUrl.port || apiUrl.port === '3000') {

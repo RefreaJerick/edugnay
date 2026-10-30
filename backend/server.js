@@ -2,8 +2,8 @@ require('dotenv').config();
 
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
 const helmet = require('helmet');
+const path = require('node:path');
 const { checkDatabaseConnection, isDatabaseConfigured } = require('./config/database');
 const { apiRateLimit, networkRateLimit } = require('./config/apiRateLimit');
 const { startAnnouncementEmailWorker } = require('./workers/announcementEmailWorker');
@@ -46,14 +46,20 @@ const shsGradesRoutes = require('./routes/shsGrades');
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 const host = process.env.HOST || undefined;
+const projectRoot = path.resolve(__dirname, '..');
 const jsonBodyParser = bodyParser.json();
 const schoolFormJsonBodyParser = bodyParser.json({ limit: '4mb' });
 const frontendOrigin = getFrontendOrigin();
 const trustProxyHops = getTrustProxyHops();
 if (trustProxyHops) app.set('trust proxy', trustProxyHops);
 
-app.use(helmet());
-app.use(cors({ origin: frontendOrigin, credentials: true, exposedHeaders: ['Retry-After'] }));
+const standardSecurityHeaders = helmet();
+const frontendSecurityHeaders = helmet({ contentSecurityPolicy: false });
+app.use((req, res, next) => {
+  const isFrontendDocument = ['GET', 'HEAD'].includes(req.method)
+    && (req.path === '/' || req.path === '/index.html' || /^\/views\/.+\.html$/i.test(req.path));
+  return (isFrontendDocument ? frontendSecurityHeaders : standardSecurityHeaders)(req, res, next);
+});
 app.use(createRequestOriginGuard(frontendOrigin));
 app.use((req, res, next) => {
   const isSchoolFormGeneration = req.method === 'POST' && (
@@ -106,6 +112,38 @@ app.use('/api/archive', archiveRoutes);
 app.use('/api/grading-period-reopen-requests', gradingPeriodReopenRoutes);
 app.use('/api/users/import', userImportRoutes);
 app.use('/api/users', usersRoutes);
+
+app.get(['/', '/index.html'], (req, res, next) => {
+  res.sendFile(path.join(projectRoot, 'index.html'), error => error && next(error));
+});
+
+app.use('/views', express.static(path.join(projectRoot, 'views'), {
+  dotfiles: 'deny',
+  fallthrough: true,
+  index: false
+}));
+
+[
+  ['/assets/css', 'assets/css'],
+  ['/assets/js', 'assets/js'],
+  ['/assets/images', 'assets/images'],
+  ['/assets/vendor', 'assets/vendor'],
+  ['/assets/templates/school-forms', 'assets/templates/school-forms']
+].forEach(([urlPath, directory]) => {
+  app.use(urlPath, express.static(path.join(projectRoot, directory), {
+    dotfiles: 'deny',
+    fallthrough: true,
+    index: false
+  }));
+});
+
+app.get('/manifest.webmanifest', (req, res, next) => {
+  res.sendFile(path.join(projectRoot, 'manifest.webmanifest'), error => error && next(error));
+});
+
+app.get('/push-sw.js', (req, res, next) => {
+  res.sendFile(path.join(projectRoot, 'push-sw.js'), error => error && next(error));
+});
 
 app.use(errorHandler);
 

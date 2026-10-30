@@ -219,7 +219,7 @@ async function createPushNotificationPage({
     querySelector(selector) { assert.equal(selector, '.notif-panel-head'); return panel; },
     createElement(tag) { return tag === 'dialog' ? dialog : trigger; }
   };
-  const location = { href: 'http://127.0.0.1:5500/views/parent/edugnay-parent-notifications.html', search: '' };
+  const location = { href: 'http://127.0.0.1:3000/views/parent/edugnay-parent-notifications.html', search: '' };
   const Notification = {
     permission,
     async requestPermission() { permissionRequested = true; return 'granted'; }

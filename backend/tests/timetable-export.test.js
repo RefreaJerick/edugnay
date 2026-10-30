@@ -154,7 +154,7 @@ function exporterHarness() {
     }
   };
   class ImageMock { set src(value) { this.url = value; this.onload(); } }
-  const window = { location: { href: 'http://127.0.0.1:5500/views/student/edugnay-student-schedules.html' }, setTimeout() {} };
+  const window = { location: { href: 'http://127.0.0.1:3000/views/student/edugnay-student-schedules.html' }, setTimeout() {} };
   class URLMock extends URL { static createObjectURL() { return 'blob:test'; } static revokeObjectURL() {} }
   const context = {
     document, window, Image: ImageMock, URL: URLMock,

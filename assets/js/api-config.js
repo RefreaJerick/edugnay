@@ -1,5 +1,8 @@
-/* Change these public URLs when the frontend and API are hosted. */
-window.EDUGNAY_APP_CONFIG = Object.freeze({
-  frontendUrl: 'http://127.0.0.1:5500',
-  apiBaseUrl: 'http://127.0.0.1:3000/api'
-});
+/* The frontend and API are served from the same Express origin. */
+(() => {
+  const appOrigin = window.location.origin;
+  window.EDUGNAY_APP_CONFIG = Object.freeze({
+    frontendUrl: appOrigin,
+    apiBaseUrl: `${appOrigin}/api`
+  });
+})();

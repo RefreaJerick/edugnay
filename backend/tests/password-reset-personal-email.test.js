@@ -8,7 +8,7 @@ process.env.MAIL_USER = 'test-user';
 process.env.MAIL_PASSWORD = 'test-password';
 process.env.MAIL_FROM = 'Academix <no-reply@example.test>';
 process.env.MAIL_SECURE = 'false';
-process.env.FRONTEND_ORIGIN = 'http://localhost:5500';
+process.env.FRONTEND_ORIGIN = 'http://127.0.0.1:3000';
 
 let sentMessages = [];
 let failEmailDelivery = false;

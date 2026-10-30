@@ -1,16 +1,31 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
 
 const { getFrontendOrigin, getTrustProxyHops } = require('../config/deployment');
 const { getSessionCookieOptions } = require('../config/session');
 const { createRequestOriginGuard } = require('../middleware/requestOrigin');
 
 test('frontend origin must be one exact http or https origin', () => {
-  assert.equal(getFrontendOrigin('http://127.0.0.1:5500'), 'http://127.0.0.1:5500');
+  assert.equal(getFrontendOrigin('http://127.0.0.1:3000'), 'http://127.0.0.1:3000');
   assert.equal(getFrontendOrigin('https://school.example.com'), 'https://school.example.com');
   assert.throws(() => getFrontendOrigin('*'), /FRONTEND_ORIGIN/);
   assert.throws(() => getFrontendOrigin('https://school.example.com/path'), /FRONTEND_ORIGIN/);
   assert.throws(() => getFrontendOrigin('https://school.example.com/'), /FRONTEND_ORIGIN/);
+});
+
+test('browser API URLs use the origin serving the page', () => {
+  const window = { location: { origin: 'http://127.0.0.1:3000' } };
+  const source = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/js/api-config.js'), 'utf8');
+
+  vm.runInNewContext(source, { window });
+
+  assert.deepEqual({ ...window.EDUGNAY_APP_CONFIG }, {
+    frontendUrl: 'http://127.0.0.1:3000',
+    apiBaseUrl: 'http://127.0.0.1:3000/api'
+  });
 });
 
 test('trusted proxy hops stay disabled unless a positive hop count is configured', () => {

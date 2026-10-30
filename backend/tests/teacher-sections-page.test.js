@@ -643,7 +643,7 @@ test('assignment modal follows the selected subject and saves its ID', () => {
     return elements.get(id);
   };
   const window = { location: {
-    href: 'http://127.0.0.1:5500/views/teacher/edugnay-teacher-sections.html?sectionId=4',
+    href: 'http://127.0.0.1:3000/views/teacher/edugnay-teacher-sections.html?sectionId=4',
     assign(href) { this.href = href; }
   } };
   const context = {
