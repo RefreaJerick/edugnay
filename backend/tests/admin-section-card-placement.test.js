@@ -1,10 +1,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8').replace(/\r\n/g, '\n');
+const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8').replace(/\r\n/g, '\n');
 const compactPathSource = html.split('function managementShsCompactPath(trackCodeValue, trackName, strandCodeValue, strandName, needsCurriculumSetup = false) {')[1]
   .split('\n}\n\nfunction managementSectionCardPath')[0];
 const cardPathSource = html.split('function managementSectionCardPath(section) {')[1]
@@ -123,7 +124,7 @@ function createSubjectScrollHarness(viewportWidth, scrollWidth = 640, id = 'subj
   };
   class MockResizeObserver { observe() {} }
   const context = vm.createContext({ document, window, ResizeObserver: MockResizeObserver });
-  const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8').replace(/\r\n/g, '\n');
+  const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8').replace(/\r\n/g, '\n');
   const source = shell.split('function initScrollFades() {')[1].split('\n}\n\n/* Use a custom sidebar thumb')[0];
   vm.runInContext(`const scrollFadeRefreshers = new WeakMap(); function initScrollFades() {${source}\n}`, context);
   return {
@@ -195,7 +196,7 @@ test('Subjects filters show only Academic and TechPro', () => {
 test('Grades 11 and 12 show separately from compact pathways and retain full placement on hover', () => {
   const sectionCardMarkup = html.split('container.innerHTML = groups.map(group => `')[1]
     .split("updateManagementEmptySlot(container, 'sections'")[0];
-  const css = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
   assert.match(sectionCardMarkup, /class="section-card-title-row"[\s\S]*?class="section-name">\$\{section\.name\}[\s\S]*?class="section-grade-badge[^>]*>\$\{window\.EDUGNAY_CONFIG\.escapeHtml\(section\.grade\)\}/);
   assert.match(sectionCardMarkup, /section-card-path[\s\S]*?managementSectionPlacement\(section\)/);
   for (const section of [
@@ -224,9 +225,9 @@ test('compact labels stay in read-only Class Management displays and full names 
 });
 
 test('Subjects tab rows use the shared fade and rerendering refreshes overflow state', () => {
-  const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8').replace(/\r\n/g, '\n');
-  const sharedCss = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8').replace(/\r\n/g, '\n');
-  const adminCss = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8').replace(/\r\n/g, '\n');
+  const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8').replace(/\r\n/g, '\n');
+  const sharedCss = pageFs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8').replace(/\r\n/g, '\n');
+  const adminCss = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8').replace(/\r\n/g, '\n');
   const scrollFade = shell.split('function initScrollFades() {')[1].split('\n}\n\n/* Use a custom sidebar thumb')[0];
   assert.match(scrollFade, /'\.subject-scroll-fade-tab-row'/);
   assert.match(scrollFade, /scrollFadeRefreshers\.get\(element\)\?\.\(\)/);

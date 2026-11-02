@@ -1,16 +1,17 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const commonSource = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
-const dashboardSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
-const sectionsSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
-const sectionsStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/teacher/sections.css'), 'utf8');
-const modalStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
-const sharedStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
-const sfSource = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
+const commonSource = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const dashboardSource = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
+const sectionsSource = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
+const sectionsStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/teacher/sections.css'), 'utf8');
+const modalStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
+const sharedStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
+const sfSource = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
 
 function extractSourceBetween(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -53,6 +54,103 @@ test('teacher tabs begin loading independently and assignments are not nested in
   assert.match(sectionsSource, /async function loadBackendAssignments\(\)/);
   assert.doesNotMatch(sectionsSource.split('async function loadBackendGradeData() {')[1]
     .split('async function loadBackendAttendanceData()')[0], /getAssignments\(/);
+});
+
+function createSectionContext(search, section) {
+  let releaseRoster;
+  let rejectRoster;
+  let rosterRequested = false;
+  const roster = new Promise((resolve, reject) => { releaseRoster = resolve; rejectRoster = reject; });
+  const elements = new Map([
+    ['sectionHeaderName', { textContent: '' }],
+    ['sectionGradeBadge', { textContent: '' }]
+  ]);
+  const context = vm.createContext({
+    URLSearchParams,
+    CURRENT_TEACHER_ID: null,
+    CURRENT_SECTION_ID: '',
+    CURRENT_SECTION_RECORD: null,
+    CURRENT_BACKEND_SECTION: null,
+    CURRENT_TEACHER_SUBJECT_ASSIGNMENTS: [],
+    CURRENT_SUBJECT_ASSIGNMENT: null,
+    CURRENT_TEACHER_ASSIGNMENT: {},
+    CURRENT_SUBJECT_ID: '',
+    CURRENT_SUBJECT: '',
+    CURRENT_SUBJECT_RECORD: null,
+    CURRENT_LEVEL: '',
+    CURRENT_SECTION: '',
+    STUDENTS: [],
+    TEACHER_SECTION_SCHOOL_ID: '',
+    BACKEND_SECTION_MODE: true,
+    BACKEND_SECTION_ERROR: '',
+    BACKEND_GRADE_CONTEXT: {},
+    keepSectionInUrl() {},
+    refreshSectionSettings() {},
+    updateSectionSubjectControl() {},
+    document: { getElementById: id => elements.get(id) },
+    window: {
+      location: { search },
+      EDUGNAY_SCHOOL_READY: Promise.resolve(),
+      EDUGNAY_API: {
+        isBackendAvailable: true,
+        getCurrentUser: async () => ({ role: 'teacher', apiUserId: '7' }),
+        getSectionStudents: () => { rosterRequested = true; return roster; }
+      },
+      EDUGNAY_CONFIG: {
+        getMyTeachingSections: async () => [section],
+        getMyAdvisorySections: async () => [],
+        getActiveSchoolId: () => 'school-1'
+      }
+    }
+  });
+  const source = extractSourceBetween(sectionsSource,
+    'async function initializeTeacherSectionContext() {', '\n    function gradingWeight');
+  vm.runInContext(`${source}; globalThis.initialize = initializeTeacherSectionContext;`, context);
+  return { context, elements, releaseRoster, rejectRoster, rosterRequested: () => rosterRequested };
+}
+
+test('section name and grade render while the student roster is still loading', async () => {
+  for (const section of [
+    { id: 14, name: 'QA-only', grade: 'Grade 11', level: 'shs', schoolId: 'school-1', subjectAssignments: [{ subjectId: 9, subjectName: 'Effective Communication' }] },
+    { id: 15, name: 'St. Peter', grade: 'Grade 8', level: 'jhs', schoolId: 'school-1', subjectAssignments: [{ subjectId: 10, subjectName: 'English' }] }
+  ]) {
+    const testContext = createSectionContext('', section);
+    const initialized = testContext.context.initialize();
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(testContext.rosterRequested(), true);
+    assert.equal(testContext.elements.get('sectionHeaderName').textContent, section.name);
+    assert.equal(testContext.elements.get('sectionGradeBadge').textContent, `G${section.grade.match(/\d+/)[0]}`);
+
+    testContext.releaseRoster({ students: [] });
+    assert.equal(await initialized, true);
+  }
+});
+
+test('invalid requested subject does not publish a section identity or request its roster', async () => {
+  const testContext = createSectionContext('?sectionId=14&subjectId=999', {
+    id: 14, name: 'QA-only', grade: 'Grade 11', level: 'shs', schoolId: 'school-1',
+    subjectAssignments: [{ subjectId: 9, subjectName: 'Effective Communication' }]
+  });
+
+  assert.equal(await testContext.context.initialize(), false);
+  assert.equal(testContext.rosterRequested(), false);
+  assert.equal(testContext.elements.get('sectionHeaderName').textContent, '');
+  assert.equal(testContext.context.BACKEND_SECTION_ERROR, 'That subject is not assigned to you in this section.');
+});
+
+test('roster failure keeps the existing unavailable-section error path', async () => {
+  const testContext = createSectionContext('', {
+    id: 14, name: 'QA-only', grade: 'Grade 11', level: 'shs', schoolId: 'school-1',
+    subjectAssignments: [{ subjectId: 9, subjectName: 'Effective Communication' }]
+  });
+  const initialized = testContext.context.initialize();
+  await new Promise(resolve => setImmediate(resolve));
+  testContext.rejectRoster(new Error('Roster unavailable'));
+
+  assert.equal(await initialized, false);
+  assert.equal(testContext.context.BACKEND_SECTION_ERROR, 'Roster unavailable');
+  assert.match(sectionsSource, /if \(!sectionReady\) \{\s*renderUnavailableSectionPage\(\)/);
 });
 
 function createTransferNoticeContext(state) {

@@ -1,11 +1,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
-const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
+const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
 const submitBody = html.split("document.getElementById('importUsersForm').addEventListener('submit', async function (e) {")[1]
   .split('\n    });')[0];
 
@@ -130,7 +131,8 @@ test('a successful import is not retried when the list refresh fails', async () 
 
 test('import controls require the backend and disallow administrator CSVs', () => {
   assert.match(html, /id="importUsersButton"[^>]*disabled/);
-  assert.match(html, /data-role="adm"[^>]*disabled[^>]*selectImportRole\('adm'\)/);
+  assert.match(html, /data-role="adm"[^>]*disabled[^>]*data-page-click="p663d2024f7a7"/);
+  assert.match(html, /p663d2024f7a7: function\(event\) \{ selectImportRole\('adm'\) \}/);
   assert.match(html, /function openImportModal\(\) \{\s*if \(!usersApiActive \|\| usersLoading \|\| usersLoadError\)/);
 });
 

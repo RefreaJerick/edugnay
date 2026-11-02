@@ -1,11 +1,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/users.css'), 'utf8');
+const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
+const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/users.css'), 'utf8');
 const displayFunctions = html.split('    function setUserDetailsQrStatus(')[1]
   .split('    function downloadUserDetailsAttendanceQr(')[0];
 const downloadFunction = html.split('    function downloadUserDetailsAttendanceQr(')[1]

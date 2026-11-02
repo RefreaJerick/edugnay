@@ -288,6 +288,7 @@
       $('elective-content').hidden = true;
       $('elective-unavailable').textContent = error.message || 'Elective choices are not available.';
     }
+      window.EDUGNAY_PAGE_LOADING.ready();
   }
   document.addEventListener('DOMContentLoaded', init);
 })();

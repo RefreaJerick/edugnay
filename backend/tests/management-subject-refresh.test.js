@@ -1,16 +1,18 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8');
+const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8');
+const management = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/management.js'), 'utf8');
 const refresh = html.split('async function refreshManagementViews() {')[1]
   .split('function managementApiSectionPayload(')[0];
 
 test('management refresh reapplies the active subject filter after rendering subjects', async () => {
   const calls = [];
-  const context = { MANAGEMENT_API_ENABLED: true };
+  const context = { MANAGEMENT_API_ENABLED: true, managementDataLoading: true };
   for (const name of [
     'loadManagementApiData', 'syncManagementStudentRecords', 'renderManagementGradeFilters',
     'renderTeacherOptions', 'renderManagementSubjectTabs', 'renderManagementTabPills',
@@ -21,10 +23,139 @@ test('management refresh reapplies the active subject filter after rendering sub
 
   assert.ok(calls.indexOf('loadManagementApiData') < calls.indexOf('renderManagementSubjectTabs'));
   assert.equal(calls.indexOf('filterSubjects'), calls.indexOf('renderSubjects') + 1);
+  assert.equal(context.managementDataLoading, false, 'loading guards are released before filters rerun');
+});
+
+test('Class Management leaves data regions blank and shows a retry action when loading fails', () => {
+  const source = management.slice(
+    management.indexOf('let managementDataLoading = false;'),
+    management.indexOf('\nfunction switchMgmtTab(')
+  );
+  const targets = new Map();
+  const feedback = { hidden: true, innerHTML: '' };
+  const context = vm.createContext({
+    document: {
+      querySelector(selector) {
+        if (!targets.has(selector)) targets.set(selector, { innerHTML: '' });
+        return targets.get(selector);
+      },
+      getElementById(id) { return id === 'managementLoadError' ? feedback : null; }
+    },
+    window: {
+      EDUGNAY_CONFIG: {
+        renderPanelEmptyState: options => `${options.title}: ${options.text}`
+      }
+    },
+    lucide: { createIcons() {} }
+  });
+  new vm.Script(`${source}; globalThis.loadingState = {
+    regions: MANAGEMENT_LOADING_REGIONS,
+    render: renderManagementLoadingState,
+    fail: showManagementLoadError,
+    isLoading: () => managementDataLoading
+  };`).runInContext(context);
+
+  context.loadingState.render();
+  assert.equal(context.loadingState.regions.length, 11);
+  for (const selector of context.loadingState.regions) {
+    assert.equal(targets.get(selector).innerHTML, '', `${selector} is blank while loading`);
+  }
+  assert.equal(context.loadingState.isLoading(), true);
+
+  context.loadingState.fail({ message: 'Temporary connection error' });
+  for (const target of targets.values()) assert.equal(target.innerHTML, '', 'failure leaves data regions blank');
+  assert.equal(feedback.hidden, false);
+  assert.match(feedback.innerHTML, /Class management unavailable/);
+  assert.match(feedback.innerHTML, /Temporary connection error/);
+  assert.match(feedback.innerHTML, />Retry</);
+  assert.match(html, /id="managementLoadError" role="alert" hidden/);
+  assert.match(management, /g5a9c210f6c2: function\(event\) \{ event\.preventDefault\(\); window\.location\.reload\(\); \}/);
+});
+
+test('Class Management keeps data regions blank during a slow load and renders results on success', async () => {
+  const startupStart = management.indexOf("document.addEventListener('DOMContentLoaded', async () => {");
+  const startup = management.slice(startupStart, management.indexOf('\n\nwindow.EDUGNAY_PAGE_EVENTS.bind', startupStart));
+  const refreshStart = management.indexOf('async function refreshManagementViews() {');
+  const refreshFunction = management.slice(refreshStart, management.indexOf('\nfunction managementApiSectionPayload(', refreshStart));
+  const loadingHelpers = management.slice(
+    management.indexOf('let managementDataLoading = false;'),
+    management.indexOf('\nfunction switchMgmtTab(')
+  );
+  const targets = new Map();
+  const getTarget = selector => {
+    if (!targets.has(selector)) targets.set(selector, { innerHTML: '' });
+    return targets.get(selector);
+  };
+  let releaseSchool;
+  const schoolReady = new Promise(resolve => { releaseSchool = resolve; });
+  const feedback = { hidden: true, innerHTML: '' };
+  const context = vm.createContext({
+    document: {
+      addEventListener(name, handler) { if (name === 'DOMContentLoaded') context.initialize = handler; },
+      querySelector: getTarget,
+      getElementById(id) { return id === 'managementLoadError' ? feedback : getTarget(`#${id}`); }
+    },
+    window: {
+      EDUGNAY_SCHOOL_READY: schoolReady,
+      EDUGNAY_CONFIG: {
+        renderPanelEmptyState: options => `empty:${options.title}:${options.text}`
+      },
+      createStudentMultiSelect: () => ({}),
+      initSearchableSelect() {}
+    },
+    lucide: { createIcons() {} },
+    handleManagementStudentChange() {},
+    updateSectionFormFields() {},
+    updateImportGradeOptions() {},
+    loadManagementApiData: async () => {},
+    renderManagementGradeFilters() {},
+    renderTeacherOptions() {},
+    renderManagementTabPills() {},
+    filterSubjects() {},
+    renderManagementSubjectTabs() { getTarget('#subjectGradeTabs').innerHTML = 'empty:subject filters'; },
+    renderSections() {
+      getTarget('#sections-summary-cards').innerHTML = 'empty:section totals';
+      getTarget('#sectionCardView').innerHTML = 'empty:sections';
+      getTarget('#sectionTableView tbody').innerHTML = 'empty:section table';
+    },
+    renderSubjects() {
+      getTarget('#subjects-summary-cards').innerHTML = 'empty:subject totals';
+      getTarget('#subjectTableBody').innerHTML = 'empty:subjects';
+    },
+    renderTeacherAssignments() {
+      getTarget('#teacher-summary-cards').innerHTML = 'empty:assignment totals';
+    },
+    renderStudentsTab() {
+      getTarget('#students-summary-cards').innerHTML = 'empty:student totals';
+      getTarget('#studentGradeTabs').innerHTML = 'empty:student filters';
+      getTarget('#enrolledBody').innerHTML = 'empty:enrolled students';
+      getTarget('#panel-students .sc-list').innerHTML = 'empty:section enrollment';
+    }
+  });
+  new vm.Script(`${loadingHelpers}\n${refreshFunction}\n${startup}\nglobalThis.managementRegions = MANAGEMENT_LOADING_REGIONS;`).runInContext(context);
+
+  const load = context.initialize();
+  assert.equal(context.managementRegions.length, 11);
+  for (const selector of context.managementRegions) assert.equal(targets.get(selector).innerHTML, '');
+  assert.equal(vm.runInContext('managementDataLoading', context), true);
+
+  releaseSchool({ id: 1 });
+  await load;
+  assert.equal(vm.runInContext('managementDataLoading', context), false);
+  assert.equal(targets.get('#sectionCardView').innerHTML, 'empty:sections');
+  assert.equal(targets.get('#subjectTableBody').innerHTML, 'empty:subjects');
+  assert.equal(feedback.hidden, true);
+
+  for (const name of ['filterSections', 'filterSubjects', 'filterTeacherBlocks', 'applyStudentFilters']) {
+    const start = management.indexOf(`function ${name}(`);
+    const body = management.slice(start, management.indexOf('\n}', start));
+    assert.match(body, /if \(managementDataLoading\) return;/, `${name} ignores input while data loads`);
+  }
+  assert.match(management, /function setSectionView\(view\)/);
 });
 
 test('DepEd catalog review is available on Subjects and refreshes the managed subject list after apply', () => {
-  const css = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
   const mainEnd = html.indexOf('</main>');
   const reviewModal = html.indexOf('id="depedSubjectReviewModal"');
 
@@ -42,7 +173,7 @@ test('DepEd catalog review is available on Subjects and refreshes the managed su
 });
 
 test('subject modal uses Strengthened SHS type, track, and hours fields', () => {
-  const css = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
   assert.match(html, /<div class="modal" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">/);
   assert.match(html, /id="subjectGradeScopeLabel">Grade levels<\/label>/);
   assert.match(html, /for="subjectShsGroup">Subject type<\/label>/);
@@ -178,7 +309,7 @@ test('Class Management inline scripts parse', () => {
 });
 
 test('subject cards share a gap between details and actions', () => {
-  const css = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
   assert.match(css, /#panel-subjects > #inactiveSubjectsPanel\s*\{\s*margin-top:\s*20px;/);
   assert.match(css, /#inactiveSubjectsPanel \.inactive-subject-meta\s*\{[^}]*flex-direction:\s*column;/);
   assert.match(css, /\.subject-card\s*\{[^}]*column-gap:\s*16px;/);

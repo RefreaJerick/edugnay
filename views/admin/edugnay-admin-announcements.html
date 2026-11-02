@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Announcements | Academix</title>
@@ -20,7 +22,7 @@
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="Announcements">
+<body data-page-title="Announcements" data-page-loading="Loading announcements...">
 
 
 <!-- EDIT MODAL -->
@@ -34,7 +36,7 @@
         <div class="modal-sub">Update, schedule, or publish this announcement.</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+      <button class="modal-close" data-page-click="p089ea8a8218e"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
     <div class="modal-body">
       <form id="editAnnouncementForm" method="post" action="/announcements/update" enctype="multipart/form-data">
@@ -67,8 +69,8 @@
       </div>
       <div class="form-group" style="margin-top:14px;">
         <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
-        <div class="image-upload-area" id="editUploadArea" onclick="document.getElementById('editImageInput').click()">
-          <input type="file" id="editImageInput" name="image" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="handleImagePreview(this, 'editPreview', 'editPlaceholder')"/>
+        <div class="image-upload-area" id="editUploadArea" data-page-click="p0601f23609d1">
+          <input type="file" id="editImageInput" name="image" accept="image/png,image/jpeg,image/webp" style="display:none;" data-page-change="pa376b45b28a0"/>
           <div class="upload-placeholder" id="editPlaceholder">
             <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
             <span class="upload-text">Click or drag an image here</span>
@@ -77,7 +79,7 @@
           <!-- Preview fields are populated by this page's JavaScript. -->
           <div class="image-preview-wrap" id="editPreview" style="display:none;">
             <img class="image-preview" crossorigin="use-credentials" alt="Preview"/>
-            <button type="button" class="remove-image-btn" onclick="removeImage(event, 'editImageInput', 'editPreview', 'editPlaceholder')">
+            <button type="button" class="remove-image-btn" data-page-click="p71cb9ef85af9">
               <i data-lucide="x" style="width:12px;height:12px;"></i>
             </button>
           </div>
@@ -85,7 +87,7 @@
       </div>
       <div class="form-group" style="margin-top:14px;">
         <label class="form-label" for="editAnnouncementStatus">Status</label>
-        <select class="form-select" id="editAnnouncementStatus" name="status" onchange="this.form.elements.schedule.disabled = this.value !== 'scheduled'">
+        <select class="form-select" id="editAnnouncementStatus" name="status" data-page-change="p13b9c9908645">
           <option value="draft">Draft</option>
           <option value="scheduled">Scheduled</option>
           <option value="published">Published</option>
@@ -99,7 +101,7 @@
       </form>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-cancel" data-page-click="p089ea8a8218e">Cancel</button>
       <button type="submit" form="editAnnouncementForm" class="btn-save">Save Changes</button>
     </div>
   </div>
@@ -116,7 +118,7 @@
         <div class="modal-sub">This action cannot be undone.</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closeDeleteModal()"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+      <button class="modal-close" data-page-click="pb8db97c425be"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
     <div class="modal-body">
       <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
@@ -132,20 +134,20 @@
       <input type="hidden" id="deleteAnnouncementId"/>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-      <button type="button" class="btn-save" style="background:#dc2626;box-shadow:none;" onclick="confirmDeleteAnnouncement()">Yes, Delete</button>
+      <button type="button" class="btn-cancel" data-page-click="pb8db97c425be">Cancel</button>
+      <button type="button" class="btn-save" style="background:#dc2626;box-shadow:none;" data-page-click="p981b20cdb664">Yes, Delete</button>
     </div>
   </div>
 </div>
 
 <div class="shell">
-  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <div class="sidebar-overlay" data-page-click="sc48f42f1ec91"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b"/>
       </div>
       <div>
         <div class="brand-name">Acade<span>Mix</span></div>
@@ -158,7 +160,7 @@
       <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
       <a href="edugnay-admin-users.html"     class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span></a>
 
-      <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-management.html" class="nav-item" data-page-click="s3a4671da9f99"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
       <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
       <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">SHS Program</span></a>
     </div>
@@ -193,11 +195,11 @@
           <strong data-page-title-target>Announcements</strong>
         </div>
       </div>
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      <button class="hamburger" type="button" data-page-click="sab86664ca3f5"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
 
@@ -214,7 +216,7 @@
                 <span class="tb-notif-unread-count" aria-live="polite"></span>
               </span>
             </div>
-            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+            <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5">
               <i data-lucide="check-check" style="width:14px;height:14px;"></i>
               <span>Mark all read</span>
             </button>
@@ -238,10 +240,10 @@
         <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
           <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
+            <div class="tb-profile-name"></div>
             <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -253,7 +255,7 @@
             My Profile
           </a>
           <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+          <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
             <i data-lucide="log-out" style="width:15px;height:15px;"></i>
             Sign Out
           </a>
@@ -261,7 +263,7 @@
       </div>
     </div>
   </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -281,16 +283,16 @@
         <div class="toolbar">
           <div class="search-wrap">
             <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-            <input class="search-input" type="text" id="searchInput" placeholder="Search announcements..." oninput="filterAnnouncements()"/>
+            <input class="search-input" type="text" id="searchInput" placeholder="Search announcements..." data-page-input="p02fcfc2a7d58"/>
           </div>
-          <select class="filter-select" id="audienceFilter" onchange="filterAnnouncements()">
+          <select class="filter-select" id="audienceFilter" data-page-change="pa402d5caadf0">
             <option value="all">All Audiences</option>
             <option value="all-users">All Users</option>
             <option value="teachers">Teachers</option>
             <option value="students">Students</option>
             <option value="parents">Parents</option>
           </select>
-          <select class="filter-select" id="priorityFilter" onchange="filterAnnouncements()">
+          <select class="filter-select" id="priorityFilter" data-page-change="pa402d5caadf0">
             <option value="all">All Priorities</option>
             <option value="high">High Priority</option>
             <option value="normal">Normal</option>
@@ -335,16 +337,16 @@
                 <label class="form-label">Priority</label>
                 <input type="hidden" id="priorityValue" name="priority" value="normal"/>
                 <div class="priority-opts">
-                  <div class="priority-opt p-high" onclick="selectPriority(this, 'high')">
+                  <div class="priority-opt p-high" data-page-click="p60303f28552d">
                     <i data-lucide="alert-triangle" style="width:13px;height:13px;color:var(--red);"></i> Urgent
                   </div>
-                  <div class="priority-opt p-normal selected" onclick="selectPriority(this, 'normal')">
+                  <div class="priority-opt p-normal selected" data-page-click="p74fb28b55d8d">
                     <i data-lucide="bell" style="width:13px;height:13px;color:var(--blue-mid);"></i> Normal
                   </div>
-                  <div class="priority-opt p-event" onclick="selectPriority(this, 'event')">
+                  <div class="priority-opt p-event" data-page-click="p7c1c81cda33a">
                     <i data-lucide="calendar" style="width:13px;height:13px;color:var(--gold);"></i> Event
                   </div>
-                  <div class="priority-opt p-low" onclick="selectPriority(this, 'low')">
+                  <div class="priority-opt p-low" data-page-click="p70ecc971b957">
                     <i data-lucide="minus-circle" style="width:13px;height:13px;color:var(--gray-400);"></i> Low
                   </div>
                 </div>
@@ -378,8 +380,8 @@
 
               <div class="form-group">
                 <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
-                <div class="image-upload-area" id="composeUploadArea" onclick="document.getElementById('composeImageInput').click()">
-                  <input type="file" id="composeImageInput" name="image" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="handleImagePreview(this, 'composePreview', 'composePlaceholder')"/>
+                <div class="image-upload-area" id="composeUploadArea" data-page-click="pc4d411e4dda3">
+                  <input type="file" id="composeImageInput" name="image" accept="image/png,image/jpeg,image/webp" style="display:none;" data-page-change="p7c0a49226afc"/>
                   <div class="upload-placeholder" id="composePlaceholder">
                     <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
                     <span class="upload-text">Click or drag an image here</span>
@@ -387,7 +389,7 @@
                   </div>
                   <div class="image-preview-wrap" id="composePreview" style="display:none;">
                     <img class="image-preview" src="https://placehold.co/600x300" alt="Preview"/>
-                    <button type="button" class="remove-image-btn" onclick="removeImage(event, 'composeImageInput', 'composePreview', 'composePlaceholder')">
+                    <button type="button" class="remove-image-btn" data-page-click="p2c4afe7396a7">
                       <i data-lucide="x" style="width:12px;height:12px;"></i>
                     </button>
                   </div>
@@ -396,7 +398,7 @@
 
               <div class="form-group">
                 <label class="form-label">Schedule (optional, Philippine time)</label>
-                <input class="form-input" type="datetime-local" name="schedule" oninput="updateAnnouncementPostLabel()"/>
+                <input class="form-input" type="datetime-local" name="schedule" data-page-input="pe2d65cb9e6d8"/>
               </div>
 
               <p id="announcementFormFeedback" class="dashboard-action-feedback" role="status" aria-live="polite" hidden></p>
@@ -404,7 +406,7 @@
             </form>
           </div>
           <div class="compose-footer">
-            <button type="button" class="btn btn-draft" id="announcementDraftButton" onclick="saveDraft()" disabled><i data-lucide="file" style="width:13px;height:13px;"></i> <span>Save Draft</span></button>
+            <button type="button" class="btn btn-draft" id="announcementDraftButton" data-page-click="p06eea46e6fe7" disabled><i data-lucide="file" style="width:13px;height:13px;"></i> <span>Save Draft</span></button>
             <button type="submit" form="composeAnnouncementForm" class="btn btn-post" id="announcementPostButton" disabled><i data-lucide="send" style="width:13px;height:13px;"></i> <span>Post</span></button>
           </div>
         </div>
@@ -415,371 +417,7 @@
   </main>
 </div>
 
-<script>
-  let ACTIVE_ANNOUNCEMENT_ID = null;
-  let announcementSaving = false;
-
-  function setAnnouncementFeedback(message = '') {
-    const feedback = document.getElementById('announcementFormFeedback');
-    if (!feedback) return;
-    feedback.textContent = message;
-    feedback.hidden = !message;
-    feedback.classList.toggle('is-error', Boolean(message));
-  }
-
-  function openModal(announcementId = null) {
-    ACTIVE_ANNOUNCEMENT_ID = announcementId ? String(announcementId) : null;
-    document.getElementById('editAnnouncementFeedback').hidden = true;
-    const announcement = ANNOUNCEMENTS.find(item => String(item.id) === ACTIVE_ANNOUNCEMENT_ID);
-    const form = document.getElementById('editAnnouncementForm');
-    if (announcement && form) {
-      form.reset();
-      form.dataset.existingImage = announcement.imageUrl ? 'true' : 'false';
-      form.dataset.removeImage = 'false';
-      form.elements.title.value = announcement.title || '';
-      form.elements.content.value = announcement.body || '';
-      form.elements.priority.value = announcement.priority === 'low' ? 'normal' : (announcement.priority || 'normal');
-      form.elements.audience.value = announcement.audienceKeys?.[0] || 'all';
-      form.elements.status.querySelector('option[value="draft"]').disabled = announcement.status === 'published';
-      form.elements.status.querySelector('option[value="scheduled"]').disabled = announcement.status === 'published';
-      form.elements.status.value = announcement.status || 'draft';
-      form.elements.schedule.disabled = announcement.status !== 'scheduled';
-      form.elements.schedule.value = announcement.scheduledAt
-        ? new Date(announcement.scheduledAt).toLocaleString('sv-SE', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', 'T') : '';
-      const preview = document.getElementById('editPreview');
-      preview.style.display = announcement.imageUrl ? 'block' : 'none';
-      document.getElementById('editPlaceholder').style.display = announcement.imageUrl ? 'none' : 'flex';
-      if (announcement.imageUrl) preview.querySelector('img').src = announcement.imageUrl;
-    }
-    document.getElementById('editModal').classList.add('open');
-    lucide.createIcons();
-  }
-  function closeModal() { document.getElementById('editModal').classList.remove('open'); }
-  document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  function selectPriority(el, value) {
-    document.querySelectorAll('.priority-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('priorityValue').value = value;
-  }
-
-  function getAudienceValues(form) {
-    const values = Array.from(form.querySelectorAll('input[name="audience"]:checked')).map(input => input.value);
-    if (values.length) return values;
-    const selectedAudience = form.elements.audience?.value;
-    return selectedAudience ? selectedAudience.split('-') : ['all'];
-  }
-
-  function getAnnouncementValues(form, status) {
-    const formData = new FormData(form);
-    const priority = String(formData.get('priority') || 'normal');
-    const schedule = String(formData.get('schedule') || '');
-    const effectiveStatus = form.id === 'composeAnnouncementForm' && status === 'published' && schedule ? 'scheduled' : status;
-    const date = schedule ? new Date(`${schedule}:00+08:00`) : null;
-    return {
-      title: String(formData.get('title') || '').trim(),
-      body: String(formData.get('content') || '').trim(),
-      priority: priority === 'low' ? 'normal' : priority,
-      audiences: getAudienceValues(form),
-      status: effectiveStatus,
-      scheduledAt: effectiveStatus === 'scheduled' && date && Number.isFinite(date.getTime()) ? date.toISOString() : null,
-      image: form.elements.image?.files?.[0] || null,
-      removeImage: form.dataset.removeImage === 'true'
-    };
-  }
-
-  function updateAnnouncementPostLabel() {
-    document.querySelector('#announcementPostButton span').textContent =
-      document.querySelector('#composeAnnouncementForm [name="schedule"]').value ? 'Schedule' : 'Post';
-  }
-
-  async function saveAnnouncement(form, status) {
-    if (announcementSaving) return;
-
-    const values = getAnnouncementValues(form, status);
-    setAnnouncementFeedback();
-    if (!values.title || !values.body) {
-      setAnnouncementFeedback('Enter an announcement title and content.');
-      return;
-    }
-    if (values.status === 'scheduled' && (!values.scheduledAt || new Date(values.scheduledAt).getTime() <= Date.now())) {
-      setAnnouncementFeedback('Choose a future date and time to schedule this announcement.');
-      return;
-    }
-
-    const postButton = document.getElementById('announcementPostButton');
-    const draftButton = document.getElementById('announcementDraftButton');
-    const buttons = [postButton, draftButton].filter(Boolean);
-    const activeButton = status === 'draft' ? draftButton : postButton;
-    const activeLabel = activeButton?.querySelector('span');
-    const originalLabel = activeLabel?.textContent || (status === 'draft' ? 'Save Draft' : 'Post');
-    announcementSaving = true;
-    buttons.forEach(button => { button.disabled = true; });
-    if (activeLabel) activeLabel.textContent = status === 'draft' ? 'Saving…' : values.status === 'scheduled' ? 'Scheduling…' : 'Posting…';
-
-    try {
-      await window.EDUGNAY_SCHOOL_READY;
-      const announcement = await window.EDUGNAY_API.createAnnouncement(values);
-      if (!announcement) throw new Error('The server did not confirm the announcement save.');
-      announcementLoadError = '';
-      ANNOUNCEMENTS = [announcement, ...ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcement.id))];
-      if (window.EDUGNAY_COMMUNICATION) window.EDUGNAY_COMMUNICATION.announcements = ANNOUNCEMENTS;
-
-      form.reset();
-      document.getElementById('composePreview').style.display = 'none';
-      document.getElementById('composePlaceholder').style.display = 'flex';
-      updateAnnouncementPostLabel();
-      document.getElementById('priorityValue').value = 'normal';
-      document.querySelectorAll('#composeAnnouncementForm .priority-opt').forEach(option => {
-        option.classList.toggle('selected', option.classList.contains('p-normal'));
-      });
-      audienceCheckboxes.forEach(input => input.closest('.aud-opt')?.classList.toggle('checked', input.checked));
-      renderAdminAnnouncements();
-
-      const message = values.status === 'draft' ? 'Announcement saved as a draft.'
-        : values.status === 'scheduled' ? 'Announcement scheduled.' : 'Announcement posted.';
-      showAppToast(message, 'success');
-    } catch (error) {
-      showAppToast(error.message || 'The announcement could not be saved.', 'error');
-    } finally {
-      announcementSaving = false;
-      buttons.forEach(button => { button.disabled = false; });
-      if (activeLabel) activeLabel.textContent = originalLabel;
-      updateAnnouncementPostLabel();
-    }
-  }
-
-  function saveDraft() {
-    const form = document.getElementById('composeAnnouncementForm');
-    saveAnnouncement(form, 'draft').catch(error => showAppToast(error.message || 'The announcement could not be saved.', 'error'));
-  }
-
-  const audienceCheckboxes = Array.from(document.querySelectorAll('.aud-opt input[type="checkbox"]'));
-  audienceCheckboxes.forEach(cb => {
-    cb.addEventListener('change', function() {
-      if (this.checked && this.value === 'all') {
-        audienceCheckboxes
-          .filter(other => other !== this)
-          .forEach(other => { other.checked = false; });
-      } else if (this.checked) {
-        const allUsers = audienceCheckboxes.find(other => other.value === 'all');
-        if (allUsers) allUsers.checked = false;
-      }
-
-      audienceCheckboxes.forEach(input => {
-        input.closest('.aud-opt')?.classList.toggle('checked', input.checked);
-      });
-    });
-  });
-
-  let ANNOUNCEMENTS = [];
-  let announcementLoadError = '';
-
-  function renderAdminAnnouncements() {
-    const list = document.getElementById('annList');
-    if (!list) return;
-    list.innerHTML = [...ANNOUNCEMENTS].sort((a, b) => Number(b.pinned) - Number(a.pinned)
-      || new Date(b.publishedAt || b.createdAt) - new Date(a.publishedAt || a.createdAt)).map(ann => `
-      <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-audience="${ann.audienceKeys.join(',')}">
-        ${ann.pinned ? '<div class="pinned-strip"><i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement</div>' : ''}
-        <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${ann.status === 'scheduled' ? window.EDUGNAY_CONFIG.escapeHtml(new Date(ann.scheduledAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) + ' PHT') : window.EDUGNAY_CONFIG.escapeHtml(ann.time)}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.author)}</span></div></div></div><div class="ann-badges">${ann.status === 'scheduled' ? '<span class="badge badge-gold">Scheduled</span>' : ann.draft ? '<span class="badge badge-gray">Draft</span>' : '<span class="badge badge-green">Active</span>'}</div></div><div class="ann-content"${ann.draft ? ' style="color:var(--gray-400);font-style:italic;"' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(ann.body)}</div>${ann.imageUrl ? `<div class="ann-image-wrap"><img class="ann-image" crossorigin="use-credentials" src="${window.EDUGNAY_CONFIG.escapeHtml(ann.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}" loading="lazy" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.audience)}</span></div></div>
-        <div class="ann-footer"><div class="ann-footer-left"${ann.draft ? ' style="color:var(--orange);"' : ''}><i data-lucide="${ann.draft ? 'eye-off' : 'eye'}" style="width:12px;height:12px;"></i> ${ann.status === 'scheduled' ? 'Awaiting publication' : ann.seen}</div><div class="ann-footer-right">${ann.status === 'published' ? `<button class="footer-btn pin" onclick="setAnnouncementPin(this, ${!ann.pinned})"><i data-lucide="${ann.pinned ? 'pin-off' : 'pin'}" style="width:11px;height:11px;"></i> ${ann.pinned ? 'Unpin' : 'Pin'}</button>` : ''}<button class="footer-btn edit" onclick="openModal('${ann.id}')"><i data-lucide="pencil" style="width:11px;height:11px;"></i> ${ann.status === 'published' ? 'Edit' : 'Edit & Publish'}</button><button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button></div></div>
-      </div>`).join('');
-    lucide.createIcons();
-    filterAnnouncements();
-  }
-
-  function filterAnnouncements() {
-    const search   = document.getElementById('searchInput').value.toLowerCase();
-    const audience = document.getElementById('audienceFilter').value;
-    const priority = document.getElementById('priorityFilter').value;
-
-    let visibleCount = 0;
-    document.querySelectorAll('.ann-card').forEach(card => {
-      const title    = card.querySelector('.ann-title').textContent.toLowerCase();
-      const content  = card.querySelector('.ann-content').textContent.toLowerCase();
-      const aud      = card.dataset.audience.split(',');
-      const pri      = card.dataset.priority;
-
-      const matchSearch   = title.includes(search) || content.includes(search);
-      const audienceKey = audience === 'all-users' ? 'all' : audience;
-      const matchAudience = audience === 'all' || aud.includes(audienceKey);
-      const matchPriority = priority === 'all' || pri === priority;
-
-      const visible = matchSearch && matchAudience && matchPriority;
-      card.style.display = visible ? '' : 'none';
-      if (visible) visibleCount += 1;
-    });
-
-    const empty = document.getElementById('adminAnnEmpty');
-    if (empty) {
-      empty.hidden = visibleCount > 0 && !announcementLoadError;
-      if (!empty.hidden) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState(announcementLoadError ? {
-        icon: 'alert-circle',
-        title: 'Announcements unavailable',
-        text: announcementLoadError
-      } : {
-        icon: 'megaphone',
-        title: 'No announcements found',
-        text: ANNOUNCEMENTS.length ? 'Try adjusting your filters or search query.' : 'No announcements have been posted yet.'
-      });
-    }
-    lucide.createIcons();
-  }
-
-  async function setAnnouncementPin(button, pinned) {
-    button.disabled = true;
-    try {
-      await window.EDUGNAY_SCHOOL_READY;
-      const id = button.closest('.ann-card').dataset.id;
-      const updated = await window.EDUGNAY_API.setAnnouncementPinned(id, pinned);
-      const announcement = ANNOUNCEMENTS.find(item => String(item.id) === String(id));
-      if (announcement) announcement.pinned = updated.pinned;
-      renderAdminAnnouncements();
-      showAppToast(pinned ? 'Announcement pinned.' : 'Announcement unpinned.');
-    } catch (error) {
-      button.disabled = false;
-      showAppToast(error.message || 'The announcement could not be updated.', 'error');
-    }
-  }
-
-  function deleteCard(btn) {
-    const card = btn.closest('.ann-card');
-    const title = card.querySelector('.ann-title')?.textContent.trim() || 'this announcement';
-
-    document.getElementById('deleteModalTitleVal').textContent = title;
-    document.getElementById('deleteModalTitleInline').textContent = title;
-    document.getElementById('deleteAnnouncementId').value = card.dataset.id || '';
-    document.getElementById('deleteModalBackdrop').classList.add('open');
-    lucide.createIcons();
-  }
-
-  function closeDeleteModal() {
-    document.getElementById('deleteModalBackdrop').classList.remove('open');
-  }
-
-  async function confirmDeleteAnnouncement() {
-    const announcementId = document.getElementById('deleteAnnouncementId').value;
-    const deleteButton = document.querySelector('#deleteModalBackdrop .btn-save');
-    if (!announcementId || !deleteButton) return;
-
-    const originalLabel = deleteButton.textContent;
-    deleteButton.disabled = true;
-    deleteButton.textContent = 'Deleting...';
-    try {
-      await window.EDUGNAY_SCHOOL_READY;
-      await window.EDUGNAY_API.deleteAnnouncement(announcementId);
-
-      ANNOUNCEMENTS = ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcementId));
-      closeDeleteModal();
-      renderAdminAnnouncements();
-      showAppToast('Announcement deleted.');
-    } catch (error) {
-      showAppToast(error.message || 'The announcement could not be deleted.', 'error');
-    } finally {
-      deleteButton.disabled = false;
-      deleteButton.textContent = originalLabel;
-    }
-  }
-
-  document.getElementById('deleteModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeDeleteModal();
-  });
-
-  function handleImagePreview(input, previewWrapId, placeholderId) {
-    const file = input.files[0];
-    if (!file) return;
-    input.form.dataset.removeImage = 'false';
-
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById(previewWrapId).querySelector('.image-preview').src = e.target.result;
-      document.getElementById(previewWrapId).style.display = 'block';
-      document.getElementById(placeholderId).style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function removeImage(event, inputId, previewWrapId, placeholderId) {
-    event.stopPropagation();
-    const input = document.getElementById(inputId);
-    input.value = '';
-    if (input.form.dataset.existingImage === 'true') input.form.dataset.removeImage = 'true';
-    document.getElementById(previewWrapId).style.display = 'none';
-    document.getElementById(placeholderId).style.display = 'flex';
-  }
-
-  function setupDropzone(areaId, inputId, previewWrapId, placeholderId) {
-    const area = document.getElementById(areaId);
-    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
-    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
-    area.addEventListener('drop', e => {
-      e.preventDefault();
-      area.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        document.getElementById(inputId).files = e.dataTransfer.files;
-        handleImagePreview(document.getElementById(inputId), previewWrapId, placeholderId);
-      }
-    });
-  }
-
-  async function saveEditedAnnouncement(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!ACTIVE_ANNOUNCEMENT_ID) return;
-    const values = getAnnouncementValues(form, form.elements.status.value);
-    const feedback = document.getElementById('editAnnouncementFeedback');
-    feedback.hidden = true;
-    if (!values.title || !values.body) {
-      feedback.textContent = 'Enter an announcement title and content.';
-      feedback.hidden = false;
-      return;
-    }
-    if (values.status === 'scheduled' && (!values.scheduledAt || new Date(values.scheduledAt).getTime() <= Date.now())) {
-      feedback.textContent = 'Choose a future date and time to schedule this announcement.';
-      feedback.hidden = false;
-      return;
-    }
-    const saveButton = document.querySelector('#editModal .btn-save');
-    saveButton.disabled = true;
-    saveButton.textContent = 'Saving...';
-    try {
-      await window.EDUGNAY_SCHOOL_READY;
-      const updated = await window.EDUGNAY_API.updateAnnouncement(ACTIVE_ANNOUNCEMENT_ID, values);
-      const index = ANNOUNCEMENTS.findIndex(item => String(item.id) === ACTIVE_ANNOUNCEMENT_ID);
-      if (index >= 0) ANNOUNCEMENTS[index] = updated || ANNOUNCEMENTS[index];
-      closeModal();
-      renderAdminAnnouncements();
-      showAppToast(values.status === 'scheduled' ? 'Announcement scheduled.' : 'Announcement updated.');
-    } catch (error) {
-      feedback.textContent = error.message || 'The announcement could not be updated.';
-      feedback.hidden = false;
-    } finally {
-      saveButton.disabled = false;
-      saveButton.textContent = 'Save Changes';
-    }
-  }
-
-  document.getElementById('composeAnnouncementForm')?.addEventListener('submit', event => {
-    event.preventDefault();
-    saveAnnouncement(event.currentTarget, 'published').catch(error => showAppToast(error.message || 'The announcement could not be posted.', 'error'));
-  });
-  document.getElementById('editAnnouncementForm')?.addEventListener('submit', saveEditedAnnouncement);
-  document.addEventListener('DOMContentLoaded', async () => {
-    await window.EDUGNAY_COMMUNICATION_READY;
-    document.getElementById('announcementDraftButton').disabled = false;
-    document.getElementById('announcementPostButton').disabled = false;
-    const communication = window.EDUGNAY_COMMUNICATION;
-    announcementLoadError = communication?.error || (!communication?.backend ? 'Connect to the backend and reload to view announcements.' : '');
-    ANNOUNCEMENTS = announcementLoadError ? [] : communication.announcements;
-    renderAdminAnnouncements();
-    setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
-    setupDropzone('editUploadArea', 'editImageInput', 'editPreview', 'editPlaceholder');
-    lucide.createIcons();
-  });
-</script>
+<script src="../../assets/js/admin/announcements.js"></script>
 
 </body>
 </html>

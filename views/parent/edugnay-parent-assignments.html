@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Assignments | Academix</title>
@@ -21,12 +23,12 @@
   <script src="../../assets/js/parent/assignments.js?v=20261030-child-switcher" defer></script>
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="Assignments">
+<body data-page-title="Assignments" data-page-loading="Loading assignments...">
   <div class="shell">
-    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+    <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" /></div>
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b" /></div>
         <div class="brand-text"><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub"></div></div>
       </div>
       <div class="nav-section">
@@ -49,13 +51,13 @@
     <header class="topbar">
       <div class="topbar-left">
         <div class="topbar-context" aria-label="Assignments page"><div class="topbar-context-copy"><strong data-page-title-target>Assignments</strong></div></div>
-        <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+        <button class="hamburger" type="button" data-page-click="sab86664ca3f5" aria-label="Open navigation"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
       </div>
       <div class="topbar-right">
         <div class="tb-notif">
-          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot"></span></button>
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot"></span></button>
           <div class="tb-notif-panel" id="tbNotifPanel">
-            <div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span></div><button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div>
+            <div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span></div><button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div>
             <div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty"><div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div><div class="tb-notif-empty-title">No notifications yet</div><div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div></div></div>
             <div class="tb-notif-panel-foot"><a href="edugnay-parent-notifications.html">View all notifications</a></div>
           </div>
@@ -64,17 +66,17 @@
           <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
-          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()"><div class="tb-avatar parent" data-parent-initials>--</div><div class="tb-profile-info"><div class="tb-profile-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div><div class="tb-profile-role">Parent</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
-          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i> My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out</a></div>
+          <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765"><div class="tb-avatar parent" data-parent-initials>--</div><div class="tb-profile-info"><div class="tb-profile-name" data-parent-name></div><div class="tb-profile-role">Parent</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i> My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902"><i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out</a></div>
         </div>
       </div>
     </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
     <main class="main">
       <section class="portal-overview" aria-labelledby="assignment-page-title">
         <div class="portal-overview-copy"><div class="portal-overview-kicker">Parent workspace</div><h1 class="portal-overview-title" id="assignment-page-title">Assignments</h1><p class="portal-overview-description">Track assignments and submission status for the selected student.</p></div>
       </section>
-      <div class="child-switcher" id="child-switcher" aria-label="Select a student" data-skeleton-kind="child-switcher" data-skeleton-label="Loading linked children" data-skeleton-rows="2"></div>
+      <div class="child-switcher" id="child-switcher" aria-label="Select a student"></div>
       <div class="assignment-workspace">
         <aside class="assignment-controls" aria-label="Assignment controls">
           <label class="assignment-control-field assignment-school-year-control" for="assignmentYearFilter">
@@ -99,7 +101,7 @@
         <div class="assignment-results">
           <div class="filter-tabs assignment-filter-tabs" id="assignmentFilters" aria-label="Filter assignments by status"></div>
           <section class="panel assignment-panel" aria-label="Child assignments">
-            <div class="panel-head"><div><div class="panel-title">Child's assignments</div><div class="assignment-panel-sub" id="assignmentPanelSub" data-skeleton-kind="line" data-skeleton-label="Loading assignments">Choose a linked student to view assignments.</div></div></div>
+            <div class="panel-head"><div><div class="panel-title">Child's assignments</div><div class="assignment-panel-sub" id="assignmentPanelSub">Choose a linked student to view assignments.</div></div></div>
             <div class="assignment-toolbar">
               <div class="search-wrap assignment-search"><span class="search-icon"><i data-lucide="search" style="width:15px;height:15px;"></i></span><input class="search-input" id="assignmentSearch" type="search" placeholder="Search assignments" aria-label="Search assignments" /></div>
             </div>

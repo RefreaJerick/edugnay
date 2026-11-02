@@ -8,9 +8,14 @@
 
   async function loadPlatformNotifications() {
     try {
-      const communication = await window.EDUGNAY_API.loadCommunication('platform_admin');
-      window.EDUGNAY_COMMUNICATION = communication;
-      PLATFORM_API_NOTIFICATIONS = communication.notifications || [];
+      PLATFORM_API_NOTIFICATIONS = await window.EDUGNAY_API.getNotifications();
+      window.EDUGNAY_COMMUNICATION = {
+        backend: true,
+        notifications: PLATFORM_API_NOTIFICATIONS,
+        announcements: [],
+        tasks: [],
+        error: ''
+      };
     } catch (error) {
       PLATFORM_API_NOTIFICATIONS = [];
       window.EDUGNAY_COMMUNICATION = {

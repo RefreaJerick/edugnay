@@ -371,6 +371,7 @@
       const banner = document.getElementById('timetable-error-banner');
       banner.textContent = error.message || 'School years could not be loaded.';
       banner.hidden = false;
+      window.EDUGNAY_PAGE_LOADING.ready();
       return;
     }
     year.addEventListener('change', () => { state.week = null; load(state); });
@@ -424,10 +425,11 @@
       document.getElementById('timetable-confirm-dialog').addEventListener('keydown', event => trapDialogTab(event, event.currentTarget));
     }
     await load(state);
+    window.EDUGNAY_PAGE_LOADING.ready();
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     const page = document.getElementById('timetable-page');
-    if (page) initPage(page);
+    if (page) await initPage(page);
   });
 })();

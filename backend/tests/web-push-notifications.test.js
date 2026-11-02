@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -124,14 +125,14 @@ test('worker sends only a generic alert while access is still valid', async () =
 });
 
 test('schema queues only new saved notifications and logout removes session-bound devices', () => {
-  const migration = fs.readFileSync(path.join(root, 'backend/database/migrations/048_web_push_notifications.sql'), 'utf8');
+  const migration = pageFs.readFileSync(path.join(root, 'backend/database/migrations/048_web_push_notifications.sql'), 'utf8');
   assert.match(migration, /AFTER INSERT ON notifications/);
   assert.match(migration, /sessions.expires_at > NOW\(\)/);
   assert.match(migration, /FOREIGN KEY \(session_id\) REFERENCES user_sessions\(id\) ON DELETE CASCADE/);
   assert.match(migration, /UNIQUE KEY uq_push_delivery \(notification_id, subscription_id\)/);
-  const release = fs.readFileSync(path.join(root, 'backend/controllers/narrativeReportReviewController.js'), 'utf8');
+  const release = pageFs.readFileSync(path.join(root, 'backend/controllers/narrativeReportReviewController.js'), 'utf8');
   assert.match(release, /await notifyParents\(connection,[\s\S]*?await connection.commit\(\)/);
-  const auth = fs.readFileSync(path.join(root, 'backend/controllers/authController.js'), 'utf8');
+  const auth = pageFs.readFileSync(path.join(root, 'backend/controllers/authController.js'), 'utf8');
   assert.match(auth, /if \(previousToken\) await deleteSession\(previousToken\);\s*const token = await createSession/);
 });
 
@@ -139,7 +140,7 @@ test('service worker shows a safe alert and opens the correct in-scope notificat
   const handlers = {};
   let displayed, opened;
   const scope = 'https://school.example/edugnay/';
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'push-sw.js'), 'utf8'), {
+  vm.runInNewContext(pageFs.readFileSync(path.join(root, 'push-sw.js'), 'utf8'), {
     URL, self: { registration: { scope, async showNotification(title, options) { displayed = { title, options }; } },
       addEventListener(name, handler) { handlers[name] = handler; },
       clients: { async matchAll() { return []; }, async openWindow(url) { opened = url; } } }
@@ -157,7 +158,7 @@ test('service worker shows a safe alert and opens the correct in-scope notificat
 });
 
 test('the login return route accepts only the matching role notification page', () => {
-  const page = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const page = pageFs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const source = page.slice(page.indexOf('    function destinationForUser('), page.indexOf('    async function checkEmail('));
   function destination(search) {
     return vm.runInNewContext(`${source}\ndestinationForUser({ role: 'parent' })`, {
@@ -249,7 +250,7 @@ async function createPushNotificationPage({
       async subscribe() { subscription = savedSubscription; return subscription; }
     } }; } };
   }
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/js/push-notifications.js'), 'utf8'), context);
+  vm.runInNewContext(pageFs.readFileSync(path.join(root, 'assets/js/push-notifications.js'), 'utf8'), context);
   assert.equal(createdDialog, undefined);
   onReady();
   await new Promise(resolve => setImmediate(resolve));
@@ -309,27 +310,27 @@ test('notification settings explain denied, unsupported, unconfigured, and faile
 });
 
 test('all notification pages load the shared controls and installation assets are scoped to the frontend', () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
+  const manifest = JSON.parse(pageFs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
   assert.equal(manifest.scope, './');
   assert.equal(manifest.display, 'standalone');
   for (const role of ['parent', 'student', 'teacher', 'admin', 'platform']) {
-    const page = fs.readFileSync(path.join(root, `views/${role}/edugnay-${role}-notifications.html`), 'utf8');
+    const page = pageFs.readFileSync(path.join(root, `views/${role}/edugnay-${role}-notifications.html`), 'utf8');
     assert.match(page, /assets\/js\/push-notifications\.js/);
     assert.match(page, /class="notif-panel-head"/);
     assert.match(page, /manifest\.webmanifest/);
   }
-  const script = fs.readFileSync(path.join(root, 'assets/js/push-notifications.js'), 'utf8');
+  const script = pageFs.readFileSync(path.join(root, 'assets/js/push-notifications.js'), 'utf8');
   assert.match(script, /new URL\('\.\.\/\.\.\/', window\.location\.href\)/);
   assert.match(script, /Notification\.requestPermission\(\)/);
   assert.match(script, /registration\.pushManager\.subscribe\(/);
-  const styles = fs.readFileSync(path.join(root, 'assets/css/notifications.css'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/notifications.css'), 'utf8');
   assert.match(styles, /\.push-settings-dialog\s*\{/);
   assert.match(styles, /@media \(max-width: 600px\)[\s\S]*?\.push-settings-dialog/);
   assert.match(script, /dialog\.showModal\(\)/);
   assert.match(script, /settingsTrigger\.focus\(\)/);
   for (const file of ['index.html', ...['parent', 'student', 'teacher', 'admin', 'platform']
     .map(role => `views/${role}/edugnay-${role}-notifications.html`)]) {
-    const html = fs.readFileSync(path.join(root, file), 'utf8');
+    const html = pageFs.readFileSync(path.join(root, file), 'utf8');
     for (const match of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
       if (match[1].trim()) new vm.Script(match[1], { filename: file });
     }

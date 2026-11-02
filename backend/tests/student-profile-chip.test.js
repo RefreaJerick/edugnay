@@ -1,11 +1,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
-const source = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+const source = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
 const key = 'edugnay_profile_display_v1';
 const legacyKey = 'edugnay_student_profile_display_v1';
 const roles = [
@@ -196,7 +197,7 @@ test('sign-in, sign-out and expired sessions clear the shared display snapshot',
   await harness.context.confirmLogout();
   assert.equal(harness.storage.has(key), false);
 
-  const login = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const login = pageFs.readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.match(login, /edugnay_profile_display_v1/);
   assert.match(login, /edugnay_student_profile_display_v1/);
   const loginCleanupStart = login.indexOf('function clearPortalCachesForSignIn() {');
@@ -227,28 +228,28 @@ test('every signed-in portal header restores its chip before main content', () =
   for (const role of portalDirs) {
     const directory = path.join(root, 'views', role);
     for (const page of fs.readdirSync(directory).filter(file => file.endsWith('.html'))) {
-      const html = fs.readFileSync(path.join(directory, page), 'utf8');
+      const html = pageFs.readFileSync(path.join(directory, page), 'utf8');
       if (!html.includes('assets/js/shell-common.js')) continue;
       assert.match(html, /assets\/js\/shell-common\.js/);
-      assert.match(html, /<\/header>\s*<script>restoreProfileChip\(\);<\/script>/,
+      assert.match(html, /<\/header>\s*<script src="\.\.\/\.\.\/assets\/js\/portal-header-init\.js"><\/script>/,
         `${role}/${page} should restore directly after its header`);
       checked += 1;
     }
   }
   assert.equal(checked, 46);
 
-  const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
   assert.match(styles, /html\.profile-chip-page \.tb-profile-trigger \{ width: 215px; \}/);
   assert.match(styles, /html\.profile-chip-page \.tb-profile-name \{ overflow: hidden; text-overflow: ellipsis; \}/);
   assert.match(styles, /html\.profile-chip-page \.tb-profile-trigger \{ width: auto; \}/);
 
-  const parentShell = fs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8');
+  const parentShell = pageFs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8');
   assert.match(parentShell, /function renderParentIdentity\(\) \{[\s\S]*?if \(!parent && document\.documentElement\.classList\.contains\('profile-chip-restored'\)\) return;/);
   for (const role of ['admin', 'teacher']) {
-    const profilePage = fs.readFileSync(path.join(root, `views/${role}/edugnay-${role}-profile.html`), 'utf8');
+    const profilePage = pageFs.readFileSync(path.join(root, `views/${role}/edugnay-${role}-profile.html`), 'utf8');
     assert.doesNotMatch(profilePage, /\.profile-header-name, \.tb-profile-name/);
     assert.match(profilePage, /if \(user\.id\) document\.querySelectorAll\('\.tb-profile-name'\)/);
   }
-  const studentProfile = fs.readFileSync(path.join(root, 'views/student/edugnay-student-profile.html'), 'utf8');
-  assert.match(studentProfile, /if \(!document\.documentElement\.classList\.contains\('profile-chip-restored'\)\) \{\s*if \(studentProfileLoading\) setStudentSkeleton\('student-topbar-name', 'Loading account'\);\s*else setStudentText\('student-topbar-name'/);
+  const studentProfile = pageFs.readFileSync(path.join(root, 'views/student/edugnay-student-profile.html'), 'utf8');
+  assert.match(studentProfile, /if \(!document\.documentElement\.classList\.contains\('profile-chip-restored'\)\) \{\s*if \(studentProfileLoading\) clearStudentField\('student-topbar-name'\);\s*else setStudentText\('student-topbar-name'/);
 });

@@ -91,6 +91,7 @@
       host: document.querySelector('#content-scores .panel'),
       empty: { noItems: { icon: 'book-x', title: 'Class unavailable', text: message } }
     });
+    window.EDUGNAY_PAGE_LOADING.ready();
   }
 
   function renderPage() {
@@ -102,10 +103,10 @@
     document.getElementById('sectionStudentCount').textContent = String(Number(electiveClass.enrolledCount || 0));
     document.getElementById('sectionAdviserMeta').innerHTML = `<i data-lucide="user-round" aria-hidden="true"></i>${escapeHtml(electiveClass.teacherName || 'Assigned teacher')}`;
     if (electiveClass.activePeriodName) document.getElementById('sectionPeriodName').textContent = electiveClass.activePeriodName;
-    else document.getElementById('sectionPeriodName').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading grading period' });
+    else document.getElementById('sectionPeriodName').innerHTML = '';
     document.querySelector('[data-school-year]').textContent = electiveClass.schoolYear || '';
     document.getElementById('sectionEncodingStatus').innerHTML = canEdit()
-      ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading grade status' }) : 'Read only';
+      ? '' : 'Read only';
     document.querySelector('#tab-students .tab-count').textContent = String(electiveClass.enrolledCount || 0);
     document.querySelector('#tab-assignments .tab-count').textContent = '0';
     document.querySelector('#tab-materials .tab-count').textContent = '0';
@@ -147,7 +148,8 @@
     void loadHeaderGradeWorkspace().catch(() => {});
     window.lucide?.createIcons();
     const requestedTab = new URLSearchParams(window.location.search).get('tab');
-    window.switchTab?.(['students', 'scores', 'attendance', 'assignments', 'materials'].includes(requestedTab) ? requestedTab : 'students');
+    const activeTab = ['students', 'scores', 'attendance', 'assignments', 'materials'].includes(requestedTab) ? requestedTab : 'students';
+    return window.switchTab?.(activeTab);
   }
 
   async function loadStudents() {
@@ -229,7 +231,7 @@
   async function loadAttendance(date = '') {
     const panel = document.querySelector('#content-attendance .attendance-entry-panel');
     if (!panel) return;
-    document.getElementById('attendancePanelSub').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading attendance roster' });
+    document.getElementById('attendancePanelSub').innerHTML = '';
     window.TeacherClassViews.renderAttendanceRows({ loading: true });
     try {
       attendance = await window.EDUGNAY_API.getShsElectiveAttendance(electiveClass.electiveClassId, date);
@@ -736,7 +738,8 @@
       const result = await window.EDUGNAY_API.getShsTeachingClasses();
       electiveClass = (result.classes || []).find(item => String(item.electiveClassId) === classId) || null;
       if (!electiveClass) return unavailable('You are not assigned to this elective class, or it is no longer available.');
-      renderPage();
+      await renderPage();
+      window.EDUGNAY_PAGE_LOADING.ready();
     } catch (error) {
       unavailable(error.status === 404 ? 'SHS elective teaching is currently closed.' : error.message || 'The class could not be loaded.');
     }

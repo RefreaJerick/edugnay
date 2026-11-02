@@ -1,15 +1,16 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const teacher = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
-const admin = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-reports.html'), 'utf8');
-const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
-const sharedStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
-const teacherStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/teacher/dashboard.css'), 'utf8');
-const adminStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/reports.css'), 'utf8');
+const teacher = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
+const admin = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-reports.html'), 'utf8');
+const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const sharedStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
+const teacherStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/teacher/dashboard.css'), 'utf8');
+const adminStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/reports.css'), 'utf8');
 
 test('both panels use live flags and the teacher keeps its section filter', () => {
   assert.match(teacher, /getTeacherStudentFlags\(\)/);

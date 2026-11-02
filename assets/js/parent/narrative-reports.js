@@ -190,8 +190,8 @@
     state.reports = [];
     renderChildren();
     $('parent-reports-content').hidden = false;
-    $('latest-report').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading latest report', rows: 1 });
-    $('parent-report-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading shared reports', rows: 3 });
+    $('latest-report').innerHTML = '';
+    $('parent-report-list').innerHTML = '';
     $('parent-reports-empty').hidden = true;
     if (syncUrl) updateUrl();
     message('');
@@ -245,7 +245,10 @@
     } catch (error) { message(error.message || 'Linked children could not be loaded.', true); }
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', async () => {
+    await init();
+    window.EDUGNAY_PAGE_LOADING.ready();
+  });
   $('parentReportChildSwitcher').addEventListener('click', event => {
     const button = event.target.closest('[data-student-id]');
     if (button) selectChild(button.dataset.studentId, null, true);

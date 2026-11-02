@@ -1,12 +1,13 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
-const source = fs.readFileSync(path.join(root, 'assets/js/academic-date-picker.js'), 'utf8');
-const styles = fs.readFileSync(path.join(root, 'assets/css/academic-range-picker.css'), 'utf8');
+const source = pageFs.readFileSync(path.join(root, 'assets/js/academic-date-picker.js'), 'utf8');
+const styles = pageFs.readFileSync(path.join(root, 'assets/css/academic-range-picker.css'), 'utf8');
 const context = { window: {}, Event: class Event { constructor(type, options) { this.type = type; this.options = options; } } };
 const instrumented = source.replace(/\}\)\(\);\s*$/, `window.__academicDatePickerTest = {
   validDate, validMonth, parseDateTime, parseTime, displayDate, displayDateTime, displayTime, inBounds, valueFor,
@@ -381,7 +382,7 @@ test('all audited calendar pages load the shared picker and preserve the native 
     'views/student/edugnay-student-profile.html'
   ];
   for (const page of pages) {
-    const html = fs.readFileSync(path.join(root, page), 'utf8');
+    const html = pageFs.readFileSync(path.join(root, page), 'utf8');
     assert.match(html, /academic-date-picker\.js/, `${page} loads the picker`);
     assert.match(html, /academic-range-picker\.css/, `${page} loads the shared picker styles`);
   }
@@ -403,17 +404,17 @@ test('all audited calendar pages load the shared picker and preserve the native 
     ['views/admin/edugnay-admin-dashboard.html', /type="datetime-local" name="schedule"/, /id="adminTodoDueDate" name="dueDate" type="date"/],
     ['views/admin/edugnay-admin-system-config.html', /id="approveReopenExpiresAt" type="datetime-local"/, /id="extendReopenExpiresAt" type="datetime-local"/],
     ['views/teacher/edugnay-teacher-dashboard.html', /id="teacherTodoDueDate" type="date"/],
-    ['views/teacher/edugnay-teacher-sections.html', /id="assignDueInput"/, /id="editAssignmentDueInput"/, /id="attDate" onchange="loadAttendanceForDate/],
+    ['views/teacher/edugnay-teacher-sections.html', /id="assignDueInput"/, /id="editAssignmentDueInput"/, /id="attDate" data-page-change=/],
     ['views/teacher/edugnay-teacher-journals.html', /type="time" id="settings-deadline"/, /id="settings-deadline"[^>]*data-academic-date-compact="true"/],
     ['views/teacher/edugnay-teacher-sf-templates.html', /id="sfGenerateMonth" type="month"/],
     ['views/platform/edugnay-platform-dashboard.html', /id="platformTodoDueDate" name="dueDate" type="date"/],
     ['views/student/edugnay-student-profile.html', /name="birthDate" id="student-birth-date"/]
   ];
   for (const [page, ...patterns] of fields) {
-    const html = fs.readFileSync(path.join(root, page), 'utf8');
+    const html = pageFs.readFileSync(path.join(root, page), 'utf8');
     for (const pattern of patterns) assert.match(html, pattern, `${page} retains its date field`);
   }
-  const journalPage = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-journals.html'), 'utf8');
+  const journalPage = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-journals.html'), 'utf8');
   assert.match(journalPage, /const deadline = document\.getElementById\('settings-deadline'\)\.value/);
   assert.match(journalPage, /dueDateForWeek\(settingsWeekStart, day, deadline\)/);
 });
@@ -434,7 +435,7 @@ test('picker scripts and inline scripts on every affected page parse', () => {
     'views/student/edugnay-student-profile.html'
   ];
   for (const page of pages) {
-    const html = fs.readFileSync(path.join(root, page), 'utf8');
+    const html = pageFs.readFileSync(path.join(root, page), 'utf8');
     for (const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
       if (match[1].trim()) new vm.Script(match[1], { filename: page });
     }

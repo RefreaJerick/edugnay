@@ -1,11 +1,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const commonSource = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
-const teacherShellSource = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
+const commonSource = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const teacherShellSource = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
 const pageMap = commonSource.match(/const API_NOTIFICATION_PAGE_BY_TYPE = \{[\s\S]*?\n\};/)?.[0];
 const normalizerStart = commonSource.indexOf('function normalizeApiNotification(record) {');
 const normalizerEnd = commonSource.indexOf('\nasync function getApiNotifications', normalizerStart);

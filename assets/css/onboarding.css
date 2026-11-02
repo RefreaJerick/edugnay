@@ -491,13 +491,6 @@ body:has(.onboarding-page) {
   line-height: 1.4;
 }
 
-.onboarding-load-state {
-  margin: 0 0 12px;
-  color: var(--gray-600);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 #registrationFormFields[hidden] {
   display: none;
 }

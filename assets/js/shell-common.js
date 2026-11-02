@@ -1936,18 +1936,32 @@ function getTodayCalendarNotifications() {
 
 async function loadApiCommunication(role) {
   if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
-  if (role !== 'platform_admin') {
-    await window.EDUGNAY_SCHOOL_READY;
-    await window.EDUGNAY_CALENDAR_READY;
-  }
-  const [notifications, tasks, announcements] = await Promise.all([
-    getApiNotifications(),
-    getApiTasks(),
-    role === 'platform_admin' ? Promise.resolve([]) : getApiAnnouncements()
+  const schoolReady = role === 'platform_admin'
+    ? Promise.resolve()
+    : Promise.resolve(window.EDUGNAY_SCHOOL_READY);
+  const calendarReady = role === 'platform_admin'
+    ? Promise.resolve()
+    : schoolReady.then(() => window.EDUGNAY_CALENDAR_READY);
+  const notifications = Promise.all([schoolReady, calendarReady]).then(() => getApiNotifications()).then(items =>
+    role === 'platform_admin' ? items : [...getTodayCalendarNotifications(), ...items]
+  );
+  const tasks = schoolReady.then(() => getApiTasks());
+  const announcements = role === 'platform_admin'
+    ? Promise.resolve([])
+    : schoolReady.then(() => getApiAnnouncements());
+
+  window.EDUGNAY_COMMUNICATION_RESOURCES = { notifications, tasks, announcements };
+  const [notificationResult, taskResult, announcementResult] = await Promise.allSettled([
+    notifications, tasks, announcements
   ]);
-  return { backend: true,
-    notifications: [...(role === 'platform_admin' ? [] : getTodayCalendarNotifications()), ...notifications],
-    announcements, tasks };
+  const message = result => result.status === 'rejected' ? result.reason?.message || 'School communications could not be loaded.' : '';
+  return {
+    backend: true,
+    notifications: notificationResult.status === 'fulfilled' ? notificationResult.value : [],
+    tasks: taskResult.status === 'fulfilled' ? taskResult.value : [],
+    announcements: announcementResult.status === 'fulfilled' ? announcementResult.value : [],
+    error: message(notificationResult)
+  };
 }
 
 async function getApiPlatformSchools() {
@@ -2404,11 +2418,7 @@ function applyCurrentUserToShell(session) {
 
 function setCurrentUserShellStatus(label, roleLabel = '') {
   document.querySelectorAll('[data-current-user-name], .tb-profile-name').forEach(element => {
-    if (/^loading\b/i.test(label) && window.EDUGNAY_CONFIG?.renderPanelSkeleton) {
-      element.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading account' });
-    } else {
-      element.textContent = label;
-    }
+    element.textContent = /^loading\b/i.test(label) ? '' : label;
   });
   document.querySelectorAll('[data-current-user-role], .tb-profile-role').forEach(element => {
     element.textContent = roleLabel;
@@ -3602,80 +3612,6 @@ function applyCurrentDateToGradingBanners() {
     else Promise.resolve().then(render);
   }
 
-  const PANEL_SKELETON_KINDS = new Set(['cards', 'child-switcher', 'stat-cards', 'section-cards', 'table-rows', 'list', 'calendar', 'profile', 'modal', 'tabs', 'chart', 'donut', 'line']);
-
-  function renderPanelSkeleton(options = {}) {
-    const kind = PANEL_SKELETON_KINDS.has(options.kind) ? options.kind : 'list';
-    const label = String(options.label || options.title || 'Loading');
-    const requestedRows = Number(options.rows);
-    const rows = Number.isFinite(requestedRows) ? Math.max(1, Math.min(8, Math.floor(requestedRows))) : 3;
-    const requestedColumns = Number(options.columns);
-    const columns = Number.isFinite(requestedColumns) ? Math.max(1, Math.min(7, Math.floor(requestedColumns))) : 4;
-    const shape = (className = '') => `<span class="panel-skeleton-shape ${className}"></span>`;
-    let content = '';
-
-    if (kind === 'child-switcher') {
-      content = Array.from({ length: rows }, () => `<div class="child-card panel-skeleton-child-card"><span class="panel-skeleton-shape panel-skeleton-child-avatar"></span><span class="child-info panel-skeleton-child-info"><span class="panel-skeleton-shape panel-skeleton-child-name"></span><span class="panel-skeleton-shape panel-skeleton-child-section"></span></span></div>`).join('');
-    } else if (kind === 'cards') {
-      content = Array.from({ length: rows }, () => `<div class="panel-skeleton-card">${shape('panel-skeleton-title')}${shape()}${shape('panel-skeleton-short')}</div>`).join('');
-    } else if (kind === 'stat-cards') {
-      content = Array.from({ length: rows }, () => `<div class="stat-card panel-skeleton-stat-card"><span class="panel-skeleton-shape panel-skeleton-stat-icon"></span><span class="panel-skeleton-shape panel-skeleton-stat-value"></span><span class="panel-skeleton-shape panel-skeleton-stat-label"></span></div>`).join('');
-    } else if (kind === 'section-cards') {
-      content = Array.from({ length: rows }, () => `<article class="section-card panel-skeleton-section-card"><div class="card-body"><div class="card-head">${shape('panel-skeleton-title')}</div>${shape()}${shape('panel-skeleton-short')}</div></article>`).join('');
-    } else if (kind === 'table-rows') {
-      const cells = () => Array.from({ length: columns }, (_, index) => `<td aria-hidden="true"><span class="panel-skeleton-shape${index === 0 ? ' panel-skeleton-title' : ''}"></span></td>`).join('');
-      content = Array.from({ length: rows }, (_, index) => `<tr class="panel-skeleton-table-tr"${index === 0 ? ` role="status" aria-live="polite" aria-busy="true" aria-label="${escapeHtml(label)}"` : ' aria-hidden="true"'}>${cells()}</tr>`).join('');
-    } else if (kind === 'calendar') {
-      content = Array.from({ length: 35 }, () => `<span class="cal-day panel-skeleton-calendar-day">${shape('panel-skeleton-day')}</span>`).join('');
-    } else if (kind === 'profile') {
-      content = `<span class="panel-skeleton-profile-head">${shape('panel-skeleton-avatar')}<span class="panel-skeleton-copy">${shape('panel-skeleton-title')}${shape('panel-skeleton-short')}</span></span><span class="panel-skeleton-profile-details">${Array.from({ length: rows }, () => `<span>${shape('panel-skeleton-short')}${shape()}</span>`).join('')}</span>`;
-    } else if (kind === 'modal') {
-      content = `<span class="panel-skeleton-modal-head">${shape('panel-skeleton-icon')}<span class="panel-skeleton-copy">${shape('panel-skeleton-title')}${shape('panel-skeleton-short')}</span></span>${Array.from({ length: rows }, () => `<span class="panel-skeleton-field">${shape('panel-skeleton-label')}${shape('panel-skeleton-input')}</span>`).join('')}`;
-    } else if (kind === 'tabs') {
-      content = Array.from({ length: rows }, (_, index) => `<span class="panel-skeleton-tab${index === 0 ? ' is-active' : ''}">${shape(index === 0 ? 'panel-skeleton-tab-label' : '')}</span>`).join('');
-    } else if (kind === 'chart') {
-      content = `<span class="panel-skeleton-chart-axis">${shape('panel-skeleton-chart-label')}${shape('panel-skeleton-chart-label')}${shape('panel-skeleton-chart-label')}</span><span class="panel-skeleton-chart-bars">${Array.from({ length: columns }, (_, index) => `<span class="panel-skeleton-chart-bar" style="--panel-skeleton-bar-height:${32 + ((index * 29) % 58)}%">${shape('panel-skeleton-chart-fill')}</span>`).join('')}</span>`;
-    } else if (kind === 'donut') {
-      content = `<span class="panel-skeleton-donut-ring"></span><span class="panel-skeleton-donut-legend">${Array.from({ length: rows }, () => `<span>${shape('panel-skeleton-icon')}${shape('panel-skeleton-short')}</span>`).join('')}</span>`;
-    } else if (kind === 'line') {
-      content = shape('panel-skeleton-short');
-    } else {
-      const rowInsetClass = options.rowInset === 'flush' ? ' panel-skeleton-row--flush' : '';
-      content = Array.from({ length: rows }, () => `<span class="panel-skeleton-row${rowInsetClass}">${shape('panel-skeleton-icon')}<span class="panel-skeleton-copy">${shape('panel-skeleton-title')}${shape('panel-skeleton-short')}</span></span>`).join('');
-    }
-
-    if (kind === 'table-rows') return content;
-
-    const wrapper = kind === 'line' ? 'span' : 'div';
-    const visual = kind === 'line' ? 'span' : 'div';
-    const columnStyle = kind === 'table' ? ` style="--panel-skeleton-columns:${columns}"` : '';
-    const displayContentsKind = ['cards', 'child-switcher', 'stat-cards', 'section-cards', 'calendar', 'list', 'tabs'].includes(kind);
-    const status = displayContentsKind ? `<span class="panel-skeleton-status" role="status" aria-live="polite" aria-busy="true" aria-label="${escapeHtml(label)}">${escapeHtml(label)}</span>` : '';
-    const wrapperClass = `panel-skeleton panel-skeleton--${kind}`;
-    const statusAttributes = displayContentsKind ? '' : ' role="status" aria-live="polite"';
-    return `<${wrapper} class="${wrapperClass}"${columnStyle}${statusAttributes} aria-busy="true" aria-label="${escapeHtml(label)}">${status}<${visual} class="panel-skeleton-visual" aria-hidden="true">${content}</${visual}></${wrapper}>`;
-  }
-
-  function initializeDeclaredPanelSkeletons() {
-    const renderDeclared = () => {
-      document.querySelectorAll('[data-skeleton-kind]').forEach(element => {
-        const kind = element.getAttribute('data-skeleton-kind');
-        const label = element.getAttribute('data-skeleton-label') || String(element.textContent || '').trim() || 'Loading content';
-        const rows = element.getAttribute('data-skeleton-rows');
-        const columns = element.getAttribute('data-skeleton-columns');
-        const rowInset = element.getAttribute('data-skeleton-row-inset');
-        element.innerHTML = renderPanelSkeleton({ kind, label, rows, columns, rowInset });
-        element.removeAttribute('data-skeleton-kind');
-        element.removeAttribute('data-skeleton-label');
-        element.removeAttribute('data-skeleton-rows');
-        element.removeAttribute('data-skeleton-columns');
-        element.removeAttribute('data-skeleton-row-inset');
-      });
-    };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderDeclared, { once: true });
-    else renderDeclared();
-  }
-
   /* Shared empty-state markup for data panels. */
   function renderPanelEmptyState(options = {}) {
     const icon = String(options.icon || 'inbox').replace(/[^a-z0-9-]/gi, '');
@@ -3796,10 +3732,8 @@ function applyCurrentDateToGradingBanners() {
     formatDateTime,
     escapeHtml,
     getInitials,
-    renderPanelEmptyState,
-    renderPanelSkeleton
+    renderPanelEmptyState
   };
-  initializeDeclaredPanelSkeletons();
 })();
 
 /* Shared searchable select enhancement. The native select stays in the form

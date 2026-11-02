@@ -1,15 +1,16 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const onboarding = fs.readFileSync(path.join(__dirname, '../../views/onboarding/edugnay-school-onboarding.html'), 'utf8');
-const pending = fs.readFileSync(path.join(__dirname, '../../views/onboarding/edugnay-registration-pending.html'), 'utf8');
-const platformSchoolAccounts = fs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-school-accounts.html'), 'utf8');
-const sharedStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
-const onboardingCss = fs.readFileSync(path.join(__dirname, '../../assets/css/onboarding.css'), 'utf8');
-const apiShell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const onboarding = pageFs.readFileSync(path.join(__dirname, '../../views/onboarding/edugnay-school-onboarding.html'), 'utf8');
+const pending = pageFs.readFileSync(path.join(__dirname, '../../views/onboarding/edugnay-registration-pending.html'), 'utf8');
+const platformSchoolAccounts = pageFs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-school-accounts.html'), 'utf8');
+const sharedStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
+const onboardingCss = pageFs.readFileSync(path.join(__dirname, '../../assets/css/onboarding.css'), 'utf8');
+const apiShell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
 
 test('onboarding submits the administrator name and notification email without a manual school address', () => {
   assert.doesNotMatch(onboarding, /id="adminEmail"|values\.adminEmail|schoolEmail:\s*administratorSchoolEmail/);
@@ -67,7 +68,7 @@ function createRejectedRegistrationContext(getRegistrationDetails, { token = 're
     document: {
       getElementById(id) {
         if (!elements.has(id)) elements.set(id, {
-          value: '', textContent: '', hidden: ['registrationLoadState', 'registrationLoadError', 'registrationLoadRetry', 'registrationResubmitNotice'].includes(id), disabled: false,
+          value: '', textContent: '', hidden: ['registrationLoadError', 'registrationLoadRetry', 'registrationResubmitNotice'].includes(id), disabled: false,
           attributes: {},
           setAttribute(name, value) { this.attributes[name] = value; },
           removeAttribute(name) { delete this.attributes[name]; }
@@ -101,7 +102,6 @@ test('saved rejected application details populate all fields before the form is 
   const loading = vm.runInNewContext('loadRejectedRegistration()', context);
 
   assert.equal(context.elements.get('registrationFormFields').hidden, true);
-  assert.equal(context.elements.get('registrationLoadState').hidden, false);
   assert.equal(context.elements.get('schoolOnboardingSubmit').disabled, true);
   assert.equal(context.elements.get('schoolOnboardingForm').attributes['aria-busy'], 'true');
 
@@ -123,7 +123,6 @@ test('saved rejected application details populate all fields before the form is 
   assert.match(context.elements.get('schoolLogoHelp').textContent, /current logo will be kept/i);
   assert.equal(context.elements.get('resubmitAdministratorLogin').textContent, 'j.reyes.adm@mnhs.academix.test');
   assert.equal(context.elements.get('registrationResubmitNotice').hidden, false);
-  assert.equal(context.elements.get('registrationLoadState').hidden, true);
   assert.equal(context.elements.get('registrationLoadError').hidden, true);
   assert.equal(context.elements.get('registrationLoadRetry').hidden, true);
   assert.equal(context.elements.get('registrationFormFields').hidden, false);
@@ -449,9 +448,9 @@ test('platform rejection submits an empty optional reason without a validation t
 });
 
 test('report dashboards do not present unavailable reports as empty backend counts', () => {
-  const teacherDashboard = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
-  const parentDashboard = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
-  const parentReports = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
+  const teacherDashboard = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
+  const parentDashboard = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
+  const parentReports = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
   assert.match(teacherDashboard, /EDUGNAY_API\.request\('\/reports\/weekly-drafts\/pending-count'\)/);
   assert.match(teacherDashboard, /label: 'Reports to Confirm'/);
   assert.match(teacherDashboard, /value: TEACHER_PENDING_REPORTS_ERROR \? '—' : TEACHER_PENDING_REPORTS/);

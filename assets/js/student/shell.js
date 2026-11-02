@@ -141,7 +141,7 @@ function renderTopbarNotifs() {
   }
 
   container.innerHTML = top5.map(n => `
-    <a class="tb-notif-item ${n.read ? '' : 'unread'}" onclick='goToTopbarNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)})'>
+    <a class="tb-notif-item ${n.read ? '' : 'unread'}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { goToTopbarNotif(n.link, n.id) })}">
       <div class="tb-notif-icon ${n.tone}">
         <i data-lucide="${n.icon}" style="width:15px;height:15px;"></i>
       </div>

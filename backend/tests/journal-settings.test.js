@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
@@ -312,8 +313,8 @@ test('legacy portal-feature updates cannot disable Attendance', async () => {
 });
 
 test('Portal Features exposes the SF Templates toggle and its value is actionable for teachers', () => {
-  const settingsPage = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const teacherPage = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
+  const settingsPage = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const teacherPage = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
   assert.match(settingsPage, /const sfTemplatesEnabled = Boolean\(features\.sfTemplatesEnabled\)/);
   const sfTemplatesToggleIndex = settingsPage.indexOf('name="sfTemplatesEnabled"');
   const journalsToggleIndex = settingsPage.indexOf('name="journalsEnabled"');
@@ -493,8 +494,8 @@ test('student Journals, including history, require current eligibility', async (
 });
 
 test('teacher access and journal reminders use current backend assignments and subject', () => {
-  const teacher = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
-  const worker = fs.readFileSync(path.join(__dirname, '../workers/parentNotificationWorker.js'), 'utf8');
+  const teacher = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
+  const worker = pageFs.readFileSync(path.join(__dirname, '../workers/parentNotificationWorker.js'), 'utf8');
   assert.match(teacher, /getJournalSections\(\)/);
   assert.match(teacher, /teacherJournalAccess = sections\.length > 0/);
   assert.match(worker, /settings\.journal_subject_id = journal_subjects\.subject_id/);
@@ -503,7 +504,7 @@ test('teacher access and journal reminders use current backend assignments and s
 });
 
 test('teacher journal navigation renders cached links but page guards use refreshed access', () => {
-  const teacher = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
+  const teacher = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
   const init = teacher.slice(teacher.indexOf("document.addEventListener('DOMContentLoaded', async () => {"));
   assert.ok(init.indexOf('applyTeacherSidebarSnapshot(cachedSnapshot)') < init.indexOf('getJournalSections()'));
   assert.ok(init.indexOf('getJournalSections()') < init.indexOf('if (guardTeacherPageAccess()) return;'));
@@ -513,8 +514,8 @@ test('teacher journal navigation renders cached links but page guards use refres
 });
 
 test('school settings and teacher shell scripts parse after journal changes', () => {
-  const admin = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const adminStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
+  const admin = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const adminStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
   assert.match(admin, /state\.apiJournalSubjectId = portal\.journalSubjectId/);
   assert.match(admin, /values-education-jhs/);
   assert.match(admin, /journalGradeLabel/);
@@ -541,13 +542,13 @@ test('school settings and teacher shell scripts parse after journal changes', ()
   for (const [, source] of admin.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (source.trim()) new vm.Script(source);
   }
-  const teacher = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
+  const teacher = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
   new vm.Script(teacher);
-  const student = fs.readFileSync(path.join(__dirname, '../../assets/js/student/shell.js'), 'utf8');
+  const student = pageFs.readFileSync(path.join(__dirname, '../../assets/js/student/shell.js'), 'utf8');
   assert.match(student, /return window\.EDUGNAY_CONFIG\?\.isJournalsEnabled\?\.\(\) === true/);
   assert.doesNotMatch(student, /studentJournalHistoryAvailable/);
   new vm.Script(student);
-  const journalPage = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-journal.html'), 'utf8');
+  const journalPage = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-journal.html'), 'utf8');
   assert.doesNotMatch(journalPage, /user\.schoolLevel !== 'jhs'/);
   for (const [, source] of journalPage.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (source.trim()) new vm.Script(source);

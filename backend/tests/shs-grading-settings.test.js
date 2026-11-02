@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { validateRule } = require('../controllers/shsGradingSettingsController');
@@ -9,7 +10,7 @@ const { calculateTermGrade, policyFor, componentsEqual } = require('../config/sh
 const { getCatalogEntry } = require('../config/shsApprovedCatalog');
 
 const root = path.resolve(__dirname, '../..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => pageFs.readFileSync(path.join(root, file), 'utf8');
 
 const customComponents = [
   { code: 'written', name: 'Written/Oral Works', componentType: 'written', weight: 30, examParts: [] },

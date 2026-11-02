@@ -1,14 +1,15 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
-const html = fs.readFileSync(path.join(root, 'views/parent/edugnay-parent-assignments.html'), 'utf8');
-const studentHtml = fs.readFileSync(path.join(root, 'views/student/edugnay-student-assignments.html'), 'utf8');
-const assignmentStyles = fs.readFileSync(path.join(root, 'assets/css/student/assignments.css'), 'utf8');
-const script = fs.readFileSync(path.join(root, 'assets/js/parent/assignments.js'), 'utf8');
+const html = pageFs.readFileSync(path.join(root, 'views/parent/edugnay-parent-assignments.html'), 'utf8');
+const studentHtml = pageFs.readFileSync(path.join(root, 'views/student/edugnay-student-assignments.html'), 'utf8');
+const assignmentStyles = pageFs.readFileSync(path.join(root, 'assets/css/student/assignments.css'), 'utf8');
+const script = pageFs.readFileSync(path.join(root, 'assets/js/parent/assignments.js'), 'utf8');
 
 function createPage(api) {
   const elements = new Map();
@@ -31,7 +32,7 @@ function createPage(api) {
     EDUGNAY_CONFIG: {
       escapeHtml: value => String(value),
       renderPanelEmptyState: ({ title }) => title,
-      renderPanelSkeleton: ({ kind, rows }) => `<div data-skeleton="${kind}" data-rows="${rows}"></div>`
+
     },
     EDUGNAY_AVATAR: { html: child => `<span>${child.displayName}</span>` },
     lucide: { createIcons() {} }
@@ -74,7 +75,7 @@ test('parent assignment page has read-only details and navigation on every paren
   assert.match(html, /id="assignmentDetailModal"/);
   assert.doesNotMatch(html, /type="file"|Submit work|Replace file/);
   for (const filename of fs.readdirSync(path.join(root, 'views/parent')).filter(name => name.endsWith('.html'))) {
-    const page = fs.readFileSync(path.join(root, 'views/parent', filename), 'utf8');
+    const page = pageFs.readFileSync(path.join(root, 'views/parent', filename), 'utf8');
     assert.match(page, /href="edugnay-parent-assignments\.html"/, filename);
   }
 });

@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -201,10 +202,10 @@ test('parent report list includes the school-configured current report week', as
 
 test('release flag defaults off and parent routes require parent authorization', () => {
   const root = path.join(__dirname, '../..');
-  const envExample = fs.readFileSync(path.join(__dirname, '../.env.example'), 'utf8');
-  const routes = fs.readFileSync(path.join(__dirname, '../routes/reports.js'), 'utf8');
-  const parentPage = fs.readFileSync(path.join(root, 'views/parent/edugnay-parent-reports.html'), 'utf8');
-  const parentScript = fs.readFileSync(path.join(root, 'assets/js/parent/narrative-reports.js'), 'utf8');
+  const envExample = pageFs.readFileSync(path.join(__dirname, '../.env.example'), 'utf8');
+  const routes = pageFs.readFileSync(path.join(__dirname, '../routes/reports.js'), 'utf8');
+  const parentPage = pageFs.readFileSync(path.join(root, 'views/parent/edugnay-parent-reports.html'), 'utf8');
+  const parentScript = pageFs.readFileSync(path.join(root, 'assets/js/parent/narrative-reports.js'), 'utf8');
   assert.match(envExample, /^AI_REPORTS_RELEASE_ENABLED=false$/m);
   assert.ok(routes.includes("router.post('/weekly-drafts/:reportId/release', requireSchoolUser, requireRoles('teacher')"));
   assert.ok(routes.includes("router.get('/parent/children/:studentId', requireSchoolUser, requireRoles('parent')"));
@@ -287,13 +288,13 @@ test('parent page features the latest report and shows every past report without
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       })[char]); },
       renderPanelEmptyState({ title }) { return `<div class="panel-empty-state">${title}</div>`; },
-      renderPanelSkeleton({ label }) { return `<div class="panel-skeleton">${label}</div>`; }
+
     },
     EDUGNAY_AVATAR: { html() { return '<span class="child-avatar"></span>'; }, hydrate() {} },
     lucide: { createIcons() {} }
   };
-  const script = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/narrative-reports.js'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/parent/reports.css'), 'utf8');
+  const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js/parent/narrative-reports.js'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/parent/reports.css'), 'utf8');
   assert.match(styles, /\.latest-report-hero \.lr-head \.report-correction-notice\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin:\s*0;/s);
   assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.latest-report-hero \.lr-head \{\s*display:\s*block;\s*\}[\s\S]*?\.latest-report-hero \.lr-head \.report-correction-notice \{\s*margin:\s*10px 0 0 48px;/);
   vm.runInNewContext(script, { window, document, URL, URLSearchParams, Intl, Date, String, Number, Set, Array });

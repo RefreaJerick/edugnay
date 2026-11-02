@@ -1,0 +1,1938 @@
+/* ══════════════ USER DATA + RENDER ══════════════ */
+
+    const PAGE_SIZE = 10;
+    let currentPage = 1;
+    let userDetailsTrigger = null;
+    let userDetailsAttendanceQrDataUrl = '';
+    let userDetailsQrStudent = null;
+    let userDetailsQrRequestId = 0;
+
+    const ROLE_META = {
+      school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield' },
+      teacher: { label: 'Faculty', badgeClass: 'badge-gold', icon: 'book-open' },
+      student: { label: 'Student', badgeClass: 'badge-gray', icon: 'graduation-cap' },
+      parent: { label: 'Parent', badgeClass: 'badge-purple', icon: 'heart-handshake' },
+    };
+
+    // Modal option values map to the canonical account-role values.
+    const ROLE_OPT_TO_TABLE = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
+    const TABLE_TO_ROLE_OPT = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'parents' };
+
+    let USERS = [];
+    let backendUserSections = [];
+    let backendParentChildren = new Map();
+    let usersApiActive = false;
+    let managedSchoolDomain = '';
+    let usersLoading = false;
+    let usersLoadError = '';
+    let importState = { role: '', parsed: null, validation: null };
+    let importSubmitting = false;
+
+    function findManagedUser(userId) {
+      return USERS.find(user => String(user.id) === String(userId));
+    }
+
+    async function getManagedUser(userId) {
+      return usersApiActive ? window.EDUGNAY_API.getUser(userId) : null;
+    }
+
+    async function loadManagedUsers() {
+      usersLoading = true;
+      usersLoadError = '';
+      const addAccountButton = document.getElementById('addAccountButton');
+      const importUsersButton = document.getElementById('importUsersButton');
+      if (addAccountButton) addAccountButton.disabled = true;
+      if (importUsersButton) importUsersButton.disabled = true;
+      renderUsers();
+
+      try {
+        await window.EDUGNAY_SCHOOL_READY;
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The backend is not configured.');
+        const [users, sections, school] = await Promise.all([
+          window.EDUGNAY_API.getAllUsers(),
+          window.EDUGNAY_API.getSections(),
+          window.EDUGNAY_API.getSchoolSettings()
+        ]);
+        if (!school?.schoolEmailDomain) throw new Error('School email domain is not configured.');
+        managedSchoolDomain = school.schoolEmailDomain;
+        USERS = users;
+        sortUsersByDate();
+        backendUserSections = sections.filter(section =>
+          section.status === 'active' && section.academicYearStatus === 'active'
+        );
+        backendParentChildren = new Map(await Promise.all(USERS.filter(user => user.role === 'parent').map(async parent => [
+          String(parent.id), await window.EDUGNAY_API.getParentChildren(parent.id)
+        ])));
+        usersApiActive = true;
+      } catch (error) {
+        usersApiActive = false;
+        USERS = [];
+        backendUserSections = [];
+        backendParentChildren.clear();
+        managedSchoolDomain = '';
+        if (error.status === 401 || error.status === 403) {
+          usersLoadError = 'Sign in as a school administrator to load user accounts.';
+        } else {
+          usersLoadError = error.status === 429 ? error.message
+            : error.status === 503 ? 'The server or database is temporarily unavailable.'
+            : error.message || 'User accounts could not be loaded from the backend.';
+        }
+        console.warn(usersLoadError, error.message);
+      } finally {
+        usersLoading = false;
+        if (addAccountButton) addAccountButton.disabled = !usersApiActive || Boolean(usersLoadError);
+        if (importUsersButton) importUsersButton.disabled = !usersApiActive || Boolean(usersLoadError);
+        renderUsers();
+      }
+    }
+
+    function formatGradeLevel(value) {
+      const raw = String(value || '').trim();
+      if (!raw || /^unassigned$/i.test(raw)) return '';
+      if (/^kindergarten$/i.test(raw)) return 'Kindergarten';
+
+      const match = raw.match(/(?:grade|gr\.?)\s*(\d{1,2})/i) || raw.match(/^(\d{1,2})$/);
+      return match ? `Grade ${match[1]}` : '';
+    }
+
+    function getStudentGradeLevels(user) {
+      if (user.role !== 'student') return [];
+      return [formatGradeLevel(user.gradeLevel)].filter(Boolean);
+    }
+
+    function getLinkedStudents(user) {
+      if (user?.role !== 'parent') return [];
+      return (backendParentChildren.get(String(user.id)) || []).map(child => ({
+        studentId: String(child.studentId), relationship: child.relationship
+      }));
+    }
+
+    function getGradeLinkDisplay(user) {
+      if (user.role === 'parent') {
+        const linkedStudents = getLinkedStudents(user);
+        if (!linkedStudents.length) return 'No linked students';
+        return 'Linked: ' + linkedStudents.map(link => {
+          const child = (backendParentChildren.get(String(user.id)) || []).find(item => String(item.studentId) === String(link.studentId));
+          return child ? child.displayName + (child.gradeLevel ? ` (${child.gradeLevel})` : '') : 'Student';
+        }).join(', ');
+      }
+
+      if (user.role === 'student') {
+        return getStudentGradeLevels(user).join(', ') || 'Unassigned';
+      }
+
+      return '—';
+    }
+
+    function gradeLevelSortValue(gradeLevel) {
+      if (/^kindergarten$/i.test(gradeLevel)) return 0;
+      return Number((String(gradeLevel).match(/\d+/) || [99])[0]);
+    }
+
+    function getSectionDisplay(user) {
+      if (user.role === 'parent') {
+        const linkedStudents = getLinkedStudents(user);
+        if (!linkedStudents.length) return 'No linked students';
+        return 'Linked: ' + linkedStudents.map(link => {
+          const child = (backendParentChildren.get(String(user.id)) || []).find(item => String(item.studentId) === String(link.studentId));
+          return child ? `${child.displayName} (${[child.gradeLevel, child.sectionName].filter(Boolean).join(' / ') || 'Unassigned'})` : 'Student';
+        }).join(', ');
+      }
+      if (user.role === 'school_admin') return '—';
+      if (user.role !== 'student') return '—';
+      return [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
+    }
+
+    function renderSectionFilterOptions() {
+      const select = document.getElementById('sectionFilter');
+      const selectedGrade = document.getElementById('gradeLevelFilter').value;
+
+      const currentValue = select.value;
+      const sections = backendUserSections
+        .filter(section => selectedGrade === 'all' || section.grade === selectedGrade)
+        .sort((a, b) => (
+          gradeLevelSortValue(a.grade) - gradeLevelSortValue(b.grade)
+          || a.name.localeCompare(b.name)
+        ));
+
+      const options = [new Option('All Sections', 'all')];
+      sections.forEach(section => options.push(new Option(section.name, section.id)));
+      select.replaceChildren(...options);
+      select.value = sections.some(section => section.id === currentValue) ? currentValue : 'all';
+    }
+
+    function updateStudentFilters() {
+      const select = document.getElementById('gradeLevelFilter');
+      const sectionSelect = document.getElementById('sectionFilter');
+      if (!select || !sectionSelect) return;
+
+      const isStudentView = activeRole === 'student';
+      select.hidden = !isStudentView;
+      select.disabled = !isStudentView;
+      sectionSelect.hidden = !isStudentView;
+      sectionSelect.disabled = !isStudentView;
+
+      if (!isStudentView) {
+        select.value = 'all';
+        sectionSelect.value = 'all';
+        return;
+      }
+
+      const currentValue = select.value;
+      const gradeLevels = [...new Set(
+        USERS.filter(user => user.role === 'student').flatMap(getStudentGradeLevels)
+      )].sort((a, b) => gradeLevelSortValue(a) - gradeLevelSortValue(b) || a.localeCompare(b));
+
+      select.innerHTML = '<option value="all">All Grade Levels</option>' +
+        gradeLevels.map(gradeLevel => `<option value="${gradeLevel}">${gradeLevel}</option>`).join('');
+      select.value = gradeLevels.includes(currentValue) ? currentValue : 'all';
+    }
+
+    function getFilteredUsers() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const status = document.getElementById('statusFilter').value;
+      const sectionId = document.getElementById('sectionFilter').value;
+      const gradeLevel = document.getElementById('gradeLevelFilter').value;
+
+      return USERS.filter(u => {
+        const displayName = String(u.displayName || '').toLowerCase();
+        const schoolEmail = String(u.schoolEmail || '').toLowerCase();
+        const personalEmail = String(u.personalEmail || '').toLowerCase();
+        const employeeNo = String(u.employeeNo || '').toLowerCase();
+        const matchSearch = displayName.includes(search)
+          || schoolEmail.includes(search)
+          || personalEmail.includes(search)
+          || employeeNo.includes(search);
+        const matchRole = activeRole === 'all' || u.role === activeRole;
+        const matchStatus = status === 'all' || u.status === status;
+        const matchSection = sectionId === 'all' || u.sectionId === sectionId;
+        const matchGradeLevel = gradeLevel === 'all' || getStudentGradeLevels(u).includes(gradeLevel);
+
+        return matchSearch && matchRole && matchStatus && matchSection && matchGradeLevel;
+      });
+    }
+
+    function formatAccountDate(value) {
+      if (!value) return 'Not available';
+      return new Date(value).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+
+    function userDetailItem(label, value) {
+      const displayValue = String(value ?? '').trim() || 'Not provided';
+      return `<div><dt>${window.EDUGNAY_CONFIG.escapeHtml(label)}</dt><dd>${window.EDUGNAY_CONFIG.escapeHtml(displayValue)}</dd></div>`;
+    }
+
+    function renderUsers() {
+      updateStudentFilters();
+      renderSectionFilterOptions();
+      const tbody = document.getElementById('tableBody');
+      const showGradeLinkColumn = !['school_admin', 'teacher'].includes(activeRole);
+      if ((usersLoading || usersLoadError) && !USERS.length) {
+        const columns = showGradeLinkColumn ? 6 : 5;
+        if (usersLoading) {
+          tbody.innerHTML = '';
+        } else {
+          tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${columns}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'User accounts unavailable', text: usersLoadError || 'Try again when the connection is ready.' })}<button class="top-btn secondary" type="button" data-page-click="g19350957166b">Retry</button></td></tr>`;
+        }
+        updateRoleSummary();
+        renderPagination(0, 1);
+        document.getElementById('rowCount').textContent = '0';
+        document.getElementById('totalUserCount').textContent = '0';
+        lucide.createIcons();
+        return;
+      }
+      const filtered = getFilteredUsers();
+      document.getElementById('gradeLinkHeading').hidden = !showGradeLinkColumn;
+
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIdx = (currentPage - 1) * PAGE_SIZE;
+      const pageUsers = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+
+      tbody.innerHTML = pageUsers.length ? pageUsers.map(u => {
+        const meta = ROLE_META[u.role];
+        const displayName = u.displayName || [u.firstName, u.lastName].filter(Boolean).join(' ');
+        const safeDisplayName = window.EDUGNAY_CONFIG.escapeHtml(displayName || 'Unnamed user');
+        const safeSchoolEmail = window.EDUGNAY_CONFIG.escapeHtml(u.schoolEmail || 'No school email');
+        const statusBadge = u.status === 'active'
+          ? '<span class="badge badge-green">● Active</span>'
+          : '<span class="badge badge-red"><i data-lucide="x-circle"></i>Inactive</span>';
+
+        let actionButtons = '';
+        if (u.role !== 'school_admin') {
+          actionButtons += u.status === 'active'
+            ? '<button class="row-btn deactivate">Deactivate</button>'
+            : '<button class="row-btn reactivate">Reactivate</button>';
+        }
+        actionButtons += `
+          <div class="user-row-menu">
+            <button class="user-menu-trigger" type="button" aria-label="User actions" aria-haspopup="menu" aria-expanded="false">
+              <i data-lucide="more-vertical" style="width:16px;height:16px;"></i>
+            </button>
+            <div class="user-action-menu" role="menu">
+              <button class="user-menu-item edit" type="button" role="menuitem">
+                <i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit Account
+              </button>
+              ${u.role !== 'school_admin' ? `
+                <button class="user-menu-item delete" type="button" role="menuitem">
+                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete Account
+                </button>` : ''}
+            </div>
+          </div>`;
+
+        return `
+      <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}" tabindex="0" aria-haspopup="dialog" aria-label="View ${safeDisplayName}'s information">
+        <td class="account-user-cell">
+          <div class="user-cell">
+            ${window.EDUGNAY_AVATAR.html(u, { className: 'user-av', role: u.role })}
+            <div>
+              <div class="user-name">${safeDisplayName}</div>
+              <div class="user-email">${safeSchoolEmail}</div>
+            </div>
+          </div>
+        </td>
+        <td class="account-role-cell"><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}"></i>${meta.label}</span></td>
+        ${showGradeLinkColumn ? `<td class="account-scope-cell"><span class="account-scope">${window.EDUGNAY_CONFIG.escapeHtml(getGradeLinkDisplay(u))}</span></td>` : ''}
+        <td class="account-status-cell">${statusBadge}</td>
+        <td class="date-cell account-date-cell">${formatAccountDate(u.createdAt)}</td>
+        <td class="account-actions-cell"><div class="row-actions">${actionButtons}</div></td>
+      </tr>`;
+      }).join('') : `<tr class="panel-empty-row"><td colspan="${showGradeLinkColumn ? 6 : 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No user accounts found', text: USERS.length ? 'Try adjusting the role, status, grade level, or search filters.' : 'No accounts have been added to this school yet.' })}</td></tr>`;
+
+      lucide.createIcons();
+      wireRowButtons();
+      updateRoleSummary();
+      renderPagination(filtered.length, totalPages);
+      document.getElementById('rowCount').textContent = pageUsers.length;
+      document.getElementById('totalUserCount').textContent = USERS.length;
+    }
+
+    function renderPagination(totalCount, totalPages) {
+      const startIdx = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+      const endIdx = Math.min(currentPage * PAGE_SIZE, totalCount);
+
+      document.querySelector('.page-info').innerHTML =
+        `Showing <strong>${startIdx}–${endIdx}</strong> of <strong>${totalCount}</strong> users`;
+
+      const btnsWrap = document.querySelector('.page-btns');
+      let html = `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { goToPage((currentPage - 1)) })}">‹</button>`;
+
+      // simple window: show first, last, current, and neighbors — collapse the rest with "…"
+      const pages = [];
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) pages.push(p);
+      }
+
+      let lastShown = 0;
+      pages.forEach(p => {
+        if (lastShown && p - lastShown > 1) {
+          html += `<span style="display:flex;align-items:center;color:var(--gray-400);font-size:12px;padding:0 4px;">…</span>`;
+        }
+        html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { goToPage((p)) })}">${p}</button>`;
+        lastShown = p;
+      });
+
+      html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { goToPage((currentPage + 1)) })}">›</button>`;
+
+      btnsWrap.innerHTML = html;
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderUsers();
+    }
+
+    function closeUserMenus() {
+      document.querySelectorAll('.user-action-menu.open').forEach(menu => menu.classList.remove('open'));
+      document.querySelectorAll('.user-menu-trigger[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.user-row-menu')) closeUserMenus();
+    });
+
+    function wireRowButtons() {
+      document.querySelectorAll('.user-menu-trigger').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          const menu = this.nextElementSibling;
+          const shouldOpen = !menu.classList.contains('open');
+          closeUserMenus();
+          if (!shouldOpen) return;
+          menu.classList.add('open');
+          this.setAttribute('aria-expanded', 'true');
+        });
+      });
+      document.querySelectorAll('.user-menu-item.edit').forEach(btn => {
+        btn.addEventListener('click', function () {
+          closeUserMenus();
+          openEditModal(this.closest('tr'));
+        });
+      });
+      document.querySelectorAll('.row-btn.deactivate, .row-btn.reactivate').forEach(btn => {
+        btn.addEventListener('click', function () { openDeactivateModal(this.closest('tr')); });
+      });
+      document.querySelectorAll('.user-menu-item.delete').forEach(btn => {
+        btn.addEventListener('click', function () {
+          closeUserMenus();
+          openDeleteModal(this.closest('tr'));
+        });
+      });
+      document.querySelectorAll('#userTable tbody tr[data-user-id]').forEach(row => {
+        row.addEventListener('click', function (event) {
+          if (event.target.closest('button, a, input, select, textarea, [role="menu"]')) return;
+          openUserDetailsModal(this.dataset.userId, this);
+        });
+        row.addEventListener('keydown', function (event) {
+          if (event.target !== this || !['Enter', ' '].includes(event.key)) return;
+          event.preventDefault();
+          openUserDetailsModal(this.dataset.userId, this);
+        });
+      });
+    }
+
+    function updateRoleSummary() {
+      const counts = { all: USERS.length, school_admin: 0, teacher: 0, student: 0, parent: 0 };
+      USERS.forEach(u => counts[u.role] !== undefined && counts[u.role]++);
+      document.querySelector('.rs-card.all .rs-num').textContent = counts.all;
+      document.querySelector('.rs-card.admin .rs-num').textContent = counts.school_admin;
+      document.querySelector('.rs-card.fac .rs-num').textContent = counts.teacher;
+      document.querySelector('.rs-card.stud .rs-num').textContent = counts.student;
+      document.querySelector('.rs-card.par .rs-num').textContent = counts.parent;
+    }
+
+    /* ══════════════ ACCOUNT FORM SUBMIT ══════════════ */
+
+    function accountFieldValue(id) {
+      return String(document.getElementById(id)?.value || '').trim();
+    }
+
+    function getAccountFormData() {
+      const roleOptValue = document.getElementById('accountRole').value;
+      const role = ROLE_OPT_TO_TABLE[roleOptValue] || '';
+      const data = {
+        userId: accountFieldValue('accountUserId'),
+        firstName: accountFieldValue('accountFirstName'),
+        lastName: accountFieldValue('accountLastName'),
+        personalEmail: accountFieldValue('accountPersonalEmail').toLowerCase(),
+        role
+      };
+
+      if (role === 'school_admin' || role === 'teacher') {
+        data.employeeNo = accountFieldValue('accountEmployeeNo').toUpperCase();
+      }
+      if (role === 'student') data.lrn = accountFieldValue('accountLRN');
+      if (role === 'parent') data.parentLinks = linkedStudents.map(link => ({ ...link }));
+      return data;
+    }
+
+    function validateAccountFormData(data) {
+      if (!data.firstName || !data.lastName || !data.personalEmail || !data.role) {
+        return 'Please complete the name, personal email, and role.';
+      }
+      if (!/^\S+@\S+\.\S+$/.test(data.personalEmail)) {
+        return 'Please provide a valid personal email.';
+      }
+
+      const isStaff = data.role === 'school_admin' || data.role === 'teacher';
+      if (isStaff && !data.employeeNo) return 'Please provide the employee number.';
+      if (data.role === 'student' && !data.lrn) return 'Please provide the student LRN.';
+      if (data.role === 'student' && !/^\d{12}$/.test(data.lrn)) {
+        return 'The LRN must contain exactly 12 digits.';
+      }
+      if (data.role === 'parent' && !data.parentLinks.length) {
+        return 'Please link at least one student to the parent account.';
+      }
+      if (data.role === 'parent' && data.parentLinks.some(link => !link.relationship)) {
+        return 'Please choose a relationship for every linked student.';
+      }
+      if (data.role === 'parent' && new Set(data.parentLinks.map(link => link.studentId)).size !== data.parentLinks.length) {
+        return 'A student can only be linked once.';
+      }
+      if (isStaff && USERS.some(user => (
+        user.id !== data.userId
+        && (user.role === 'school_admin' || user.role === 'teacher')
+        && String(user.employeeNo || '').trim().toLowerCase() === data.employeeNo.toLowerCase()
+      ))) {
+        return 'That employee number is already assigned to another staff account.';
+      }
+      if (data.role === 'student' && USERS.some(user => (
+        user.id !== data.userId
+        && user.role === 'student'
+        && String(user.lrn || '').trim() === data.lrn
+      ))) {
+        return 'That LRN is already assigned to another student account.';
+      }
+      if (USERS.some(user => (
+        user.id !== data.userId
+        && String(user.personalEmail || '').trim().toLowerCase() === data.personalEmail
+      ))) {
+        return 'That personal email is already assigned to another account.';
+      }
+      return '';
+    }
+
+    function openBackendCredentialDeliveryModal(user, emailDelivery) {
+      if (!user) return;
+
+      const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
+      document.getElementById('credentialSingleView').hidden = false;
+      document.getElementById('credentialBatchView').hidden = true;
+      document.getElementById('credentialDeliveryModalSub').textContent = `Prepared for ${user.personalEmail || user.schoolEmail || 'the account owner'}.`;
+      document.getElementById('credentialDeliveryNotice').textContent = emailDelivery?.status === 'sent'
+        ? 'The backend generated the temporary password and sent the account credentials by email.'
+        : 'The account was created, but the credential email was not sent. Check the backend SMTP configuration before the user signs in.';
+      document.getElementById('credentialSchoolEmail').textContent = user.schoolEmail || 'Not set';
+      document.getElementById('credentialTemporaryPassword').textContent = emailDelivery?.status === 'sent'
+        ? 'Sent securely by email'
+        : 'Not delivered';
+      document.getElementById('credentialQrSection').hidden = true;
+      document.getElementById('credentialQrImage').removeAttribute('src');
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+    }
+
+    function closeCredentialDeliveryModal() {
+      const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+    }
+
+    document.getElementById('credentialDeliveryModalBackdrop').addEventListener('click', function (event) {
+      if (event.target === this) closeCredentialDeliveryModal();
+    });
+
+    document.getElementById('accountForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const data = getAccountFormData();
+      const validationMessage = validateAccountFormData(data);
+      const feedback = document.getElementById('accountFormFeedback');
+      feedback.hidden = true;
+      if (validationMessage) {
+        feedback.textContent = validationMessage;
+        feedback.hidden = false;
+        return;
+      }
+
+      const saveButton = document.getElementById('accountSaveBtn');
+      const originalLabel = saveButton.textContent;
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving...';
+
+      const payload = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        personalEmail: data.personalEmail
+      };
+      if (!data.userId) payload.role = data.role;
+      if (data.employeeNo !== undefined) payload.employeeNo = data.employeeNo;
+      if (data.lrn !== undefined) payload.lrn = data.lrn;
+      if (data.parentLinks !== undefined && (!data.userId ||
+        data.parentLinks.length !== originalLinkedStudents.length ||
+        data.parentLinks.some(link => !originalLinkedStudents.some(saved => saved.studentId === link.studentId && saved.relationship === link.relationship)))) {
+        payload.parentLinks = data.parentLinks;
+      }
+
+      try {
+        if (!usersApiActive) {
+          throw new Error('User accounts are unavailable from the backend. Refresh the page and try again.');
+        }
+
+        const result = data.userId
+          ? await window.EDUGNAY_API.updateUser(data.userId, payload)
+          : await window.EDUGNAY_API.createUser(payload);
+        if (!result.user) throw new Error('The account could not be saved.');
+
+        closeAccountModal();
+        await loadManagedUsers();
+        if (data.userId) {
+          showAppToast(usersLoadError ? 'Account updated, but the user list could not refresh.' : 'Account updated.', usersLoadError ? 'info' : 'success');
+        } else {
+          openBackendCredentialDeliveryModal(result.user, result.emailDelivery);
+        }
+      } catch (error) {
+        showAppToast(error.message || 'The account could not be saved.', 'error');
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = originalLabel;
+      }
+    });
+
+    document.getElementById('deactivateForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const userId = document.getElementById('deactivateUserId').value;
+      const action = document.getElementById('deactivateAction').value; // 'deactivate' | 'reactivate'
+      try {
+        if (!usersApiActive) throw new Error('User accounts are unavailable from the backend.');
+        await window.EDUGNAY_API.setUserStatus(userId, action === 'deactivate' ? 'inactive' : 'active');
+        await loadManagedUsers();
+        closeDeactivateModal();
+        showAppToast(usersLoadError ? 'Account status changed, but the user list could not refresh.' : action === 'deactivate' ? 'Account deactivated.' : 'Account reactivated.', usersLoadError ? 'info' : 'success');
+      } catch (error) {
+        showAppToast(error.message || 'The account status could not be updated.', 'error');
+      }
+
+    });
+
+    document.getElementById('deleteForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const userId = document.getElementById('deleteUserId').value;
+      if (!usersApiActive) {
+        showAppToast('User accounts are not connected to the backend. Try again after they load.', 'error');
+        return;
+      }
+
+      const button = document.getElementById('deleteUserConfirmButton');
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      let deleted = false;
+      try {
+        await window.EDUGNAY_API.deleteUser(userId);
+        deleted = true;
+        closeDeleteModal();
+        currentPage = 1;
+        await loadManagedUsers();
+        showAppToast(usersLoadError ? 'Account deleted, but the user list could not refresh.' : 'Account deleted.', usersLoadError ? 'info' : 'success');
+      } catch (error) {
+        showAppToast(deleted ? 'Account deleted, but the user list could not refresh.' : error.message || 'The account could not be deleted.', deleted ? 'info' : 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
+
+    });
+
+    document.getElementById('importUsersForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      if (importSubmitting) return;
+      if (!usersApiActive || usersLoading || usersLoadError) {
+        showAppToast('User accounts must be connected to the backend before importing.', 'error');
+        return;
+      }
+
+      const validation = importState.validation;
+      const file = document.getElementById('importUsersFileInput').files[0];
+      if (!file || !validation || validation.errors.length || !validation.accountRecords.length) {
+        renderImportPreview();
+        return;
+      }
+
+      const submitButton = document.getElementById('importUsersSubmitBtn');
+      importSubmitting = true;
+      submitButton.disabled = true;
+      submitButton.textContent = 'Importing...';
+      document.getElementById('importUsersFileInput').disabled = true;
+      document.querySelectorAll('#importRoleOpts .role-opt:not([data-role="adm"])').forEach(option => { option.disabled = true; });
+      let imported = false;
+
+      try {
+        const role = ROLE_OPT_TO_TABLE[importState.role];
+        const result = await window.EDUGNAY_API.importUsers(file, role);
+        imported = true;
+        importSubmitting = false;
+        closeImportModal();
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = 'all';
+        document.getElementById('gradeLevelFilter').value = 'all';
+        document.getElementById('sectionFilter').value = 'all';
+        dateSortOrder = 'desc';
+        document.getElementById('sortDateAdded').textContent = 'Date Added ↓';
+        currentPage = 1;
+        await loadManagedUsers();
+        if (usersLoadError) throw new Error('The user list could not refresh.');
+        const cardClass = { teacher: 'fac', student: 'stud', parent: 'par' }[role];
+        const card = document.querySelector(`.rs-card.${cardClass}`);
+        if (card) filterRole(role, card);
+        const count = result.summary?.accountsCreated || 0;
+        const delivery = Object.entries(result.summary?.emailDelivery || {})
+          .map(([status, total]) => `${total} ${status.replaceAll('_', ' ')}`).join(', ');
+        showAppToast(`${count} account(s) imported.${delivery ? ` Credential email: ${delivery}.` : ''}`,
+          delivery && Object.keys(result.summary.emailDelivery).some(status => status !== 'sent') ? 'info' : 'success');
+      } catch (error) {
+        if (imported) {
+          showAppToast('Accounts imported, but the user list could not refresh. Do not import the file again; reload the page.', 'info');
+        } else {
+          if (error.status === 422 && Array.isArray(error.data?.rows)) {
+            const errorsByRow = new Map(error.data.rows.map(row => [row.rowNumber, row.errors || []]));
+            validation.records.forEach(record => { record.errors = errorsByRow.get(record.rowNumber) || []; });
+            validation.errors = validation.records.flatMap(record => record.errors.map(message => `Row ${record.rowNumber}: ${message}`));
+          }
+          renderImportPreview();
+          const status = document.getElementById('importUsersStatus');
+          status.className = 'import-status error';
+          status.hidden = false;
+          status.textContent = error.status && error.status < 500
+            ? error.message || 'The accounts could not be imported.'
+            : `${error.message || 'The import response was lost.'} Check the user list before trying again; the import may have completed.`;
+        }
+      } finally {
+        importSubmitting = false;
+        document.getElementById('importUsersFileInput').disabled = false;
+        document.querySelectorAll('#importRoleOpts .role-opt:not([data-role="adm"])').forEach(option => { option.disabled = false; });
+        submitButton.disabled = Boolean(importState.validation?.errors.length) || !importState.validation?.accountRecords.length;
+        submitButton.textContent = 'Import Accounts';
+      }
+    });
+
+
+    /* ── SHARED ACCOUNT MODAL (Add / Edit) ── */
+
+    function openAddModal() {
+      if (!usersApiActive || usersLoading || usersLoadError) {
+        return;
+      }
+      const form = document.getElementById('accountForm');
+      form.reset();
+      document.getElementById('accountFormFeedback').hidden = true;
+
+      document.getElementById('accountModalTitle').textContent = 'Add New Account';
+      document.getElementById('accountModalSub').textContent = 'Fill in the details to create a new user.';
+      document.getElementById('accountUserId').value = '';
+      form.action = '/users/create';
+
+      document.querySelectorAll('#accountRoleOpts .role-opt').forEach(option => {
+        option.classList.remove('selected');
+        option.setAttribute('aria-pressed', 'false');
+        option.disabled = false;
+      });
+      document.getElementById('accountRole').value = '';
+      clearLinkedStudents();
+      updateAccountModalFields();
+
+      document.getElementById('accountSaveBtn').textContent = 'Create Account';
+
+      document.getElementById('accountModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function openEditModal(row) {
+      const userId = row.dataset.userId;
+      const user = findManagedUser(userId);
+      if (!user) return;
+
+      const form = document.getElementById('accountForm');
+      form.reset();
+      document.getElementById('accountFormFeedback').hidden = true;
+
+      document.getElementById('accountModalTitle').textContent = 'Edit Account';
+      document.getElementById('accountModalSub').textContent = "Update the user's details.";
+
+      document.getElementById('accountFirstName').value = user.firstName;
+      document.getElementById('accountLastName').value = user.lastName;
+      document.getElementById('accountPersonalEmail').value = user.personalEmail || '';
+      document.getElementById('accountSchoolEmail').value = user.schoolEmail || '';
+      document.getElementById('accountUserId').value = user.id;
+      document.getElementById('accountEmployeeNo').value = user.employeeNo || '';
+
+// Page JavaScript handles this behavior.
+      form.action = `/users/${user.id}/edit`;
+
+      const roleOptValue = TABLE_TO_ROLE_OPT[user.role] || '';
+      setAccountRoleOptions(roleOptValue, true);
+      document.getElementById('accountLRN').value = user.lrn || '';
+      linkedStudents = getLinkedStudents(user);
+      originalLinkedStudents = linkedStudents.map(link => ({ ...link }));
+      renderLinkedStudents();
+      updateAccountModalFields();
+
+      document.getElementById('accountSaveBtn').textContent = 'Save Changes';
+
+      document.getElementById('accountModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeAccountModal() {
+      document.getElementById('accountModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('accountModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeAccountModal();
+    });
+
+    /* USER DETAILS MODAL */
+    async function openUserDetailsModal(userId, trigger) {
+      if (!usersApiActive) return;
+      let user;
+      let parentLinks = [];
+      try {
+        user = await getManagedUser(userId);
+        if (!user) throw new Error('The account could not be loaded.');
+        if (user.role === 'parent') {
+          parentLinks = await window.EDUGNAY_API.getParentChildren(user.id);
+          backendParentChildren.set(String(user.id), parentLinks);
+        }
+      } catch (error) {
+        showAppToast(error.message || 'The account details could not be loaded.', 'error');
+        return;
+      }
+      const profile = user.profile || {};
+      const meta = ROLE_META[user.role];
+      const statusLabel = user.status === 'active' ? 'Active' : 'Inactive';
+      const statusIcon = user.status === 'active' ? 'circle-check' : 'circle-x';
+      const schoolLevel = window.EDUGNAY_CONFIG.grades.find(level => level.key === user.schoolLevel)?.label || user.schoolLevel;
+      const address = [profile?.houseStreet, profile?.barangay, profile?.cityMunicipality, profile?.province]
+        .filter(Boolean)
+        .join(', ');
+      const setupStatus = ['student', 'parent'].includes(user.role)
+        ? (user.setupCompletedAt ? 'Complete' : 'Required')
+        : 'Not required';
+
+      const accountDetails = [
+        ['First name', user.firstName],
+        ['Middle name', profile?.hasNoMiddleName ? 'None' : profile?.middleName],
+        ['Last name', user.lastName],
+        ['School email', user.schoolEmail],
+        ['Personal email', user.personalEmail],
+        ['Date added', formatAccountDate(user.createdAt)],
+        ['Profile setup', setupStatus]
+      ];
+      const roleDetails = [];
+      if (['school_admin', 'teacher'].includes(user.role)) {
+        roleDetails.push(['Employee number', user.employeeNo]);
+      }
+      if (user.role === 'student') {
+        const sectionDisplay = [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
+        roleDetails.push(
+          ['LRN', user.lrn],
+          ['School level', schoolLevel],
+          ['Grade level', user.gradeLevel],
+          ['Section', sectionDisplay]
+        );
+        if (user.schoolLevel === 'shs') roleDetails.push(['Strand', user.strand]);
+      }
+
+      const personalDetails = [];
+      if (user.role === 'student') {
+        personalDetails.push(
+          ['Sex', profile?.sex ? profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1) : null],
+          ['Birth date', profile?.birthDate ? formatAccountDate(profile.birthDate) : null],
+          ['Place of birth', [profile?.birthPlace || profile?.birthPlaceProvince, profile?.birthPlaceRegion, profile?.birthCountry].filter(Boolean).join(', ')],
+          ['Mother tongue', profile?.motherTongue],
+          ['Indigenous group', profile?.indigenousGroup],
+          ['Religion', profile?.religion],
+          ['Address', address]
+        );
+      }
+      if (user.role === 'parent') {
+        personalDetails.push(
+          ['Sex', profile?.sex ? profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1) : null],
+          ['Contact number', profile?.contactNumber],
+          ['Religion', profile?.religion],
+          ['Maiden last name', profile?.hasNoMaidenName ? 'None' : profile?.maidenLastName],
+          ['Address', address]
+        );
+      }
+
+      const linkedStudents = parentLinks.map(link => {
+        const student = link;
+        const relationship = link.relationship
+          ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
+          : 'Not specified';
+        const scope = [student?.gradeLevel, student?.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
+        return `<div class="user-details-linked-row">
+          <div>
+            <div class="user-details-linked-name">${window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student')}</div>
+            <div class="user-details-linked-meta">${window.EDUGNAY_CONFIG.escapeHtml(scope)}</div>
+          </div>
+          <span class="user-details-linked-tag">${window.EDUGNAY_CONFIG.escapeHtml(relationship)}</span>
+        </div>`;
+      }).join('');
+
+      const modalBody = document.getElementById('userDetailsModalBody');
+      document.getElementById('regenerateAttendanceQrStudentId').value = user.role === 'student' ? user.id : '';
+      modalBody.innerHTML = `
+        <div class="user-details-profile">
+          ${window.EDUGNAY_AVATAR.html(user, { className: 'user-details-avatar', role: user.role, size: 'lg' })}
+          <div class="user-details-profile-copy">
+            <div class="user-details-name">${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)}</div>
+            <div class="user-details-email">${window.EDUGNAY_CONFIG.escapeHtml(user.schoolEmail || 'No school email')}</div>
+            <div class="user-details-badges">
+              <span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}"></i>${meta.label}</span>
+              <span class="user-details-status ${user.status}"><i data-lucide="${statusIcon}"></i>${statusLabel}</span>
+            </div>
+          </div>
+        </div>
+        <section class="user-details-section" aria-labelledby="userDetailsAccountTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="id-card"></i></span>
+            <h3 id="userDetailsAccountTitle">Account details</h3>
+          </div>
+          <dl class="user-details-grid">${accountDetails.map(item => userDetailItem(item[0], item[1])).join('')}</dl>
+        </section>
+        ${roleDetails.length ? `<section class="user-details-section" aria-labelledby="userDetailsRoleTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="school"></i></span>
+            <h3 id="userDetailsRoleTitle">Role information</h3>
+          </div>
+          <dl class="user-details-grid">${roleDetails.map(item => userDetailItem(item[0], item[1])).join('')}</dl>
+        </section>` : ''}
+        ${personalDetails.length ? `<section class="user-details-section" aria-labelledby="userDetailsPersonalTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="contact"></i></span>
+            <h3 id="userDetailsPersonalTitle">Personal information</h3>
+          </div>
+          <dl class="user-details-grid">${personalDetails.map(item => userDetailItem(item[0], item[1])).join('')}</dl>
+        </section>` : ''}
+        ${user.role === 'student' ? `<section class="user-details-section" aria-labelledby="userDetailsQrTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="qr-code"></i></span>
+            <h3 id="userDetailsQrTitle">Student Attendance QR</h3>
+          </div>
+          <div class="user-details-qr">
+            <img id="userDetailsAttendanceQrImage" alt="${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)} attendance QR code" hidden />
+            <div class="user-details-qr-copy">
+              <p>Download a replacement copy or reissue the token if the current QR is no longer secure.</p>
+              <div class="user-details-qr-actions">
+                <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrDownload" data-page-click="g8e40f2d00672" disabled><i data-lucide="download"></i>Download QR</button>
+                <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrReissue" data-page-click="g886db1f2d6f7"><i data-lucide="refresh-cw"></i>Reissue QR</button>
+                <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrReload" data-page-click="g23586b5d3b67" hidden><i data-lucide="rotate-cw"></i>Reload QR</button>
+              </div>
+              <div class="user-details-qr-status" id="userDetailsAttendanceQrStatus" role="status" hidden></div>
+            </div>
+          </div>
+        </section>` : ''}
+        ${user.role === 'parent' ? `<section class="user-details-section" aria-labelledby="userDetailsLinksTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="users-round"></i></span>
+            <h3 id="userDetailsLinksTitle">Linked students</h3>
+          </div>
+          <div class="user-details-linked-list">${linkedStudents || '<div class="user-details-empty">No linked students</div>'}</div>
+        </section>` : ''}`;
+
+      userDetailsTrigger = trigger || null;
+      userDetailsQrStudent = user.role === 'student' ? user : null;
+      const modal = document.getElementById('userDetailsModalBackdrop');
+      modalBody.scrollTop = 0;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      if (user.role === 'student') await renderUserDetailsAttendanceQr(user);
+      lucide.createIcons();
+      document.getElementById('userDetailsModalClose').focus();
+    }
+
+    function closeUserDetailsModal() {
+      const modal = document.getElementById('userDetailsModalBackdrop');
+      const wasOpen = modal.classList.contains('open');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      if (wasOpen && userDetailsTrigger?.isConnected) userDetailsTrigger.focus();
+      userDetailsTrigger = null;
+      userDetailsQrStudent = null;
+      userDetailsQrRequestId += 1;
+    }
+
+    function setUserDetailsQrStatus(message, isError = false, isSuccess = false) {
+      const status = document.getElementById('userDetailsAttendanceQrStatus');
+      status.textContent = message;
+      status.hidden = !message;
+      status.classList.toggle('error', isError);
+      status.classList.toggle('success', isSuccess);
+    }
+
+    function clearUserDetailsQr() {
+      userDetailsAttendanceQrDataUrl = '';
+      const image = document.getElementById('userDetailsAttendanceQrImage');
+      image.removeAttribute('src');
+      image.hidden = true;
+      image.parentElement.classList.add('no-image');
+      document.getElementById('userDetailsAttendanceQrDownload').disabled = true;
+    }
+
+    async function displayUserDetailsQr(token, studentId, requestId) {
+      if (!token) throw new Error('The QR data is unavailable.');
+      const dataUrl = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(token);
+      if (!dataUrl) throw new Error('The QR image could not be created.');
+      if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(studentId)) return;
+      const image = document.getElementById('userDetailsAttendanceQrImage');
+      image.src = dataUrl;
+      image.hidden = false;
+      image.parentElement.classList.remove('no-image');
+      userDetailsAttendanceQrDataUrl = dataUrl;
+      document.getElementById('userDetailsAttendanceQrDownload').disabled = false;
+      document.getElementById('userDetailsAttendanceQrReload').hidden = true;
+    }
+
+    async function renderUserDetailsAttendanceQr(student) {
+      if (!student) return;
+      const requestId = ++userDetailsQrRequestId;
+      clearUserDetailsQr();
+      setUserDetailsQrStatus('');
+      document.getElementById('userDetailsAttendanceQrReload').hidden = true;
+      try {
+        const response = await window.EDUGNAY_API.getStudentQr(student.apiId || student.id);
+        const token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
+        if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(student.id)) return;
+        if (!token) {
+          setUserDetailsQrStatus('QR unavailable. Reissue it to create a new copy.');
+          return;
+        }
+        await displayUserDetailsQr(token, student.id, requestId);
+      } catch (error) {
+        if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(student.id)) return;
+        setUserDetailsQrStatus(error.message || 'The QR could not be loaded.', true);
+        document.getElementById('userDetailsAttendanceQrReload').hidden = false;
+      }
+    }
+
+    function downloadUserDetailsAttendanceQr() {
+      const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
+      const student = userDetailsQrStudent;
+      if (!userDetailsAttendanceQrDataUrl || !student) return;
+
+      const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-');
+      const link = document.createElement('a');
+      link.href = userDetailsAttendanceQrDataUrl;
+      link.download = `${name}-attendance-qr.png`;
+      link.click();
+    }
+
+    let regenerateAttendanceQrBusy = false;
+    let regenerateAttendanceQrReturnFocus = null;
+
+    function openRegenerateAttendanceQrModal() {
+      const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
+      const student = userDetailsQrStudent || findManagedUser(studentId);
+      const details = document.getElementById('userDetailsModalBackdrop');
+      if (!student || student.role !== 'student' || !details.classList.contains('open')) return;
+
+      regenerateAttendanceQrReturnFocus = document.activeElement;
+      document.getElementById('regenerateAttendanceQrStudentName').textContent = student.displayName;
+      details.classList.remove('open');
+      details.setAttribute('aria-hidden', 'true');
+      details.hidden = true;
+      const modal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+      document.getElementById('regenerateAttendanceQrModalClose').focus();
+    }
+
+    function closeRegenerateAttendanceQrModal() {
+      if (regenerateAttendanceQrBusy) return;
+      const modal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      if (!modal.classList.contains('open')) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      const details = document.getElementById('userDetailsModalBackdrop');
+      details.hidden = false;
+      details.classList.add('open');
+      details.setAttribute('aria-hidden', 'false');
+      if (regenerateAttendanceQrReturnFocus?.isConnected) regenerateAttendanceQrReturnFocus.focus();
+      regenerateAttendanceQrReturnFocus = null;
+    }
+
+    document.getElementById('regenerateAttendanceQrForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      if (regenerateAttendanceQrBusy) return;
+      const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
+      const student = userDetailsQrStudent || findManagedUser(studentId);
+      if (!student || student.role !== 'student') return;
+
+      regenerateAttendanceQrBusy = true;
+      const requestId = ++userDetailsQrRequestId;
+      const confirmationModal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      confirmationModal.setAttribute('aria-busy', 'true');
+      const confirmButton = document.getElementById('regenerateAttendanceQrConfirm');
+      const cancelButton = document.getElementById('regenerateAttendanceQrCancel');
+      const closeButton = document.getElementById('regenerateAttendanceQrModalClose');
+      confirmButton.disabled = true;
+      cancelButton.disabled = true;
+      closeButton.disabled = true;
+      confirmButton.textContent = 'Reissuing...';
+      let token = '';
+      let rotated = false;
+
+      try {
+        if (!usersApiActive) throw new Error('User accounts are unavailable from the backend.');
+        const response = await window.EDUGNAY_API.regenerateStudentQr(student.apiId || student.id);
+        rotated = true;
+        token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
+        clearUserDetailsQr();
+        await displayUserDetailsQr(token, studentId, requestId);
+        setUserDetailsQrStatus('Replacement QR generated. The previous QR is no longer valid.', false, true);
+        showAppToast('Attendance QR reissued.', 'success');
+      } catch (error) {
+        if (rotated) {
+          clearUserDetailsQr();
+          setUserDetailsQrStatus('QR reissued, but its new image could not be displayed. Reload the QR to get the new copy.', true);
+          document.getElementById('userDetailsAttendanceQrReload').hidden = false;
+          showAppToast('QR reissued, but its new image could not be displayed.', 'error');
+        } else {
+          if (!error.status || error.status >= 500) {
+            clearUserDetailsQr();
+            setUserDetailsQrStatus('Reissue could not be confirmed. Reload the QR before using or downloading it.', true);
+            document.getElementById('userDetailsAttendanceQrReload').hidden = false;
+          }
+          showAppToast(error.message || 'The attendance QR could not be reissued.', 'error');
+        }
+      } finally {
+        regenerateAttendanceQrBusy = false;
+        confirmationModal.removeAttribute('aria-busy');
+        confirmButton.disabled = false;
+        cancelButton.disabled = false;
+        closeButton.disabled = false;
+        confirmButton.textContent = 'Reissue QR';
+      }
+      closeRegenerateAttendanceQrModal();
+    });
+
+    document.getElementById('regenerateAttendanceQrModalBackdrop').addEventListener('click', function (event) {
+      if (event.target === this) closeRegenerateAttendanceQrModal();
+    });
+
+    document.getElementById('userDetailsModalBackdrop').addEventListener('click', function (event) {
+      if (event.target === this) closeUserDetailsModal();
+    });
+
+    /* DEACTIVATE / REACTIVATE MODAL */
+    function openDeactivateModal(row) {
+      const name = row.querySelector('.user-name').textContent.trim();
+      const isActive = row.dataset.status === 'active';
+      const action = isActive ? 'deactivate' : 'reactivate';
+
+      document.getElementById('deactivateUserId').value = row.dataset.userId || '';
+      document.getElementById('deactivateAction').value = action;
+      document.getElementById('deactivateModalTitle').textContent = isActive ? 'Deactivate Account' : 'Reactivate Account';
+      document.getElementById('deactivateModalSub').textContent = isActive ? 'This user will lose access.' : 'This user will regain access.';
+      document.getElementById('deactivateModalName').textContent = name;
+      document.getElementById('deactivateCtxLabel').textContent = isActive ? 'Deactivating' : 'Reactivating';
+      document.getElementById('deactivateModalMsg').innerHTML = isActive
+        ? `This will deactivate <strong>${name}</strong>'s account. They will no longer be able to log in until reactivated.`
+        : `This will reactivate <strong>${name}</strong>'s account. They will regain full access to the system.`;
+
+      // context block colors
+      const ctx = document.getElementById('deactivateModalContext');
+      const headingIcon = document.getElementById('deactivateHeadingIcon');
+      const icon = document.getElementById('deactivateCtxIcon');
+      const label = document.getElementById('deactivateCtxLabel');
+      const btn = document.getElementById('deactivateConfirmBtn');
+
+      if (isActive) {
+        headingIcon.classList.add('danger');
+        ctx.style.background = '#fef2f2';
+        ctx.style.borderColor = '#fecaca';
+        icon.style.color = '#dc2626';
+        icon.setAttribute('data-lucide', 'user-x');
+        label.style.color = '#dc2626';
+        btn.style.background = '#dc2626';
+        btn.style.borderColor = '#dc2626';
+        btn.textContent = 'Yes, Deactivate';
+      } else {
+        headingIcon.classList.remove('danger');
+        ctx.style.background = '#f0fdf4';
+        ctx.style.borderColor = '#86efac';
+        icon.style.color = '#16a34a';
+        icon.setAttribute('data-lucide', 'user-check');
+        label.style.color = '#16a34a';
+        btn.style.background = '#16a34a';
+        btn.style.borderColor = '#16a34a';
+        btn.textContent = 'Yes, Reactivate';
+      }
+
+      document.getElementById('deactivateForm').action = `/users/${row.dataset.userId || 'unknown'}/status`;
+
+      document.getElementById('deactivateModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeDeactivateModal() {
+      document.getElementById('deactivateModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('deactivateModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeDeactivateModal();
+    });
+
+    /* ── DELETE MODAL ── */
+    function openDeleteModal(row) {
+      const name = row.querySelector('.user-name').textContent.trim();
+
+      document.getElementById('deleteModalTitle').textContent = `Delete: ${name}`;
+      document.getElementById('deleteModalName').textContent = name;
+      document.getElementById('deleteModalNameInline').textContent = name;
+      document.getElementById('deleteUserId').value = row.dataset.userId || '';
+      document.getElementById('deleteForm').action = `/users/${row.dataset.userId || 'unknown'}/delete`;
+
+      document.getElementById('deleteModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeDeleteModal() {
+      document.getElementById('deleteModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('deleteModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeDeleteModal();
+    });
+
+    /* ── SORT BY DATE ADDED ── */
+    let dateSortOrder = 'desc';
+
+    function sortUsersByDate() {
+      USERS.sort((a, b) => {
+        const difference = new Date(a.createdAt) - new Date(b.createdAt);
+        return dateSortOrder === 'asc' ? difference : -difference;
+      });
+    }
+
+    document.getElementById('sortDateAdded').addEventListener('click', function () {
+      dateSortOrder = dateSortOrder === 'desc' ? 'asc' : 'desc';
+      this.textContent = `Date Added ${dateSortOrder === 'asc' ? '↑' : '↓'}`;
+
+      sortUsersByDate();
+
+      currentPage = 1;
+      renderUsers();
+    });
+
+    /* ── ROLE FILTER CARDS ── */
+    let activeRole = 'all';
+
+    function filterRole(role, card) {
+      activeRole = role;
+      document.querySelectorAll('.rs-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      currentPage = 1;
+      renderUsers();
+    }
+
+    /* ── TABLE FILTER ── */
+    function filterTable() {
+      currentPage = 1;
+      renderUsers();
+    }
+
+    /* ── ESCAPE KEY ── */
+    document.addEventListener('keydown', e => {
+      const qrModal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      if (qrModal.classList.contains('open') && e.key === 'Tab') {
+        const buttons = [...qrModal.querySelectorAll('button:not([disabled])')];
+        if (!buttons.length) { e.preventDefault(); return; }
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (qrModal.classList.contains('open')) {
+          e.preventDefault();
+          closeRegenerateAttendanceQrModal();
+          return;
+        }
+        closeUserMenus();
+        closeAccountModal();
+        closeUserDetailsModal();
+        closeDeactivateModal();
+        closeDeleteModal();
+      }
+    });
+
+    /* ── IMPORT USERS MODAL ── */
+    function openImportModal() {
+      if (!usersApiActive || usersLoading || usersLoadError) {
+        showAppToast('User accounts must be connected to the backend before importing.', 'error');
+        return;
+      }
+      document.getElementById('importUsersForm').reset();
+      importState = { role: '', parsed: null, validation: null };
+
+      document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => {
+        o.classList.remove('selected');
+        o.setAttribute('aria-pressed', 'false');
+      });
+      document.getElementById('importUserRole').value = '';
+
+      document.getElementById('importUsersFileName').textContent = 'No file selected';
+      document.getElementById('importUsersFileName').classList.remove('has-file');
+      updateCsvHint('');
+      renderImportPreview();
+
+      document.getElementById('importModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeImportModal() {
+      if (importSubmitting) return;
+      document.getElementById('importModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('importModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeImportModal();
+    });
+
+    function previewImportCSV(input) {
+      const file = input.files[0];
+
+      const nameEl = document.getElementById('importUsersFileName');
+      importState.parsed = null;
+      importState.validation = null;
+      if (!file) {
+        nameEl.textContent = 'No file selected';
+        nameEl.classList.remove('has-file');
+        renderImportPreview();
+        return;
+      }
+      nameEl.textContent = file.name;
+      nameEl.classList.add('has-file');
+
+      if (!/\.csv$/i.test(file.name)) {
+        importState.validation = {
+          records: [],
+          accountRecords: [],
+          errors: ['Please choose a CSV file.']
+        };
+        renderImportPreview();
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          importState.parsed = parseCSV(e.target.result);
+          validateImportFile();
+        } catch (error) {
+          importState.validation = { records: [], accountRecords: [], errors: [error.message] };
+          renderImportPreview();
+        }
+      };
+      reader.onerror = function () {
+        importState.validation = {
+          records: [],
+          accountRecords: [],
+          errors: ['The CSV file could not be read.']
+        };
+        renderImportPreview();
+      };
+      reader.readAsText(file);
+    }
+
+    /* ── ROLE-CONDITIONAL FIELDS IN ADD/EDIT MODAL ── */
+
+    function setAccountRoleOptions(roleValue, locked) {
+      document.querySelectorAll('#accountRoleOpts .role-opt').forEach(option => {
+        const selected = option.dataset.role === roleValue;
+        option.classList.toggle('selected', selected);
+        option.setAttribute('aria-pressed', String(selected));
+        option.disabled = locked;
+      });
+      document.getElementById('accountRole').value = roleValue;
+    }
+
+    function updateSchoolEmailPreview() {
+      const schoolEmail = document.getElementById('accountSchoolEmail');
+      if (!schoolEmail || document.getElementById('accountUserId').value) return;
+      const values = {
+        firstName: accountFieldValue('accountFirstName'),
+        lastName: accountFieldValue('accountLastName'),
+        role: ROLE_OPT_TO_TABLE[document.getElementById('accountRole').value],
+        schoolEmailDomain: managedSchoolDomain,
+        existingUsers: USERS
+      };
+      schoolEmail.value = window.EDUGNAY_CONFIG.generateSchoolEmail(values);
+    }
+
+    function updateAccountModalFields() {
+      const role = document.getElementById('accountRole').value;
+      const isStudent = role === 'stud';
+      const isStaff = role === 'adm' || role === 'fac';
+      const isParent = role === 'parents';
+      const groups = [
+        ['employeeNumberGroup', isStaff],
+        ['studentIdentifierGroup', isStudent],
+        ['parentLinksGroup', isParent]
+      ];
+
+      groups.forEach(([id, visible]) => {
+        const group = document.getElementById(id);
+        group.style.display = visible ? '' : 'none';
+        group.querySelectorAll('input, select, textarea').forEach(field => {
+          field.disabled = !visible;
+        });
+      });
+
+      const lrnInput = document.getElementById('accountLRN');
+      const employeeInput = document.getElementById('accountEmployeeNo');
+      lrnInput.required = isStudent;
+      employeeInput.required = isStaff;
+      employeeInput.placeholder = role === 'adm' ? 'e.g. ADM-2016-0001' : 'e.g. FAC-2019-0042';
+
+      if (!isStudent) lrnInput.value = '';
+      if (!isStaff) employeeInput.value = '';
+      if (!isParent) clearLinkedStudents();
+      updateSchoolEmailPreview();
+    }
+
+    function selectAccountRole(value) {
+      if (document.getElementById('accountUserId').value) return;
+      setAccountRoleOptions(value, false);
+      updateAccountModalFields();
+    }
+
+    ['accountFirstName', 'accountLastName'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateSchoolEmailPreview);
+    });
+
+    /* ── STUDENT LIVE SEARCH PICKER ── */
+
+    // Parent links keep canonical IDs and relationship fields only.
+    let linkedStudents = []; // [{ studentId, relationship }]
+    let originalLinkedStudents = [];
+
+    function getManagedStudents() {
+      return USERS.filter(user => user.role === 'student');
+    }
+
+    function handleStudentSearch(query) {
+      const dropdown = document.getElementById('studentDropdown');
+      if (!query.trim()) { dropdown.style.display = 'none'; return; }
+
+      const searchText = query.toLowerCase();
+      const results = getManagedStudents().filter(student =>
+        String(student.displayName || `${student.firstName || ''} ${student.lastName || ''}`).toLowerCase().includes(searchText) &&
+        !linkedStudents.find(link => link.studentId === student.id)
+      );
+
+      if (!results.length) {
+        dropdown.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:var(--gray-400);">No students found</div>`;
+        dropdown.style.display = 'block';
+        return;
+      }
+
+      dropdown.innerHTML = results.map(student => `
+      <div
+        data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { addLinkedStudent(String(student.id)) })}"
+        style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
+        data-page-mouseenter="gfb4152332cce"
+        data-page-mouseleave="ge76a2ff0b05c"
+      >
+        <div style="font-weight:500;color:var(--gray-800);">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div>
+        <div style="font-size:12px;color:var(--gray-400);">${window.EDUGNAY_CONFIG.escapeHtml(getSectionDisplay(student))}</div>
+      </div>
+    `).join('');
+
+      dropdown.style.display = 'block';
+    }
+
+    function addLinkedStudent(studentId) {
+      if (linkedStudents.find(link => link.studentId === studentId)) return;
+      if (!findManagedUser(studentId)) return;
+      linkedStudents.push({ studentId, relationship: '' });
+      renderLinkedStudents();
+
+      document.getElementById('studentSearchInput').value = '';
+      document.getElementById('studentDropdown').style.display = 'none';
+    }
+
+    function removeLinkedStudent(studentId) {
+      linkedStudents = linkedStudents.filter(link => link.studentId !== studentId);
+      renderLinkedStudents();
+    }
+
+    function updateLinkedStudent(studentId, relationship) {
+      const link = linkedStudents.find(item => item.studentId === studentId);
+      if (!link) return;
+      link.relationship = window.EDUGNAY_CONFIG.parentRelationships.includes(relationship) ? relationship : '';
+      renderLinkedStudents();
+    }
+
+    function clearLinkedStudents() {
+      linkedStudents = [];
+      renderLinkedStudents();
+      const inp = document.getElementById('studentSearchInput');
+      if (inp) inp.value = '';
+      const dd = document.getElementById('studentDropdown');
+      if (dd) dd.style.display = 'none';
+    }
+
+    function renderLinkedStudents() {
+      const list = document.getElementById('linkedStudentTags');
+      const relationshipLabels = { mother: 'Mother', father: 'Father', guardian: 'Guardian' };
+
+      list.innerHTML = linkedStudents.map(link => {
+        const student = findManagedUser(link.studentId);
+        if (!student) return '';
+        return `
+      <div class="linked-student-row">
+        <div>
+          <div class="linked-student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div>
+          <div class="linked-student-detail">${window.EDUGNAY_CONFIG.escapeHtml(getSectionDisplay(student))}</div>
+        </div>
+        <select class="form-input form-select" aria-label="Relationship for ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}" data-page-change="${window.EDUGNAY_PAGE_EVENTS.register('change', function(event) { updateLinkedStudent(String(student.id), this.value) })}">
+          <option value="">Relationship</option>
+          ${window.EDUGNAY_CONFIG.parentRelationships.map(value => `<option value="${value}" ${link.relationship === value ? 'selected' : ''}>${relationshipLabels[value]}</option>`).join('')}
+        </select>
+        <button type="button" class="linked-student-remove" aria-label="Remove ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { removeLinkedStudent(String(student.id)) })}"><i data-lucide="unlink" style="width:14px;height:14px;"></i></button>
+      </div>
+    `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+      const wrap = document.getElementById('linkedStudentsGroup');
+      if (wrap && !wrap.contains(e.target)) {
+        const dd = document.getElementById('studentDropdown');
+        if (dd) dd.style.display = 'none';
+      }
+    });
+
+    /* ── CSV HINT COLUMNS BY ROLE ── */
+
+    const CSV_COLS = {
+      adm: ['firstName', 'lastName', 'personalEmail', 'employeeNo'],
+      fac: ['firstName', 'lastName', 'personalEmail', 'employeeNo'],
+      stud: ['firstName', 'lastName', 'personalEmail', 'lrn'],
+      parents: ['firstName', 'lastName', 'personalEmail', 'studentLrn', 'relationship'],
+    };
+
+    function parseCSV(text) {
+      const rows = [];
+      const source = String(text || '').replace(/^\uFEFF/, '');
+      let row = [];
+      let value = '';
+      let inQuotes = false;
+
+      for (let index = 0; index < source.length; index += 1) {
+        const character = source[index];
+        if (character === '"') {
+          if (inQuotes && source[index + 1] === '"') {
+            value += '"';
+            index += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (character === ',' && !inQuotes) {
+          row.push(value.trim());
+          value = '';
+        } else if ((character === '\n' || character === '\r') && !inQuotes) {
+          if (character === '\r' && source[index + 1] === '\n') index += 1;
+          row.push(value.trim());
+          value = '';
+          if (row.some(cell => cell !== '')) rows.push(row);
+          row = [];
+        } else {
+          value += character;
+        }
+      }
+
+      if (inQuotes) throw new Error('The CSV contains an unmatched quotation mark.');
+      if (value.length || row.length) {
+        row.push(value.trim());
+        if (row.some(cell => cell !== '')) rows.push(row);
+      }
+      if (!rows.length) return { headers: [], rows: [] };
+
+      return {
+        headers: rows.shift().map(header => header.trim()),
+        rows
+      };
+    }
+
+    function selectImportRole(value) {
+      importState.role = value;
+      document.querySelectorAll('#importRoleOpts .role-opt').forEach(option => {
+        const selected = option.dataset.role === value;
+        option.classList.toggle('selected', selected);
+        option.setAttribute('aria-pressed', String(selected));
+      });
+      document.getElementById('importUserRole').value = value;
+      updateCsvHint(value);
+      if (importState.parsed) validateImportFile();
+      else renderImportPreview();
+    }
+
+    function updateCsvHint(role) {
+      const cols = CSV_COLS[role] || [];
+      document.getElementById('csvHintCols').innerHTML =
+        cols.length
+          ? cols.map(column => `<span class="csv-col-tag">${escapeHtml(column)}</span>`).join('')
+          : '<span class="csv-col-empty">Select a role first</span>';
+    }
+
+    function validateImportFile() {
+      const parsed = importState.parsed;
+      const role = importState.role;
+      const result = { records: [], accountRecords: [], relationshipCount: 0, errors: [] };
+
+      if (!role) {
+        result.errors.push('Select a role before validating the CSV.');
+        importState.validation = result;
+        renderImportPreview();
+        return result;
+      }
+      if (!parsed || !parsed.headers.length) {
+        result.errors.push('The CSV must include a header row and at least one data row.');
+        importState.validation = result;
+        renderImportPreview();
+        return result;
+      }
+
+      const expectedColumns = CSV_COLS[role] || [];
+      if (!expectedColumns.length) {
+        result.errors.push('Select a supported account role.');
+        importState.validation = result;
+        renderImportPreview();
+        return result;
+      }
+      const duplicateHeaders = parsed.headers.filter((header, index) => (
+        header && parsed.headers.indexOf(header) !== index
+      ));
+      const missingColumns = expectedColumns.filter(column => !parsed.headers.includes(column));
+      const unexpectedColumns = parsed.headers.filter(column => !expectedColumns.includes(column));
+
+      if (duplicateHeaders.length) result.errors.push(`Duplicate column: ${duplicateHeaders[0]}.`);
+      if (missingColumns.length) result.errors.push(`Missing column: ${missingColumns.join(', ')}.`);
+      if (unexpectedColumns.length) result.errors.push(`Unexpected column: ${unexpectedColumns.join(', ')}.`);
+      if (!parsed.rows.length) result.errors.push('The CSV does not contain any data rows.');
+
+      const tableRole = ROLE_OPT_TO_TABLE[role];
+
+      result.records = parsed.rows.map((cells, index) => {
+        const record = { rowNumber: index + 2, errors: [] };
+        parsed.headers.forEach((header, columnIndex) => {
+          record[header] = String(cells[columnIndex] ?? '').trim();
+        });
+        expectedColumns.forEach(column => {
+          if (!Object.hasOwn(record, column)) record[column] = '';
+        });
+
+        record.firstName = String(record.firstName || '').trim();
+        record.lastName = String(record.lastName || '').trim();
+        record.personalEmail = String(record.personalEmail || '').trim().toLowerCase();
+
+        if (cells.length > parsed.headers.length && cells.slice(parsed.headers.length).some(cell => String(cell).trim())) {
+          record.errors.push('This row has more values than the header row.');
+        }
+        if (!record.firstName) record.errors.push('firstName is required.');
+        if (!record.lastName) record.errors.push('lastName is required.');
+        if (!/^\S+@\S+\.\S+$/.test(record.personalEmail)) {
+          record.errors.push('personalEmail must be a valid email address.');
+        }
+
+        if (tableRole === 'school_admin' || tableRole === 'teacher') {
+          record.employeeNo = String(record.employeeNo || '').trim().toUpperCase();
+          if (!record.employeeNo) record.errors.push('employeeNo is required.');
+        }
+
+        if (tableRole === 'student') {
+          const rawLrn = String(record.lrn || '').trim();
+          record.lrn = rawLrn;
+          if (!/^\d{12}$/.test(record.lrn)) {
+            record.errors.push('lrn must contain exactly 12 digits.');
+          }
+        }
+
+        if (tableRole === 'parent') {
+          const rawStudentLrn = String(record.studentLrn || '').trim();
+          record.studentLrn = rawStudentLrn;
+          record.relationship = String(record.relationship || '').trim().toLowerCase();
+          if (!/^\d{12}$/.test(record.studentLrn)) {
+            record.errors.push('studentLrn must contain exactly 12 digits.');
+          }
+          if (!window.EDUGNAY_CONFIG.parentRelationships.includes(record.relationship)) {
+            record.errors.push('relationship must be mother, father, or guardian.');
+          }
+        }
+
+        return record;
+      });
+
+      const existingSchoolUsers = USERS;
+      const existingEmails = new Set(existingSchoolUsers
+        .map(user => String(user.personalEmail || '').trim().toLowerCase())
+        .filter(Boolean));
+      const emailRows = new Map();
+      result.records.forEach(record => {
+        if (!record.personalEmail) return;
+        if (existingEmails.has(record.personalEmail)) {
+          record.errors.push('personalEmail is already assigned.');
+        }
+        if (emailRows.has(record.personalEmail)) {
+          const firstRecord = emailRows.get(record.personalEmail);
+          const sameParent = role === 'parents'
+            && firstRecord.firstName.toLowerCase() === record.firstName.toLowerCase()
+            && firstRecord.lastName.toLowerCase() === record.lastName.toLowerCase();
+          if (!sameParent) {
+            const message = 'personalEmail must be unique for each account.';
+            firstRecord.errors.push(message);
+            record.errors.push(message);
+          }
+        } else {
+          emailRows.set(record.personalEmail, record);
+        }
+      });
+
+      if (tableRole === 'school_admin' || tableRole === 'teacher') {
+        const existingEmployeeNumbers = new Set(existingSchoolUsers
+          .filter(user => user.role === 'school_admin' || user.role === 'teacher')
+          .map(user => String(user.employeeNo || '').trim().toUpperCase())
+          .filter(Boolean));
+        const employeeRows = new Map();
+        result.records.forEach(record => {
+          if (!record.employeeNo) return;
+          if (existingEmployeeNumbers.has(record.employeeNo)) {
+            record.errors.push('employeeNo is already assigned.');
+          }
+          if (employeeRows.has(record.employeeNo)) {
+            const message = 'employeeNo must be unique.';
+            employeeRows.get(record.employeeNo).errors.push(message);
+            record.errors.push(message);
+          } else {
+            employeeRows.set(record.employeeNo, record);
+          }
+        });
+      }
+
+      if (tableRole === 'student') {
+        const existingLrns = new Set(existingSchoolUsers
+          .filter(user => user.role === 'student')
+          .map(user => String(user.lrn || '').trim())
+          .filter(Boolean));
+        const lrnRows = new Map();
+        result.records.forEach(record => {
+          if (!record.lrn) return;
+          if (existingLrns.has(record.lrn)) record.errors.push('lrn is already assigned.');
+          if (lrnRows.has(record.lrn)) {
+            const message = 'lrn must be unique.';
+            lrnRows.get(record.lrn).errors.push(message);
+            record.errors.push(message);
+          } else {
+            lrnRows.set(record.lrn, record);
+          }
+        });
+      }
+
+      if (tableRole === 'parent') {
+        const studentsByLrn = new Map(existingSchoolUsers
+          .filter(user => user.role === 'student')
+          .map(student => [String(student.lrn || '').trim(), student]));
+        const linkRows = new Map();
+        result.records.forEach(record => {
+          if (!record.studentLrn || !studentsByLrn.has(record.studentLrn)) {
+            if (record.studentLrn) record.errors.push('studentLrn does not match a student in this school.');
+          } else {
+            record.studentId = studentsByLrn.get(record.studentLrn).id;
+          }
+
+          if (!record.personalEmail || !record.studentLrn) return;
+          const linkKey = `${record.personalEmail}|${record.studentLrn}`;
+          if (linkRows.has(linkKey)) {
+            const message = 'The same parent-student link appears more than once.';
+            linkRows.get(linkKey).errors.push(message);
+            record.errors.push(message);
+          } else {
+            linkRows.set(linkKey, record);
+          }
+        });
+      }
+
+      result.errors.push(...result.records.flatMap(record => (
+        record.errors.map(message => `Row ${record.rowNumber}: ${message}`)
+      )));
+      result.errors = [...new Set(result.errors)];
+
+      if (!result.errors.length) {
+        if (tableRole === 'parent') {
+          const parentAccounts = new Map();
+          result.records.forEach(record => {
+            if (!parentAccounts.has(record.personalEmail)) {
+              parentAccounts.set(record.personalEmail, {
+                firstName: record.firstName,
+                lastName: record.lastName,
+                personalEmail: record.personalEmail,
+                role: tableRole,
+                parentLinks: []
+              });
+            }
+              parentAccounts.get(record.personalEmail).parentLinks.push({
+                studentId: record.studentId,
+                relationship: record.relationship
+              });
+          });
+          result.accountRecords = [...parentAccounts.values()];
+          result.relationshipCount = result.records.length;
+        } else {
+          result.accountRecords = result.records.map(record => {
+            const account = {
+              firstName: record.firstName,
+              lastName: record.lastName,
+              personalEmail: record.personalEmail,
+              role: tableRole
+            };
+            if (tableRole === 'school_admin' || tableRole === 'teacher') account.employeeNo = record.employeeNo;
+            if (tableRole === 'student') account.lrn = record.lrn;
+            return account;
+          });
+        }
+      }
+
+      importState.validation = result;
+      renderImportPreview();
+      return result;
+    }
+
+    function renderImportPreview() {
+      const parsed = importState.parsed;
+      const validation = importState.validation;
+      const status = document.getElementById('importUsersStatus');
+      const errors = document.getElementById('importUsersErrors');
+      const previewWrap = document.getElementById('importUsersPreviewWrap');
+      const previewHead = document.getElementById('importUsersPreviewHead');
+      const previewBody = document.getElementById('importUsersPreviewBody');
+      const previewCount = document.getElementById('importUsersPreviewCount');
+      const submitButton = document.getElementById('importUsersSubmitBtn');
+
+      const validationErrors = validation?.errors || [];
+      if (!parsed) {
+        status.className = 'import-status';
+        status.textContent = '';
+        status.hidden = true;
+        previewWrap.hidden = true;
+      } else if (!importState.role) {
+        status.className = 'import-status error';
+        status.hidden = false;
+        status.textContent = 'Select a role to validate the selected CSV file.';
+      } else if (validationErrors.length) {
+        status.className = 'import-status error';
+        status.hidden = false;
+        status.textContent = `${validationErrors.length} validation error(s) found. Fix the CSV and choose it again.`;
+      } else {
+        status.className = 'import-status ready';
+        status.hidden = false;
+        const linkSummary = validation.relationshipCount
+          ? `, ${validation.relationshipCount} student link(s)`
+          : '';
+        status.textContent = `${validation.accountRecords.length} account(s)${linkSummary} ready to import.`;
+      }
+
+      if (validationErrors.length) {
+        errors.innerHTML = validationErrors.slice(0, 8)
+          .map(error => `<li>${escapeHtml(error)}</li>`).join('');
+        if (validationErrors.length > 8) {
+          errors.innerHTML += `<li>Plus ${validationErrors.length - 8} more error(s).</li>`;
+        }
+        errors.hidden = false;
+      } else {
+        errors.innerHTML = '';
+        errors.hidden = true;
+      }
+
+      if (parsed?.headers.length) {
+        const records = validation?.records.length
+          ? validation.records
+          : parsed.rows.map((cells, index) => {
+            const record = { rowNumber: index + 2, errors: [] };
+            parsed.headers.forEach((header, columnIndex) => {
+              record[header] = String(cells[columnIndex] ?? '').trim();
+            });
+            return record;
+          });
+        const previewRecords = records.slice(0, 10);
+        previewHead.innerHTML = `<tr>${parsed.headers
+          .map(header => `<th>${escapeHtml(header)}</th>`).join('')}<th>Status</th><th>Details</th></tr>`;
+        previewBody.innerHTML = previewRecords.map(record => {
+          const rowErrors = record.errors || [];
+          const rowStatus = !importState.role ? 'Pending' : rowErrors.length ? 'Error' : 'Ready';
+          const details = !importState.role ? 'Select a role' : rowErrors.join(' ');
+          return `<tr>${parsed.headers.map(header => `<td>${escapeHtml(record[header] || '')}</td>`).join('')}`
+            + `<td><span class="import-row-status ${rowStatus.toLowerCase()}">${rowStatus}</span></td>`
+            + `<td class="import-row-details">${escapeHtml(details)}</td></tr>`;
+        }).join('');
+        const accountSummary = validation?.accountRecords?.length
+          ? `; ${validation.accountRecords.length} account(s)`
+          : '';
+        const linkSummary = validation?.relationshipCount
+          ? `; ${validation.relationshipCount} student link(s)`
+          : '';
+        previewCount.textContent = `Showing ${previewRecords.length} of ${parsed.rows.length} row(s)${accountSummary}${linkSummary}`;
+        previewWrap.hidden = false;
+      } else {
+        previewHead.innerHTML = '';
+        previewBody.innerHTML = '';
+        previewCount.textContent = '';
+        previewWrap.hidden = true;
+      }
+
+      submitButton.disabled = importSubmitting || !validation || validationErrors.length > 0 || !validation.accountRecords.length;
+      submitButton.textContent = importSubmitting ? 'Importing...' : 'Import Accounts';
+    }
+
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const pageUrl = new URL(window.location.href);
+      const openAddOnLoad = pageUrl.searchParams.get('action') === 'add';
+
+      await loadManagedUsers();
+
+      if (openAddOnLoad && usersApiActive) {
+        openAddModal();
+        pageUrl.searchParams.delete('action');
+        window.history.replaceState(null, '', `${pageUrl.pathname}${pageUrl.search}${pageUrl.hash}`);
+      }
+      window.EDUGNAY_PAGE_LOADING.ready();
+    });
+
+window.EDUGNAY_PAGE_EVENTS.bind({
+  change: {
+    pef5f95a2aa6a: function(event) { filterTable() },
+    pf68a26dc14b4: function(event) { previewImportCSV(this) },
+  },
+  click: {
+    p03fccf7be700: function(event) { selectImportRole('stud') },
+    p0c204b0483a9: function(event) { selectImportRole('fac') },
+    p0dd757d752a2: function(event) { closeImportModal() },
+    p115773407b4a: function(event) { selectAccountRole('adm') },
+    p1bbab4a8f5a6: function(event) { selectAccountRole('fac') },
+    p23152e5bd3c2: function(event) { filterRole('all', this) },
+    p2a658a3d13f0: function(event) { selectImportRole('parents') },
+    p34d158fe1c75: function(event) { filterRole('parent', this) },
+    p377869d35211: function(event) { closeAccountModal() },
+    p43844520a474: function(event) { selectAccountRole('parents') },
+    p4f3fb1ba0e2c: function(event) { closeDeactivateModal() },
+    p53c6410c816b: function(event) { openAddModal() },
+    p59cfcd929be5: function(event) { openImportModal() },
+    p5ad2848c883d: function(event) { filterRole('student', this) },
+    p663d2024f7a7: function(event) { selectImportRole('adm') },
+    p69093c9bb0ec: function(event) { closeUserDetailsModal() },
+    p7e20af338333: function(event) { filterRole('school_admin', this) },
+    p8464a51dd52d: function(event) { filterRole('teacher', this) },
+    p9ef7ef2de577: function(event) { selectAccountRole('stud') },
+    paed3cedf9d8d: function(event) { closeRegenerateAttendanceQrModal() },
+    pb8db97c425be: function(event) { closeDeleteModal() },
+    pc9a43ebc5758: function(event) { document.getElementById('importUsersFileInput').click() },
+    pc9ec831bdbd6: function(event) { closeCredentialDeliveryModal() },
+  },
+  input: {
+    p826fa8e10e0c: function(event) { filterTable() },
+    pf9a92b2bc5be: function(event) { handleStudentSearch(this.value) },
+  },
+});
+
+window.EDUGNAY_PAGE_EVENTS.bind({
+  click: {
+    g19350957166b: function(event) { loadManagedUsers() },
+    g23586b5d3b67: function(event) { renderUserDetailsAttendanceQr(userDetailsQrStudent) },
+    g886db1f2d6f7: function(event) { openRegenerateAttendanceQrModal() },
+    g8e40f2d00672: function(event) { downloadUserDetailsAttendanceQr() },
+  },
+  mouseenter: {
+    gfb4152332cce: function(event) { this.style.background='var(--gray-50)' },
+  },
+  mouseleave: {
+    ge76a2ff0b05c: function(event) { this.style.background='' },
+  },
+});

@@ -95,8 +95,7 @@
 .shs-roster-pagination > div { display: flex; gap: 8px; }
 .shs-reviews, .shs-choices { display: grid; gap: 12px; padding: 20px 24px; }
 .shs-reviews { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.shs-reviews > .panel-empty-state, .shs-roster-loading { grid-column: 1 / -1; }
-.shs-roster-loading { margin: 0; color: var(--gray-500); font-size: 12px; }
+.shs-reviews > .panel-empty-state { grid-column: 1 / -1; }
 .shs-review, .shs-choice:not(.sf-template-choice) { border: 1px solid var(--panel-border); border-radius: var(--radius-md); background: var(--theme-surface); padding: 16px; color: var(--theme-text); }
 .shs-review { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; border-color: var(--gray-200); transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
 .shs-review:hover { border-color: var(--blue-pale); background: var(--surface-blue-soft); box-shadow: var(--card-hover-shadow); }

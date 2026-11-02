@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -219,8 +220,8 @@ test('apply rejects a school with no enabled supported grade levels and rolls ba
 });
 
 test('School Settings keeps the compact grading flow while DepEd subject review lives in Class Management', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const management = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const management = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8');
   const scripts = [...page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)];
   assert.ok(scripts.length);
   assert.doesNotMatch(page, /Review DepEd subjects|depedSubjectReviewModal|depedSubjectReviewHint/);
@@ -246,14 +247,14 @@ test('School Settings keeps the compact grading flow while DepEd subject review 
 });
 
 test('Grading Rules empty state has padded spacing and an un-underlined Manage subjects link', () => {
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
   assert.match(styles, /\.school-k10-empty-state-actions\s*\{[^}]*padding:\s*16px 16px 24px;/s);
   assert.match(styles, /\.school-k10-empty-state-actions > \.top-btn\s*\{\s*text-decoration:\s*none;/);
 });
 
 test('missing DepEd confirmation lists only eligible subjects and grade scopes', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
   const start = page.indexOf('    function formatK10GradeNames(');
   const end = page.indexOf('    function renderOtherGradeRules(', start);
   assert.ok(start >= 0 && end > start, 'grading summary and compact confirmation helpers are present');
@@ -487,7 +488,7 @@ test('missing DepEd confirmation lists only eligible subjects and grade scopes',
 });
 
 test('Configure shows grade details only for exceptions and keeps published profiles read-only', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
   const helpersStart = page.indexOf('    function formatK10GradeNames(');
   const helpersEnd = page.indexOf('    function renderOtherGradeRules(', helpersStart);
   const exceptionsStart = page.indexOf('    function renderK10GroupExceptions(');
@@ -528,8 +529,8 @@ test('Configure shows grade details only for exceptions and keeps published prof
 });
 
 test('grouped editor organizes component weights and both exam setups into clear sections', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
   const start = page.indexOf('    function renderK10EarlyExamGroupEditor(');
   const end = page.indexOf('    function renderSubjectGradingEditor(', start);
   assert.ok(start >= 0 && end > start);
@@ -622,7 +623,7 @@ test('grouped editor organizes component weights and both exam setups into clear
 });
 
 test('grouped editor collector reads standard exam parts from their new section', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
   const start = page.indexOf('    function collectSubjectGradingEditor(');
   const end = page.indexOf('    function collectK10EarlyExamEditor(', start);
   assert.ok(start >= 0 && end > start);
@@ -660,7 +661,7 @@ test('grouped editor collector reads standard exam parts from their new section'
 });
 
 test('group save preserves untouched standard exam parts and applies intentional edits only to editable standard grades', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
   const start = page.indexOf('    function getK10ExamPartsSignature(');
   const end = page.indexOf('    function renderK10EarlyExamGroupEditor(', start);
   assert.ok(start >= 0 && end > start);
@@ -688,8 +689,8 @@ test('group save preserves untouched standard exam parts and applies intentional
 });
 
 test('Elementary final-grade settings keep their spacing without the redundant note', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
   assert.doesNotMatch(page, /school-k10-transition-note|school-k10-transition-icon|school-k10-transition-text/);
   assert.match(page, /id="k10GradingModeHelp"/);
   assert.match(page, /id="k10PassingGradeHelp"/);

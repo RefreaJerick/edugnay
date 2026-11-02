@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -9,7 +10,7 @@ const pages = ['admin', 'teacher', 'student', 'parent', 'platform'];
 
 test('all profile pages use the shared saved-photo controls', () => {
   for (const role of pages) {
-    const html = fs.readFileSync(path.join(root, `views/${role}/edugnay-${role}-profile.html`), 'utf8');
+    const html = pageFs.readFileSync(path.join(root, `views/${role}/edugnay-${role}-profile.html`), 'utf8');
     for (const id of ['profileAvatar', 'avatarEditTrigger', 'avatarRemoveBtn', 'avatarFileInput', 'avatarMenu', 'avatarUploadBtn']) {
       assert.match(html, new RegExp(`id="${id}"`), `${role} is missing ${id}`);
     }
@@ -19,7 +20,7 @@ test('all profile pages use the shared saved-photo controls', () => {
     assert.match(html, /accept="image\/png,image\/jpeg,image\/webp"/);
     assert.doesNotMatch(html, /FileReader|Change Avatar Color|handleAvatarUpload|onclick="toggleAvatarMenu/);
   }
-  const styles = fs.readFileSync(path.join(root, 'assets/css/profile-common.css'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/profile-common.css'), 'utf8');
   const fallbackAvatarRule = styles.match(/\.profile-avatar\s*\{([^}]+)\}/)?.[1] || '';
   const avatarRule = styles.match(/\.profile-avatar-wrap \.profile-avatar\.person-avatar\s*\{([^}]+)\}/)?.[1] || '';
   assert.doesNotMatch(fallbackAvatarRule, /border\s*:/);
@@ -27,7 +28,7 @@ test('all profile pages use the shared saved-photo controls', () => {
 });
 
 test('profile photo actions show saved state and preserve it on failures', async () => {
-  const source = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const source = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
   const start = source.indexOf('function initProfileAvatar() {');
   const end = source.indexOf("document.addEventListener('DOMContentLoaded', initProfileAvatar);", start);
   assert.ok(start >= 0 && end > start);

@@ -1,10 +1,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8').replace(/\r\n/g, '\n');
+const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8').replace(/\r\n/g, '\n');
 const openEdit = html.split('function openSectionEditModal(card) {')[1]
   .split('\n}\n\nfunction openSectionDeleteConfirmation')[0];
 const payloadSource = html.split("function managementApiSectionPayload(sectionData, sectionId = '') {")[1]

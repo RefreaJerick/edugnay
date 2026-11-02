@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -459,10 +460,10 @@ test('SHS grading and completion messages identify the saved record and learner'
 });
 
 test('all activity feeds render escaped context inline and omit the separate detail line', () => {
-  const activityPage = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-activity.html'), 'utf8');
-  const dashboard = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-dashboard.html'), 'utf8');
-  const platformActivityPage = fs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-activity.html'), 'utf8');
-  const platformDashboard = fs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-dashboard.html'), 'utf8');
+  const activityPage = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-activity.html'), 'utf8');
+  const dashboard = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-dashboard.html'), 'utf8');
+  const platformActivityPage = pageFs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-activity.html'), 'utf8');
+  const platformDashboard = pageFs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-dashboard.html'), 'utf8');
   assert.match(activityPage, /safe\(item\.title/);
   assert.match(activityPage, /safe\(item\.detail\)/);
   assert.match(dashboard, /escapeHtml\(item\.title \|\|/);
@@ -484,9 +485,9 @@ test('all activity feeds render escaped context inline and omit the separate det
   assert.match(platformActivityPage, /!String\(activity\.detail \|\| ''\)\.toLocaleLowerCase\(\)\.includes\(schoolName\.toLocaleLowerCase\(\)\)/);
   assert.match(platformDashboard, /!String\(activity\.detail \|\| ''\)\.toLocaleLowerCase\(\)\.includes\(schoolName\.toLocaleLowerCase\(\)\)/);
   for (const css of [
-    fs.readFileSync(path.join(__dirname, '../../assets/css/admin/activity.css'), 'utf8'),
-    fs.readFileSync(path.join(__dirname, '../../assets/css/admin/dashboard.css'), 'utf8'),
-    fs.readFileSync(path.join(__dirname, '../../assets/css/platform/dashboard.css'), 'utf8')
+    pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/activity.css'), 'utf8'),
+    pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/dashboard.css'), 'utf8'),
+    pageFs.readFileSync(path.join(__dirname, '../../assets/css/platform/dashboard.css'), 'utf8')
   ]) assert.doesNotMatch(css, /act-detail/);
 });
 
@@ -645,7 +646,7 @@ test('activity details stay concise without truncating names or listing group it
 });
 
 test('assignment and learning material filters are available on the admin Activity page', () => {
-  const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-activity.html'), 'utf8');
+  const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-activity.html'), 'utf8');
   assert.match(html, /data-tag="assignments"[^>]*>Assignments<\/button>/);
   assert.match(html, /data-tag="learning_materials"[^>]*>Learning materials<\/button>/);
 });

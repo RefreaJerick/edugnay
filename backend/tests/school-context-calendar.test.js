@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -9,7 +10,7 @@ let database;
 databaseModule.getDatabase = () => database;
 const { getSchoolContext } = require('../controllers/schoolContextController');
 const calendar = require('../controllers/calendarNoticesController');
-const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
 
 function response() {
   return {
@@ -195,7 +196,7 @@ test('school portal sidebars begin without a tenant name and load the shared she
   for (const role of ['admin', 'teacher', 'student', 'parent']) {
     const directory = path.join(__dirname, '../../views', role);
     for (const filename of fs.readdirSync(directory).filter(name => name.endsWith('.html'))) {
-      const html = fs.readFileSync(path.join(directory, filename), 'utf8');
+      const html = pageFs.readFileSync(path.join(directory, filename), 'utf8');
       assert.doesNotMatch(html, /ST\. COLUMBAN'S COLLEGE/);
       for (const [, content] of html.matchAll(/<div class="brand-sub"[^>]*>([\s\S]*?)<\/div>/g)) {
         assert.equal(content.trim(), '', role + '/' + filename + ' should not show a school before context loads');

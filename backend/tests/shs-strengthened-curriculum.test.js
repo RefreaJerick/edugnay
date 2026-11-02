@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -9,7 +10,7 @@ const {
   SHS_SUBJECT_TYPES, SHS_TRACKS, isStrengthenedTrack
 } = require('../config/shsCurriculum');
 
-const read = file => fs.readFileSync(path.join(__dirname, '../..', file), 'utf8');
+const read = file => pageFs.readFileSync(path.join(__dirname, '../..', file), 'utf8');
 
 test('only Academic and TechPro are available for new SHS setup', () => {
   assert.deepEqual(SHS_TRACKS.map(track => track.code), ['academic', 'techpro']);

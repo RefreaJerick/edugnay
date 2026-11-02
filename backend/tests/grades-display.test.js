@@ -1,12 +1,13 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
-const studentPage = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-grades.html'), 'utf8');
-const parentPage = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-grades.html'), 'utf8');
+const source = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const studentPage = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-grades.html'), 'utf8');
+const parentPage = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-grades.html'), 'utf8');
 const start = source.indexOf('function gradeScoreClass(');
 const end = source.indexOf('async function getApiFinalGrades(', start);
 assert.ok(start >= 0 && end > start);

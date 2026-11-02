@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Notifications | Academix</title>
@@ -20,18 +22,18 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="Notifications">
+<body data-page-title="Notifications" data-page-loading="Loading notifications...">
 
 
 <div class="shell">
-  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+  <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
   <aside class="sidebar">
 
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b" />
       </div>
       <div class="brand-text">
         <div class="brand-name">Acade<span>Mix</span></div>
@@ -58,7 +60,7 @@
 
       </a>
 
-      <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-management.html" class="nav-item" data-page-click="s3a4671da9f99"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
       <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
       <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">SHS Program</span></a>
     </div>
@@ -126,7 +128,7 @@
           <strong data-page-title-target>Notifications</strong>
         </div>
       </div>
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+      <button class="hamburger" type="button" data-page-click="sab86664ca3f5">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
     </div>
@@ -135,10 +137,10 @@
         <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
           <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">
-              <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
+              <div class="tb-profile-name"></div>
             <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -150,7 +152,7 @@
             My Profile
           </a>
           <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+          <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
             <i data-lucide="log-out" style="width:15px;height:15px;"></i>
             Sign Out
           </a>
@@ -158,7 +160,7 @@
       </div>
     </div>
   </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -171,10 +173,10 @@
 
     <div class="notif-filterbar">
       <div class="notif-filters" id="notifTypeFilters">
-        <button class="notif-filter-btn active" onclick="setNotifFilter('all', this)">All</button>
-        <button class="notif-filter-btn" onclick="setNotifFilter('unread', this)">Unread</button>
+        <button class="notif-filter-btn active" data-page-click="s34fb81296a25">All</button>
+        <button class="notif-filter-btn" data-page-click="s2d33adbb7525">Unread</button>
       </div>
-      <button class="notif-mark-read-all" onclick="markAllRead()">Mark all as read</button>
+      <button class="notif-mark-read-all" data-page-click="s35e5f1463bc7">Mark all as read</button>
     </div>
 
     <div class="notif-panel">
@@ -190,84 +192,7 @@
   </main>
 </div>
 
-<script>
-  lucide.createIcons();
-
-  let activeNotifFilter = 'all';
-
-  function getNotifItems() {
-    return typeof getAdminNotifItems === 'function' ? getAdminNotifItems() : [];
-  }
-
-  function setNotifFilter(mode, btn) {
-    document.querySelectorAll('.notif-filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeNotifFilter = mode;
-    renderNotifList();
-  }
-
-  async function markAllRead() {
-    await markCurrentNotificationsRead();
-    renderTopbarNotifs();
-    renderNotifList();
-  }
-
-  function goToNotif(link, id) {
-    markCurrentNotificationRead(id).finally(() => navigate(link?.page, link?.hash));
-  }
-
-  function renderNotifList() {
-    const container = document.getElementById('notifList');
-    const emptyState = document.getElementById('notifEmptyState');
-
-    const all = getNotifItems();
-    const filtered = activeNotifFilter === 'unread' ? all.filter(n => !n.read) : all;
-
-    if (!filtered.length) {
-      container.innerHTML = '';
-      const isUnreadEmpty = activeNotifFilter === 'unread' && all.length;
-      emptyState.hidden = false;
-      emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-        icon: 'bell-off',
-        title: isUnreadEmpty ? 'No unread notifications' : 'No notifications yet',
-        text: isUnreadEmpty ? "You're all caught up." : 'Admin alerts and review requests will appear here as they happen.'
-      });
-      if (window.lucide) lucide.createIcons();
-      return;
-    }
-    emptyState.hidden = true;
-    emptyState.innerHTML = '';
-
-    let html = '';
-    let lastGroup = null;
-
-    filtered.forEach(n => {
-      const group = formatDateGroup(n.createdAt);
-      if (group !== lastGroup) {
-        html += `<div class="notif-group-label">${group}</div>`;
-        lastGroup = group;
-      }
-      html += `
-        <div class="notif-item ${n.read ? '' : 'unread'}" data-notification-id="${window.EDUGNAY_CONFIG.escapeHtml(n.id)}" onclick='goToNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)});'>
-          <div class="nt-icon ${n.tone}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
-          <div class="nt-body">
-            <div class="nt-text"><strong>${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</strong></div>
-            <div class="nt-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
-            <div class="nt-time">${formatTime(n.createdAt)}</div>
-          </div>
-        </div>
-      `;
-    });
-
-    container.innerHTML = html;
-    lucide.createIcons();
-  }
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    await window.EDUGNAY_COMMUNICATION_READY;
-    renderNotifList();
-  });
-</script>
+<script src="../../assets/js/admin/notifications.js"></script>
 
 </body>
 </html>

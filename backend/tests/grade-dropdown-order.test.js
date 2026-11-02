@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -8,14 +9,14 @@ const root = path.join(__dirname, '../..');
 
 test('school structure and section queries order by grade code rather than saved display order', () => {
   for (const file of ['backend/controllers/schoolsController.js', 'backend/controllers/sectionsController.js']) {
-    const source = fs.readFileSync(path.join(root, file), 'utf8');
+    const source = pageFs.readFileSync(path.join(root, file), 'utf8');
     assert.match(source, /ORDER BY CASE school_levels\.level_code[\s\S]*?CAST\(SUBSTRING_INDEX\(school_grade_levels\.grade_code, '-', -1\) AS UNSIGNED\)/);
     assert.doesNotMatch(source, /ORDER BY school_grade_levels\.sort_order/);
   }
 });
 
 test('teacher material grade choices are numeric and retain the selected grade', () => {
-  const html = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
+  const html = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
   const functionText = html.split('    function updateTeacherMaterialTargets() {')[1]
     .split('    function updateTeacherMaterialSections() {')[0];
   const gradeSelect = {

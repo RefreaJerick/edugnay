@@ -1,10 +1,11 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 
 const root = path.join(__dirname, '../..');
-const css = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+const css = pageFs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
 const scrollbarCss = css.split('/* Only scrollable content inside a page gets the dropdown scrollbar.')[1];
 
 test('internal panels share one scrollbar target list and style', () => {
@@ -28,6 +29,6 @@ test('browser, sidebar, and hidden tab scrollbars stay outside the shared style'
     assert.ok(!selectors.includes(excluded), `${excluded} keeps its existing scrollbar`);
   }
   assert.match(css, /\.sidebar\s*::-webkit-scrollbar\s*\{/);
-  assert.match(fs.readFileSync(path.join(root, 'views/admin/edugnay-admin-management.html'), 'utf8'),
+  assert.match(pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-management.html'), 'utf8'),
     /class="csv-preview-scroll"[^>]*overflow:auto/);
 });

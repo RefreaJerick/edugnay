@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -105,10 +106,10 @@ test('rolls back a foreign-key failure and returns a protected-record conflict',
 });
 
 test('platform-only route and review modal expose a separate permanent-delete confirmation', () => {
-  const route = fs.readFileSync(path.join(__dirname, '../routes/schools.js'), 'utf8');
-  const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
-  const page = fs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-school-accounts.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/platform/school-accounts.css'), 'utf8');
+  const route = pageFs.readFileSync(path.join(__dirname, '../routes/schools.js'), 'utf8');
+  const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-school-accounts.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/platform/school-accounts.css'), 'utf8');
   assert.match(route, /router\.delete\('\/platform\/schools\/:schoolId', requireAuth, requirePlatformAdmin, controller\.deletePlatformSchool\)/);
   assert.match(shell, /deletePlatformSchool: deleteApiPlatformSchool/);
   assert.match(page, /status === SCHOOL_STATUS_VALUES\.REJECTED \|\| status === SCHOOL_STATUS_VALUES\.SUSPENDED/);

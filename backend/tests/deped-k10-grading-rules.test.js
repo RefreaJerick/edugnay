@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -79,7 +80,7 @@ test('2026 adjusted transmutation matches the table around representative bounda
 });
 
 test('DepEd subject grading excludes descriptive grades and the teacher panel script parses', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
   assert.match(page, /early_grade_exam_setup_required/);
   assert.match(page, /early_grade_exam_setup_review_required/);
   const scripts = [...page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)];

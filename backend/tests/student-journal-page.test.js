@@ -1,12 +1,13 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
-const journalPage = fs.readFileSync(path.join(root, 'views/student/edugnay-student-journal.html'), 'utf8');
-const dashboardPage = fs.readFileSync(path.join(root, 'views/student/edugnay-student-dashboard.html'), 'utf8');
+const journalPage = pageFs.readFileSync(path.join(root, 'views/student/edugnay-student-journal.html'), 'utf8');
+const dashboardPage = pageFs.readFileSync(path.join(root, 'views/student/edugnay-student-dashboard.html'), 'utf8');
 
 function extractAsyncFunction(source, functionName, nextMarker) {
   const start = source.indexOf(`async function ${functionName}() {`);
@@ -70,7 +71,7 @@ function createJournalPageHarness(api) {
       EDUGNAY_API: api,
       EDUGNAY_CONFIG: {
         renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
-        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status">${label}</div>`
+
       }
     },
     document: {
@@ -108,7 +109,7 @@ function createDashboardJournalHarness(api) {
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
         renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
-        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status">${label}</div>`
+
       },
       lucide: { createIcons() {} }
     },

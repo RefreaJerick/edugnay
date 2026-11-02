@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Profile | Academix</title>
@@ -19,17 +21,17 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="My Profile">
+<body data-page-title="My Profile" data-page-loading="Loading your profile...">
 
 
 <div class="shell">
-  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+  <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b" />
       </div>
       <div>
         <div class="brand-name">Acade<span>Mix</span></div>
@@ -41,37 +43,37 @@
       <div class="nav-section">
         <div class="nav-section-label">Main</div>
 
-        <a class="nav-item" onclick="navigate('dashboard')">
+        <a class="nav-item" data-page-click="sce679990fbe8">
           <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-teacher-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
 
         <div class="nav-group" id="sections-group">
-          <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+          <div class="nav-group-toggle" data-page-click="s68217584b22a">
             <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
             <span>My Classes</span>
             <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
           </div>
           <div class="nav-children" data-teacher-sections-nav>
-            <div class="teacher-section-nav-message" role="status" data-skeleton-kind="line" data-skeleton-label="Loading assigned classes">Loading assigned classes…</div>
+            <div class="teacher-section-nav-message" role="status"></div>
           </div>
-          <script>restoreTeacherClassesNavigation();</script>
+          <script src="../../assets/js/teacher/classes-navigation-init.js"></script>
         </div>
       </div>
 
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
-        <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
+        <a class="nav-item" data-teacher-access="reports" data-page-click="sd6c1b06b9ac0">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
 
         </a>
-        <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
+        <a class="nav-item" data-teacher-access="journals" data-page-click="sf2ab58f61694">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Student Journals</span>
         </a>
-        <a class="nav-item" data-teacher-access="sfTemplates" onclick="navigate('sfTemplates')">
+        <a class="nav-item" data-teacher-access="sfTemplates" data-page-click="sd8cf422f2fb0">
           <div class="nav-icon"><i data-lucide="file-spreadsheet" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">SF Templates</span>
         </a>
@@ -79,7 +81,7 @@
 
       <div class="nav-section">
         <div class="nav-section-label">Communication</div>
-        <a class="nav-item" onclick="navigate('announcements')">
+        <a class="nav-item" data-page-click="sa026e333e7cb">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
 
@@ -104,13 +106,13 @@
           <strong data-page-title-target>My Profile</strong>
         </div>
       </div>
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+      <button class="hamburger" type="button" data-page-click="sab86664ca3f5">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot"></span>
         </button>
@@ -126,7 +128,7 @@
                 <span class="tb-notif-unread-count" aria-live="polite"></span>
               </span>
             </div>
-            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+            <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5">
               <i data-lucide="check-check" style="width:14px;height:14px;"></i>
               <span>Mark all read</span>
             </button>
@@ -149,10 +151,10 @@
         <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
           <div class="tb-avatar faculty"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
+            <div class="tb-profile-name"></div>
             <div class="tb-profile-role">Faculty</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -164,7 +166,7 @@
             My Profile
           </a>
           <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+          <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
             <i data-lucide="log-out" style="width:15px;height:15px;"></i>
             Sign Out
           </a>
@@ -172,7 +174,7 @@
       </div>
     </div>
   </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -214,9 +216,9 @@
         </div>
       </div>
       <div class="profile-header-info">
-        <div class="profile-header-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
+        <div class="profile-header-name"></div>
         <div class="profile-header-meta">
-          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span class="profile-email-value" data-skeleton-kind="line" data-skeleton-label="Loading email">Loading...</span></span>
+          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span class="profile-email-value"></span></span>
         </div>
       </div>
     </div>
@@ -234,7 +236,7 @@
             </div>
           </div>
         </div>
-        <form id="profileForm" action="/teacher/profile" method="POST" onsubmit="return submitProfile(event)">
+        <form id="profileForm" action="/teacher/profile" method="POST" data-page-submit="pea7926a962b7">
           <div class="config-panel-body">
             <div class="form-group">
               <label class="form-label">Full Name</label>
@@ -258,7 +260,7 @@
             </div>
           </div>
           <div class="config-panel-foot">
-            <button type="button" class="btn btn-cancel" onclick="resetProfile()">Discard</button>
+            <button type="button" class="btn btn-cancel" data-page-click="p0a95c2abd235">Discard</button>
             <button type="submit" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
           </div>
         </form>
@@ -278,7 +280,7 @@
           </div>
         </div>
         <div class="config-panel-body" id="teacher-employment-details">
-          <div class="section-list" role="list" aria-label="Sections handled" data-skeleton-kind="list" data-skeleton-label="Loading sections" data-skeleton-rows="4">Loading sections...</div>
+          <div class="section-list" role="list" aria-label="Sections handled"></div>
         </div>
       </div>
 
@@ -294,7 +296,7 @@
       </div>
       <div class="config-panel-body teacher-security-body">
         <div class="teacher-security-copy">Use a unique password with at least 12 characters.</div>
-        <button class="top-btn secondary" onclick="openModal('changePasswordModal')">
+        <button class="top-btn secondary" data-page-click="p0dcd2c4737b7">
           <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
         </button>
       </div>
@@ -316,11 +318,11 @@
         <div class="modal-sub">Choose a strong password you haven't used before.</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closeModal('changePasswordModal')">
+      <button class="modal-close" data-page-click="pce5007272174">
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
     </div>
-    <form id="passwordForm" onsubmit="return submitPasswordChange(event)">
+    <form id="passwordForm" data-page-submit="p3d74c63c8476">
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Current Password</label>
@@ -336,7 +338,7 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closeModal('changePasswordModal')">Cancel</button>
+      <button type="button" class="btn btn-cancel" data-page-click="pce5007272174">Cancel</button>
       <button type="submit" class="btn btn-save">
         <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
       </button>
@@ -345,153 +347,7 @@
   </div>
 </div>
 
-<script>
-  let teacherApiUser = null;
-  let teacherSections = [];
-  let teacherSectionsLoading = true;
-  let teacherSectionsError = '';
-
-  function setTeacherProfileLoadState(title = '', message = '', isError = false) {
-    const notice = document.getElementById('teacher-profile-load-notice');
-    notice.hidden = !message;
-    notice.setAttribute('role', isError ? 'alert' : 'status');
-    document.getElementById('teacher-profile-load-title').textContent = title;
-    document.getElementById('teacher-profile-load-text').textContent = message;
-  }
-
-  function renderTeacherProfile(user) {
-    if (!user) return;
-
-    const displayName = user.displayName || [user.firstName, user.lastName].filter(Boolean).join(' ');
-    document.querySelectorAll('[name="fullName"]').forEach(input => { input.value = displayName; });
-    document.querySelectorAll('[name="schoolEmail"]').forEach(input => { input.value = user.schoolEmail || ''; });
-    document.querySelectorAll('.profile-email-value').forEach(element => { element.textContent = user.schoolEmail || ''; });
-    document.querySelectorAll('[name="employeeNo"]').forEach(input => { input.value = user.profile?.employeeNumber || ''; });
-    document.querySelectorAll('.profile-header-name').forEach(element => { element.textContent = displayName; });
-    if (user.id) document.querySelectorAll('.tb-profile-name').forEach(element => { element.textContent = displayName; });
-    document.getElementById('contactNumberInput').value = user.profile?.contactNumber || '';
-  }
-
-  setTeacherProfileLoadState();
-
-  async function loadTeacherProfile() {
-    try {
-      await window.EDUGNAY_SCHOOL_READY;
-      const response = await window.EDUGNAY_API.request('/users/me/profile');
-      if (response.user.role !== 'teacher') throw new Error('Sign in with a teacher account to view this profile.');
-      teacherApiUser = response.user;
-      renderTeacherProfile(teacherApiUser);
-      setTeacherProfileLoadState();
-    } catch (error) {
-      console.warn('Unable to load the saved profile.', error.message);
-      renderTeacherProfile({ displayName: 'Profile unavailable', schoolEmail: '', profile: {} });
-      setTeacherProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded from the school database. Refresh when the connection is restored.', true);
-    }
-  }
-
-  async function loadTeacherSections() {
-    try {
-      await window.EDUGNAY_SCHOOL_READY;
-      teacherSections = await window.EDUGNAY_CONFIG.getMyTeachingSections();
-    } catch (error) {
-      teacherSectionsError = error.message || 'Your assigned sections could not be loaded from the school database.';
-    } finally {
-      teacherSectionsLoading = false;
-      renderEmploymentDetails();
-    }
-  }
-
-  function renderEmploymentDetails() {
-    const panel = document.getElementById('teacher-employment-details');
-    if (!panel) return;
-    if (teacherSectionsLoading) {
-      panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading assigned classes', rows: 4 });
-      lucide.createIcons();
-      return;
-    }
-    if (teacherSectionsError) {
-      panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Sections unavailable', text: teacherSectionsError });
-      lucide.createIcons();
-      return;
-    }
-    const sections = teacherSections.map(section => [section.grade, section.name].filter(Boolean).join(' - '));
-    panel.innerHTML = sections.length
-      ? `<div class="section-list" role="list" aria-label="Sections handled">${sections.map(section => `<span class="badge badge-blue" role="listitem">${window.EDUGNAY_CONFIG.escapeHtml(section)}</span>`).join('')}</div>`
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to this teacher will appear here.' });
-    lucide.createIcons();
-  }
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    renderEmploymentDetails();
-    await Promise.all([loadTeacherProfile(), loadTeacherSections()]);
-    lucide.createIcons();
-  });
-
-  function openModal(id)  { document.getElementById(id).classList.add('open'); }
-  function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-    document.getElementById('passwordForm').reset();
-  }
-
-  async function submitPasswordChange(event) {
-    event.preventDefault();
-    const currentPass = document.getElementById('currentPasswordInput').value;
-    const newPass = document.getElementById('newPasswordInput').value;
-    const confirmPass = document.getElementById('confirmPasswordInput').value;
-    if (newPass.length < 12) {
-      alert('Use a password with at least 12 characters.');
-      return false;
-    }
-    if (newPass !== confirmPass) {
-      alert('New password and confirmation do not match.');
-      return false;
-    }
-    try {
-      await window.EDUGNAY_API.request('/auth/change-password', {
-        method: 'POST',
-        body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
-      });
-      closeModal('changePasswordModal');
-      showAppToast('Password updated. You have been signed out on other devices.');
-    } catch (error) {
-      showAppToast(error.message || 'Unable to update your password.', 'error');
-    }
-    return false;
-  }
-  document.querySelectorAll('.modal-backdrop').forEach(m => {
-    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleDrawer(false); document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open')); }
-  });
-
-  async function submitProfile(event) {
-    event.preventDefault();
-    if (!teacherApiUser) {
-      showAppToast('Your profile is unavailable. Refresh the page before saving.', 'error');
-      return false;
-    }
-    const contactNumber = document.getElementById('contactNumberInput').value.trim();
-
-    try {
-      const response = await window.EDUGNAY_API.request('/users/me/profile', {
-        method: 'PATCH',
-        body: JSON.stringify({ contactNumber })
-      });
-      teacherApiUser = response.user;
-      renderTeacherProfile(teacherApiUser);
-      showAppToast('Contact number updated.');
-    } catch (error) {
-      showAppToast(error.message || 'Unable to update your profile.', 'error');
-    }
-    return false;
-  }
-
-  function resetProfile() {
-    document.getElementById('contactNumberInput').value = teacherApiUser?.profile?.contactNumber || '';
-  }
-</script>
+<script src="../../assets/js/teacher/profile.js"></script>
 
 </body>
 </html>

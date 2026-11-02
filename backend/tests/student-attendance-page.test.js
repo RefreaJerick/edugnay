@@ -1,15 +1,16 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
-const html = fs.readFileSync(path.join(root, 'views/student/edugnay-student-attendance.html'), 'utf8');
+const html = pageFs.readFileSync(path.join(root, 'views/student/edugnay-student-attendance.html'), 'utf8');
 const script = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
   .map(match => match[1]).find(source => source.includes('async function loadAttendance()'));
-const shared = fs.readFileSync(path.join(root, 'assets/js/attendance-history.js'), 'utf8');
-const sharedShell = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+const shared = pageFs.readFileSync(path.join(root, 'assets/js/attendance-history.js'), 'utf8');
+const sharedShell = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
 
 function createPage(api, attendanceEnabled = true) {
   const elements = new Map();
@@ -44,7 +45,7 @@ function createPage(api, attendanceEnabled = true) {
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
         renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
-        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status" aria-busy="true">${label}</div>`,
+
         isAttendanceEnabled: () => true
       },
       lucide: { createIcons() {} },
@@ -70,7 +71,7 @@ test('student page uses the parent attendance layout without a child switcher', 
   assert.match(html, /id="dayDetailModal"/);
   assert.doesNotMatch(html, /id="child-switcher"/);
   for (const filename of fs.readdirSync(path.join(root, 'views/student')).filter(name => name.endsWith('.html'))) {
-    const page = fs.readFileSync(path.join(root, 'views/student', filename), 'utf8');
+    const page = pageFs.readFileSync(path.join(root, 'views/student', filename), 'utf8');
     assert.match(page, /href="edugnay-student-attendance\.html"/, filename);
   }
 });

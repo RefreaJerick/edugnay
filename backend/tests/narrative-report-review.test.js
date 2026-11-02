@@ -1,11 +1,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const { saveReviewDraft, confirmDraft, reviewValues } = require('../controllers/narrativeReportReviewController');
-const teacherScript = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/narrative-reports.js'), 'utf8');
+const teacherScript = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/narrative-reports.js'), 'utf8');
 
 test('adviser week options include the current week and retain completed weeks within the academic year', () => {
   const script = teacherScript;
@@ -202,12 +203,12 @@ test('foreign, confirmed, and malformed reports cannot be edited or confirmed', 
 
 test('teacher page gates parent release separately from confirmation', () => {
   const root = path.join(__dirname, '../..');
-  const page = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
-  const script = fs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
-  const styles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
-  const sharedStyles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
-  const commonScript = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
-  const routes = fs.readFileSync(path.join(__dirname, '../routes/reports.js'), 'utf8');
+  const page = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const script = pageFs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const sharedStyles = pageFs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+  const commonScript = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const routes = pageFs.readFileSync(path.join(__dirname, '../routes/reports.js'), 'utf8');
   assert.match(page, /Weekly Report Generation Pipeline/);
   assert.match(page, /id="gen-modal"/);
   assert.match(page, /id="review-modal"/);
@@ -320,8 +321,8 @@ test('teacher page gates parent release separately from confirmation', () => {
 
 test('adviser report actions use success toasts and show regeneration progress', () => {
   const root = path.join(__dirname, '../..');
-  const page = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
-  const script = fs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
+  const page = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const script = pageFs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
   assert.match(page, /id="regenerate-report-label">Regenerate draft<\/span>/);
   assert.match(script, /if \(generated\) showAppToast\(/);
   assert.match(script, /showAppToast\(confirm[\s\S]*?'Correction confirmed\. Not sent to parents\.'[\s\S]*?'Report confirmed\. Not sent to parents\.'[\s\S]*?'Draft saved\.'/);
@@ -333,7 +334,7 @@ test('adviser report actions use success toasts and show regeneration progress',
 });
 
 test('adviser cards and review evidence omit Journal outside eligible JHS sections', () => {
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/adviser/narrative-reports.css'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/adviser/narrative-reports.css'), 'utf8');
   assert.match(styles, /\.report-card-metrics\.without-journal \{ grid-template-columns: 1fr; \}/);
   assert.match(styles, /#review-modal \.data-source-grid\.without-journal \.ds-academic \{ grid-column: 1 \/ -1; \}/);
   const student = {
@@ -378,8 +379,8 @@ test('adviser cards and review evidence omit Journal outside eligible JHS sectio
 
 test('inline regeneration confirmation cancels safely and starts only after explicit confirmation', async () => {
   const root = path.join(__dirname, '../..');
-  const page = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const page = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
   assert.match(page, /id="regenerate-confirmation"[^>]*hidden/);
   assert.match(page, /id="keep-current-draft"/);
   assert.match(page, /id="confirm-regenerate"/);
@@ -483,7 +484,7 @@ test('regeneration is available for open corrections but not released or confirm
 
 test('shared student avatar uses initials without a photo and after a photo load failure', () => {
   const root = path.join(__dirname, '../..');
-  const commonScript = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const commonScript = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
   const start = commonScript.indexOf('function renderAvatar(');
   const end = commonScript.indexOf('\nfunction avatarHtml(', start);
   assert.ok(start >= 0 && end > start);

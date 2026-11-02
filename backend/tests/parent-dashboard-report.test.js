@@ -1,10 +1,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
+const html = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
 const functionStart = html.indexOf('    let reportRequestVersion = 0;');
 const functionEnd = html.indexOf('\n    function switchChild(', functionStart);
 assert.notEqual(functionStart, -1, 'parent dashboard report handler exists');
@@ -195,11 +196,10 @@ test('the dashboard report card starts hidden with an external accessible error 
   assert.match(html, /id="report-hero-error" role="status" aria-live="polite" hidden/);
   assert.doesNotMatch(html, /id="report-hero-state"/);
   assert.doesNotMatch(reportHandler, /hero\.innerHTML\s*=/);
-  assert.doesNotMatch(reportHandler, /renderPanelSkeleton/);
 });
 
 test('parent access refresh does not reveal a dashboard card with no current-week report', () => {
-  const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/shell.js'), 'utf8');
+  const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/parent/shell.js'), 'utf8');
   const start = shell.indexOf('function applyParentReportAccess(enabled) {');
   const end = shell.indexOf('\nfunction applyParentSidebarAccess', start);
   assert.notEqual(start, -1);

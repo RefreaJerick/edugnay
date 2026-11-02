@@ -1,10 +1,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const page = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-materials.html'), 'utf8');
+const page = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-materials.html'), 'utf8');
 const script = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)]
   .map(match => match[1]).find(source => source.includes('let MATERIAL_RECORDS'));
 
@@ -59,7 +60,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
         renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
-        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status">${label}</div>`
+
       }
     },
     records

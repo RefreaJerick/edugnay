@@ -1,13 +1,14 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-attendance.html'), 'utf8');
+const html = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-attendance.html'), 'utf8');
 const script = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
   .map(match => match[1]).find(source => source.includes('function loadAttendance'));
-const shared = fs.readFileSync(path.join(__dirname, '../../assets/js/attendance-history.js'), 'utf8');
+const shared = pageFs.readFileSync(path.join(__dirname, '../../assets/js/attendance-history.js'), 'utf8');
 
 function createPage(api) {
   const elements = new Map();
@@ -42,7 +43,7 @@ function createPage(api) {
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
         renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`,
-        renderPanelSkeleton: ({ kind, label }) => `<div class="panel-skeleton panel-skeleton--${kind}" role="status" aria-busy="true">${label}</div>`
+
       }
     },
     lucide: { createIcons() {} }
@@ -132,7 +133,7 @@ test('parent attendance and dashboard retain SHS class records', async () => {
   page.elements.get('cal-grid').listeners.click({ target: { closest: () => ({ dataset: { attendanceDay: '18' } }) } });
   assert.match(page.elements.get('day-detail-modal-content').innerHTML, /Creative Writing · Class A/);
 
-  const dashboard = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
+  const dashboard = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
   const helper = dashboard.match(/function getDashboardAttendance[\s\S]*?(?=\n\s*const CHILD_DASHBOARD_RECORDS)/)?.[0];
   assert.ok(helper);
   const context = vm.createContext({ backendAttendanceRecords: [record],

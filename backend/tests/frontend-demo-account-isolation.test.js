@@ -1,19 +1,20 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
-const parentReports = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
-const parentReportsScript = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/narrative-reports.js'), 'utf8');
-const adminUsers = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
-const adminProfile = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-profile.html'), 'utf8');
-const parentProfile = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-profile.html'), 'utf8');
-const studentProfile = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-profile.html'), 'utf8');
-const studentMaterials = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-materials.html'), 'utf8');
-const teacherProfile = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-profile.html'), 'utf8');
-const signIn = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const parentReports = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
+const parentReportsScript = pageFs.readFileSync(path.join(__dirname, '../../assets/js/parent/narrative-reports.js'), 'utf8');
+const adminUsers = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
+const adminProfile = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-profile.html'), 'utf8');
+const parentProfile = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-profile.html'), 'utf8');
+const studentProfile = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-profile.html'), 'utf8');
+const studentMaterials = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-materials.html'), 'utf8');
+const teacherProfile = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-profile.html'), 'utf8');
+const signIn = pageFs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
 
 test('shared shell ignores browser record storage and uses API identity', () => {
   assert.doesNotMatch(shell, /function readJson\(|function writeJson\(|edugnay_users|edugnay_schools/);

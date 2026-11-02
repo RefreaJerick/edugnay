@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Profile | Academix</title>
@@ -19,9 +21,9 @@
   <script src="../../assets/js/platform/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body class="platform-profile" data-platform-portal="true" data-page-title="My Profile">
+<body class="platform-profile" data-platform-portal="true" data-page-title="My Profile" data-page-loading="Loading your profile...">
   <div class="shell">
-    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+    <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
 
     <aside class="sidebar" aria-label="Platform navigation">
       <div class="sidebar-brand">
@@ -52,7 +54,7 @@
 
     <header class="topbar">
       <div class="topbar-left">
-        <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+        <button class="hamburger" type="button" aria-label="Open navigation menu" data-page-click="sab86664ca3f5"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
         <div class="admin-topbar-context" aria-label="My Profile page">
           <div class="admin-topbar-context-copy">
             <strong data-page-title-target>My Profile</strong>
@@ -61,11 +63,11 @@
       </div>
       <div class="topbar-right">
         <div class="tb-notif">
-          <button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Open notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span></button>
+          <button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Open notifications" data-page-click="s52959ebdf3bb"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span></button>
           <div class="tb-notif-panel" id="tbNotifPanel">
             <div class="tb-notif-panel-head">
               <div class="tb-notif-heading"><span class="tb-notif-heading-icon"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count"></span></span></div>
-              <button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
+              <button class="tb-notif-mark-read" type="button" data-page-click="s6a2f83bf8cb5"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
             </div>
             <div class="tb-notif-list" id="tbNotifList"></div>
             <div class="tb-notif-panel-foot"><a href="edugnay-platform-notifications.html">View all notifications</a></div>
@@ -75,12 +77,12 @@
           <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
-          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div><div class="tb-profile-role">Administrator</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
-          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-platform-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a></div>
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" data-page-click="se9930608e765" aria-expanded="false"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name"></div><div class="tb-profile-role">Administrator</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-platform-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a></div>
         </div>
       </div>
     </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
     <main class="main">
       <section class="page-overview" aria-labelledby="platform-profile-title">
@@ -107,8 +109,8 @@
           </div>
         </div>
         <div class="profile-header-info">
-          <div class="profile-header-name" id="profile-header-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
-          <div class="profile-header-meta"><span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i><span class="profile-email-value" id="profileEmail" data-skeleton-kind="line" data-skeleton-label="Loading email"></span></span></div>
+          <div class="profile-header-name" id="profile-header-name"></div>
+          <div class="profile-header-meta"><span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i><span class="profile-email-value" id="profileEmail"></span></span></div>
         </div>
       </section>
 
@@ -136,47 +138,6 @@
     </main>
   </div>
 
-  <script>
-    const PLATFORM = window.EDUGNAY_PLATFORM;
-
-    const PLATFORM_PROFILE_FIELDS = [
-      { label: 'Full Name', getValue: admin => admin.displayName },
-      { label: 'Account Email', getValue: admin => admin.schoolEmail },
-      { label: 'Role', getValue: admin => admin.role === 'platform_admin' ? 'Platform Administrator' : admin.role }
-    ];
-
-    const PLATFORM_ACCOUNT_ACCESS_DETAILS = [
-      { label: 'Account status', value: 'Active' },
-      { label: 'Access scope', value: 'All registered schools' },
-      { label: 'Primary responsibility', value: 'School account review' }
-    ];
-
-    function renderPlatformProfile(admin) {
-      const displayName = admin.displayName || [admin.firstName, admin.lastName].filter(Boolean).join(' ') || 'Platform Admin';
-      document.getElementById('profile-header-name').textContent = displayName;
-      document.getElementById('profileEmail').textContent = admin.schoolEmail;
-      document.getElementById('platformProfileFields').innerHTML = PLATFORM_PROFILE_FIELDS.length ? PLATFORM_PROFILE_FIELDS.map(field => `
-        <div class="form-group">
-          <label class="form-label">${escapeHtml(field.label)}</label>
-          <input class="form-input" type="text" value="${escapeHtml(field.getValue(admin))}" disabled aria-readonly="true">
-        </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round', title: 'No profile details', text: 'Platform administrator details will appear here.' });
-      document.getElementById('platformAccessDetails').innerHTML = PLATFORM_ACCOUNT_ACCESS_DETAILS.length ? PLATFORM_ACCOUNT_ACCESS_DETAILS.map(detail => `
-        <div class="profile-detail-row"><span class="profile-detail-label">${escapeHtml(detail.label)}</span><span class="profile-detail-value">${escapeHtml(detail.label === 'Account status' ? admin.accountStatus || 'Unknown' : detail.value)}</span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'shield-check', title: 'No access details', text: 'Platform access information will appear here.' });
-      if (window.lucide) window.lucide.createIcons();
-    }
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const admin = await window.EDUGNAY_API.getCurrentUser();
-        if (admin.role !== 'platform_admin') throw new Error('A platform administrator session is required.');
-        renderPlatformProfile(admin);
-      } catch (error) {
-        document.getElementById('platformProfileFields').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Profile unavailable', text: error.message });
-        showAppToast(error.message, 'error');
-      }
-      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
-      PLATFORM.renderTopbarNotifs();
-    });
-  </script>
+  <script src="../../assets/js/platform/profile.js"></script>
 </body>
 </html>

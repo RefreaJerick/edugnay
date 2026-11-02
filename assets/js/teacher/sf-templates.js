@@ -610,7 +610,7 @@ async function openTemplatePreview(templateId, sheetName = '') {
   sfElements.previewSubtitle.textContent = template.mappingStatus === 'ready'
     ? 'This template passed its workbook and mapping checks.'
     : 'Preview available. Generation requires a verified mapping for this form, level, and version.';
-  sfElements.previewContent.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'modal', label: 'Loading workbook preview', rows: 3 });
+  sfElements.previewContent.innerHTML = '';
   sfElements.editButton.disabled = true;
   sfElements.downloadButton.disabled = true;
   sfElements.downloadButton.innerHTML = '<i data-lucide="download"></i> Download XLSX';
@@ -906,10 +906,11 @@ async function initializeSfTemplatesPage() {
   if (!window.EDUGNAY_API?.isBackendAvailable) {
     document.querySelector('.sf-info-banner-title').textContent = 'School data unavailable';
     document.querySelector('.sf-info-banner-text').textContent = 'Connect to the school API to use templates.';
+    window.EDUGNAY_PAGE_LOADING.ready();
     return;
   }
-  sfElements.count.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading template count' });
-  sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading official templates', rows: 4 });
+  sfElements.count.innerHTML = '';
+  sfElements.list.innerHTML = '';
 
   try {
     await window.EDUGNAY_SCHOOL_READY;
@@ -936,6 +937,7 @@ async function initializeSfTemplatesPage() {
   } finally {
     if (window.lucide) lucide.createIcons();
   }
+  window.EDUGNAY_PAGE_LOADING.ready();
 }
 
 sfElements.generatorForm.addEventListener('submit', generateForm);

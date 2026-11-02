@@ -1,13 +1,14 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
-const settingsPage = fs.readFileSync(path.join(root, 'views/admin/edugnay-admin-schools.html'), 'utf8');
-const dashboardPage = fs.readFileSync(path.join(root, 'views/admin/edugnay-admin-dashboard.html'), 'utf8');
-const settingsStyles = fs.readFileSync(path.join(root, 'assets/css/admin/schools.css'), 'utf8');
+const settingsPage = pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-schools.html'), 'utf8');
+const dashboardPage = pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-dashboard.html'), 'utf8');
+const settingsStyles = pageFs.readFileSync(path.join(root, 'assets/css/admin/schools.css'), 'utf8');
 
 function checkInlineScript(page, filename) {
   const scripts = [...page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)];

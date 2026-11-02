@@ -1,12 +1,13 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
-const script = fs.readFileSync(path.join(root, 'assets/js/theme.js'), 'utf8');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const script = pageFs.readFileSync(path.join(root, 'assets/js/theme.js'), 'utf8');
+const read = file => pageFs.readFileSync(path.join(root, file), 'utf8');
 
 function createControl() {
   const events = {};

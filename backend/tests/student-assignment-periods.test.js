@@ -1,10 +1,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-assignments.html'), 'utf8');
+const source = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-assignments.html'), 'utf8');
 const periodHelpers = source.match(/    function latestSelectableAssignmentPeriod\(periods\) \{[\s\S]*?    async function loadBackendAssignments\(\)/)?.[0]
   .replace(/    async function loadBackendAssignments\(\)$/, '');
 
@@ -54,7 +55,7 @@ test('student elective assignments also follow the selected grading period', () 
   assert.match(source, /Elective class assignments/);
   assert.match(source, /function isElectiveAssignment\(assignment\)/);
   assert.match(source, /assignmentScope/);
-  assert.match(fs.readFileSync(path.join(__dirname, '../../assets/css/student/assignments.css'), 'utf8'), /\.assignment-scope-heading[\s\S]*?grid-column: 1 \/ -1/);
+  assert.match(pageFs.readFileSync(path.join(__dirname, '../../assets/css/student/assignments.css'), 'utf8'), /\.assignment-scope-heading[\s\S]*?grid-column: 1 \/ -1/);
 });
 
 test('student assignment page has a responsive controls panel and desktop period tabs', () => {

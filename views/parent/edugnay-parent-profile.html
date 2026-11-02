@@ -3,6 +3,8 @@
 
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Profile | Academix</title>
@@ -23,18 +25,18 @@
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 
-<body data-page-title="My Profile">
+<body data-page-title="My Profile" data-page-loading="Loading your profile...">
 
   <!-- Profile and linked-child details come from authenticated profile APIs. -->
 
   <div class="shell">
-    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+    <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
 
     <!-- ══════ SIDEBAR ══════ -->
     <aside class="sidebar">
       <div class="sidebar-brand">
         <div class="brand-crest">
-          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b" />
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
@@ -93,13 +95,13 @@
             <strong data-page-title-target>My Profile</strong>
           </div>
         </div>
-        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <button class="hamburger" type="button" data-page-click="sab86664ca3f5">
           <i data-lucide="menu" style="width:18px;height:18px;"></i>
         </button>
       </div>
       <div class="topbar-right">
         <div class="tb-notif">
-          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
             <i data-lucide="bell" style="width:20px;height:20px;"></i>
             <span class="tb-notif-dot"></span>
           </button>
@@ -115,7 +117,7 @@
                   <span class="tb-notif-unread-count" aria-live="polite"></span>
                 </span>
               </div>
-              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+              <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5">
                 <i data-lucide="check-check" style="width:14px;height:14px;"></i>
                 <span>Mark all read</span>
               </button>
@@ -139,10 +141,10 @@
           <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
-          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
             <div class="tb-avatar parent" id="parent-topbar-initials" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name" id="parent-topbar-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
+              <div class="tb-profile-name" id="parent-topbar-name" data-parent-name></div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -154,7 +156,7 @@
               My Profile
             </a>
             <div class="tb-dropdown-divider"></div>
-            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+            <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
               <i data-lucide="log-out" style="width:15px;height:15px;"></i>
               Sign Out
             </a>
@@ -162,7 +164,7 @@
         </div>
       </div>
     </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
     <!-- ══════ MAIN ══════ -->
     <main class="main">
@@ -195,23 +197,23 @@
           </div>
         </div>
         <div class="profile-header-info">
-          <div class="profile-header-name" id="parent-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
+          <div class="profile-header-name" id="parent-profile-name"></div>
           <div class="profile-header-meta">
-            <span><i data-lucide="users" style="width:13px;height:13px;"></i> <span id="parent-profile-child-count" data-skeleton-kind="line" data-skeleton-label="Loading linked children count">Loading...</span></span>
-            <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="parent-profile-school-email" data-skeleton-kind="line" data-skeleton-label="Loading school email">Loading...</span></span>
+            <span><i data-lucide="users" style="width:13px;height:13px;"></i> <span id="parent-profile-child-count"></span></span>
+            <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="parent-profile-school-email"></span></span>
           </div>
         </div>
       </div>
 
       <!-- Tab bar -->
       <div class="profile-tab-bar">
-        <button class="profile-tab active" data-profile-tab="children" onclick="switchTab('children', this)">
+        <button class="profile-tab active" data-profile-tab="children" data-page-click="p6ce376468173">
           <i data-lucide="users" style="width:13px;height:13px;"></i> My Children
         </button>
-        <button class="profile-tab" data-profile-tab="personal" onclick="switchTab('personal', this)">
+        <button class="profile-tab" data-profile-tab="personal" data-page-click="ped25fcb51029">
           <i data-lucide="user" style="width:13px;height:13px;"></i> Personal Info
         </button>
-        <button class="profile-tab" data-profile-tab="security" onclick="switchTab('security', this)">
+        <button class="profile-tab" data-profile-tab="security" data-page-click="pd24600d14cf5">
           <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Account & Security
         </button>
       </div>
@@ -250,7 +252,7 @@
               <div class="profile-setup-notice-text">Complete the required details below before using the parent portal. This information helps your school keep family contact records accurate.</div>
             </div>
           </div>
-          <form id="profileForm" action="/parent/profile/update" method="POST" onsubmit="return submitProfile(event)">
+          <form id="profileForm" action="/parent/profile/update" method="POST" data-page-submit="pea7926a962b7">
             <div class="config-panel-body profile-fields">
               <div class="profile-form-section">
                 <div class="profile-form-section-title">Account information</div>
@@ -344,7 +346,7 @@
               </div>
             </div>
             <div class="config-panel-foot">
-              <button type="button" class="btn btn-cancel" id="parent-profile-discard" onclick="resetForm()">Discard</button>
+              <button type="button" class="btn btn-cancel" id="parent-profile-discard" data-page-click="pba90ee35c9e2">Discard</button>
               <button type="submit" class="btn btn-save" id="parent-profile-submit"><i data-lucide="save" style="width:13px;height:13px;"></i> <span id="parent-profile-submit-label">Save Changes</span></button>
             </div>
           </form>
@@ -364,7 +366,7 @@
           </div>
           <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
             <div style="font-size:13px;color:var(--gray-600);">Use a unique password with at least 12 characters.</div>
-            <button class="top-btn secondary" onclick="openPasswordModal()">
+            <button class="top-btn secondary" data-page-click="p2cdbe9d32494">
               <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
             </button>
           </div>
@@ -385,11 +387,11 @@
           <div class="modal-sub">Choose a strong password you haven't used before.</div>
           </div>
         </div>
-        <button class="modal-close" onclick="closePasswordModal()">
+        <button class="modal-close" data-page-click="p8712acd1332a">
           <i data-lucide="x" style="width:14px;height:14px;"></i>
         </button>
       </div>
-      <form id="passwordForm" onsubmit="return submitPasswordChange(event)">
+      <form id="passwordForm" data-page-submit="p3d74c63c8476">
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Current Password</label>
@@ -407,7 +409,7 @@
           </div>
         </div>
         <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closePasswordModal()">Cancel</button>
+          <button type="button" class="btn btn-cancel" data-page-click="p8712acd1332a">Cancel</button>
           <button type="submit" class="btn btn-save">
             <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
           </button>
@@ -417,328 +419,7 @@
   </div>
 
 
-  <script>
-    lucide.createIcons();
-
-    const escapeProfileHtml = PARENT_CONFIG.escapeHtml;
-    let parentSetupRequired = false;
-    let parentApiUser = null;
-    let parentSetupStatus = null;
-    let backendParentChildren = null;
-    let parentProfileError = '';
-
-    function setParentText(id, value, fallback = 'Not provided') {
-      const element = document.getElementById(id);
-      if (element) element.textContent = value || fallback;
-    }
-
-    function setParentInput(id, value) {
-      const element = document.getElementById(id);
-      if (element) element.value = value || '';
-    }
-
-    function getParentLinks() {
-      return backendParentChildren || [];
-    }
-
-    function renderParentProfile() {
-      const parent = parentApiUser;
-      if (!parent) {
-        const loading = !parentProfileError;
-        if (loading) {
-          document.getElementById('parent-profile-name').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading profile name' });
-          document.getElementById('parent-profile-child-count').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading linked children count' });
-          document.getElementById('parent-profile-school-email').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading school email' });
-          renderLinkedChildren([], 'Loading linked children...');
-        } else {
-          setParentText('parent-profile-name', 'Profile unavailable');
-          setParentText('parent-profile-child-count', 'Profile unavailable');
-          setParentText('parent-profile-school-email', 'Not available');
-          renderLinkedChildren([], parentProfileError);
-        }
-        return;
-      }
-
-      const savedUser = parent;
-      const profile = parent.profile || {};
-      const links = getParentLinks();
-      const schoolEmail = savedUser.schoolEmail || '';
-      const displayName = savedUser.displayName || [savedUser.firstName, savedUser.lastName].filter(Boolean).join(' ');
-
-      setParentText('parent-profile-name', displayName);
-      setParentText('parent-profile-child-count', `Parent · ${links.length} linked ${links.length === 1 ? 'child' : 'children'}`);
-      setParentText('parent-profile-school-email', schoolEmail);
-
-      setParentInput('parent-first-name', savedUser.firstName);
-      setParentInput('parent-last-name', savedUser.lastName);
-      setParentInput('parent-school-email', schoolEmail);
-      setParentInput('parent-personal-email', savedUser.personalEmail);
-      setParentInput('parent-middle-name', profile.middleName);
-      setParentInput('parent-contact-number', profile.contactNumber);
-      setParentInput('parent-sex', profile.sex);
-      setParentInput('parent-religion', profile.religion === 'prefer_not_to_provide' ? '' : profile.religion);
-      setParentInput('parent-house-street', profile.houseStreet);
-      setParentInput('parent-barangay', profile.barangay);
-      setParentInput('parent-city', profile.cityMunicipality);
-      setParentInput('parent-province', profile.province);
-
-      const isMother = links.some(link => link.relationship === 'mother');
-      const maidenNameGroup = document.getElementById('parent-maiden-name-group');
-      const noMaidenName = document.getElementById('parent-no-maiden-name');
-      if (maidenNameGroup) maidenNameGroup.hidden = !isMother;
-      if (noMaidenName) noMaidenName.checked = isMother && profile.hasNoMaidenName;
-      setParentInput('parent-maiden-name', isMother ? profile.maidenLastName : '');
-      document.getElementById('parent-no-middle-name').checked = profile.hasNoMiddleName;
-      document.getElementById('parent-no-religion').checked = profile.religion === 'prefer_not_to_provide';
-      const personalEmail = document.getElementById('parent-personal-email');
-      personalEmail.readOnly = true;
-      const personalEmailHint = personalEmail.closest('.form-group')?.querySelector('.form-hint');
-      if (personalEmailHint) personalEmailHint.textContent = 'Managed through your school account record.';
-      updateParentProfileChoices();
-
-      renderLinkedChildren(links);
-      applyParentProfileSetupState();
-    }
-
-    function updateParentProfileChoices() {
-      const middleName = document.getElementById('parent-middle-name');
-      const noMiddleName = document.getElementById('parent-no-middle-name');
-      const maidenName = document.getElementById('parent-maiden-name');
-      const noMaidenName = document.getElementById('parent-no-maiden-name');
-      const maidenNameGroup = document.getElementById('parent-maiden-name-group');
-      const religion = document.getElementById('parent-religion');
-      const noReligion = document.getElementById('parent-no-religion');
-      const maidenNameVisible = maidenNameGroup && !maidenNameGroup.hidden;
-
-      middleName.disabled = noMiddleName.checked;
-      maidenName.disabled = noMaidenName.checked;
-      religion.disabled = noReligion.checked;
-      middleName.required = parentFieldRequired('middleName') && !noMiddleName.checked;
-      maidenName.required = parentFieldRequired('maidenLastName') && maidenNameVisible && !noMaidenName.checked;
-      religion.required = parentFieldRequired('religion') && !noReligion.checked;
-      middleName.closest('.form-group')?.classList.toggle('profile-required-field', middleName.required);
-      maidenName.closest('.form-group')?.classList.toggle('profile-required-field', maidenName.required);
-      religion.closest('.form-group')?.classList.toggle('profile-required-field', religion.required);
-    }
-
-    function parentFieldRequired(field) {
-      if (!parentSetupRequired) return false;
-      return Array.isArray(parentSetupStatus?.missingFields) && parentSetupStatus.missingFields.includes(field);
-    }
-
-    function applyParentProfileSetupState() {
-      parentSetupRequired = Boolean(parentSetupStatus?.required && !parentSetupStatus.complete);
-
-      document.body.classList.toggle('profile-setup-required', parentSetupRequired);
-      document.getElementById('parent-profile-setup-notice').hidden = !parentSetupRequired;
-      document.getElementById('parent-profile-discard').hidden = parentSetupRequired;
-      document.getElementById('parent-profile-submit-label').textContent = parentSetupRequired
-        ? 'Complete setup'
-        : 'Save Changes';
-
-      const requiredFields = {
-        'parent-personal-email': 'personalEmail',
-        'parent-contact-number': 'contactNumber',
-        'parent-sex': 'sex',
-        'parent-house-street': 'houseStreet',
-        'parent-barangay': 'barangay',
-        'parent-city': 'cityMunicipality',
-        'parent-province': 'province'
-      };
-      Object.entries(requiredFields).forEach(([id, field]) => {
-        const input = document.getElementById(id);
-        if (!input) return;
-        input.required = parentFieldRequired(field);
-        input.closest('.form-group')?.classList.toggle('profile-required-field', input.required);
-      });
-
-      document.querySelectorAll('[data-profile-tab]').forEach(tab => {
-        const isPersonalTab = tab.dataset.profileTab === 'personal';
-        tab.disabled = parentSetupRequired && !isPersonalTab;
-        tab.setAttribute('aria-disabled', String(tab.disabled));
-      });
-
-      updateParentProfileChoices();
-      if (parentSetupRequired) {
-        const personalTab = document.querySelector('[data-profile-tab="personal"]');
-        if (personalTab) switchTab('personal', personalTab);
-      } else if (new URLSearchParams(window.location.search).get('setup') === 'required' && window.history.replaceState) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.hash);
-      }
-      lucide.createIcons();
-    }
-
-    function renderLinkedChildren(links = getParentLinks(), statusMessage = '') {
-      const list = document.getElementById('linked-children-list');
-      if (!list) return;
-      if (statusMessage) {
-        list.innerHTML = parentProfileError
-          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Parent data unavailable', text: escapeProfileHtml(statusMessage) })
-          : window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading linked children', rows: 2 });
-        lucide.createIcons();
-        return;
-      }
-      if (!links.length) {
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
-        lucide.createIcons();
-        return;
-      }
-      list.innerHTML = links.map(link => {
-        const student = link;
-        const relationship = link.relationship
-          ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
-          : 'Relationship not set';
-        return `<div class="child-record-card">${window.EDUGNAY_AVATAR.html(student, { className: 'child-record-avatar', role: 'student' })}<div class="child-record-info"><div class="child-record-name">${escapeProfileHtml(student.displayName || '')}</div><div class="child-record-section">${escapeProfileHtml(student.gradeLevel || 'Unassigned')} – ${escapeProfileHtml(student.sectionName || 'Unassigned')} · Adviser: ${escapeProfileHtml(student.adviserName || 'Not assigned')}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${escapeProfileHtml(student.lrn || 'Not available')}</div></div><div class="child-record-labels"><span class="child-relationship-tag"><i data-lucide="heart-handshake" style="width:9px;height:9px;"></i> ${escapeProfileHtml(relationship)}</span></div></div>`;
-      }).join('');
-      lucide.createIcons();
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      renderParentProfile();
-      loadParentProfile();
-      document.getElementById('parent-no-middle-name').addEventListener('change', updateParentProfileChoices);
-      document.getElementById('parent-no-maiden-name').addEventListener('change', function () {
-        if (this.checked) document.getElementById('parent-maiden-name').value = '';
-        updateParentProfileChoices();
-      });
-      document.getElementById('parent-no-religion').addEventListener('change', function () {
-        if (this.checked) document.getElementById('parent-religion').value = '';
-        updateParentProfileChoices();
-      });
-    });
-
-    async function loadParentProfile() {
-      try {
-        await window.EDUGNAY_SCHOOL_READY;
-        const [profileResponse, setupResponse, children] = await Promise.all([
-          window.EDUGNAY_API.request('/users/me/profile'),
-          window.EDUGNAY_API.request('/account-setup/status'),
-          window.EDUGNAY_API.getParentChildren()
-        ]);
-        if (profileResponse.user.role !== 'parent') throw new Error('Sign in with a parent account to view this profile.');
-        parentApiUser = profileResponse.user;
-        parentSetupStatus = setupResponse.setup || null;
-        backendParentChildren = children;
-        parentProfileError = '';
-        renderParentProfile();
-      } catch (error) {
-        console.warn('Unable to load the saved profile.', error.message);
-        parentProfileError = error.message || 'Profile and linked children could not be loaded.';
-        renderParentProfile();
-      }
-    }
-
-    function openPasswordModal() {
-      document.getElementById('changePasswordModal').classList.add('open');
-    }
-    function closePasswordModal() {
-      document.getElementById('changePasswordModal').classList.remove('open');
-      document.getElementById('passwordForm').reset();
-    }
-    async function submitPasswordChange(event) {
-      event.preventDefault();
-      const currentPass = document.getElementById('currentPasswordInput').value;
-      const newPass = document.getElementById('newPasswordInput').value;
-      const confirmPass = document.getElementById('confirmPasswordInput').value;
-      if (newPass.length < 12) {
-        alert('Use a password with at least 12 characters.');
-        return false;
-      }
-      if (newPass !== confirmPass) {
-        alert('New password and confirmation do not match.');
-        return false;
-      }
-      try {
-        await window.EDUGNAY_API.request('/auth/change-password', {
-          method: 'POST',
-          body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
-        });
-        closePasswordModal();
-        showAppToast('Password updated. You have been signed out on other devices.');
-      } catch (error) {
-        showAppToast(error.message || 'Unable to update your password.', 'error');
-      }
-      return false;
-    }
-
-    document.getElementById('changePasswordModal').addEventListener('click', function (e) {
-      if (e.target === this) closePasswordModal();
-    });
-    function switchTab(tabKey, btn) {
-      if (parentSetupRequired && tabKey !== 'personal') return;
-      document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.profile-pane').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('pane-' + tabKey).classList.add('active');
-    }
-
-    async function submitProfile(event) {
-      event.preventDefault();
-      if (!parentApiUser) {
-        alert('Your profile could not be loaded. Refresh the page before saving.');
-        return false;
-      }
-      const wasSetupRequired = parentSetupRequired;
-
-      const personalEmail = document.getElementById('parent-personal-email').value.trim();
-      if (personalEmail && !/^\S+@\S+\.\S+$/.test(personalEmail)) {
-        alert('Please provide a valid personal email.');
-        return false;
-      }
-
-      const links = getParentLinks();
-      const isMother = links.some(link => link.relationship === 'mother');
-      const noMaidenName = document.getElementById('parent-no-maiden-name').checked;
-      const noReligion = document.getElementById('parent-no-religion').checked;
-      const profileData = {
-        middleName: document.getElementById('parent-no-middle-name').checked
-          ? null
-          : document.getElementById('parent-middle-name').value.trim() || null,
-        hasNoMiddleName: document.getElementById('parent-no-middle-name').checked,
-        contactNumber: document.getElementById('parent-contact-number').value.trim() || null,
-        sex: document.getElementById('parent-sex').value || null,
-        religion: noReligion
-          ? 'prefer_not_to_provide'
-          : document.getElementById('parent-religion').value.trim() || null,
-        houseStreet: document.getElementById('parent-house-street').value.trim() || null,
-        barangay: document.getElementById('parent-barangay').value.trim() || null,
-        cityMunicipality: document.getElementById('parent-city').value.trim() || null,
-        province: document.getElementById('parent-province').value.trim() || null,
-        maidenLastName: isMother && !noMaidenName
-          ? document.getElementById('parent-maiden-name').value.trim() || null
-          : null,
-        hasNoMaidenName: isMother && noMaidenName
-      };
-
-      try {
-        const endpoint = wasSetupRequired ? '/account-setup/parent' : '/users/me/profile';
-        await window.EDUGNAY_API.request(endpoint, {
-          method: 'PATCH',
-          body: JSON.stringify(profileData)
-        });
-        const [profileResponse, setupResponse] = await Promise.all([
-          window.EDUGNAY_API.request('/users/me/profile'),
-          window.EDUGNAY_API.request('/account-setup/status')
-        ]);
-        parentApiUser = profileResponse.user;
-        parentSetupStatus = setupResponse.setup || null;
-        renderParentProfile();
-        if (wasSetupRequired && !parentSetupRequired) {
-          alert('Profile setup complete.');
-          window.location.replace('./edugnay-parent-dashboard.html');
-        } else {
-          showAppToast('Profile updated.');
-        }
-      } catch (error) {
-        showAppToast(error.message || 'Unable to update profile.', 'error');
-      }
-      return false;
-    }
-
-    function resetForm() {
-      renderParentProfile();
-    }
-  </script>
+  <script src="../../assets/js/parent/profile.js"></script>
 
 </body>
 

@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Profile | Academix</title>
@@ -22,18 +24,18 @@
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="My Profile">
+<body data-page-title="My Profile" data-page-loading="Loading your profile...">
 
 <!-- The authenticated profile API supplies page data; Express enforces ownership. -->
 
 <div class="shell">
-  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+  <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b"/>
       </div>
       <div class="brand-text">
         <div class="brand-name">Acade<span>Mix</span></div>
@@ -98,13 +100,13 @@
           <strong data-page-title-target>My Profile</strong>
         </div>
       </div>
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+      <button class="hamburger" type="button" data-page-click="sab86664ca3f5">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot"></span>
         </button>
@@ -120,7 +122,7 @@
                 <span class="tb-notif-unread-count" aria-live="polite"></span>
               </span>
             </div>
-            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+            <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5">
               <i data-lucide="check-check" style="width:14px;height:14px;"></i>
               <span>Mark all read</span>
             </button>
@@ -144,10 +146,10 @@
         <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
           <div class="tb-avatar student" id="student-topbar-initials">--</div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name" id="student-topbar-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
+            <div class="tb-profile-name" id="student-topbar-name"></div>
             <div class="tb-profile-role">Student</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -159,7 +161,7 @@
             My Profile
           </a>
           <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+          <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
             <i data-lucide="log-out" style="width:15px;height:15px;"></i>
             Sign Out
           </a>
@@ -167,7 +169,7 @@
       </div>
     </div>
   </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -200,27 +202,27 @@
         </div>
       </div>
       <div class="profile-header-info">
-        <div class="profile-header-name" id="student-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
+        <div class="profile-header-name" id="student-profile-name"></div>
         <div class="profile-header-meta">
-          <span><i data-lucide="badge-check" style="width:13px;height:13px;"></i> LRN <span id="student-profile-lrn" data-skeleton-kind="line" data-skeleton-label="Loading learner number">Loading...</span></span>
-          <span><i data-lucide="door-open" style="width:13px;height:13px;"></i> <span id="student-profile-placement" data-skeleton-kind="line" data-skeleton-label="Loading class placement">Loading...</span></span>
-          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="student-profile-school-email" data-skeleton-kind="line" data-skeleton-label="Loading school email">Loading...</span></span>
+          <span><i data-lucide="badge-check" style="width:13px;height:13px;"></i> LRN <span id="student-profile-lrn"></span></span>
+          <span><i data-lucide="door-open" style="width:13px;height:13px;"></i> <span id="student-profile-placement"></span></span>
+          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="student-profile-school-email"></span></span>
         </div>
       </div>
     </div>
 
     <!-- Tab bar -->
     <div class="profile-tab-bar">
-      <button class="profile-tab active" data-profile-tab="academic" onclick="switchTab('academic', this)">
+      <button class="profile-tab active" data-profile-tab="academic" data-page-click="pcda83b378119">
         <i data-lucide="graduation-cap" style="width:13px;height:13px;"></i> Academic Record
       </button>
-      <button class="profile-tab" data-profile-tab="personal" onclick="switchTab('personal', this)">
+      <button class="profile-tab" data-profile-tab="personal" data-page-click="ped25fcb51029">
         <i data-lucide="user" style="width:13px;height:13px;"></i> Personal Info
       </button>
-      <button class="profile-tab" data-profile-tab="guardian" onclick="switchTab('guardian', this)">
+      <button class="profile-tab" data-profile-tab="guardian" data-page-click="p8a32d272a311">
         <i data-lucide="heart-handshake" style="width:13px;height:13px;"></i> Linked Parent
       </button>
-      <button class="profile-tab" data-profile-tab="security" onclick="switchTab('security', this)">
+      <button class="profile-tab" data-profile-tab="security" data-page-click="pd24600d14cf5">
         <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Account & Security
       </button>
     </div>
@@ -240,19 +242,19 @@
         <div class="info-grid">
           <div class="info-cell">
             <div class="info-label">LRN</div>
-            <div class="info-value" id="student-record-lrn" data-skeleton-kind="line" data-skeleton-label="Loading learner number">Loading...</div>
+            <div class="info-value" id="student-record-lrn"></div>
           </div>
           <div class="info-cell">
             <div class="info-label">Grade & Section</div>
-            <div class="info-value" id="student-record-placement" data-skeleton-kind="line" data-skeleton-label="Loading class placement">Loading...</div>
+            <div class="info-value" id="student-record-placement"></div>
           </div>
           <div class="info-cell">
             <div class="info-label">Class Adviser</div>
-            <div class="info-value" id="student-record-adviser" data-skeleton-kind="line" data-skeleton-label="Loading adviser">Loading...</div>
+            <div class="info-value" id="student-record-adviser"></div>
           </div>
           <div class="info-cell">
             <div class="info-label">School Year</div>
-            <div class="info-value" id="student-record-school-year" data-skeleton-kind="line" data-skeleton-label="Loading school year">Loading...</div>
+            <div class="info-value" id="student-record-school-year"></div>
           </div>
         </div>
       </div>
@@ -266,8 +268,7 @@
             </div>
           </div>
         </div>
-        <div id="student-subject-list" data-skeleton-kind="list" data-skeleton-label="Loading subjects" data-skeleton-rows="4">
-          <p>Loading subjects...</p>
+        <div id="student-subject-list">
         </div>
       </div>
       </div>
@@ -291,7 +292,7 @@
             <div class="profile-setup-notice-text">Complete the required details below before using the student portal. This information helps your school keep official learner records accurate.</div>
           </div>
         </div>
-        <form id="profileForm" action="/student/profile/update" method="POST" onsubmit="return submitProfile(event)">
+        <form id="profileForm" action="/student/profile/update" method="POST" data-page-submit="pea7926a962b7">
         <div class="config-panel-body profile-fields">
           <div class="profile-form-section">
             <div class="profile-form-section-title">Account information</div>
@@ -412,7 +413,7 @@
           </div>
         </div>
         <div class="config-panel-foot">
-          <button type="button" class="btn btn-cancel" id="student-profile-discard" onclick="resetForm()">Discard</button>
+          <button type="button" class="btn btn-cancel" id="student-profile-discard" data-page-click="pba90ee35c9e2">Discard</button>
           <button type="submit" class="btn btn-save" id="student-profile-submit"><i data-lucide="save" style="width:13px;height:13px;"></i> <span id="student-profile-submit-label">Save Changes</span></button>
         </div>
         </form>
@@ -448,7 +449,7 @@
         </div>
         <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:13px;color:var(--gray-600);">Use a unique password with at least 12 characters.</div>
-          <button class="top-btn secondary" onclick="openPasswordModal()">
+          <button class="top-btn secondary" data-page-click="p2cdbe9d32494">
             <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
           </button>
         </div>
@@ -478,7 +479,7 @@
               <i data-lucide="shield-check"></i>
               <span>This QR contains only your attendance token. It does not contain your personal information or login credentials.</span>
             </div>
-            <button type="button" class="top-btn secondary" id="student-attendance-qr-download" onclick="downloadStudentAttendanceQr()" disabled>
+            <button type="button" class="top-btn secondary" id="student-attendance-qr-download" data-page-click="p3293a35b9e2b" disabled>
               <i data-lucide="download" style="width:14px;height:14px;"></i> Download QR
             </button>
           </div>
@@ -501,11 +502,11 @@
         <div class="modal-sub">Choose a strong password you haven't used before.</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closePasswordModal()">
+      <button class="modal-close" data-page-click="p8712acd1332a">
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
     </div>
-    <form id="passwordForm" onsubmit="return submitPasswordChange(event)">
+    <form id="passwordForm" data-page-submit="p3d74c63c8476">
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Current Password</label>
@@ -521,7 +522,7 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closePasswordModal()">Cancel</button>
+      <button type="button" class="btn btn-cancel" data-page-click="p8712acd1332a">Cancel</button>
       <button type="submit" class="btn btn-save">
         <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
       </button>
@@ -531,511 +532,7 @@
 </div>
 
 
-<script>
-lucide.createIcons();
-
-/* ── AVATAR UPLOAD ── */
-const STUDENT_CONFIG = window.EDUGNAY_CONFIG;
-const STUDENT_PROFILE_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
-const escapeProfileHtml = STUDENT_CONFIG.escapeHtml;
-let studentSetupRequired = false;
-let studentSetupStatus = null;
-let studentAttendanceQrDataUrl = '';
-let studentApiUser = null;
-let studentProfileLoading = STUDENT_PROFILE_API_ENABLED;
-let studentClassSection = null;
-let studentClassLoading = STUDENT_PROFILE_API_ENABLED;
-let studentClassError = STUDENT_PROFILE_API_ENABLED ? '' : 'The school API is unavailable.';
-let studentLinkedParents = [];
-let studentLinkedParentsLoading = STUDENT_PROFILE_API_ENABLED;
-let studentLinkedParentsError = STUDENT_PROFILE_API_ENABLED ? '' : 'The school API is unavailable.';
-
-function setStudentText(id, value, fallback = 'Not provided') {
-  const element = document.getElementById(id);
-  if (element) element.textContent = value || fallback;
-}
-
-function setStudentSkeleton(id, label) {
-  const element = document.getElementById(id);
-  if (element) element.innerHTML = STUDENT_CONFIG.renderPanelSkeleton({ kind: 'line', label });
-}
-
-function setStudentInput(id, value) {
-  const element = document.getElementById(id);
-  if (element) element.value = id === 'student-birth-date' && value ? String(value).slice(0, 10) : value || '';
-}
-
-function renderStudentProfile() {
-  const student = studentApiUser;
-  if (!student) {
-    const profileMessage = 'Profile unavailable';
-    if (studentProfileLoading) {
-      setStudentSkeleton('student-profile-name', 'Loading profile name');
-      setStudentSkeleton('student-profile-lrn', 'Loading learner number');
-      setStudentSkeleton('student-profile-school-email', 'Loading school email');
-      setStudentSkeleton('student-record-lrn', 'Loading learner number');
-    } else {
-      setStudentText('student-profile-name', profileMessage);
-      setStudentText('student-profile-lrn', 'Not available');
-      setStudentText('student-profile-school-email', 'Not available');
-      setStudentText('student-record-lrn', 'Not available');
-    }
-    if (!document.documentElement.classList.contains('profile-chip-restored')) {
-      if (studentProfileLoading) setStudentSkeleton('student-topbar-name', 'Loading account');
-      else setStudentText('student-topbar-name', profileMessage);
-    }
-    renderStudentClassContext(null);
-    renderStudentLinkedParents('');
-    return;
-  }
-
-  const savedUser = student;
-  const profile = student.profile || {};
-  const schoolEmail = savedUser.schoolEmail || '';
-  const displayName = savedUser.displayName || [savedUser.firstName, savedUser.lastName].filter(Boolean).join(' ');
-  const lrn = profile?.lrn || student.lrn;
-
-  setStudentText('student-profile-name', displayName);
-  setStudentText('student-topbar-name', displayName);
-  setStudentText('student-profile-lrn', lrn, 'Not available');
-  renderStudentClassContext(student);
-  setStudentText('student-profile-school-email', schoolEmail);
-  setStudentText('student-record-lrn', lrn, 'Not available');
-
-  setStudentInput('student-first-name', savedUser.firstName);
-  setStudentInput('student-last-name', savedUser.lastName);
-  setStudentInput('student-school-email', schoolEmail);
-  setStudentInput('student-personal-email', savedUser.personalEmail);
-  setStudentInput('student-middle-name', profile.middleName);
-  setStudentInput('student-contact-number', profile.contactNumber);
-  setStudentInput('student-sex', profile.sex);
-  setStudentInput('student-birth-date', profile.birthDate);
-  setStudentInput('student-birthplace', profile.birthPlace || profile.birthPlaceProvince);
-  setStudentInput('student-birthplace-region', profile.birthPlaceRegion);
-  setStudentInput('student-birth-country', profile.birthCountry);
-  setStudentInput('student-mother-tongue', profile.motherTongue);
-  setStudentInput('student-indigenous-group', profile.indigenousGroup === 'not_applicable' ? '' : profile.indigenousGroup);
-  setStudentInput('student-religion', profile.religion === 'prefer_not_to_provide' ? '' : profile.religion);
-  setStudentInput('student-house-street', profile.houseStreet);
-  setStudentInput('student-barangay', profile.barangay);
-  setStudentInput('student-city', profile.cityMunicipality);
-  setStudentInput('student-province', profile.province);
-
-  document.getElementById('student-no-middle-name').checked = profile.hasNoMiddleName;
-  document.getElementById('student-no-indigenous-group').checked = profile.indigenousGroup === 'not_applicable';
-  document.getElementById('student-no-religion').checked = profile.religion === 'prefer_not_to_provide';
-  const personalEmail = document.getElementById('student-personal-email');
-  personalEmail.readOnly = STUDENT_PROFILE_API_ENABLED;
-  if (STUDENT_PROFILE_API_ENABLED) {
-    const personalEmailHint = personalEmail.closest('.form-group')?.querySelector('.form-hint');
-    if (personalEmailHint) personalEmailHint.textContent = 'Managed through your school account record.';
-  }
-  updateStudentProfileChoices();
-
-  renderStudentLinkedParents(student.id);
-  renderStudentAttendanceQr(student);
-  applyStudentProfileSetupState();
-}
-
-function renderStudentClassContext(student) {
-  if (studentClassLoading) {
-    setStudentSkeleton('student-profile-placement', 'Loading class placement');
-    setStudentSkeleton('student-record-placement', 'Loading class placement');
-    setStudentSkeleton('student-record-adviser', 'Loading adviser');
-    setStudentSkeleton('student-record-school-year', 'Loading school year');
-    return;
-  }
-  if (studentClassError) {
-    setStudentText('student-profile-placement', 'Class placement unavailable');
-    setStudentText('student-record-placement', 'Unavailable');
-    setStudentText('student-record-adviser', 'Unavailable');
-    setStudentText('student-record-school-year', 'Unavailable');
-    return;
-  }
-
-  const section = studentClassSection;
-  const placement = section ? [section.grade, section.name].filter(Boolean).join(' – ') : 'Unassigned';
-  setStudentText('student-profile-placement', placement, 'Unassigned');
-  setStudentText('student-record-placement', placement, 'Unassigned');
-  setStudentText('student-record-adviser', section?.adviserName, 'Not assigned');
-  setStudentText('student-record-school-year', section?.academicYear, 'Not available');
-}
-
-async function renderStudentAttendanceQr(student) {
-  const image = document.getElementById('student-attendance-qr-image');
-  const placeholder = document.getElementById('student-attendance-qr-placeholder');
-  const downloadButton = document.getElementById('student-attendance-qr-download');
-  studentAttendanceQrDataUrl = '';
-  image.hidden = true;
-  placeholder.hidden = false;
-  downloadButton.disabled = true;
-
-  try {
-    let token = '';
-    const apiStudentId = Number(student?.apiId || student?.id);
-    if (STUDENT_PROFILE_API_ENABLED && Number.isInteger(apiStudentId) && apiStudentId > 0) {
-      let response = await window.EDUGNAY_API.getStudentQr(apiStudentId);
-      if (response?.requiresRegeneration) {
-        response = await window.EDUGNAY_API.regenerateStudentQr(apiStudentId);
-      }
-      token = STUDENT_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
-    }
-    if (!token) {
-      placeholder.innerHTML = '<i data-lucide="qr-code"></i><span>QR code unavailable</span>';
-      lucide.createIcons();
-      return;
-    }
-    studentAttendanceQrDataUrl = await STUDENT_CONFIG.generateAttendanceQrDataUrl(token);
-    image.src = studentAttendanceQrDataUrl;
-    image.hidden = false;
-    placeholder.hidden = true;
-    downloadButton.disabled = false;
-  } catch {
-    placeholder.innerHTML = '<i data-lucide="triangle-alert"></i><span>QR code could not be generated</span>';
-    lucide.createIcons();
-  }
-}
-
-function downloadStudentAttendanceQr() {
-  const student = studentApiUser;
-  if (!studentAttendanceQrDataUrl || !student) return;
-
-  const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-');
-  const link = document.createElement('a');
-  link.href = studentAttendanceQrDataUrl;
-  link.download = `${name}-attendance-qr.png`;
-  link.click();
-}
-
-function updateStudentProfileChoices() {
-  const middleName = document.getElementById('student-middle-name');
-  const noMiddleName = document.getElementById('student-no-middle-name');
-  const indigenousGroup = document.getElementById('student-indigenous-group');
-  const noIndigenousGroup = document.getElementById('student-no-indigenous-group');
-  const religion = document.getElementById('student-religion');
-  const noReligion = document.getElementById('student-no-religion');
-
-  middleName.disabled = noMiddleName.checked;
-  indigenousGroup.disabled = noIndigenousGroup.checked;
-  religion.disabled = noReligion.checked;
-  middleName.required = studentFieldRequired('middleName') && !noMiddleName.checked;
-  indigenousGroup.required = studentFieldRequired('indigenousGroup') && !noIndigenousGroup.checked;
-  religion.required = studentFieldRequired('religion') && !noReligion.checked;
-  middleName.closest('.form-group')?.classList.toggle('profile-required-field', middleName.required);
-  indigenousGroup.closest('.form-group')?.classList.toggle('profile-required-field', indigenousGroup.required);
-  religion.closest('.form-group')?.classList.toggle('profile-required-field', religion.required);
-}
-
-function studentFieldRequired(field) {
-  if (!studentSetupRequired) return false;
-  if (STUDENT_PROFILE_API_ENABLED && studentSetupStatus) {
-    return Array.isArray(studentSetupStatus.missingFields) && studentSetupStatus.missingFields.includes(field);
-  }
-  return true;
-}
-
-function applyStudentProfileSetupState() {
-  studentSetupRequired = Boolean(studentSetupStatus?.required && !studentSetupStatus.complete);
-
-  document.body.classList.toggle('profile-setup-required', studentSetupRequired);
-  document.getElementById('student-profile-setup-notice').hidden = !studentSetupRequired;
-  document.getElementById('student-profile-discard').hidden = studentSetupRequired;
-  document.getElementById('student-profile-submit-label').textContent = studentSetupRequired
-    ? 'Complete setup'
-    : 'Save Changes';
-
-  const requiredFields = {
-    'student-personal-email': 'personalEmail',
-    'student-sex': 'sex',
-    'student-birth-date': 'birthDate',
-    'student-birthplace': 'birthPlace',
-    'student-birth-country': 'birthCountry',
-    'student-mother-tongue': 'motherTongue',
-    'student-house-street': 'houseStreet',
-    'student-barangay': 'barangay',
-    'student-city': 'cityMunicipality',
-    'student-province': 'province'
-  };
-  Object.entries(requiredFields).forEach(([id, field]) => {
-    const input = document.getElementById(id);
-    if (!input) return;
-    input.required = studentFieldRequired(field);
-    input.closest('.form-group')?.classList.toggle('profile-required-field', input.required);
-  });
-
-  document.querySelectorAll('[data-profile-tab]').forEach(tab => {
-    const isPersonalTab = tab.dataset.profileTab === 'personal';
-    tab.disabled = studentSetupRequired && !isPersonalTab;
-    tab.setAttribute('aria-disabled', String(tab.disabled));
-  });
-
-  updateStudentProfileChoices();
-  if (studentSetupRequired) {
-    const personalTab = document.querySelector('[data-profile-tab="personal"]');
-    if (personalTab) switchTab('personal', personalTab);
-  } else if (new URLSearchParams(window.location.search).get('setup') === 'required' && window.history.replaceState) {
-    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
-  }
-  lucide.createIcons();
-}
-
-function renderStudentLinkedParents(studentId) {
-  const list = document.getElementById('student-linked-parent-list');
-  if (!list) return;
-
-  if (studentLinkedParentsLoading || studentLinkedParentsError) {
-    const loading = studentLinkedParentsLoading;
-    list.innerHTML = loading
-      ? STUDENT_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading linked parents', rows: 2 })
-      : STUDENT_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Linked parents could not be loaded', text: studentLinkedParentsError });
-    lucide.createIcons();
-    return;
-  }
-
-  const links = studentLinkedParents.map(parent => ({ link: parent, parent }));
-
-  if (!links.length) {
-    list.innerHTML = STUDENT_CONFIG.renderPanelEmptyState({
-      icon: 'heart-handshake',
-      title: 'No linked parent',
-      text: 'A parent or guardian linked to your account will appear here.'
-    });
-    lucide.createIcons();
-    return;
-  }
-
-  list.innerHTML = links.map(({ link, parent }) => {
-    const profile = parent.profile;
-    const relationship = link.relationship
-      ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
-      : 'Relationship not set';
-    return `
-      <div class="guardian-card">
-        ${window.EDUGNAY_AVATAR.html({ ...parent, id: parent.parentId, role: 'parent' }, { className: 'guardian-avatar' })}
-        <div class="guardian-info">
-          <div class="guardian-name">${escapeProfileHtml(parent.displayName || '')}</div>
-          <div class="guardian-meta-row"><span class="badge badge-blue">${escapeProfileHtml(relationship)}</span></div>
-          <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> ${escapeProfileHtml(parent.contactNumber || profile?.contactNumber || 'Not provided')}</div>
-          <div class="guardian-contact-row"><i data-lucide="mail" style="width:12px;height:12px;"></i> ${escapeProfileHtml(parent.personalEmail || 'Not provided')}</div>
-        </div>
-      </div>
-    `;
-  }).join('');
-  lucide.createIcons();
-}
-
-let studentSubjects = [];
-
-function renderStudentSubjects() {
-  const list = document.getElementById('student-subject-list');
-  if (!list) return;
-  if (studentClassLoading) {
-    list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading subjects', rows: 4 });
-  } else if (studentClassError) {
-    list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Subjects could not be loaded', text: studentClassError });
-  } else {
-    list.innerHTML = studentSubjects.length ? studentSubjects.map(assignment => {
-      const subjectName = assignment.subjectName;
-      const teacherName = assignment.teacherName;
-      const isAdviser = String(studentClassSection?.adviserId || assignment.adviserId || '') === String(assignment.teacherId || '');
-      return `<div class="subject-row"><div class="subject-info"><div class="subject-name">${escapeProfileHtml(subjectName || 'Subject')}</div><div class="subject-teacher">${escapeProfileHtml(teacherName || 'Teacher not assigned')}</div></div>${isAdviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`;
-  }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects assigned', text: 'Your subjects and teachers will appear here.' });
-  }
-  lucide.createIcons();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  renderStudentSubjects();
-  renderStudentProfile();
-  loadStudentProfile();
-  loadStudentClassData();
-  loadStudentLinkedParents();
-  document.getElementById('student-no-middle-name').addEventListener('change', updateStudentProfileChoices);
-  document.getElementById('student-no-indigenous-group').addEventListener('change', function () {
-    if (this.checked) document.getElementById('student-indigenous-group').value = '';
-    updateStudentProfileChoices();
-  });
-  document.getElementById('student-no-religion').addEventListener('change', function () {
-    if (this.checked) document.getElementById('student-religion').value = '';
-    updateStudentProfileChoices();
-  });
-});
-
-async function loadStudentLinkedParents() {
-  if (!STUDENT_PROFILE_API_ENABLED) return;
-
-  try {
-    studentLinkedParents = await window.EDUGNAY_API.getStudentParents();
-  } catch (error) {
-    studentLinkedParentsError = error.message || 'Parent links could not be loaded.';
-  } finally {
-    studentLinkedParentsLoading = false;
-    renderStudentLinkedParents(studentApiUser?.id);
-  }
-}
-
-async function loadStudentProfile() {
-  if (!STUDENT_PROFILE_API_ENABLED) return;
-
-  try {
-    const [profileResponse, setupResponse] = await Promise.all([
-      window.EDUGNAY_API.request('/users/me/profile'),
-      window.EDUGNAY_API.request('/account-setup/status')
-    ]);
-    if (profileResponse.user.role === 'student') {
-      studentApiUser = profileResponse.user;
-      studentSetupStatus = setupResponse.setup || null;
-    }
-  } catch (error) {
-    console.warn('Unable to load the saved profile.', error.message);
-  } finally {
-    studentProfileLoading = false;
-    renderStudentProfile();
-  }
-}
-
-async function loadStudentClassData() {
-  if (!STUDENT_PROFILE_API_ENABLED) return;
-
-  try {
-    const sections = await window.EDUGNAY_API.getSections();
-    studentClassSection = sections.find(section => section.status === 'active' && section.academicYearStatus === 'active') || null;
-    if (studentClassSection) {
-      const response = await window.EDUGNAY_API.getSectionTeachers(studentClassSection.id);
-      studentClassSection = response.section || studentClassSection;
-      studentSubjects = response.teachers;
-    }
-  } catch (error) {
-    console.warn('Unable to load the student class context.', error.message);
-    studentClassError = 'Class information could not be loaded.';
-  } finally {
-    studentClassLoading = false;
-    renderStudentClassContext(studentApiUser);
-    renderStudentSubjects();
-  }
-}
-
-function openPasswordModal() {
-  document.getElementById('changePasswordModal').classList.add('open');
-}
-function closePasswordModal() {
-  document.getElementById('changePasswordModal').classList.remove('open');
-  document.getElementById('passwordForm').reset();
-}
-async function submitPasswordChange(event) {
-  event.preventDefault();
-  const currentPass = document.getElementById('currentPasswordInput').value;
-  const newPass = document.getElementById('newPasswordInput').value;
-  const confirmPass = document.getElementById('confirmPasswordInput').value;
-  if (newPass.length < 12) {
-    alert('Use a password with at least 12 characters.');
-    return false;
-  }
-  if (newPass !== confirmPass) {
-    alert('New password and confirmation do not match.');
-    return false;
-  }
-  if (!STUDENT_PROFILE_API_ENABLED) {
-    alert('Password updates require a configured API connection.');
-    return false;
-  }
-  try {
-    await window.EDUGNAY_API.request('/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
-    });
-    closePasswordModal();
-    showAppToast('Password updated. You have been signed out on other devices.');
-  } catch (error) {
-    showAppToast(error.message || 'Unable to update your password.', 'error');
-  }
-  return false;
-}
-
-document.getElementById('changePasswordModal').addEventListener('click', function(e) {
-  if (e.target === this) closePasswordModal();
-});
-function switchTab(tabKey, btn) {
-  if (studentSetupRequired && tabKey !== 'personal') return;
-  document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.profile-pane').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('pane-' + tabKey).classList.add('active');
-}
-
-async function submitProfile(event) {
-  event.preventDefault();
-  const student = studentApiUser;
-  if (!student) return false;
-  const wasSetupRequired = studentSetupRequired;
-
-  const personalEmail = document.getElementById('student-personal-email').value.trim();
-  const birthDate = document.getElementById('student-birth-date').value;
-  if (personalEmail && !/^\S+@\S+\.\S+$/.test(personalEmail)) {
-    alert('Please provide a valid personal email.');
-    return false;
-  }
-  if (birthDate && new Date(`${birthDate}T00:00:00`) > new Date()) {
-    alert('Birth date cannot be in the future.');
-    return false;
-  }
-
-  const profileData = {
-    middleName: document.getElementById('student-no-middle-name').checked
-      ? null
-      : document.getElementById('student-middle-name').value.trim() || null,
-    hasNoMiddleName: document.getElementById('student-no-middle-name').checked,
-    contactNumber: document.getElementById('student-contact-number').value.trim() || null,
-    sex: document.getElementById('student-sex').value || null,
-    birthDate: birthDate || null,
-    birthPlace: document.getElementById('student-birthplace').value.trim() || null,
-    birthPlaceRegion: document.getElementById('student-birthplace-region').value.trim() || null,
-    birthCountry: document.getElementById('student-birth-country').value.trim() || null,
-    motherTongue: document.getElementById('student-mother-tongue').value.trim() || null,
-    indigenousGroup: document.getElementById('student-no-indigenous-group').checked
-      ? 'not_applicable'
-      : document.getElementById('student-indigenous-group').value.trim() || null,
-    religion: document.getElementById('student-no-religion').checked
-      ? 'prefer_not_to_provide'
-      : document.getElementById('student-religion').value.trim() || null,
-    houseStreet: document.getElementById('student-house-street').value.trim() || null,
-    barangay: document.getElementById('student-barangay').value.trim() || null,
-    cityMunicipality: document.getElementById('student-city').value.trim() || null,
-    province: document.getElementById('student-province').value.trim() || null
-  };
-
-  try {
-    if (!STUDENT_PROFILE_API_ENABLED) throw new Error('Profile updates require a configured API connection.');
-    const endpoint = wasSetupRequired ? '/account-setup/student' : '/users/me/profile';
-    await window.EDUGNAY_API.request(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(profileData)
-    });
-    const [profileResponse, setupResponse] = await Promise.all([
-      window.EDUGNAY_API.request('/users/me/profile'),
-      window.EDUGNAY_API.request('/account-setup/status')
-    ]);
-    studentApiUser = profileResponse.user;
-    studentSetupStatus = setupResponse.setup || null;
-    renderStudentProfile();
-    if (wasSetupRequired && !studentSetupRequired) {
-      alert('Profile setup complete.');
-      window.location.replace('./edugnay-student-dashboard.html');
-    } else {
-      showAppToast('Profile updated.');
-    }
-  } catch (error) {
-    showAppToast(error.message || 'Unable to update profile.', 'error');
-  }
-  return false;
-}
-
-function resetForm() {
-  renderStudentProfile();
-}
-</script>
+<script src="../../assets/js/student/profile.js"></script>
 
 </body>
 </html>

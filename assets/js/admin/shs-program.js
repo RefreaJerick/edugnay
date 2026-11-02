@@ -333,7 +333,7 @@
     state.choicePreviousOverflow = document.body.style.overflow;
     setChoiceDialogCopy(item.status, item);
     $('shs-choice-subtitle').textContent = `${item.studentName || 'Learner'} · Grade ${item.gradeCode.replace('grade-', '')} · ${item.sectionName} · ${item.trackCode === 'academic' ? 'Academic' : 'TechPro'}`;
-    $('shs-choice-classes').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading learner choices', rows: 3 });
+    $('shs-choice-classes').innerHTML = '';
     $('shs-choice-error').textContent = '';
     $('shs-choice-decision-note').value = '';
     $('shs-choice-save').disabled = true;
@@ -772,5 +772,8 @@
     });
     window.lucide?.createIcons();
   }
-  document.addEventListener('DOMContentLoaded', () => { if ($('shs-program-page')) init(); });
+  document.addEventListener('DOMContentLoaded', async () => {
+    if ($('shs-program-page')) await init();
+    window.EDUGNAY_PAGE_LOADING.ready();
+  });
 })();

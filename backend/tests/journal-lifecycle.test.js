@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -142,14 +143,14 @@ test('current teacher entries require both recorded ownership and current assign
 });
 
 test('owner migration backfills linked entries and leaves prompt-less entries unresolved', () => {
-  const migration = fs.readFileSync(path.join(__dirname, '../database/migrations/025_journal_entry_ownership.sql'), 'utf8');
+  const migration = pageFs.readFileSync(path.join(__dirname, '../database/migrations/025_journal_entry_ownership.sql'), 'utf8');
   assert.match(migration, /prompts\.id = entries\.journal_prompt_id/);
   assert.match(migration, /SET entries\.owner_teacher_user_id = prompts\.created_by_user_id/);
   assert.doesNotMatch(migration, /section_teachers/);
 });
 
 test('student journal uses server window state and preserves an unsent draft', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-journal.html'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-journal.html'), 'utf8');
   assert.match(page, /currentPrompt\?\.submissionState === 'open'/);
   assert.match(page, /currentPrompt\?\.submissionState === 'late'/);
   assert.match(page, /function renderUnsentDraft\(\)/);

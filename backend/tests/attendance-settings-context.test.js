@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -53,9 +54,9 @@ test('school context reports Attendance enabled when the legacy value is false',
 });
 
 test('attendance rules show fixed codes without offering code setup controls', () => {
-  const page = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
-  const sharedShell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
+  const sharedShell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
   assert.match(page, /Attendance status codes/);
   assert.match(page, /Attendance codes unavailable/);
   assert.match(page, /school-attendance-overview[\s\S]*?school-attendance-code-grid[\s\S]*?school-attendance-threshold-grid/);

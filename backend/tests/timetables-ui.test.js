@@ -1,11 +1,12 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => pageFs.readFileSync(path.join(root, file), 'utf8');
 
 test('all timetable pages load their own role view and the shared design', () => {
   for (const [role, name] of [

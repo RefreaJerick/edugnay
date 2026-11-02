@@ -131,9 +131,9 @@
     $('count-follow-up').textContent = reports.filter(report => report.status === 'confirmed' && report.isAtRisk).length;
   }
 
-  function renderCountSkeletons() {
+  function clearReportCounts() {
     ['count-total', 'count-drafts', 'count-confirmed', 'count-follow-up'].forEach(id => {
-      $(id).innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading report count' });
+      $(id).innerHTML = '';
     });
   }
 
@@ -198,10 +198,10 @@
     $('report-week-notice').hidden = true;
     state.evidence = null;
     state.reports = [];
-    $('reports-grid').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'cards', label: 'Loading weekly reports', rows: 3 });
+    $('reports-grid').innerHTML = '';
     setGenerationButtonState(true, 'Loading the selected week.');
-    $('week-caption').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading selected report week' });
-    renderCountSkeletons();
+    $('week-caption').innerHTML = '';
+    clearReportCounts();
     setMessage('reports-message', '');
     try {
       const query = `sectionId=${encodeURIComponent(sectionId)}&startDate=${encodeURIComponent(startDate)}`;
@@ -711,7 +711,7 @@
     } catch (error) { setMessage('reports-message', error.message || 'Narrative Reports could not be loaded.', true); }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     $('report-section').addEventListener('change', () => { populateWeeks(); loadWeek(); });
     $('report-week').addEventListener('change', loadWeek);
     $('report-search').addEventListener('input', renderCards);
@@ -758,6 +758,7 @@
         event.preventDefault(); first.focus();
       }
     });
-    init();
+    await init();
+    window.EDUGNAY_PAGE_LOADING.ready();
   });
 })();

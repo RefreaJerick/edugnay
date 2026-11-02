@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Archive Data | Academix</title>
@@ -21,7 +23,7 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="Archive Data">
+<body data-page-title="Archive Data" data-page-loading="Loading archived records...">
 
 
 <!-- CONFIRM ARCHIVE MODAL -->
@@ -35,7 +37,7 @@
         <div class="modal-sub">Archived school-year records will remain available as read-only.</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closeModal('confirmModal')"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+      <button class="modal-close" data-page-click="pa990e6d2fd54"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
     <div class="modal-body">
       <div style="display:flex;align-items:flex-start;gap:14px;background:var(--red-pale);border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:18px;">
@@ -46,12 +48,12 @@
         </div>
       </div>
       <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Type <strong style="color:var(--gray-800);" id="confirmRequiredText">ARCHIVE</strong> to confirm:</div>
-      <input class="form-input" type="text" id="confirmInput" placeholder="ARCHIVE" oninput="checkConfirmInput()"/>
+      <input class="form-input" type="text" id="confirmInput" placeholder="ARCHIVE" data-page-input="p9cd68f303e81"/>
       <div id="archiveError" role="alert" style="display:none;color:var(--red);font-size:13px;margin-top:10px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-cancel" onclick="closeModal('confirmModal')">Cancel</button>
-      <button class="btn btn-confirm" id="confirmArchiveBtn" disabled onclick="finalizeArchive()"><i data-lucide="archive" style="width:13px;height:13px;"></i> Yes, Archive Now</button>
+      <button class="btn btn-cancel" data-page-click="pa990e6d2fd54">Cancel</button>
+      <button class="btn btn-confirm" id="confirmArchiveBtn" disabled data-page-click="p7f0e398ceb90"><i data-lucide="archive" style="width:13px;height:13px;"></i> Yes, Archive Now</button>
     </div>
   </div>
 </div>
@@ -67,7 +69,7 @@
         <div class="modal-sub">Read-only archived records</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closeModal('viewModal')"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+      <button class="modal-close" data-page-click="pa5aab93fb529"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
     <div class="modal-body">
       <div class="readonly-banner">
@@ -87,30 +89,30 @@
       <div class="view-section-title">Sections</div>
       <table class="view-table">
         <thead><tr><th>Section</th><th>Grade</th><th>Students</th><th>Pass Rate</th></tr></thead>
-        <tbody id="viewSectionsBody" data-skeleton-kind="table-rows" data-skeleton-label="Loading archived sections" data-skeleton-rows="4" data-skeleton-columns="4"></tbody>
+        <tbody id="viewSectionsBody"></tbody>
       </table>
 
       <div class="view-section-title">Grading Quarters</div>
       <table class="view-table">
         <thead><tr><th>Quarter</th><th>Period</th><th>Pass Rate</th></tr></thead>
-        <tbody id="viewQuartersBody" data-skeleton-kind="table-rows" data-skeleton-label="Loading archived grading periods" data-skeleton-rows="3" data-skeleton-columns="3"></tbody>
+        <tbody id="viewQuartersBody"></tbody>
       </table>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-cancel" onclick="closeModal('viewModal')">Close</button>
+      <button class="btn btn-cancel" data-page-click="pa5aab93fb529">Close</button>
       <button class="btn" type="button" disabled title="Archive exports are not available yet."><i data-lucide="download" style="width:13px;height:13px;"></i> Export unavailable</button>
     </div>
   </div>
 </div>
 
 <div class="shell">
-  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <div class="sidebar-overlay" data-page-click="sc48f42f1ec91"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b"/>
       </div>
       <div>
         <div class="brand-name">Acade<span>Mix</span></div>
@@ -123,7 +125,7 @@
       <a href="edugnay-admin-dashboard.html"       class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
       <a href="edugnay-admin-users.html"           class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span></a>
 
-      <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-management.html" class="nav-item" data-page-click="s3a4671da9f99"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
       <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
       <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">SHS Program</span></a>
     </div>
@@ -153,7 +155,7 @@
   <!-- ══════ TOPBAR ══════ -->
   <header class="topbar">
     <div class="topbar-left">
-      <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      <button class="hamburger" type="button" aria-label="Open navigation menu" data-page-click="sab86664ca3f5"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
       <div class="topbar-context" aria-label="Archive Data page">
         <div class="topbar-context-copy">
           <strong data-page-title-target>Archive Data</strong>
@@ -162,7 +164,7 @@
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
 
@@ -179,7 +181,7 @@
                 <span class="tb-notif-unread-count" aria-live="polite"></span>
               </span>
             </div>
-            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+            <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5">
               <i data-lucide="check-check" style="width:14px;height:14px;"></i>
               <span>Mark all read</span>
             </button>
@@ -203,10 +205,10 @@
         <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
           <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
+            <div class="tb-profile-name"></div>
             <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -218,7 +220,7 @@
             My Profile
           </a>
           <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+          <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
             <i data-lucide="log-out" style="width:15px;height:15px;"></i>
             Sign Out
           </a>
@@ -226,7 +228,7 @@
       </div>
     </div>
   </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -278,8 +280,8 @@
 
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">School Year to Archive</label>
-              <select class="form-select" id="archiveYearSelect" onchange="archiveYearChanged()">
-                <option value="">Loading closed school years…</option>
+              <select class="form-select" id="archiveYearSelect" data-page-change="pfd904b33f16d">
+                <option value=""></option>
               </select>
             </div>
 
@@ -299,11 +301,11 @@
 
             <!-- Confirm toggle -->
             <div class="confirm-toggle-row">
-              <div class="toggle" id="archiveToggle" onclick="toggleArchive()" aria-checked="false" role="switch" tabindex="0"></div>
+              <div class="toggle" id="archiveToggle" data-page-click="p9641ec64fb46" aria-checked="false" role="switch" tabindex="0"></div>
               <span class="confirm-text" id="archiveConfirmText">I confirm the selected school year is ready to archive.</span>
             </div>
 
-            <button class="btn-archive-full disabled" id="archiveNowBtn" disabled onclick="openConfirmModal()">
+            <button class="btn-archive-full disabled" id="archiveNowBtn" disabled data-page-click="pd55546e4bf69">
               <i data-lucide="archive" style="width:14px;height:14px;"></i>
               Archive School Year
             </button>
@@ -318,266 +320,7 @@
   </main>
 </div>
 
-<script>
-  let archiveCandidates = [];
-  let selectedArchiveCandidate = null;
-  let currentConfirmCandidate = null;
-  let archiveActionPending = false;
-
-  function escapeArchiveHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, character => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    })[character]);
-  }
-
-  function formatArchiveCount(value) {
-    return Number(value || 0).toLocaleString();
-  }
-
-  function formatArchivePercent(value) {
-    return value === null || value === undefined || !Number.isFinite(Number(value))
-      ? 'Not available'
-      : `${Number(value)}%`;
-  }
-
-  function formatArchiveDate(value) {
-    if (!value) return 'Date unavailable';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString();
-  }
-
-  function showArchivePageMessage(message) {
-    const element = document.getElementById('archivePageMessage');
-    if (!element) return;
-    element.textContent = message || '';
-    element.style.display = message ? 'block' : 'none';
-    element.setAttribute('role', 'alert');
-  }
-
-  function renderArchiveSummary(summary = {}) {
-    const grid = document.getElementById('archive-summary-cards');
-    const years = Array.isArray(summary.archivedYearsList) ? summary.archivedYearsList : [];
-    if (!grid) return;
-    const cards = [
-      { tone: 'blue', icon: 'archive', value: formatArchiveCount(summary.archivedYears), label: 'Archived Years', sub: years.length ? `S.Y. ${years[years.length - 1]} to ${years[0]}` : 'No archived years' },
-      { tone: 'gold', icon: 'users', value: formatArchiveCount(summary.students), label: 'Archived Students', sub: 'Across archived school years' },
-      { tone: 'green', icon: 'door-open', value: formatArchiveCount(summary.sections), label: 'Archived Sections', sub: 'Across archived school years' },
-      { tone: 'gray', icon: 'trending-up', value: formatArchivePercent(summary.averagePassRate), label: 'Avg Pass Rate', sub: 'Based on published final grades' }
-    ];
-    grid.innerHTML = cards.map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${escapeArchiveHtml(card.value)}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${escapeArchiveHtml(card.sub)}</div></div>`).join('');
-  }
-
-  function renderArchivePeriodRows(periods = []) {
-    if (!periods.length) return '<div class="quarter-date">No grading-period records.</div>';
-    return periods.map(period => {
-      const rate = period.passRate === null || period.passRate === undefined ? null : Math.max(0, Math.min(100, Number(period.passRate)));
-      const width = Number.isFinite(rate) ? rate : 0;
-      return `<div class="quarter-row"><span class="quarter-label">${escapeArchiveHtml(period.label)}</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:${width}%;"></div></div><span class="quarter-pass">${escapeArchiveHtml(formatArchivePercent(rate))}</span></div><span class="quarter-date">${escapeArchiveHtml(period.period)}</span></div>`;
-    }).join('');
-  }
-
-  function renderArchiveYears(years = []) {
-    const list = document.getElementById('archive-year-list');
-    if (!list) return;
-    if (!years.length) {
-      list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'archive', title: 'No archived school years', text: 'Archived records will appear here after a school year is archived.' });
-      return;
-    }
-    list.innerHTML = years.map((year, index) => `
-      <div class="archive-year-card ${index ? 'collapsed' : ''}" data-year="${Number(year.id)}">
-        <div class="ayc-head" onclick="toggleCard(this)"><div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div><div class="ayc-info"><div class="ayc-title">S.Y. ${escapeArchiveHtml(year.label)}</div><div class="ayc-meta">Archived on ${escapeArchiveHtml(formatArchiveDate(year.archivedAt))} · By ${escapeArchiveHtml(year.archivedBy || 'Unavailable')}</div></div><div class="ayc-right">${index === 0 ? '<span class="badge badge-blue">Latest</span>' : ''}${index === years.length - 1 ? '<span class="badge badge-gray">Oldest</span>' : ''}<span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Complete</span><div class="collapse-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></div></div></div>
-        <div class="ayc-body"><div class="ayc-stats"><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.students)}</div><div class="ayc-stat-label">Students</div></div><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.sections)}</div><div class="ayc-stat-label">Sections</div></div><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.teachers)}</div><div class="ayc-stat-label">Teachers</div></div></div><div class="ayc-quarters"><div class="ayc-quarters-title">Grading-period Pass Rates</div><div class="quarter-rows">${renderArchivePeriodRows(year.academicPeriods || [])}</div></div><div class="ayc-footer"><div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div><div class="ayc-footer-actions"><button class="footer-btn export" type="button" disabled title="Archive exports are not available yet."><i data-lucide="download" style="width:11px;height:11px;"></i> Export unavailable</button><button class="footer-btn view" type="button" onclick="openViewModal(${Number(year.id)})"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button></div></div></div>
-      </div>`).join('');
-  }
-
-  function renderArchiveChecklist(candidate = null) {
-    const list = document.getElementById('archive-checklist');
-    if (!list) return;
-    if (!candidate) { list.innerHTML = ''; return; }
-    const checks = [
-      [candidate.yearClosed, 'School year is closed'],
-      [candidate.hasTermsForEachLevel, 'Grading periods exist for every enabled school level'],
-      [candidate.allTermsClosed, 'All grading periods are closed']
-    ];
-    list.innerHTML = checks.map(([complete, label]) => `<div class="check-item ${complete ? 'done' : 'warn'}"><div class="check-icon-wrap"><i data-lucide="${complete ? 'check' : 'circle-alert'}" style="width:12px;height:12px;"></i></div><span class="check-text">${label}</span></div>`).join('');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  function setArchiveToggle(isOn) {
-    const toggle = document.getElementById('archiveToggle');
-    if (!toggle) return;
-    toggle.classList.toggle('on', Boolean(isOn));
-    toggle.setAttribute('aria-checked', String(Boolean(isOn)));
-    updateArchiveControls();
-  }
-
-  function updateArchiveControls() {
-    const button = document.getElementById('archiveNowBtn');
-    const enabled = Boolean(selectedArchiveCandidate?.canArchive && document.getElementById('archiveToggle')?.classList.contains('on') && !archiveActionPending);
-    if (button) {
-      button.disabled = !enabled;
-      button.classList.toggle('enabled', enabled);
-      button.classList.toggle('disabled', !enabled);
-    }
-  }
-
-  async function loadArchiveData(options = {}) {
-    try {
-      const response = await window.EDUGNAY_API.getArchive();
-      const archivedYears = response.archivedYears || [];
-      renderArchiveSummary({ ...response.summary, archivedYearsList: archivedYears.map(year => year.label) });
-      renderArchiveYears(archivedYears);
-      archiveCandidates = response.archiveCandidates || [];
-      const select = document.getElementById('archiveYearSelect');
-      select.disabled = false;
-      select.innerHTML = '<option value="">Select a closed school year</option>' + archiveCandidates.map(year => `<option value="${Number(year.id)}">S.Y. ${escapeArchiveHtml(year.label)}${year.canArchive ? '' : ' — not ready'}</option>`).join('');
-      if (!archiveCandidates.length) select.innerHTML = '<option value="">No closed school years available</option>';
-      selectedArchiveCandidate = null;
-      select.value = '';
-      archiveYearChanged();
-      document.getElementById('archive-list-subtitle').textContent = `${archivedYears.length} archived school year${archivedYears.length === 1 ? '' : 's'} · Records are read-only.`;
-      showArchivePageMessage('');
-      if (window.lucide) window.lucide.createIcons();
-    } catch (error) {
-      if (!options.keepMessage) {
-        const select = document.getElementById('archiveYearSelect');
-        select.disabled = true;
-        select.innerHTML = '<option value="">Archive data could not be loaded</option>';
-      }
-      if (!options.keepMessage) showArchivePageMessage(error.message || 'Could not load archive data.');
-      throw error;
-    }
-  }
-
-  function archiveYearChanged() {
-    const yearId = Number(document.getElementById('archiveYearSelect').value);
-    selectedArchiveCandidate = archiveCandidates.find(year => Number(year.id) === yearId) || null;
-    setArchiveToggle(false);
-    const summary = document.getElementById('archiveYearSummary');
-    const readinessText = document.getElementById('archiveReadinessText');
-    if (!selectedArchiveCandidate) {
-      summary.value = 'Select a closed school year to view its saved records.';
-      readinessText.textContent = 'Choose a closed school year to check its grading periods.';
-      renderArchiveChecklist();
-    } else {
-      const year = selectedArchiveCandidate;
-      summary.value = `${year.termCount} grading period${year.termCount === 1 ? '' : 's'} · ${year.unfinishedTerms} still open`;
-      readinessText.textContent = year.canArchive ? 'This school year meets the archive requirements.' : year.message;
-      renderArchiveChecklist(year);
-    }
-    updateArchiveControls();
-  }
-
-  function openModal(id) { document.getElementById(id).classList.add('open'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-  document.querySelectorAll('.modal-backdrop').forEach(modal => {
-    modal.addEventListener('click', event => { if (event.target === modal && !archiveActionPending) modal.classList.remove('open'); });
-  });
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !archiveActionPending) document.querySelectorAll('.modal-backdrop.open').forEach(modal => modal.classList.remove('open'));
-    if (event.target.id === 'archiveToggle' && ['Enter', ' '].includes(event.key)) {
-      event.preventDefault();
-      toggleArchive();
-    }
-  });
-
-  function toggleCard(head) { head.closest('.archive-year-card')?.classList.toggle('collapsed'); }
-
-  async function openViewModal(yearId) {
-    const errorBox = document.getElementById('viewArchiveError');
-    errorBox.textContent = '';
-    errorBox.style.display = 'none';
-    document.getElementById('viewModalTitle').textContent = 'Archived school year';
-    document.getElementById('viewSectionsBody').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading archived sections', rows: 4, columns: 4 });
-    document.getElementById('viewQuartersBody').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'table-rows', label: 'Loading archived grading periods', rows: 3, columns: 3 });
-    openModal('viewModal');
-    try {
-      const response = await window.EDUGNAY_API.getArchivedYear(yearId);
-      const archive = response.archive;
-      document.getElementById('viewModalTitle').textContent = `S.Y. ${archive.label}: Archive`;
-      document.getElementById('viewStatStudents').textContent = formatArchiveCount(archive.students);
-      document.getElementById('viewStatTeachers').textContent = formatArchiveCount(archive.teachers);
-      document.getElementById('viewStatSections').textContent = formatArchiveCount(archive.sections);
-      document.getElementById('viewStatPassRate').textContent = formatArchivePercent(archive.passRate);
-      document.getElementById('viewStatAttendance').textContent = formatArchivePercent(archive.attendanceRate);
-      const sections = archive.sectionsTable || [];
-      document.getElementById('viewSectionsBody').innerHTML = sections.length ? sections.map(section => `<tr><td>${escapeArchiveHtml(section.name)}</td><td>${escapeArchiveHtml(section.grade)}</td><td>${formatArchiveCount(section.students)}</td><td>${escapeArchiveHtml(formatArchivePercent(section.passRate))}</td></tr>`).join('') : '<tr><td colspan="4">No section records.</td></tr>';
-      const periods = archive.academicPeriods || [];
-      document.getElementById('viewQuartersBody').innerHTML = periods.length ? periods.map(period => `<tr><td>${escapeArchiveHtml(period.label)}</td><td>${escapeArchiveHtml(period.period)}</td><td>${escapeArchiveHtml(formatArchivePercent(period.passRate))}</td></tr>`).join('') : '<tr><td colspan="3">No grading-period records.</td></tr>';
-      if (window.lucide) window.lucide.createIcons();
-    } catch (error) {
-      errorBox.textContent = error.message || 'Could not load this archived school year.';
-      errorBox.style.display = 'block';
-    }
-  }
-
-  function openConfirmModal() {
-    if (!selectedArchiveCandidate?.canArchive || !document.getElementById('archiveToggle').classList.contains('on')) return;
-    currentConfirmCandidate = selectedArchiveCandidate;
-    const phrase = `ARCHIVE ${currentConfirmCandidate.label}`;
-    document.getElementById('confirmYearLabel').textContent = `S.Y. ${currentConfirmCandidate.label}`;
-    document.getElementById('confirmRequiredText').textContent = phrase;
-    document.getElementById('confirmInput').placeholder = phrase;
-    document.getElementById('confirmInput').value = '';
-    document.getElementById('archiveError').textContent = '';
-    document.getElementById('archiveError').style.display = 'none';
-    checkConfirmInput();
-    openModal('confirmModal');
-  }
-
-  function checkConfirmInput() {
-    const input = document.getElementById('confirmInput');
-    const button = document.getElementById('confirmArchiveBtn');
-    const phrase = currentConfirmCandidate ? `ARCHIVE ${currentConfirmCandidate.label}` : '';
-    button.disabled = archiveActionPending || !phrase || input.value.trim() !== phrase;
-  }
-
-  async function finalizeArchive() {
-    if (!currentConfirmCandidate || archiveActionPending) return;
-    checkConfirmInput();
-    const button = document.getElementById('confirmArchiveBtn');
-    if (button.disabled) return;
-    archiveActionPending = true;
-    button.disabled = true;
-    button.textContent = 'Archiving…';
-    document.getElementById('confirmInput').disabled = true;
-    document.getElementById('archiveError').style.display = 'none';
-    updateArchiveControls();
-    try {
-      const result = await window.EDUGNAY_API.archiveAcademicYear(currentConfirmCandidate.id);
-      closeModal('confirmModal');
-      setArchiveToggle(false);
-      showAppToast(result.message || 'School year archived successfully.');
-      currentConfirmCandidate = null;
-      try {
-        await loadArchiveData({ keepMessage: true });
-      } catch {
-        showAppToast(`${result.message || 'School year archived successfully.'} Reload the page to refresh the archive list.`, 'info');
-      }
-    } catch (error) {
-      const errorBox = document.getElementById('archiveError');
-      errorBox.textContent = error.message || 'The school year could not be archived.';
-      errorBox.style.display = 'block';
-    } finally {
-      archiveActionPending = false;
-      button.innerHTML = '<i data-lucide="archive" style="width:13px;height:13px;"></i> Yes, Archive Now';
-      document.getElementById('confirmInput').disabled = false;
-      checkConfirmInput();
-      updateArchiveControls();
-      if (window.lucide) window.lucide.createIcons();
-    }
-  }
-
-  function toggleArchive() {
-    if (!selectedArchiveCandidate?.canArchive || archiveActionPending) return;
-    setArchiveToggle(!document.getElementById('archiveToggle').classList.contains('on'));
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    loadArchiveData().catch(() => {});
-    if (window.lucide) window.lucide.createIcons();
-  });
-</script>
+<script src="../../assets/js/admin/archive.js"></script>
 
 </body>
 </html>

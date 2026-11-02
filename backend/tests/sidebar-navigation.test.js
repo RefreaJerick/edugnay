@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -156,7 +157,7 @@ function createTeacherShellHarness({
     loadCommunication: async () => ({ backend: false, notifications: [] })
   };
 
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/js/teacher/shell.js'), 'utf8'), context);
+  vm.runInNewContext(pageFs.readFileSync(path.join(root, 'assets/js/teacher/shell.js'), 'utf8'), context);
   return {
     context,
     accessItems,
@@ -284,7 +285,7 @@ function createStudentShellHarness({
     loadCommunication: async () => ({ backend: false, notifications: [] })
   };
 
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/js/student/shell.js'), 'utf8'), context);
+  vm.runInNewContext(pageFs.readFileSync(path.join(root, 'assets/js/student/shell.js'), 'utf8'), context);
   return {
     context,
     accessItems,
@@ -367,7 +368,7 @@ function createParentShellHarness({
     }
   };
   context.window = context;
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8'), context);
+  vm.runInNewContext(pageFs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8'), context);
   return {
     context, storage, rootClasses, listeners, location, reportHero,
     resolveSchoolReady() {
@@ -403,7 +404,7 @@ function settingsItems(html) {
 
 test('admin Settings navigation is static, consistent, and correctly active on every page', () => {
   const filenames = fs.readdirSync(adminViews).filter(filename => filename.endsWith('.html'));
-  const pages = filenames.filter(filename => fs.readFileSync(path.join(adminViews, filename), 'utf8')
+  const pages = filenames.filter(filename => pageFs.readFileSync(path.join(adminViews, filename), 'utf8')
     .includes('<div class="nav-section-label">Settings</div>'));
   const expected = [
     { label: 'School Settings', href: 'edugnay-admin-schools.html' },
@@ -413,7 +414,7 @@ test('admin Settings navigation is static, consistent, and correctly active on e
 
   assert.ok(pages.length > 0, 'expected admin pages with a Settings section');
   for (const filename of pages) {
-    const html = fs.readFileSync(path.join(adminViews, filename), 'utf8');
+    const html = pageFs.readFileSync(path.join(adminViews, filename), 'utf8');
     const items = settingsItems(html);
     assert.deepEqual(items.map(({ label, href }) => ({ label, href })), expected, filename);
     const activeItems = items.filter(item => item.active).map(item => item.label);
@@ -423,40 +424,40 @@ test('admin Settings navigation is static, consistent, and correctly active on e
     assert.deepEqual(activeItems, expectedActive ? [expectedActive] : [], `${filename} active item`);
   }
 
-  const adminShell = fs.readFileSync(path.join(root, 'assets/js/admin/shell.js'), 'utf8');
+  const adminShell = pageFs.readFileSync(path.join(root, 'assets/js/admin/shell.js'), 'utf8');
   assert.doesNotMatch(adminShell, /ensureAdminConfigurationNav/);
 });
 
 test('every admin sidebar has one direct Class Management link and no submenu', () => {
   const filenames = fs.readdirSync(adminViews).filter(filename => filename.endsWith('.html'));
   for (const filename of filenames) {
-    const html = fs.readFileSync(path.join(adminViews, filename), 'utf8');
+    const html = pageFs.readFileSync(path.join(adminViews, filename), 'utf8');
     const start = html.indexOf('<aside class="sidebar"');
     assert.notEqual(start, -1, filename);
     const sidebar = html.slice(start, html.indexOf('</aside>', start));
     const links = [...sidebar.matchAll(/<a\b[^>]*href="(?:\.\/)?edugnay-admin-management\.html"[^>]*>[\s\S]*?<\/a>/g)];
     assert.equal(links.length, 1, filename);
     assert.match(links[0][0], /class="nav-item(?: active)?"/);
-    assert.match(links[0][0], /onclick="localStorage\.removeItem\('managementTab'\)"/);
+    assert.match(links[0][0], /data-page-click="s3a4671da9f99"/);
     assert.match(links[0][0], /<span class="nav-label">Class Management<\/span>/);
     assert.equal(links[0][0].includes('class="nav-item active"'), filename === 'edugnay-admin-management.html', filename);
     assert.doesNotMatch(sidebar, /classMgmtGroup|nav-group-toggle|nav-children|nav-child|nav-chevron/, filename);
     assert.ok(sidebar.indexOf('Manage Users') < sidebar.indexOf('Class Management'), filename);
     assert.ok(sidebar.indexOf('Class Management') < sidebar.indexOf('Timetables'), filename);
   }
-  const adminShell = fs.readFileSync(path.join(root, 'assets/js/admin/shell.js'), 'utf8');
+  const adminShell = pageFs.readFileSync(path.join(root, 'assets/js/admin/shell.js'), 'utf8');
   assert.doesNotMatch(adminShell, /function toggleNavGroup/);
 });
 
 test('Class Management tabs still switch and School Settings can open Subjects', () => {
-  const html = fs.readFileSync(path.join(adminViews, 'edugnay-admin-management.html'), 'utf8');
-  const schoolSettings = fs.readFileSync(path.join(adminViews, 'edugnay-admin-schools.html'), 'utf8');
+  const html = pageFs.readFileSync(path.join(adminViews, 'edugnay-admin-management.html'), 'utf8');
+  const schoolSettings = pageFs.readFileSync(path.join(adminViews, 'edugnay-admin-schools.html'), 'utf8');
   for (const tab of ['sections', 'subjects', 'teachers', 'students']) {
     assert.match(html, new RegExp(`class="mgmt-tab(?: active)?" data-tab="${tab}"`));
     assert.match(html, new RegExp(`id="panel-${tab}"`));
   }
   assert.match(html, /class="mgmt-panel active" id="panel-sections"/);
-  assert.match(schoolSettings, /href="edugnay-admin-management\.html" onclick="localStorage\.setItem\('managementTab','subjects'\)"/);
+  assert.match(schoolSettings, /href="edugnay-admin-management\.html" data-page-click="g001e199e0427"/);
 
   const start = html.indexOf('const mgmtTitles = {');
   const end = html.indexOf('function updateSectionFormFields()', start);
@@ -504,11 +505,11 @@ test('Class Management tabs still switch and School Settings can open Subjects',
 
 test('teacher sidebar uses a school- and teacher-scoped session snapshot before refreshing navigation', () => {
   const filenames = fs.readdirSync(teacherViews).filter(filename => filename.endsWith('.html'));
-  const pages = filenames.filter(filename => fs.readFileSync(path.join(teacherViews, filename), 'utf8')
+  const pages = filenames.filter(filename => pageFs.readFileSync(path.join(teacherViews, filename), 'utf8')
     .includes('id="reports-nav"'));
-  const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
-  const teacherShell = fs.readFileSync(path.join(root, 'assets/js/teacher/shell.js'), 'utf8');
-  const commonShell = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+  const teacherShell = pageFs.readFileSync(path.join(root, 'assets/js/teacher/shell.js'), 'utf8');
+  const commonShell = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
 
   assert.ok(pages.length > 0, 'expected teacher pages with a Reports navigation group');
   assert.doesNotMatch(styles, /teacher-nav-ready|#reports-nav\s+\[data-teacher-access\][^{]*\{\s*visibility:\s*hidden/,
@@ -530,11 +531,11 @@ test('teacher sidebar uses a school- and teacher-scoped session snapshot before 
   assert.match(commonShell, /async function getMyAdvisorySections\(includeClosed = false\)\s*\{\s*const session = readFrontendSession\(\) \|\| await getCurrentUser\(\)/);
   assert.match(commonShell, /async function confirmLogout\(\)[\s\S]*?clearTeacherSidebarCache\(\)/);
   assert.match(commonShell, /if \(error\.status === 401\)[\s\S]*?clearTeacherSidebarCache\(\)/);
-  const loginPage = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const loginPage = pageFs.readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.match(loginPage, /function clearPortalCachesForSignIn\(\)[\s\S]*?edugnay_teacher_sidebar_v1:[\s\S]*?clearPortalCachesForSignIn\(\);/);
 
   for (const filename of pages) {
-    const html = fs.readFileSync(path.join(teacherViews, filename), 'utf8');
+    const html = pageFs.readFileSync(path.join(teacherViews, filename), 'utf8');
     const reportsNav = html.match(/<div class="nav-section" id="reports-nav">([\s\S]*?)<\/div>\s*<div class="nav-section">/);
     assert.ok(reportsNav, `${filename} should have a complete Reports group`);
     const labels = [...reportsNav[1].matchAll(/data-teacher-access="([^"]+)"[\s\S]*?<span class="nav-label">([^<]+)/g)]
@@ -549,14 +550,14 @@ test('teacher sidebar uses a school- and teacher-scoped session snapshot before 
 
 test('student navigation pre-paints cached access on every portal page', () => {
   const filenames = fs.readdirSync(studentViews).filter(filename => filename.endsWith('.html'));
-  const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
-  const studentShell = fs.readFileSync(path.join(root, 'assets/js/student/shell.js'), 'utf8');
-  const commonShell = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
-  const loginPage = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+  const studentShell = pageFs.readFileSync(path.join(root, 'assets/js/student/shell.js'), 'utf8');
+  const commonShell = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const loginPage = pageFs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
   assert.ok(filenames.length > 0, 'expected student portal pages');
   for (const filename of filenames) {
-    const html = fs.readFileSync(path.join(studentViews, filename), 'utf8');
+    const html = pageFs.readFileSync(path.join(studentViews, filename), 'utf8');
     assert.match(html, /assets\/js\/student\/shell\.js/, `${filename} should use the shared student shell`);
     assert.match(html, /data-student-access="electives"/, `${filename} should use the shared elective access state`);
     assert.match(html, /href="edugnay-student-electives\.html"[^>]*data-student-access="electives"/,
@@ -701,13 +702,13 @@ test('student sidebar cache is discarded on account changes and session expiry',
 
 test('parent feature links use shared prepaint classes on every portal page', () => {
   const pages = fs.readdirSync(parentViews).filter(filename => filename.endsWith('.html'));
-  const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
-  const parentShell = fs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8');
-  const commonShell = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
-  const loginPage = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+  const parentShell = pageFs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8');
+  const commonShell = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const loginPage = pageFs.readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.ok(pages.length > 0);
   for (const filename of pages) {
-    const html = fs.readFileSync(path.join(parentViews, filename), 'utf8');
+    const html = pageFs.readFileSync(path.join(parentViews, filename), 'utf8');
     assert.match(html, /assets\/js\/parent\/shell\.js/, `${filename} loads the parent shell`);
   }
   assert.match(styles, /html\.parent-nav-hide-grades .*edugnay-parent-grades\.html[\s\S]*?display:\s*none !important/);
@@ -959,10 +960,10 @@ test('older My Classes snapshots use page defaults and every teacher sidebar res
   onDashboard.context.restoreTeacherClassesNavigation();
   assert.equal(onDashboard.sectionGroup.classList.contains('open'), false);
   for (const filename of fs.readdirSync(teacherViews).filter(name => name.endsWith('.html'))) {
-    const html = fs.readFileSync(path.join(teacherViews, filename), 'utf8');
+    const html = pageFs.readFileSync(path.join(teacherViews, filename), 'utf8');
     if (!html.includes('data-teacher-sections-nav')) continue;
     const navIndex = html.indexOf('data-teacher-sections-nav');
-    assert.ok(html.slice(navIndex, navIndex + 320).includes('restoreTeacherClassesNavigation();'), `${filename} restores its nav while parsing`);
+    assert.ok(html.slice(navIndex, navIndex + 320).includes('assets/js/teacher/classes-navigation-init.js'), `${filename} restores its nav while parsing`);
   }
 });
 

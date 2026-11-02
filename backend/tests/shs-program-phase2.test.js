@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const databaseModule = require('../config/database');
@@ -11,7 +12,7 @@ const { CATALOG_VERSION, catalog, getCatalogEntry } = require('../config/shsAppr
 const { pathwayReadiness } = require('../config/shsReadiness');
 
 const root = path.join(__dirname, '../..');
-const read = filename => fs.readFileSync(path.join(root, filename), 'utf8');
+const read = filename => pageFs.readFileSync(path.join(root, filename), 'utf8');
 const response = () => ({ statusCode: 200, status(code) { this.statusCode = code; return this; }, json(value) { this.body = value; return this; }, end() { this.ended = true; return this; } });
 
 test('SHS Program loads track labels from the qualified track display name', async () => {

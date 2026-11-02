@@ -33,7 +33,7 @@
           : !selected ? 'Select a linked child to view attendance.' : '';
         strip.hidden = !message;
         if (loading) {
-          strip.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'stat-cards', label: 'Loading monthly attendance summary', rows: 3 });
+          strip.innerHTML = '';
         } else strip.textContent = message;
         return;
       }
@@ -61,7 +61,7 @@
         next.disabled = true;
         element('cal-today').disabled = true;
         grid.innerHTML = loading
-          ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'calendar', label: 'Loading attendance calendar' })
+          ? ''
           : empty('calendar', error ? 'Attendance unavailable' : 'No attendance calendar',
             error ? 'Try loading the attendance records again.' : selected ? 'No subject attendance has been recorded.' : 'Attendance dates will appear here when a child account is linked.');
         return;
@@ -92,7 +92,7 @@
       const list = element('flagged-list');
       if (!month) {
         list.innerHTML = loading
-          ? window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading flagged attendance days', rows: 3 })
+          ? ''
           : empty('calendar-x', error ? 'Attendance unavailable' : 'No flagged days',
             error ? 'Try loading the attendance records again.' : selected ? 'No subject absences have been recorded for this month.' : 'Absence details will appear here when a child account is linked.');
         return;

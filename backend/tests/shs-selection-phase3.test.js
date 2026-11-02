@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -7,7 +8,7 @@ const { normalizeClassIds, validateRecordedChoices, meetingsConflict } = require
 const controller = require('../controllers/shsSelectionController');
 
 const root = path.resolve(__dirname, '../..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => pageFs.readFileSync(path.join(root, file), 'utf8');
 const elective = (id, code = `E${id}`, extra = {}) => ({ id, catalogCode: code, subjectName: code,
   classActive: 1, offeringActive: 1, teacherStatus: 'active', teacherRole: 'teacher', capacity: 20,
   enrolledCount: 0, instructionalHours: 80, meetings: [], ...extra });

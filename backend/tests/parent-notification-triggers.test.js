@@ -64,7 +64,7 @@ test('admin settings default off and use only the session school', async () => {
   assert.ok(responseData.triggers.every(item => !item.enabled));
   assert.equal(responseData.triggers.find(item => item.code === 'consecutive_absences').available, true);
   assert.equal(responseData.triggers.find(item => item.code === 'narrative_report_released').available, false);
-  const configPage = require('fs').readFileSync(require('path').join(__dirname, '../../views/admin/edugnay-admin-system-config.html'), 'utf8');
+  const configPage = require('./helpers/page-fs').readFileSync(require('path').join(__dirname, '../../views/admin/edugnay-admin-system-config.html'), 'utf8');
   assert.match(configPage, /label: 'Consecutive missed class dates'/);
   assert.equal(calls[0].values[0], 1);
 });

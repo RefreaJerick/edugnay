@@ -1,15 +1,16 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
-const source = fs.readFileSync(path.join(root, 'assets/js/academic-range-picker.js'), 'utf8');
-const sharedSource = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
-const onboarding = fs.readFileSync(path.join(root, 'views/onboarding/edugnay-school-onboarding.html'), 'utf8');
-const schools = fs.readFileSync(path.join(root, 'views/admin/edugnay-admin-schools.html'), 'utf8');
-const rangeStyles = fs.readFileSync(path.join(root, 'assets/css/academic-range-picker.css'), 'utf8');
+const source = pageFs.readFileSync(path.join(root, 'assets/js/academic-range-picker.js'), 'utf8');
+const sharedSource = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+const onboarding = pageFs.readFileSync(path.join(root, 'views/onboarding/edugnay-school-onboarding.html'), 'utf8');
+const schools = pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-schools.html'), 'utf8');
+const rangeStyles = pageFs.readFileSync(path.join(root, 'assets/css/academic-range-picker.css'), 'utf8');
 const context = { window: {}, Event: class Event { constructor(type) { this.type = type; } } };
 vm.runInNewContext(source.replace(/\}\)\(\);\s*$/, 'window.testRange = { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, setState(range, element) { openRange = range; popup = element; } };\n})();'), context);
 const { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, setState } = context.window.testRange;

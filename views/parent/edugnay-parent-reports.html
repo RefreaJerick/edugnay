@@ -3,6 +3,8 @@
 
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Narrative Reports | Academix</title>
@@ -23,16 +25,16 @@
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 
-<body data-page-title="Narrative Reports">
+<body data-page-title="Narrative Reports" data-page-loading="Loading reports...">
 
   <div class="shell">
-    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+    <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
 
     <!-- ══════ SIDEBAR ══════ -->
     <aside class="sidebar">
       <div class="sidebar-brand">
         <div class="brand-crest">
-          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b" />
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
@@ -91,13 +93,13 @@
             <strong data-page-title-target>Narrative Reports</strong>
           </div>
         </div>
-        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <button class="hamburger" type="button" data-page-click="sab86664ca3f5">
           <i data-lucide="menu" style="width:18px;height:18px;"></i>
         </button>
       </div>
       <div class="student-topbar-right">
         <div class="tb-notif">
-          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
             <i data-lucide="bell" style="width:20px;height:20px;"></i>
             <span class="tb-notif-dot"></span>
           </button>
@@ -109,7 +111,7 @@
                 <span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span
                     class="tb-notif-unread-count" aria-live="polite"></span></span>
               </div>
-              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()"><i data-lucide="check-check"
+              <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5"><i data-lucide="check-check"
                   style="width:14px;height:14px;"></i><span>Mark all read</span></button>
             </div>
             <div class="tb-notif-list" id="tbNotifList">
@@ -127,11 +129,11 @@
           <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile" id="topbarProfile">
-          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()" aria-haspopup="true"
+          <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765" aria-haspopup="true"
             aria-expanded="false">
             <div class="tb-avatar parent" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
+              <div class="tb-profile-name" data-parent-name></div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -140,13 +142,13 @@
             <a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user"
                 style="width:15px;height:15px;"></i>My Profile</a>
             <div class="tb-dropdown-divider"></div>
-            <button class="tb-dropdown-item danger" type="button" onclick="toggleProfileDropdown(false); confirmLogout();"><i
+            <button class="tb-dropdown-item danger" type="button" data-page-click="p2a3347cd2953"><i
                 data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</button>
           </div>
         </div>
       </div>
     </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
     <!-- ══════ MAIN ══════ -->
     <main class="main">
@@ -156,7 +158,7 @@
       <p class="portal-overview-description">Weekly progress reports shared by your child’s adviser.</p>
     </div>
   </section>
-  <div class="child-switcher" id="parentReportChildSwitcher" aria-label="Select a student" data-skeleton-kind="child-switcher" data-skeleton-label="Loading linked children" data-skeleton-rows="2"></div>
+  <div class="child-switcher" id="parentReportChildSwitcher" aria-label="Select a student"></div>
   <p class="parent-reports-message" id="parent-reports-message" role="status"></p>
   <div class="panel-empty-slot" id="parent-reports-empty" hidden></div>
   <div id="parent-reports-content" hidden>
@@ -173,8 +175,9 @@
   </div>
 </div>
 <script src="../../assets/js/parent/narrative-reports.js?v=20261030-current-report-week"></script>
-<script>document.addEventListener('DOMContentLoaded', () => window.lucide?.createIcons?.());</script>
+<script src="../../assets/js/icons-on-ready.js"></script>
 
+<script src="../../assets/js/parent/reports.js"></script>
 </body>
 
 </html>

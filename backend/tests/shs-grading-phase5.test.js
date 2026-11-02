@@ -1,6 +1,7 @@
-﻿const test = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { policyFor } = require('../config/shsGrading');
@@ -8,7 +9,7 @@ const { requireShsTeachingEnabled } = require('../utils/shsTeachingAccess');
 const { loadPublishedElectiveGrades, publishedSectionGradeFilter } = require('../controllers/gradesController');
 
 const root = path.resolve(__dirname, '../..');
-const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+const read = name => pageFs.readFileSync(path.join(root, name), 'utf8');
 
 test('SHS grading periods work without a scheduled meeting while writes still require an active period', async () => {
   const controller = read('backend/controllers/shsGradesController.js');

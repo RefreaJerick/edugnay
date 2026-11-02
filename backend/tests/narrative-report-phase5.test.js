@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -210,8 +211,8 @@ test('concurrent reservations use the atomic school/day update and stop at the l
 
 test('migration backfills version one and makes release rows append-only', () => {
   const root = path.join(__dirname, '..');
-  const migration = fs.readFileSync(path.join(root, 'database/migrations/047_narrative_report_corrections_and_ai_controls.sql'), 'utf8');
-  const schema = fs.readFileSync(path.join(root, 'database/schema.sql'), 'utf8');
+  const migration = pageFs.readFileSync(path.join(root, 'database/migrations/047_narrative_report_corrections_and_ai_controls.sql'), 'utf8');
+  const schema = pageFs.readFileSync(path.join(root, 'database/schema.sql'), 'utf8');
   assert.match(migration, /INSERT INTO narrative_report_releases[\s\S]*?SELECT reports\.school_id, reports\.id, 1/);
   assert.match(migration, /GROUP_CONCAT\(JSON_QUOTE\(actions\.recommendation_text\) ORDER BY actions\.display_order/);
   assert.match(migration, /WHERE reports\.report_status = 'confirmed' AND reports\.released_at IS NOT NULL/);
@@ -224,10 +225,10 @@ test('migration backfills version one and makes release rows append-only', () =>
 
 test('admin release history view is read-only and parses as JavaScript', () => {
   const root = path.join(__dirname, '../..');
-  const page = fs.readFileSync(path.join(root, 'views/admin/edugnay-admin-reports.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(root, 'assets/css/admin/reports.css'), 'utf8');
-  const reviewController = fs.readFileSync(path.join(root, 'backend/controllers/narrativeReportReviewController.js'), 'utf8');
-  const routes = fs.readFileSync(path.join(root, 'backend/routes/reports.js'), 'utf8');
+  const page = pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-reports.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/admin/reports.css'), 'utf8');
+  const reviewController = pageFs.readFileSync(path.join(root, 'backend/controllers/narrativeReportReviewController.js'), 'utf8');
+  const routes = pageFs.readFileSync(path.join(root, 'backend/routes/reports.js'), 'utf8');
   assert.match(routes, /router\.get\('\/weekly-release-history', requireSchoolUser, requireRoles\('school_admin'\)/);
   assert.match(page, /id="school-release-list"/);
   assert.match(page, /id="school-release-detail"/);
@@ -248,10 +249,10 @@ test('admin release history view is read-only and parses as JavaScript', () => {
 
 test('teacher correction UI keeps regeneration visible and parent UI labels updated releases', () => {
   const root = path.join(__dirname, '../..');
-  const teacher = fs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
-  const parent = fs.readFileSync(path.join(root, 'assets/js/parent/narrative-reports.js'), 'utf8');
-  const teacherPage = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
-  const teacherStyles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const teacher = pageFs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
+  const parent = pageFs.readFileSync(path.join(root, 'assets/js/parent/narrative-reports.js'), 'utf8');
+  const teacherPage = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const teacherStyles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
   assert.doesNotMatch(teacher, /'regenerate-report'\)\.hidden/);
   assert.match(teacher, /async function submitReopen[\s\S]*?finally \{[\s\S]*?updateRegenerateButton\(\)/);
   assert.match(teacher, /report\.pendingCorrection[\s\S]*?Parents still see the last released version/);
@@ -290,8 +291,8 @@ test('teacher correction UI keeps regeneration visible and parent UI labels upda
 
 test('regeneration stays visible and is enabled only for an available unreleased draft', () => {
   const root = path.join(__dirname, '../..');
-  const teacher = fs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
-  const styles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const teacher = pageFs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
   const button = { disabled: true };
   const report = { id: '101', status: 'draft', releasedAt: null };
   const state = { reports: [report], selectedReportId: '101', generationEnabled: true, busy: false, regenerateConfirmOpen: false };

@@ -27,7 +27,7 @@
 
   function renderChildren() {
     if (loading && !children.length) {
-      element('child-switcher').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'child-switcher', label: 'Loading linked children', rows: 2 });
+      element('child-switcher').innerHTML = '';
       return;
     }
     if (error && !children.length) {
@@ -138,7 +138,7 @@
 
   function renderList() {
     const list = element('assignmentList');
-    if (loading) { list.innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'list', label: 'Loading assignments', rows: 4 }); return; }
+    if (loading) { list.innerHTML = ''; return; }
     if (error) {
       list.innerHTML = `<div class="parent-assignment-error">${empty('triangle-alert', 'Assignments unavailable', error)}<button class="top-btn secondary" type="button" id="assignmentRetry">Try again</button></div>`;
       element('assignmentRetry').addEventListener('click', loadPage);
@@ -284,7 +284,7 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     const childSwitcher = element('child-switcher');
     childSwitcher.addEventListener('click', event => {
       const card = event.target.closest('[data-student-id]');
@@ -327,6 +327,7 @@
     element('assignmentDetailDone').addEventListener('click', closeDetail);
     element('assignmentDetailModal').addEventListener('click', event => { if (event.target === element('assignmentDetailModal')) closeDetail(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !element('assignmentDetailModal').hidden) closeDetail(); });
-    loadPage();
+    await loadPage();
+    window.EDUGNAY_PAGE_LOADING.ready();
   });
 })();

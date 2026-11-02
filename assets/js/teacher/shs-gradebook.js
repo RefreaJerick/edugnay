@@ -260,7 +260,7 @@
     const modal = document.getElementById('publishModal');
     modal.querySelector('.modal-title').textContent = 'Grade preview';
     document.getElementById('publishGradeWarning').hidden = true;
-    document.getElementById('publishGradeSummary').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'line', label: 'Loading grade preview' });
+    document.getElementById('publishGradeSummary').innerHTML = '';
     document.getElementById('publishGradeMethodNote').hidden = true;
     document.getElementById('publishPreviewStudentList').hidden = true;
     document.getElementById('publishGradesConfirmButton').hidden = true;

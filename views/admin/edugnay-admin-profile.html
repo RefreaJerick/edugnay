@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Profile | Academix</title>
@@ -19,17 +21,17 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="My Profile">
+<body data-page-title="My Profile" data-page-loading="Loading your profile...">
 
 
 <div class="shell">
-  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <div class="sidebar-overlay" data-page-click="sc48f42f1ec91"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b"/>
       </div>
       <div>
         <div class="brand-name">Acade<span>Mix</span></div>
@@ -48,7 +50,7 @@
         <span class="nav-label">Manage Users</span>
 
       </a>
-      <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-management.html" class="nav-item" data-page-click="s3a4671da9f99"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
       <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
       <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">SHS Program</span></a>
     </div>
@@ -99,11 +101,11 @@
           <strong data-page-title-target>My Profile</strong>
         </div>
       </div>
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:20px;height:20px;"></i></button>
+      <button class="hamburger" type="button" data-page-click="sab86664ca3f5"><i data-lucide="menu" style="width:20px;height:20px;"></i></button>
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
 
@@ -120,7 +122,7 @@
                 <span class="tb-notif-unread-count" aria-live="polite"></span>
               </span>
             </div>
-            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+            <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5">
               <i data-lucide="check-check" style="width:14px;height:14px;"></i>
               <span>Mark all read</span>
             </button>
@@ -144,10 +146,10 @@
         <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
       </div>
         <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
           <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div>
+            <div class="tb-profile-name"></div>
             <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -159,7 +161,7 @@
             My Profile
           </a>
           <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+          <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
             <i data-lucide="log-out" style="width:15px;height:15px;"></i>
             Sign Out
           </a>
@@ -167,7 +169,7 @@
       </div>
     </div>
   </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -207,9 +209,9 @@
         </div>
       </div>
       <div class="profile-header-info">
-        <div class="profile-header-name" data-skeleton-kind="line" data-skeleton-label="Loading profile name">Loading profile...</div>
+        <div class="profile-header-name"></div>
         <div class="profile-header-meta">
-          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span class="profile-email-value" data-skeleton-kind="line" data-skeleton-label="Loading email">Loading...</span></span>
+          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span class="profile-email-value"></span></span>
         </div>
       </div>
     </div>
@@ -226,7 +228,7 @@
             </div>
           </div>
         </div>
-        <form id="profileForm" action="/admin/profile" method="POST" onsubmit="return submitProfile(event)">
+        <form id="profileForm" action="/admin/profile" method="POST" data-page-submit="pea7926a962b7">
           <div class="config-panel-body profile-fields">
             <div class="form-group">
               <label class="form-label">Full Name</label>
@@ -250,7 +252,7 @@
             </div>
           </div>
           <div class="config-panel-foot">
-            <button type="button" class="btn btn-cancel" onclick="resetProfile()">Discard</button>
+            <button type="button" class="btn btn-cancel" data-page-click="p0a95c2abd235">Discard</button>
             <button type="submit" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
           </div>
         </form>
@@ -282,7 +284,7 @@
           </div>
           <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
             <div style="font-size:13px;color:var(--gray-600);">Use a unique password with at least 12 characters.</div>
-            <button class="top-btn secondary" onclick="openModal()">
+            <button class="top-btn secondary" data-page-click="pa2375f240a9b">
               <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
             </button>
           </div>
@@ -304,11 +306,11 @@
         <div class="modal-sub">Choose a strong password you haven't used before.</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closeModal()">
+      <button class="modal-close" data-page-click="p089ea8a8218e">
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
     </div>
-    <form id="passwordForm" onsubmit="return submitPasswordChange(event)">
+    <form id="passwordForm" data-page-submit="p3d74c63c8476">
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Current Password</label>
@@ -324,7 +326,7 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn btn-cancel" data-page-click="p089ea8a8218e">Cancel</button>
       <button type="submit" class="btn btn-save">
         <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
       </button>
@@ -333,135 +335,7 @@
   </div>
 </div>
 
-<script>
-  let adminApiUser = null;
-
-  function setAdminProfileLoadState(title = '', message = '', isError = false) {
-    const notice = document.getElementById('admin-profile-load-notice');
-    notice.hidden = !message;
-    notice.setAttribute('role', isError ? 'alert' : 'status');
-    document.getElementById('admin-profile-load-title').textContent = title;
-    document.getElementById('admin-profile-load-text').textContent = message;
-  }
-
-  function renderAdminProfile(user) {
-    if (!user) return;
-
-    const displayName = user.displayName || [user.firstName, user.lastName].filter(Boolean).join(' ');
-    document.querySelectorAll('[name="fullName"]').forEach(input => { input.value = displayName; });
-    document.querySelectorAll('[name="schoolEmail"]').forEach(input => { input.value = user.schoolEmail || ''; });
-    document.querySelectorAll('.profile-email-value').forEach(element => { element.textContent = user.schoolEmail || ''; });
-    document.getElementById('adminEmployeeNoInput').value = user.profile?.employeeNumber || '';
-    document.getElementById('contactNumberInput').value = user.profile?.contactNumber || '';
-    document.querySelectorAll('.profile-header-name').forEach(element => { element.textContent = displayName; });
-    if (user.id) document.querySelectorAll('.tb-profile-name').forEach(element => { element.textContent = displayName; });
-  }
-
-  setAdminProfileLoadState();
-
-  async function loadAdminProfile() {
-    try {
-      await window.EDUGNAY_SCHOOL_READY;
-      const response = await window.EDUGNAY_API.request('/users/me/profile');
-      if (response.user.role !== 'school_admin') throw new Error('Sign in with a school administrator account to view this profile.');
-      adminApiUser = response.user;
-      renderAdminProfile(adminApiUser);
-      renderAdminAccessDetails(adminApiUser);
-      setAdminProfileLoadState();
-    } catch (error) {
-      console.warn('Unable to load the saved profile.', error.message);
-      renderAdminProfile({ displayName: 'Profile unavailable', schoolEmail: '', profile: {} });
-      renderAdminAccessDetails();
-      setAdminProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded from the school database. Refresh when the connection is restored.', true);
-    }
-  }
-
-  function openModal() { document.getElementById('changePasswordModal').classList.add('open'); }
-  function closeModal() {
-    document.getElementById('changePasswordModal').classList.remove('open');
-    document.getElementById('passwordForm').reset();
-  }
-
-  async function submitPasswordChange(event) {
-    event.preventDefault();
-    const currentPass = document.getElementById('currentPasswordInput').value;
-    const newPass = document.getElementById('newPasswordInput').value;
-    const confirmPass = document.getElementById('confirmPasswordInput').value;
-    if (newPass.length < 12) {
-      alert('Use a password with at least 12 characters.');
-      return false;
-    }
-    if (newPass !== confirmPass) {
-      alert('New password and confirmation do not match.');
-      return false;
-    }
-    try {
-      await window.EDUGNAY_API.request('/auth/change-password', {
-        method: 'POST',
-        body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
-      });
-      closeModal();
-      showAppToast('Password updated. You have been signed out on other devices.');
-    } catch (error) {
-      showAppToast(error.message || 'Unable to update your password.', 'error');
-    }
-    return false;
-  }
-  document.getElementById('changePasswordModal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-  });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  async function submitProfile(event) {
-    event.preventDefault();
-    if (!adminApiUser) {
-      showAppToast('Your profile is unavailable. Refresh the page before saving.', 'error');
-      return false;
-    }
-    const contactNumber = document.getElementById('contactNumberInput').value.trim();
-
-    try {
-      const response = await window.EDUGNAY_API.request('/users/me/profile', {
-        method: 'PATCH',
-        body: JSON.stringify({ contactNumber })
-      });
-      adminApiUser = response.user;
-      renderAdminProfile(adminApiUser);
-      showAppToast('Contact info updated.');
-    } catch (error) {
-      showAppToast(error.message || 'Unable to update your profile.', 'error');
-    }
-    return false;
-  }
-
-  function renderAdminAccessDetails(apiUser = null) {
-    const panel = document.getElementById('admin-access-details');
-    if (!panel) return;
-    const schoolAdmin = apiUser;
-    const accountStatus = schoolAdmin?.accountStatus || schoolAdmin?.status;
-    const role = schoolAdmin?.role === 'school_admin' ? 'School Administrator' : schoolAdmin?.role;
-    const details = [
-      { label: 'Account status', value: accountStatus ? accountStatus.charAt(0).toUpperCase() + accountStatus.slice(1) : 'Unavailable' },
-      { label: 'Access scope', value: schoolAdmin?.schoolId ? 'Current school only' : 'Unavailable' },
-      { label: 'Role', value: role || 'Unavailable' }
-    ];
-    panel.innerHTML = details.map(detail => `
-      <div class="profile-detail-row">
-        <span class="profile-detail-label">${escapeHtml(detail.label)}</span>
-        <span class="profile-detail-value">${escapeHtml(detail.value)}</span>
-      </div>`).join('');
-  }
-
-  function resetProfile() {
-    document.getElementById('contactNumberInput').value = adminApiUser?.profile?.contactNumber || '';
-  }
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    renderAdminAccessDetails();
-    await loadAdminProfile();
-    lucide.createIcons();
-  });
-</script>
+<script src="../../assets/js/admin/profile.js"></script>
 
 </body>
 </html>

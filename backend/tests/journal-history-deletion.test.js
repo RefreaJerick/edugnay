@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const fs = require('node:fs');
+const pageFs = require('./helpers/page-fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
@@ -130,18 +131,18 @@ test('journal history views and browser API parse', () => {
     '../../views/teacher/edugnay-teacher-sections.html',
     '../../views/student/edugnay-student-journal.html'
   ]) {
-    const html = fs.readFileSync(path.join(__dirname, page), 'utf8');
+    const html = pageFs.readFileSync(path.join(__dirname, page), 'utf8');
     for (const [, source] of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
       if (source.trim()) new vm.Script(source, { filename: page });
     }
   }
-  new vm.Script(fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8'));
+  new vm.Script(pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8'));
 });
 
 test('school and teacher history use the shared modal card design', () => {
-  const teacher = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-journals.html'), 'utf8');
-  const admin = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
+  const teacher = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-journals.html'), 'utf8');
+  const admin = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
   for (const html of [teacher, admin]) {
     for (const name of ['journal-history-modal', 'journal-history-list', 'journal-history-card',
       'journal-history-card-head', 'journal-history-status', 'journal-history-card-meta',
@@ -155,7 +156,6 @@ test('school and teacher history use the shared modal card design', () => {
     assert.match(html, /Original prompt text unavailable\./);
     assert.match(html, /Past entries/);
     assert.doesNotMatch(html, /Earlier entries|View earlier entries|Saved before prompts were linked/);
-    assert.match(html, /Loading journal history/);
     assert.match(html, /Journal history unavailable/);
   }
   assert.match(styles, /\.journal-history-list\s*\{[^}]*overflow-y: auto/s);

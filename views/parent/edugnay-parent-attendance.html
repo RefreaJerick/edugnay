@@ -3,6 +3,8 @@
 
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Attendance History | Academix</title>
@@ -18,25 +20,25 @@
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js?v=11"></script>
-  <script src="../../assets/js/attendance-history.js?v=20261030-skeleton-calendar"></script>
+  <script src="../../assets/js/attendance-history.js?v=20261030-attendance-calendar"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css?v=20261030-child-switcher">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 
-<body data-page-title="Attendance History">
+<body data-page-title="Attendance History" data-page-loading="Loading attendance...">
 
   <!-- Attendance history for the selected linked child is loaded through the attendance API. -->
 
   <div class="shell">
-    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+    <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
 
     <!-- ══════ SIDEBAR ══════ -->
     <aside class="sidebar">
       <div class="sidebar-brand">
         <div class="brand-crest">
-          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b" />
         </div>
         <div class="brand-text">
           <div class="brand-name">Acade<span>Mix</span></div>
@@ -95,13 +97,13 @@
             <strong data-page-title-target>Attendance History</strong>
           </div>
         </div>
-        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <button class="hamburger" type="button" data-page-click="sab86664ca3f5">
           <i data-lucide="menu" style="width:18px;height:18px;"></i>
         </button>
       </div>
       <div class="topbar-right">
         <div class="tb-notif">
-          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
             <i data-lucide="bell" style="width:20px;height:20px;"></i>
             <span class="tb-notif-dot"></span>
           </button>
@@ -117,7 +119,7 @@
                   <span class="tb-notif-unread-count" aria-live="polite"></span>
                 </span>
               </div>
-              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+              <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5">
                 <i data-lucide="check-check" style="width:14px;height:14px;"></i>
                 <span>Mark all read</span>
               </button>
@@ -141,10 +143,10 @@
           <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
-          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
             <div class="tb-avatar parent" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name" data-parent-name data-skeleton-kind="line" data-skeleton-label="Loading account">Loading profile...</div>
+              <div class="tb-profile-name" data-parent-name></div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -156,7 +158,7 @@
               My Profile
             </a>
             <div class="tb-dropdown-divider"></div>
-            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+            <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
               <i data-lucide="log-out" style="width:15px;height:15px;"></i>
               Sign Out
             </a>
@@ -164,7 +166,7 @@
         </div>
       </div>
     </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
     <!-- ══════ MAIN ══════ -->
     <main class="main">
@@ -179,12 +181,12 @@
 
       <div class="attendance-load-state" id="attendance-load-state" role="status" aria-live="polite" hidden>
         <span id="attendance-load-message"></span>
-        <button class="top-btn secondary" id="attendance-retry" type="button" onclick="loadAttendance()" hidden>Try again</button>
+        <button class="top-btn secondary" id="attendance-retry" type="button" data-page-click="p880dd8881704" hidden>Try again</button>
       </div>
-      <div class="child-switcher" id="child-switcher" data-skeleton-kind="child-switcher" data-skeleton-label="Loading linked children" data-skeleton-rows="2"></div>
+      <div class="child-switcher" id="child-switcher"></div>
 
       <!-- Stat strip — recomputed per month, per child -->
-      <div class="stat-grid attendance-stat-grid" id="summary-strip" data-skeleton-kind="stat-cards" data-skeleton-label="Loading monthly attendance summary" data-skeleton-rows="3">
+      <div class="stat-grid attendance-stat-grid" id="summary-strip">
         <!-- JS generated -->
       </div>
 
@@ -220,7 +222,7 @@
               <div class="cal-weekday">Sat</div>
               <div class="cal-weekday">Sun</div>
             </div>
-            <div class="cal-grid" id="cal-grid" data-skeleton-kind="calendar" data-skeleton-label="Loading attendance calendar">
+            <div class="cal-grid" id="cal-grid">
               <!-- JS generated -->
             </div>
           </div>
@@ -240,7 +242,7 @@
                 <div class="panel-sub">Absences this month</div>
               </div>
             </div>
-            <div id="flagged-list" data-skeleton-kind="list" data-skeleton-label="Loading flagged attendance days" data-skeleton-rows="3">
+            <div id="flagged-list">
               <!-- JS generated -->
             </div>
           </div>
@@ -282,74 +284,7 @@
   </div>
 
 
-  <script>
-    lucide.createIcons();
-
-    let attendanceHistory;
-    let parentChildren = [];
-    let attendanceRecords = [];
-    let currentChild = null;
-    let schoolDate = '';
-
-    function renderChildSwitcher() {
-      const switcher = document.getElementById('child-switcher');
-      switcher.innerHTML = parentChildren.length
-        ? parentChildren.map(child => '<button class="child-card ' + (child.studentId === currentChild ? 'active' : '') +
-          '" data-child="' + window.EDUGNAY_CONFIG.escapeHtml(child.studentId) + '" type="button">' +
-          window.EDUGNAY_AVATAR.html(child, { className: 'child-avatar', role: 'student' }) +
-          '<span class="child-info"><span class="child-name">' + window.EDUGNAY_CONFIG.escapeHtml(child.displayName || 'Student') +
-          '</span><span class="child-section">' + window.EDUGNAY_CONFIG.escapeHtml(child.gradeLevel || 'Unassigned') +
-          ' – ' + window.EDUGNAY_CONFIG.escapeHtml(child.sectionName || 'Unassigned') + '</span></span></button>').join('')
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
-      lucide.createIcons();
-    }
-
-    function switchChild(studentId) {
-      if (!parentChildren.some(child => child.studentId === studentId)) return;
-      currentChild = studentId;
-      renderChildSwitcher();
-      attendanceHistory.setRecords(attendanceRecords.filter(record => record.studentId === studentId), schoolDate);
-    }
-
-    async function loadAttendance() {
-      attendanceHistory.setLoading();
-      document.getElementById('child-switcher').innerHTML = window.EDUGNAY_CONFIG.renderPanelSkeleton({ kind: 'child-switcher', label: 'Loading linked children', rows: 2 });
-      try {
-        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The attendance API is not configured.');
-        const children = await window.EDUGNAY_API.getParentChildren();
-        const data = await window.EDUGNAY_API.getParentAttendance();
-        const date = data?.currentDate;
-        const parsed = new Date(date + 'T00:00:00Z');
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime())
-          || parsed.toISOString().slice(0, 10) !== date || !Array.isArray(data.records)) {
-          throw new Error('The attendance response is incomplete. Please try again.');
-        }
-        parentChildren = children.map(child => ({ ...child, studentId: String(child.studentId) }));
-        attendanceRecords = data.records.map(record => ({ ...record, studentId: String(record.studentId) }));
-        schoolDate = date;
-        currentChild = parentChildren[0]?.studentId || null;
-        renderChildSwitcher();
-        attendanceHistory.setRecords(attendanceRecords.filter(record => record.studentId === currentChild), schoolDate, Boolean(currentChild));
-      } catch (error) {
-        parentChildren = [];
-        attendanceRecords = [];
-        currentChild = null;
-        schoolDate = '';
-        document.getElementById('child-switcher').replaceChildren();
-        attendanceHistory.setError(error.message || 'Attendance could not be loaded.');
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      attendanceHistory = window.createAttendanceHistory({ hasSelection: false });
-      const switcher = document.getElementById('child-switcher');
-      switcher.addEventListener('click', event => {
-        const card = event.target.closest('.child-card');
-        if (card && switcher.contains(card)) switchChild(card.dataset.child);
-      });
-      loadAttendance();
-    });
-  </script>
+  <script src="../../assets/js/parent/attendance.js"></script>
 
 </body>
 

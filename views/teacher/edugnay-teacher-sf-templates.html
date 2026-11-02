@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SF Templates | Academix</title>
@@ -23,14 +25,14 @@
   <script src="../../assets/js/teacher/shell.js?v=4"></script>
   <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
-<body data-page-title="SF Templates">
+<body data-page-title="SF Templates" data-page-loading="Loading school forms...">
   <div class="shell">
-    <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+    <div class="sidebar-overlay" data-page-click="sc48f42f1ec91"></div>
 
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <div class="brand-crest">
-          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" data-page-error="sbb1bd901180b">
         </div>
         <div>
           <div class="brand-name">Acade<span>Mix</span></div>
@@ -41,36 +43,36 @@
       <div class="nav-scroll">
         <div class="nav-section">
           <div class="nav-section-label">Main</div>
-          <a class="nav-item" onclick="navigate('dashboard')">
+          <a class="nav-item" data-page-click="sce679990fbe8">
             <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div>
             <span class="nav-label">Dashboard</span>
           </a>
           <a href="edugnay-teacher-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
           <div class="nav-group" id="sections-group">
-            <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+            <div class="nav-group-toggle" data-page-click="s68217584b22a">
               <div class="nav-icon"><i data-lucide="door-open"></i></div>
               <span>My Classes</span>
               <i data-lucide="chevron-right" class="nav-chevron"></i>
             </div>
             <div class="nav-children" data-teacher-sections-nav>
-              <div class="teacher-section-nav-message" role="status" data-skeleton-kind="line" data-skeleton-label="Loading assigned classes">Loading assigned classes…</div>
+              <div class="teacher-section-nav-message" role="status"></div>
             </div>
-          <script>restoreTeacherClassesNavigation();</script>
+          <script src="../../assets/js/teacher/classes-navigation-init.js"></script>
           </div>
         </div>
 
         <div class="nav-section" id="reports-nav">
           <div class="nav-section-label">Reports</div>
-          <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
+          <a class="nav-item" data-teacher-access="reports" data-page-click="sd6c1b06b9ac0">
             <div class="nav-icon"><i data-lucide="notebook-pen"></i></div>
             <span class="nav-label">Narrative Reports</span>
 
           </a>
-          <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
+          <a class="nav-item" data-teacher-access="journals" data-page-click="sf2ab58f61694">
             <div class="nav-icon"><i data-lucide="notebook-pen"></i></div>
             <span class="nav-label">Student Journals</span>
           </a>
-          <a class="nav-item active" data-teacher-access="sfTemplates" onclick="navigate('sfTemplates')">
+          <a class="nav-item active" data-teacher-access="sfTemplates" data-page-click="sd8cf422f2fb0">
             <div class="nav-icon"><i data-lucide="file-spreadsheet"></i></div>
             <span class="nav-label">SF Templates</span>
           </a>
@@ -78,7 +80,7 @@
 
         <div class="nav-section">
           <div class="nav-section-label">Communication</div>
-          <a class="nav-item" onclick="navigate('announcements')">
+          <a class="nav-item" data-page-click="sa026e333e7cb">
             <div class="nav-icon"><i data-lucide="megaphone"></i></div>
             <span class="nav-label">Announcements</span>
 
@@ -102,14 +104,14 @@
             <strong data-page-title-target>SF Templates</strong>
           </div>
         </div>
-        <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation">
+        <button class="hamburger" type="button" data-page-click="sab86664ca3f5" aria-label="Open navigation">
           <i data-lucide="menu"></i>
         </button>
       </div>
 
       <div class="topbar-right">
         <div class="tb-notif">
-          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb">
             <i data-lucide="bell"></i><span class="tb-notif-dot"></span>
           </button>
           <div class="tb-notif-panel" id="tbNotifPanel">
@@ -118,7 +120,7 @@
                 <span class="tb-notif-heading-icon"><i data-lucide="bell"></i></span>
                 <span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span>
               </div>
-              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()"><i data-lucide="check-check"></i><span>Mark all read</span></button>
+              <button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5"><i data-lucide="check-check"></i><span>Mark all read</span></button>
             </div>
             <div class="tb-notif-list" id="tbNotifList"></div>
             <div class="tb-notif-panel-foot"><a href="edugnay-teacher-notifications.html">View all notifications</a></div>
@@ -129,20 +131,20 @@
           <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
         </div>
         <div class="tb-profile">
-          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765">
             <div class="tb-avatar faculty"></div>
-            <div class="tb-profile-info"><div class="tb-profile-name" data-skeleton-kind="line" data-skeleton-label="Loading account">Loading account...</div><div class="tb-profile-role">Faculty</div></div>
+            <div class="tb-profile-info"><div class="tb-profile-name"></div><div class="tb-profile-role">Faculty</div></div>
             <i data-lucide="chevron-down" class="tb-chevron"></i>
           </button>
           <div class="tb-dropdown" id="tbProfileDropdown">
             <a class="tb-dropdown-item" href="edugnay-teacher-profile.html"><i data-lucide="user"></i> My Profile</a>
             <div class="tb-dropdown-divider"></div>
-            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out"></i> Sign Out</a>
+            <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902"><i data-lucide="log-out"></i> Sign Out</a>
           </div>
         </div>
       </div>
     </header>
-  <script>restoreProfileChip();</script>
+  <script src="../../assets/js/portal-header-init.js"></script>
 
     <main class="main sf-main">
       <div class="sf-info-banner" role="note">
@@ -269,6 +271,6 @@
     </section>
   </div>
 
-  <script src="../../assets/js/teacher/sf-templates.js?v=20261030-skeleton-regions"></script>
+  <script src="../../assets/js/teacher/sf-templates.js?v=20261030-data-regions"></script>
 </body>
 </html>
