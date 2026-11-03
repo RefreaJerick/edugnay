@@ -399,7 +399,7 @@ lucide.createIcons();
 
     function formatTeacherMaterialGrade(grade) {
       const value = String(grade || '').trim();
-      return /^(kindergarten|grade\s)/i.test(value) ? value : `Grade ${value}`;
+      return /^grade\s/i.test(value) ? value : `Grade ${value}`;
     }
 
     function getSelectedTeacherMaterialSection() {
@@ -428,8 +428,7 @@ lucide.createIcons();
       const gradeSelect = document.getElementById('teacherMaterialGrade');
       if (!gradeSelect) return;
       const selectedGrade = gradeSelect.value;
-      const gradeNumber = grade => /^kindergarten$/i.test(String(grade))
-        ? 0 : Number((String(grade).match(/\d+/) || [99])[0]);
+      const gradeNumber = grade => Number((String(grade).match(/\d+/) || [99])[0]);
       const grades = [...new Set(TEACHER_MATERIAL_SECTIONS.map(section => section.grade))]
         .sort((a, b) => gradeNumber(a) - gradeNumber(b) || String(a).localeCompare(String(b)));
       gradeSelect.replaceChildren(new Option('Select a grade level', ''), ...grades.map(grade =>

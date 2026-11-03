@@ -88,7 +88,7 @@
 
     function dashboardGradeKey(value) {
       const text = String(value || '').trim().toLowerCase();
-      return text === 'kindergarten' ? text : text.replace(/^grade\s*/, '');
+      return text.replace(/^grade\s*/, '');
     }
 
     function dashboardLevelLabel(level) {

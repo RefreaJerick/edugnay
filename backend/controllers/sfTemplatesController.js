@@ -665,8 +665,8 @@ async function preparePreview(req, database) {
     ? null : parseId(termValue, 'academic term ID');
   const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId,
     ['SF5', 'SF9'].includes(template.formCode));
-  if (template.formCode === 'SF5' && !/^grade-(?:[1-9]|10)$/.test(section.gradeCode)) {
-    throw createError('SF5 is available only for Grades 1–10.', 403);
+  if (template.formCode === 'SF5' && !/^grade-(?:[2-9]|10)$/.test(section.gradeCode)) {
+    throw createError('SF5 is available only for Grades 2–10.', 403);
   }
   if (template.formCode === 'SF9' && !/^grade-(?:[4-9]|10)$/.test(section.gradeCode)) {
     throw createError('SF9 is available only for Grades 4–10.', 403);

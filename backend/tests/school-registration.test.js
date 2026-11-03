@@ -86,6 +86,25 @@ test('SHS registration seeds Academic and TechPro without strands', async () => 
   assert.ok(!queries.some(query => query.sql?.includes('INSERT INTO school_shs_strands')));
 });
 
+test('Elementary registration seeds only Grades 2–6', async () => {
+  queries.length = 0;
+  const body = registration();
+  body.schoolLevels = ['elementary'];
+  body.academicTermConfigs = [{
+    schoolLevel: 'elementary', gradingPeriodType: 'quarterly', academicPeriods: [
+      { name: 'Quarter 1', plannedStartDate: '2026-08-01', plannedEndDate: '2026-10-31' },
+      { name: 'Quarter 2', plannedStartDate: '2026-11-01', plannedEndDate: '2027-01-31' },
+      { name: 'Quarter 3', plannedStartDate: '2027-02-01', plannedEndDate: '2027-03-31' },
+      { name: 'Quarter 4', plannedStartDate: '2027-04-01', plannedEndDate: '2027-05-31' }
+    ]
+  }];
+  const result = await call(body);
+  assert.equal(result.error, null);
+  const gradeCodes = queries.filter(query => query.sql?.startsWith('INSERT INTO school_grade_levels'))
+    .map(query => query.values[2]);
+  assert.deepEqual(gradeCodes, ['grade-2', 'grade-3', 'grade-4', 'grade-5', 'grade-6']);
+});
+
 test('registration saves the school, academic periods, and pending administrator together', async () => {
   queries.length = 0;
   const result = await call(registration());

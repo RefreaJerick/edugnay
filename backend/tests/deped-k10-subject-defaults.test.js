@@ -256,7 +256,7 @@ test('missing DepEd confirmation lists only eligible subjects and grade scopes',
   const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
   const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
   const start = page.indexOf('    function formatK10GradeNames(');
-  const end = page.indexOf('    function renderOtherGradeRules(', start);
+  const end = page.indexOf('    function renderK10GradingPane(', start);
   assert.ok(start >= 0 && end > start, 'grading summary and compact confirmation helpers are present');
 
   const components = (name, weight) => [{ name, weight, examParts: [] }];
@@ -490,16 +490,14 @@ test('missing DepEd confirmation lists only eligible subjects and grade scopes',
 test('Configure shows grade details only for exceptions and keeps published profiles read-only', () => {
   const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
   const helpersStart = page.indexOf('    function formatK10GradeNames(');
-  const helpersEnd = page.indexOf('    function renderOtherGradeRules(', helpersStart);
-  const exceptionsStart = page.indexOf('    function renderK10GroupExceptions(');
-  const exceptionsEnd = page.indexOf('    function openK10CatalogGroupEditor(', exceptionsStart);
+  const exceptionsEnd = page.indexOf('    function getK10GroupRestoreTargets(', helpersStart);
   const escapeHtml = value => String(value).replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char]);
   const context = {
     window: { EDUGNAY_CONFIG: { escapeHtml } },
     formatK10GradeNames: codes => codes.join(', '),
     state: { k10EditorGroup: null }
   };
-  vm.runInNewContext(page.slice(helpersStart, helpersEnd) + page.slice(exceptionsStart, exceptionsEnd), context);
+  vm.runInNewContext(page.slice(helpersStart, exceptionsEnd), context);
   const saved = { id: 2, status: 'configured', configurationSource: 'custom', gradeCodes: ['grade-2'], components: [{ code: 'examinations', name: 'Examinations', componentType: 'examination', weight: 30, examParts: [{ code: 'summative-test-1', name: 'Summative Test 1', weight: 50 }, { code: 'summative-test-2', name: 'Summative Test 2', weight: 50 }] }] };
   const pending = { id: 3, status: 'ready', needsExamSetup: true, gradeCodes: ['grade-3'], components: [] };
   const locked = { id: 4, status: 'published', configurationSource: 'custom', gradeCodes: ['grade-4'], components: [{ code: 'examinations', name: 'Examinations', componentType: 'examination', weight: 30, examParts: [{ code: 'term-exam', name: 'Term Exam', weight: 40 }] }] };

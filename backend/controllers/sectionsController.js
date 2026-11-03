@@ -3,6 +3,7 @@ const { avatarFields } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
 const { assertTeacherScheduleAvailable } = require('./timetablesController');
 const { COMMUNICATION_COMPONENTS, COMMUNICATION_COMPONENT_HOURS } = require('../config/shsCommunication');
+const { isSupportedGradeCode } = require('../config/gradeScope');
 
 const SECTION_STATUSES = new Set(['active', 'archived']);
 
@@ -184,7 +185,10 @@ async function validateSectionData(connection, schoolId, values) {
   const [levels] = await connection.execute('SELECT id, level_code AS levelCode, is_enabled AS isEnabled FROM school_levels WHERE id = ? AND school_id = ? LIMIT 1', [schoolLevelId, schoolId]);
   const [grades] = await connection.execute(`SELECT id, grade_code AS gradeCode FROM school_grade_levels
     WHERE id = ? AND school_level_id = ? AND is_enabled = TRUE LIMIT 1`, [gradeLevelId, schoolLevelId]);
-  if (!years.length || ['closed', 'archived'].includes(years[0].status) || !levels.length || !levels[0].isEnabled || !grades.length) throw createError('The academic year, school level, or grade level is invalid.', 404);
+  if (!years.length || ['closed', 'archived'].includes(years[0].status) || !levels.length || !levels[0].isEnabled
+    || !grades.length || !isSupportedGradeCode(grades[0].gradeCode)) {
+    throw createError('The academic year, school level, or grade level is invalid.', 404);
+  }
   if (levels[0].levelCode === 'shs') {
     if (!trackId) throw createError('Select an SHS track.');
     const [tracks] = await connection.execute('SELECT id, track_code AS trackCode FROM school_shs_tracks WHERE id = ? AND school_id = ? AND school_level_id = ? AND is_enabled = TRUE LIMIT 1', [trackId, schoolId, schoolLevelId]);
@@ -207,8 +211,7 @@ async function listSections(req, res, next) {
     const access = getAccessFilter(req, scope);
     const [sections] = await getDatabase().execute(`${sectionSelect()}${access.sql ? ` WHERE ${access.sql}` : ''}
       ORDER BY CASE school_levels.level_code WHEN 'elementary' THEN 0 WHEN 'jhs' THEN 1 WHEN 'shs' THEN 2 ELSE 3 END,
-        CASE WHEN school_grade_levels.grade_code = 'kindergarten' THEN 0
-          ELSE CAST(SUBSTRING_INDEX(school_grade_levels.grade_code, '-', -1) AS UNSIGNED) END,
+        CAST(SUBSTRING_INDEX(school_grade_levels.grade_code, '-', -1) AS UNSIGNED),
         sections.name`, access.values);
     const formatted = sections.map(formatSection);
     if (scope !== 'teaching' || !formatted.length) {

@@ -7,6 +7,7 @@ const { deleteSessionsForUser } = require('../config/session');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
 const { writeAuditLog } = require('../utils/auditLog');
 const { schoolEmailBase, schoolEmailCandidate, storedSchoolDomain } = require('../utils/schoolUserEmail');
+const { findStudentAccountSection, hasStudentSectionCapacity, isValidStudentAccountSection } = require('../utils/studentAccountSection');
 
 const ACCOUNT_STATUSES = new Set(['active', 'inactive', 'pending']);
 const MANAGED_ROLES = new Set(['school_admin', 'teacher', 'student', 'parent']);
@@ -594,6 +595,11 @@ async function createUser(req, res, next) {
       throw createError('Employee number is required for staff accounts.');
     }
     const lrn = role === 'student' ? normalizeLrn(body.lrn) : null;
+    const sectionIdText = role === 'student' ? String(body.sectionId ?? '').trim() : '';
+    const sectionId = sectionIdText ? Number(sectionIdText) : null;
+    if (sectionIdText && (!/^[1-9]\d*$/.test(sectionIdText) || !Number.isSafeInteger(sectionId))) {
+      throw createError('Choose an active Grade 2–12 section in the current school year.');
+    }
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     const displayName = [body.honorific ? normalizeText(body.honorific, 30) : null, firstName, lastName].filter(Boolean).join(' ');
     const initials = `${firstName[0]}${lastName[0]}`.toUpperCase();
@@ -603,6 +609,16 @@ async function createUser(req, res, next) {
     await connection.beginTransaction();
     const [[school]] = await connection.execute('SELECT school_email_domain AS schoolEmailDomain FROM schools WHERE id = ? LIMIT 1', [schoolId]);
     if (!school) throw createError('School not found.', 404);
+    let studentSection = null;
+    if (role === 'student' && sectionId !== null) {
+      studentSection = await findStudentAccountSection(connection, schoolId, sectionId, true);
+      if (!isValidStudentAccountSection(studentSection)) {
+        throw createError('Choose an active Grade 2–12 section in the current school year.');
+      }
+      if (!await hasStudentSectionCapacity(connection, studentSection, 1)) {
+        throw createError('The selected section has reached its capacity.', 409);
+      }
+    }
     const domain = storedSchoolDomain(school);
     if (employeeNo) {
       const [staffMatches] = await connection.execute(
@@ -640,6 +656,12 @@ async function createUser(req, res, next) {
     if (role === 'student') {
       await connection.execute('INSERT INTO student_profiles (user_id, lrn) VALUES (?, ?)', [userId, lrn]);
       await issueStudentQrCredential(connection, schoolId, userId);
+      if (studentSection) {
+        await connection.execute(
+          'INSERT INTO section_students (school_id, section_id, student_user_id) VALUES (?, ?, ?)',
+          [schoolId, sectionId, userId]
+        );
+      }
     }
     else if (role === 'parent') await connection.execute('INSERT INTO parent_profiles (user_id) VALUES (?)', [userId]);
     else if (role === 'teacher') await connection.execute('INSERT INTO teacher_profiles (user_id, employee_number) VALUES (?, ?)', [userId, employeeNo]);
@@ -667,6 +689,8 @@ async function createUser(req, res, next) {
     await writeAuditLog(connection, req, 'user_created', 'user', userId, {
       displayName,
       role,
+      ...(studentSection ? { sectionId: Number(studentSection.id), sectionName: studentSection.name,
+        gradeName: studentSection.gradeLevelName, schoolYear: studentSection.academicYearLabel } : {}),
       summary: `${displayName} · ${role.replace(/_/g, ' ')}`
     }, schoolId);
     await connection.commit();

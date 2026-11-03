@@ -18,7 +18,7 @@ const {
 } = require('../config/email');
 
 const LEVEL_DEFAULTS = {
-  elementary: { displayName: 'Elementary', gradingPeriodType: 'quarterly', grades: ['kindergarten', 'grade-1', 'grade-2', 'grade-3', 'grade-4', 'grade-5', 'grade-6'] },
+  elementary: { displayName: 'Elementary', gradingPeriodType: 'quarterly', grades: ['grade-2', 'grade-3', 'grade-4', 'grade-5', 'grade-6'] },
   jhs: { displayName: 'Junior High School', gradingPeriodType: 'quarterly', grades: ['grade-7', 'grade-8', 'grade-9', 'grade-10'] },
   shs: { displayName: 'Senior High School', gradingPeriodType: 'semestral', grades: ['grade-11', 'grade-12'] }
 };
@@ -69,7 +69,7 @@ function boolean(value) {
 }
 
 function gradeLabel(code) {
-  return code === 'kindergarten' ? 'Kindergarten' : `Grade ${code.replace('grade-', '')}`;
+  return `Grade ${code.replace('grade-', '')}`;
 }
 
 function trackLabel(code) {
@@ -154,9 +154,9 @@ async function getStructure(database, schoolId) {
       school_grade_levels.sort_order AS sortOrder, school_grade_levels.is_enabled AS isEnabled
     FROM school_grade_levels INNER JOIN school_levels ON school_levels.id = school_grade_levels.school_level_id
     WHERE school_levels.school_id = ?
+      AND school_grade_levels.grade_code NOT IN ('kindergarten', 'grade-1')
     ORDER BY CASE school_levels.level_code WHEN 'elementary' THEN 0 WHEN 'jhs' THEN 1 WHEN 'shs' THEN 2 ELSE 3 END,
-      CASE WHEN school_grade_levels.grade_code = 'kindergarten' THEN 0
-        ELSE CAST(SUBSTRING_INDEX(school_grade_levels.grade_code, '-', -1) AS UNSIGNED) END,
+      CAST(SUBSTRING_INDEX(school_grade_levels.grade_code, '-', -1) AS UNSIGNED),
       school_grade_levels.id`, [schoolId]
   );
   const [tracks] = await database.execute(
@@ -390,7 +390,7 @@ async function registerSchool(req, res, next) {
       );
       levelIds[code] = levelResult.insertId;
       for (const gradeCode of definition.grades) {
-        const sortOrder = gradeCode === 'kindergarten' ? 0 : Number(gradeCode.replace('grade-', ''));
+        const sortOrder = Number(gradeCode.replace('grade-', ''));
         await connection.execute('INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, gradeCode, gradeLabel(gradeCode), sortOrder]);
       }
       if (code === 'shs') {
@@ -696,7 +696,7 @@ async function resubmitSchoolRegistration(req, res, next) {
         [school.id, code]
       );
       for (const gradeCode of definition.grades) {
-        const sortOrder = gradeCode === 'kindergarten' ? 0 : Number(gradeCode.replace('grade-', ''));
+        const sortOrder = Number(gradeCode.replace('grade-', ''));
         await connection.execute(
           `INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled)
           VALUES (?, ?, ?, ?, ?, TRUE)
@@ -1264,7 +1264,7 @@ async function updateAcademicStructure(req, res, next) {
           throw createError('The grade-level configuration is invalid.');
         }
         for (const grade of level.gradeLevels) {
-          await connection.execute(`INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), sort_order=VALUES(sort_order), is_enabled=VALUES(is_enabled)`, [schoolId, storedLevel.id, grade.gradeCode, text(grade.displayName, 80) || gradeLabel(grade.gradeCode), Number(grade.sortOrder) || (grade.gradeCode === 'kindergarten' ? 0 : Number(grade.gradeCode.replace('grade-', ''))), boolean(grade.isEnabled)]);
+          await connection.execute(`INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), sort_order=VALUES(sort_order), is_enabled=VALUES(is_enabled)`, [schoolId, storedLevel.id, grade.gradeCode, text(grade.displayName, 80) || gradeLabel(grade.gradeCode), Number(grade.sortOrder) || Number(grade.gradeCode.replace('grade-', '')), boolean(grade.isEnabled)]);
         }
         if (gradeCodes.length) {
           await connection.execute(`UPDATE school_grade_levels SET is_enabled = FALSE WHERE school_level_id = ? AND grade_code NOT IN (${gradeCodes.map(() => '?').join(', ')})`, [storedLevel.id, ...gradeCodes]);

@@ -175,7 +175,7 @@ function availableSections() {
     const closedSection = (sf5Only || sf9Only)
       && section.status === 'archived' && section.academicYearStatus === 'closed';
     return (currentSection || closedSection)
-      && (!includesSf5 || /^grade-(?:[1-9]|10)$/.test(section.gradeCode))
+      && (!includesSf5 || /^grade-(?:[2-9]|10)$/.test(section.gradeCode))
       && (!includesSf9 || /^grade-(?:[4-9]|10)$/.test(section.gradeCode));
   });
 }

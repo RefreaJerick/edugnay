@@ -179,6 +179,7 @@ test('SF5 supports mixed active-year selections and retains individual closed-ye
   const api = await fs.readFile(path.join(root, 'assets', 'js', 'shell-common.js'), 'utf8');
   assert.match(page, /templates\.length <= 5[\s\S]*formCodes\.every\(code => \['SF1', 'SF2', 'SF3', 'SF5', 'SF8'\]\.includes\(code\)\)/);
   assert.match(page, /includesSf5[\s\S]*sf5Only[\s\S]*academicYearStatus[\s\S]*gradeCode/);
+  assert.match(page, /!includesSf5 \|\| \/\^grade-\(\?:\[2-9\]\|10\)\$\//);
   assert.match(page, /\['SF2', 'SF3', 'SF5', 'SF8'\]\.includes\(form\.formCode\) && form\.pages\.length > 1/);
   assert.match(page, /renderSf5Breakdown\(form\)/);
   assert.match(api, /templates\.length > 5[\s\S]*'SF1', 'SF2', 'SF3', 'SF5', 'SF8'/);
@@ -309,6 +310,12 @@ test('SF5 preview permits a closed year only for an adviser, rejects stale previ
   assert.equal((await invoke(controller.previewTemplate, request({}, 99))).error.status, 403);
   gradeCode = 'grade-11';
   assert.equal((await invoke(controller.previewTemplate, request())).error.status, 403);
+  for (const legacyGradeCode of ['kindergarten', 'grade-1']) {
+    gradeCode = legacyGradeCode;
+    assert.equal((await invoke(controller.previewTemplate, request())).error.status, 403, legacyGradeCode);
+  }
+  gradeCode = 'grade-2';
+  assert.equal((await invoke(controller.previewTemplate, request())).error, undefined);
   gradeCode = 'grade-7';
   assert.equal((await invoke(controller.generateTemplate, request({ previewFingerprint: '0'.repeat(64) }))).error.status, 409);
   assert.equal(writes, 0);

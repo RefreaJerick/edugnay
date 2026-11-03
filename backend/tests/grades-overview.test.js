@@ -334,30 +334,6 @@ test('DepEd K-10 method uses its 75 passing threshold when no school-specific ru
   assert.equal(result.data.overview.publishedGrades[0].passingGradeThreshold, 75);
 });
 
-test('Grade 1 keeps the school-level threshold while Grade 5 uses its DepEd final-grade rule', async () => {
-  gradeCode = 'grade-1';
-  schoolLevelCode = 'elementary';
-  savedRules = {
-    '4:2': { gradingMode: 'school_specific', passingGradeThreshold: '83.00', gradeRounding: 'roundup' }
-  };
-  extraEnrollmentRows = [{
-    ...section,
-    sectionId: 9,
-    sectionName: 'St. Peter',
-    schoolId: 1,
-    schoolLevelCode: 'elementary',
-    gradeCode: 'grade-5'
-  }];
-
-  const result = await callOverview();
-  const currentYear = result.data.overview.academicYears.find(year => year.id === '4');
-
-  assert.equal(result.error, null);
-  assert.equal(currentYear.sections.find(item => item.id === '8').passingGradeThreshold, 75);
-  assert.equal(currentYear.sections.find(item => item.id === '9').passingGradeThreshold, 83);
-  assert.equal(result.data.overview.publishedGrades[0].passingGradeThreshold, 75);
-});
-
 test('Grade 2–3 published displays use their SY 2026–27 DepEd passing threshold', async () => {
   for (const code of ['grade-2', 'grade-3']) {
     resetScenario();

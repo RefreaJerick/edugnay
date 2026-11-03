@@ -992,16 +992,31 @@ body.sf-validation-modal-open {
   }
 
   .sf-template-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 36px minmax(0, 1fr);
+    align-items: start;
+    row-gap: 8px;
+  }
+
+  .sf-template-code,
+  .sf-template-name,
+  .sf-template-file,
+  .sf-template-meta {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .sf-template-row > div:nth-child(3),
+  .sf-template-actions {
+    grid-column: 1 / -1;
   }
 
   .sf-template-file {
-    grid-column: 2;
+    white-space: normal;
+    text-overflow: clip;
   }
 
   .sf-template-actions {
-    grid-column: 3;
-    grid-row: 1;
+    justify-content: flex-start;
   }
 
   .sf-preview-head {

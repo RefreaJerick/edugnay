@@ -40,6 +40,7 @@ test('academic structure includes school-scoped grade and track IDs for class ma
   assert.equal(queries.length, 3);
   assert.ok(queries.every(query => query.values[0] === 12));
   assert.match(queries[1].sql, /school_grade_levels\.id/);
+  assert.match(queries[1].sql, /grade_code NOT IN \('kindergarten', 'grade-1'\)/);
   assert.match(queries[2].sql, /school_shs_tracks\.id/);
   assert.doesNotMatch(queries[2].sql, /school_shs_strands/);
 });

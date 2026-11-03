@@ -181,6 +181,7 @@ async function addDatabaseValidationErrors(database, records, role, schoolId) {
       const existingLrns = new Set(students.map(student => student.lrn));
       records.filter(record => existingLrns.has(record.lrn)).forEach(record => record.errors.push('lrn is already assigned.'));
     }
+
   }
 
   if (role === 'school_admin' || role === 'teacher') {

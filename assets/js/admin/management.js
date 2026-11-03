@@ -1710,7 +1710,7 @@ const managementMoveState = { student: null, level: '', grade: '', track: '', st
 
 function managementGradeKey(value) {
   const text = String(value || '').trim().toLowerCase();
-  return text === 'kindergarten' ? text : text.replace(/^grade\s*/, '');
+  return text.replace(/^grade\s*/, '');
 }
 
 function managementStrandKey(value) {
@@ -1811,9 +1811,7 @@ function managementSectionSort(a, b) {
   const levelDifference = (levelOrder[a.level] ?? 99) - (levelOrder[b.level] ?? 99);
   if (levelDifference) return levelDifference;
 
-  const gradeValue = section => section.gradeValue === 'kindergarten'
-    ? 0
-    : Number.parseInt(section.gradeValue, 10) || 99;
+  const gradeValue = section => Number.parseInt(section.gradeValue, 10) || 99;
   const gradeDifference = gradeValue(a) - gradeValue(b);
   if (gradeDifference) return gradeDifference;
   return String(a.name || '').localeCompare(String(b.name || ''));

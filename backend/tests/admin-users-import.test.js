@@ -7,6 +7,7 @@ const vm = require('node:vm');
 
 const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
 const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const adminUsers = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/users.js'), 'utf8');
 const submitBody = html.split("document.getElementById('importUsersForm').addEventListener('submit', async function (e) {")[1]
   .split('\n    });')[0];
 
@@ -134,6 +135,20 @@ test('import controls require the backend and disallow administrator CSVs', () =
   assert.match(html, /data-role="adm"[^>]*disabled[^>]*data-page-click="p663d2024f7a7"/);
   assert.match(html, /p663d2024f7a7: function\(event\) \{ selectImportRole\('adm'\) \}/);
   assert.match(html, /function openImportModal\(\) \{\s*if \(!usersApiActive \|\| usersLoading \|\| usersLoadError\)/);
+});
+
+test('manual student section is optional and student CSVs contain no section column', () => {
+  assert.match(html, /id="studentPlacementGroup"/);
+  assert.match(html, /name="sectionId" id="accountStudentSectionId"/);
+  assert.match(html, /Grade 2–12 section \(optional\)/);
+  assert.match(html, /assign the student later in Class Management/);
+  const csvColumns = adminUsers.split('const CSV_COLS = {')[1].split('\n    };')[0];
+  assert.match(csvColumns, /stud: \['firstName', 'lastName', 'personalEmail', 'lrn'\]/);
+  assert.doesNotMatch(csvColumns, /sectionId/);
+  assert.match(adminUsers, /section\.academicYearStatus === 'active'/);
+  assert.match(adminUsers, /\^grade-\(\?:\[2-9\]\|1\[0-2\]\)\$/);
+  assert.doesNotMatch(html, /csvStudentSectionHint|sectionId is optional/);
+  assert.match(adminUsers, /const unexpectedColumns = parsed\.headers\.filter\(column => !expectedColumns\.includes\(column\)\)/);
 });
 
 test('refreshed accounts follow the selected Date Added order', () => {

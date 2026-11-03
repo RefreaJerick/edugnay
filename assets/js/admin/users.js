@@ -59,6 +59,7 @@
         sortUsersByDate();
         backendUserSections = sections.filter(section =>
           section.status === 'active' && section.academicYearStatus === 'active'
+          && /^grade-(?:[2-9]|1[0-2])$/.test(String(section.gradeCode || ''))
         );
         backendParentChildren = new Map(await Promise.all(USERS.filter(user => user.role === 'parent').map(async parent => [
           String(parent.id), await window.EDUGNAY_API.getParentChildren(parent.id)
@@ -89,8 +90,6 @@
     function formatGradeLevel(value) {
       const raw = String(value || '').trim();
       if (!raw || /^unassigned$/i.test(raw)) return '';
-      if (/^kindergarten$/i.test(raw)) return 'Kindergarten';
-
       const match = raw.match(/(?:grade|gr\.?)\s*(\d{1,2})/i) || raw.match(/^(\d{1,2})$/);
       return match ? `Grade ${match[1]}` : '';
     }
@@ -125,7 +124,6 @@
     }
 
     function gradeLevelSortValue(gradeLevel) {
-      if (/^kindergarten$/i.test(gradeLevel)) return 0;
       return Number((String(gradeLevel).match(/\d+/) || [99])[0]);
     }
 
@@ -427,6 +425,10 @@
         data.employeeNo = accountFieldValue('accountEmployeeNo').toUpperCase();
       }
       if (role === 'student') data.lrn = accountFieldValue('accountLRN');
+      if (role === 'student' && !data.userId) {
+        const sectionId = accountFieldValue('accountStudentSectionId');
+        if (sectionId) data.sectionId = sectionId;
+      }
       if (role === 'parent') data.parentLinks = linkedStudents.map(link => ({ ...link }));
       return data;
     }
@@ -533,6 +535,7 @@
       if (!data.userId) payload.role = data.role;
       if (data.employeeNo !== undefined) payload.employeeNo = data.employeeNo;
       if (data.lrn !== undefined) payload.lrn = data.lrn;
+      if (data.sectionId !== undefined) payload.sectionId = data.sectionId;
       if (data.parentLinks !== undefined && (!data.userId ||
         data.parentLinks.length !== originalLinkedStudents.length ||
         data.parentLinks.some(link => !originalLinkedStudents.some(saved => saved.studentId === link.studentId && saved.relationship === link.relationship)))) {
@@ -1347,11 +1350,13 @@
     function updateAccountModalFields() {
       const role = document.getElementById('accountRole').value;
       const isStudent = role === 'stud';
+      const isNewStudent = isStudent && !document.getElementById('accountUserId').value;
       const isStaff = role === 'adm' || role === 'fac';
       const isParent = role === 'parents';
       const groups = [
         ['employeeNumberGroup', isStaff],
         ['studentIdentifierGroup', isStudent],
+        ['studentPlacementGroup', isNewStudent],
         ['parentLinksGroup', isParent]
       ];
 
@@ -1364,8 +1369,26 @@
       });
 
       const lrnInput = document.getElementById('accountLRN');
+      const sectionInput = document.getElementById('accountStudentSectionId');
       const employeeInput = document.getElementById('accountEmployeeNo');
       lrnInput.required = isStudent;
+      sectionInput.required = false;
+      if (isNewStudent) {
+        const selectedSectionId = sectionInput.value;
+        sectionInput.replaceChildren(new Option('Select a section', ''));
+        backendUserSections.forEach(section => {
+          const label = `${section.gradeLevelName || section.grade} · ${section.name}`;
+          sectionInput.add(new Option(label, String(section.id)));
+        });
+        if (backendUserSections.length) {
+          sectionInput.value = backendUserSections.some(section => String(section.id) === selectedSectionId)
+            ? selectedSectionId : '';
+        } else {
+          sectionInput.options[0].textContent = 'No active Grade 2–12 sections available';
+        }
+      } else {
+        sectionInput.value = '';
+      }
       employeeInput.required = isStaff;
       employeeInput.placeholder = role === 'adm' ? 'e.g. ADM-2016-0001' : 'e.g. FAC-2019-0042';
 
@@ -1591,6 +1614,7 @@
       const duplicateHeaders = parsed.headers.filter((header, index) => (
         header && parsed.headers.indexOf(header) !== index
       ));
+      const tableRole = ROLE_OPT_TO_TABLE[role];
       const missingColumns = expectedColumns.filter(column => !parsed.headers.includes(column));
       const unexpectedColumns = parsed.headers.filter(column => !expectedColumns.includes(column));
 
@@ -1598,8 +1622,6 @@
       if (missingColumns.length) result.errors.push(`Missing column: ${missingColumns.join(', ')}.`);
       if (unexpectedColumns.length) result.errors.push(`Unexpected column: ${unexpectedColumns.join(', ')}.`);
       if (!parsed.rows.length) result.errors.push('The CSV does not contain any data rows.');
-
-      const tableRole = ROLE_OPT_TO_TABLE[role];
 
       result.records = parsed.rows.map((cells, index) => {
         const record = { rowNumber: index + 2, errors: [] };

@@ -102,9 +102,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
     }
 
     function gradeCode(label) {
-      return String(label).toLowerCase() === 'kindergarten'
-        ? 'kindergarten'
-        : `grade-${String(label).match(/\d+/)?.[0] || ''}`;
+      return `grade-${String(label).match(/\d+/)?.[0] || ''}`;
     }
 
     function trackCode(label) {
@@ -248,7 +246,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
           gradeLevels: catalog.grades.map((displayName, index) => ({
             gradeCode: gradeCode(displayName),
             displayName,
-            sortOrder: displayName === 'Kindergarten' ? 0 : index,
+            sortOrder: Number(gradeCode(displayName).replace('grade-', '')) || index,
             isEnabled: enabledGrades.includes(displayName)
           })),
           tracks: (catalog.tracks || []).map(displayName => ({
@@ -781,29 +779,6 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
         + earlyNote;
     }
 
-    function renderOtherGradeRules(apiLevel, defaults) {
-      const lowerGradeCodes = new Set(['kindergarten', 'grade-1']);
-      const enabledLowerGrades = (apiLevel.gradeLevels || []).filter(grade =>
-        grade.isEnabled !== false && lowerGradeCodes.has(String(grade.gradeCode || '').toLowerCase())
-      );
-      if (!enabledLowerGrades.length) return '';
-
-      const categories = state.apiGradingCategories.filter(category => Number(category.schoolLevelId) === Number(apiLevel.id));
-      const rules = categories.map(category => ({ id: category.code, label: category.name, weight: Number(category.weight) }));
-      const gradeRounding = apiLevel.gradeRounding || defaults.gradeRounding || 'round';
-      const passingGradeThreshold = Number(apiLevel.passingGradeThreshold ?? defaults.passingGradeThreshold);
-      return `<section class="school-section-block school-k10-other-grade-rules">
-        <div class="school-section-block-title">Current rules for enabled Kindergarten–Grade 1 levels</div>
-        <div class="school-section-block-sub">These grades remain on the existing school-level setup; Grades 2–10 use the subject rules above when eligible for numerical grading.</div>
-        <form id="schoolK3GradingForm">
-          <div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="k3-weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}">${window.EDUGNAY_CONFIG.escapeHtml(rule.label)}</label><input id="k3-weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
-          <div class="weight-total" id="k3WeightTotal"></div>
-          <div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="k3PassingGradeThreshold">Passing grade threshold</label><input id="k3PassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${Number.isFinite(passingGradeThreshold) ? passingGradeThreshold : 75}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="k3GradeRounding">Grade rounding</label><select id="k3GradeRounding" name="gradeRounding"><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>Applied when final grades are calculated.</small></div></div></div>
-          <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save Kindergarten–Grade 1 rules</button></div>
-        </form>
-      </section>`;
-    }
-
     function renderK10GradingPane(school, level, apiLevel, preview) {
       setSettingsHeading('Grading rules', 'Configure policy-based weights by learning area for eligible Grades 2–10.');
       const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
@@ -857,7 +832,6 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
               </form>
             </section>
           </div>
-          ${renderOtherGradeRules(apiLevel, window.EDUGNAY_CONFIG.createDivision(level))}
         </div>`;
       const openApplyMissingButton = document.getElementById('openApplyMissingDepedDefaults');
       if (openApplyMissingButton) openApplyMissingButton.addEventListener('click', openApplyMissingDepedDefaults);
@@ -888,18 +862,6 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
           }
         });
         k10FinalRulesForm.addEventListener('submit', saveK10FinalGradeSettings);
-      }
-      const k3GradingForm = document.getElementById('schoolK3GradingForm');
-      if (k3GradingForm) {
-        const categories = state.apiGradingCategories.filter(category => Number(category.schoolLevelId) === Number(apiLevel.id));
-        const updateK3WeightTotal = () => {
-          const total = categories.reduce((sum, category) => sum + Number(k3GradingForm.elements[category.code]?.value || 0), 0);
-          const totalElement = document.getElementById('k3WeightTotal');
-          if (totalElement) totalElement.textContent = `Total weight: ${total}%${total === 100 ? ' | Ready to use' : ' | Adjust to reach 100%'}`;
-        };
-        k3GradingForm.addEventListener('input', updateK3WeightTotal);
-        k3GradingForm.addEventListener('submit', saveGrading);
-        updateK3WeightTotal();
       }
       document.querySelectorAll('[data-k10-edit-subject]').forEach(button => button.addEventListener('click', () => {
         const subject = preview.subjects.find(item => Number(item.id) === Number(button.dataset.k10EditSubject));
