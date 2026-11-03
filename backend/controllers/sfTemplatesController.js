@@ -6,7 +6,8 @@ const { SF2, monthInYear, buildSf2Pages } = require('../config/sf2');
 const { SF3, buildSf3Pages } = require('../config/sf3');
 const { SF5, buildSf5Pages } = require('../config/sf5');
 const { SF8, buildSf8Pages } = require('../config/sf8');
-const { SF9, buildSf9Pages, displayName: sf9DisplayName } = require('../config/sf9');
+const { SF9, SF9_GRADE11_ACADEMIC, buildSf9Pages, buildSf9Grade11AcademicPages,
+  displayName: sf9DisplayName, isGrade11AcademicSf9 } = require('../config/sf9');
 
 const SF1_TEMPLATE = {
   formCode: 'SF1',
@@ -147,11 +148,13 @@ async function getAdvisorySections(database, teacherId, schoolId, includeClosed 
   const [sections] = await database.execute(
     `SELECT sections.id, sections.name, sections.status AS sectionStatus, academic_years.label AS academicYear,
       academic_years.status AS academicYearStatus, school_grade_levels.grade_code AS gradeCode,
-      school_grade_levels.display_name AS gradeLevel
+      school_grade_levels.display_name AS gradeLevel, sections.shs_curriculum_code AS shsCurriculumCode,
+      tracks.track_code AS trackCode
     FROM sections
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
       AND academic_years.status ${includeClosed ? "IN ('active', 'closed')" : "= 'active'"}
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+    LEFT JOIN school_shs_tracks AS tracks ON tracks.id = sections.track_id AND tracks.school_id = sections.school_id
     WHERE sections.school_id = ? AND sections.adviser_user_id = ?
       AND ${includeClosed
     ? "((sections.status = 'active' AND academic_years.status = 'active') OR (sections.status = 'archived' AND academic_years.status = 'closed'))"
@@ -165,6 +168,8 @@ async function getAdvisorySections(database, teacherId, schoolId, includeClosed 
     sectionStatus: section.sectionStatus,
     gradeLevel: section.gradeLevel,
     gradeCode: section.gradeCode,
+    trackCode: section.trackCode || null,
+    shsCurriculumCode: section.shsCurriculumCode || null,
     academicYear: section.academicYear,
     academicYearStatus: section.academicYearStatus,
     displayName: `${section.gradeLevel} - ${section.name}`
@@ -176,7 +181,8 @@ async function getAdvisorySection(database, teacherId, schoolId, sectionId, incl
     `SELECT sections.id, sections.school_id AS schoolId, sections.name,
       sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId,
       sections.grade_level_id AS gradeLevelId, sections.track_id AS trackId, sections.strand_id AS strandId,
-      tracks.display_name AS trackName, strands.display_name AS strandName,
+      sections.shs_curriculum_code AS shsCurriculumCode,
+      tracks.track_code AS trackCode, tracks.display_name AS trackName, strands.display_name AS strandName,
       academic_years.label AS academicYear, academic_years.status AS academicYearStatus,
       school_grade_levels.display_name AS gradeLevel,
       school_grade_levels.grade_code AS gradeCode,
@@ -298,7 +304,7 @@ async function getSf5GradeData(database, schoolId, section, learners) {
     ORDER BY subjects.name, subjects.id`, [schoolId, section.id]
   );
   const [terms] = await database.execute(
-    `SELECT id, name FROM academic_terms WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ?
+    `SELECT id, name, sequence_number AS sequenceNumber FROM academic_terms WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ?
     ORDER BY sequence_number`, [schoolId, section.academicYearId, section.schoolLevelId]
   );
   if (!learners.length || !subjects.length || !terms.length) return { subjects, terms, grades: [] };
@@ -306,7 +312,9 @@ async function getSf5GradeData(database, schoolId, section, learners) {
   const [grades] = await database.execute(
     `SELECT published_final_grades.student_user_id AS studentId,
       published_final_grades.subject_id AS subjectId, published_final_grades.academic_term_id AS academicTermId,
-      published_final_grades.final_grade AS finalGrade, source_section.name AS sectionName
+      published_final_grades.final_grade AS finalGrade,
+      published_final_grades.communication_grade_source AS communicationGradeSource,
+      source_section.name AS sectionName
     FROM published_final_grades
     INNER JOIN sections AS source_section ON source_section.id = published_final_grades.section_id
       AND source_section.school_id = published_final_grades.school_id
@@ -325,6 +333,90 @@ async function getSf5GradeData(database, schoolId, section, learners) {
       ...ids, ...subjects.map(subject => subject.id), ...terms.map(term => term.id)]
   );
   return { subjects, terms, grades };
+}
+
+async function getSf9Grade11CommunicationGrades(database, schoolId, section, learner, terms, subjectId) {
+  if (!subjectId || !terms.length) return [];
+  const [grades] = await database.execute(
+    `SELECT component_grades.subject_id AS subjectId,
+      component_grades.communication_component_code AS communicationComponentCode,
+      component_grades.academic_term_id AS academicTermId,
+      component_grades.final_grade AS finalGrade, source_section.name AS sectionName
+    FROM shs_communication_component_grades AS component_grades
+    INNER JOIN sections AS source_section ON source_section.id = component_grades.section_id
+      AND source_section.school_id = component_grades.school_id
+      AND source_section.academic_year_id = ? AND source_section.grade_level_id = ?
+      AND source_section.track_id <=> ? AND source_section.strand_id <=> ?
+    WHERE component_grades.school_id = ? AND component_grades.student_user_id = ?
+      AND component_grades.subject_id = ?
+      AND component_grades.academic_term_id IN (${terms.map(() => '?').join(', ')})
+      AND EXISTS (SELECT 1 FROM section_students AS enrollment
+        WHERE enrollment.school_id = component_grades.school_id
+          AND enrollment.section_id = component_grades.section_id
+          AND enrollment.student_user_id = component_grades.student_user_id
+          AND (enrollment.withdrawn_at IS NULL OR component_grades.published_at <= enrollment.withdrawn_at))`,
+    [section.academicYearId, section.gradeLevelId, section.trackId, section.strandId, schoolId,
+      learner.userId, subjectId, ...terms.map(term => term.id)]
+  );
+  return grades;
+}
+
+async function getSf9Grade11ElectiveData(database, schoolId, section, learner) {
+  const [records] = await database.execute(
+    `SELECT elective_classes.id AS electiveClassId, offerings.catalog_code AS catalogCode,
+      offerings.subject_name AS electiveName, published_grades.academic_term_id AS academicTermId,
+      terms.name AS termName, terms.sequence_number AS termSequenceNumber,
+      published_grades.final_grade AS finalGrade
+    FROM shs_selection_requests AS requests
+    INNER JOIN shs_selection_request_classes AS request_classes
+      ON request_classes.school_id = requests.school_id AND request_classes.request_id = requests.id
+    INNER JOIN shs_elective_classes AS elective_classes
+      ON elective_classes.school_id = request_classes.school_id AND elective_classes.id = request_classes.elective_class_id
+    INNER JOIN shs_offerings AS offerings
+      ON offerings.school_id = elective_classes.school_id AND offerings.id = elective_classes.offering_id
+    LEFT JOIN published_final_grades AS published_grades
+      ON published_grades.school_id = requests.school_id
+      AND published_grades.shs_elective_class_id = elective_classes.id
+      AND published_grades.student_user_id = requests.student_user_id
+    LEFT JOIN academic_terms AS terms
+      ON terms.school_id = published_grades.school_id AND terms.id = published_grades.academic_term_id
+      AND terms.academic_year_id = offerings.academic_year_id
+    WHERE requests.school_id = ? AND requests.academic_year_id = ?
+      AND requests.grade_level_id = ? AND requests.student_user_id = ? AND requests.status = 'approved'
+      AND offerings.academic_year_id = ? AND offerings.grade_level_id = ?
+      AND offerings.track_code = 'academic' AND offerings.subject_type = 'academic_elective'
+    ORDER BY offerings.subject_name, elective_classes.id, terms.sequence_number`,
+    [schoolId, section.academicYearId, section.gradeLevelId, learner.userId,
+      section.academicYearId, section.gradeLevelId]
+  );
+  const electiveClasses = new Map();
+  const electiveGrades = [];
+  records.forEach(record => {
+    const key = String(record.electiveClassId);
+    if (!electiveClasses.has(key)) electiveClasses.set(key, {
+      electiveClassId: record.electiveClassId,
+      catalogCode: record.catalogCode,
+      electiveName: record.electiveName
+    });
+    if (record.academicTermId !== null && record.academicTermId !== undefined) {
+      electiveGrades.push({ ...record, electiveClassId: record.electiveClassId });
+    }
+  });
+  return { electiveClasses: [...electiveClasses.values()], electiveGrades };
+}
+
+function sf9SectionIsEligible(template, section) {
+  if (isGrade11AcademicSf9(template)) {
+    return section.gradeCode === 'grade-11' && section.trackCode === 'academic'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
+  }
+  return /^grade-(?:[4-9]|10)$/.test(section.gradeCode);
+}
+
+function sf9EligibilityMessage(template) {
+  return isGrade11AcademicSf9(template)
+    ? 'The Grade 11 Academic SF9 is available only for Strengthened SHS Academic sections in school year 2026-2027.'
+    : 'SF9 is available only for Grades 4–10.';
 }
 
 function buildGenerationData(school, section, learners) {
@@ -588,7 +680,14 @@ async function getTemplateDetails(req, res, next) {
     const database = getDatabase();
     await ensureFeatureEnabled(database, req.user.schoolId);
     const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
-    const mappings = template.formCode === 'SF9'
+    const mappings = template.formCode === 'SF9' && isGrade11AcademicSf9(template)
+      ? [...Object.entries(SF9_GRADE11_ACADEMIC.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9_GRADE11_ACADEMIC.sheetName, cellReference })),
+        ...[
+          ['subjectName', 'B33'], ['englishComponentGrade', 'F34'], ['filipinoComponentGrade', 'F35'],
+          ['firstPeriodGrade', 'F33'], ['electiveSubject1', 'B41'], ['electiveSubject2', 'B42'],
+          ['electiveSubject3', 'B43'], ['generalAverage', 'I44']
+        ].map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9_GRADE11_ACADEMIC.sheetName, cellReference }))]
+      : template.formCode === 'SF9'
       ? [...Object.entries(SF9.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9.sheetName, cellReference })),
         { fieldKey: 'subjectName', worksheetName: SF9.sheetName, cellReference: `B${SF9.firstSubjectRow}` },
         { fieldKey: 'firstPeriodGrade', worksheetName: SF9.sheetName, cellReference: `F${SF9.firstSubjectRow}` },
@@ -641,8 +740,8 @@ async function listSf9Learners(req, res, next) {
     if (template.formCode !== 'SF9') throw createError('Learner selection is available only for SF9.', 404);
     const sectionId = parseId(req.query.sectionId, 'section ID');
     const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId, true);
-    if (!/^grade-(?:[4-9]|10)$/.test(section.gradeCode)) {
-      throw createError('SF9 is available only for Grades 4–10.', 403);
+    if (!sf9SectionIsEligible(template, section)) {
+      throw createError(sf9EligibilityMessage(template), 403);
     }
     const learners = await getSectionLearners(database, req.user.schoolId, section.id,
       section.academicYearStatus === 'closed' ? section.endDate : null);
@@ -668,8 +767,8 @@ async function preparePreview(req, database) {
   if (template.formCode === 'SF5' && !/^grade-(?:[2-9]|10)$/.test(section.gradeCode)) {
     throw createError('SF5 is available only for Grades 2–10.', 403);
   }
-  if (template.formCode === 'SF9' && !/^grade-(?:[4-9]|10)$/.test(section.gradeCode)) {
-    throw createError('SF9 is available only for Grades 4–10.', 403);
+  if (template.formCode === 'SF9' && !sf9SectionIsEligible(template, section)) {
+    throw createError(sf9EligibilityMessage(template), 403);
   }
   const term = await validateTerm(database, req.user.schoolId, section, requestedTermId, Boolean(template.requiresAcademicTerm));
   const [schools] = await database.execute(
@@ -719,8 +818,18 @@ async function preparePreview(req, database) {
       WHERE id = ? AND school_id = ? AND role = 'teacher' LIMIT 1`,
       [req.user.id, req.user.schoolId]
     );
-    data = buildSf9Pages(schools[0], section, advisers[0]?.displayName || '', learner,
-      gradeData.subjects, gradeData.terms, gradeData.grades);
+    if (isGrade11AcademicSf9(template)) {
+      const communicationSubject = gradeData.subjects.find(subject => subject.code === 'shs-core-communication');
+      const communicationGrades = await getSf9Grade11CommunicationGrades(database, req.user.schoolId,
+        section, learner, gradeData.terms, communicationSubject?.id);
+      const electiveData = await getSf9Grade11ElectiveData(database, req.user.schoolId, section, learner);
+      data = buildSf9Grade11AcademicPages(schools[0], section, advisers[0]?.displayName || '', learner,
+        gradeData.subjects, gradeData.terms, gradeData.grades, communicationGrades,
+        electiveData.electiveClasses, electiveData.electiveGrades);
+    } else {
+      data = buildSf9Pages(schools[0], section, advisers[0]?.displayName || '', learner,
+        gradeData.subjects, gradeData.terms, gradeData.grades);
+    }
     pages = data.pages;
   } else {
     const learners = await getSectionLearners(database, req.user.schoolId, section.id);

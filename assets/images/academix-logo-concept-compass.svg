@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">AcadeMix compass concept</title>
+  <circle cx="64" cy="64" r="60" fill="#0b1f3a" stroke="#3b536e" stroke-width="4"/>
+  <path d="M64 24c5 23 17 35 40 40-23 5-35 17-40 40-5-23-17-35-40-40 23-5 35-17 40-40Z" fill="#c9a84c"/>
+  <circle cx="64" cy="64" r="13" fill="#0b1f3a"/>
+  <circle cx="64" cy="64" r="7" fill="#3b82f6"/>
+</svg>

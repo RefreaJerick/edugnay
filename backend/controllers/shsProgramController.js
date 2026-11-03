@@ -1,6 +1,7 @@
 const { getDatabase } = require('../config/database');
 const { catalog, getCatalogEntry, matchesCatalogSnapshot, isCatalogGradeEligible, isCatalogAvailableForNewUse } = require('../config/shsApprovedCatalog');
 const { writeAuditLog } = require('../utils/auditLog');
+const { schoolTerms, validateTermRange } = require('../utils/shsClassTerms');
 
 function fail(message, status = 400) { const error = new Error(message); error.status = status; throw error; }
 function id(value, label) {
@@ -33,7 +34,8 @@ async function context(connection, schoolId, yearId, gradeId) {
 
 async function offering(connection, schoolId, offeringId) {
   const [rows] = await connection.execute(
-    `SELECT o.*, y.status AS yearStatus, y.label AS schoolYearLabel, g.grade_code AS gradeCode
+    `SELECT o.*, y.status AS yearStatus, y.label AS schoolYearLabel,
+       g.grade_code AS gradeCode, g.school_level_id AS schoolLevelId
      FROM shs_offerings o
      JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
      JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
@@ -46,7 +48,9 @@ async function offering(connection, schoolId, offeringId) {
 async function electiveClass(connection, schoolId, classId) {
   const [rows] = await connection.execute(
     `SELECT c.*, o.academic_year_id AS academicYearId, o.subject_name AS subjectName,
-       o.track_code AS trackCode, g.grade_code AS gradeCode, y.label AS schoolYearLabel,
+       o.track_code AS trackCode, o.subject_type AS subject_type,
+       o.instructional_hours AS instructional_hours, g.grade_code AS gradeCode,
+       g.school_level_id AS schoolLevelId, y.label AS schoolYearLabel,
        y.status AS yearStatus, previous_teacher.display_name AS previousTeacherName
      FROM shs_elective_classes c
      JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
@@ -124,7 +128,12 @@ async function list(req, res, next) {
        AND account_status = 'active' ORDER BY display_name`, [schoolId]);
     const yearId = req.query.academicYearId ? id(req.query.academicYearId, 'school year ID') : years.find(y => y.status === 'active')?.id || years[0]?.id;
     if (yearId && !years.some(year => Number(year.id) === Number(yearId))) fail('School year not found.', 404);
-    if (!yearId) return res.json({ years, grades, tracks, teachers, catalog, year: null, offerings: [], classes: [] });
+    if (!yearId) return res.json({ years, grades, tracks, teachers, catalog, year: null, terms: [], offerings: [], classes: [] });
+    const [terms] = await db.execute(
+      `SELECT term.id, term.name, term.sequence_number AS sequenceNumber, term.status
+       FROM academic_terms term JOIN school_levels level ON level.id = term.school_level_id
+         AND level.school_id = term.school_id AND level.level_code = 'shs'
+       WHERE term.school_id = ? AND term.academic_year_id = ? ORDER BY term.sequence_number`, [schoolId, yearId]);
     const [offerings] = await db.execute(
       `SELECT o.id, o.grade_level_id AS gradeLevelId, g.grade_code AS gradeCode,
         o.catalog_version AS catalogVersion, o.catalog_code AS catalogCode,
@@ -135,6 +144,9 @@ async function list(req, res, next) {
        WHERE o.school_id = ? AND o.academic_year_id = ? ORDER BY g.grade_code, o.subject_name`, [schoolId, yearId]);
     const [classes] = await db.execute(
       `SELECT c.id, c.offering_id AS offeringId, c.class_name AS className, c.capacity,
+        c.start_term_id AS startTermId, c.end_term_id AS endTermId,
+        first_term.name AS startTermName, last_term.name AS endTermName,
+        first_term.sequence_number AS startTermSequence, last_term.sequence_number AS endTermSequence,
         c.teacher_user_id AS teacherId, t.display_name AS teacherName,
         (t.account_status = 'active') AS teacherActive,
         c.is_active AS classActive, o.is_active AS offeringActive,
@@ -151,6 +163,8 @@ async function list(req, res, next) {
        JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
        JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
        JOIN users t ON t.id = c.teacher_user_id AND t.school_id = c.school_id
+       LEFT JOIN academic_terms first_term ON first_term.id = c.start_term_id AND first_term.school_id = c.school_id
+       LEFT JOIN academic_terms last_term ON last_term.id = c.end_term_id AND last_term.school_id = c.school_id
        WHERE c.school_id = ? AND o.academic_year_id = ? ORDER BY o.subject_name, c.class_name`, [schoolId, yearId]);
     const trackReviewCounts = await mismatchedImmersionMemberships(db, schoolId, yearId);
     const selectedYear = years.find(y => Number(y.id) === Number(yearId));
@@ -174,7 +188,7 @@ async function list(req, res, next) {
         clusterCode: entry?.clusterCode || null, clusterName: entry?.clusterName || null,
         trackLabel: entry?.trackLabel || null };
     };
-    res.json({ years, grades, tracks, teachers, catalog, year: selectedYear,
+    res.json({ years, grades, tracks, teachers, catalog, year: selectedYear, terms,
       offerings: offerings.map(annotateCatalog),
       classes: classes.map(item => ({ ...annotateCatalog(item),
         trackReviewCount: trackReviewCounts.get(Number(item.id)) || 0 })) });
@@ -269,7 +283,18 @@ async function createClass(req, res, next) {
     if (current.yearStatus === 'archived' || !current.is_active) fail('This offering is read-only.', 409);
     if (!isCatalogAvailableForNewUse(getCatalogEntry(current.catalog_code)))
       fail('This subject is waiting for DepEd source verification; new classes cannot be added yet.', 409);
+    if (!matchesCatalogSnapshot(getCatalogEntry(current.catalog_code), {
+      catalogVersion: current.catalog_version, trackCode: current.track_code,
+      subjectType: current.subject_type, subjectName: current.subject_name,
+      instructionalHours: current.instructional_hours, gradeCode: current.gradeCode
+    })) fail('Review this subject’s type and hours before adding a class.', 409);
     const assignedTeacher = await teacher(connection, schoolId, teacherId);
+    const terms = await schoolTerms(connection, schoolId, current.academic_year_id, current.schoolLevelId);
+    const startTermId = current.gradeCode === 'grade-11' && current.subject_type === 'techpro_elective'
+      ? terms[0]?.id : id(req.body.startTermId, 'start term ID');
+    const endTermId = current.gradeCode === 'grade-11' && current.subject_type === 'techpro_elective'
+      ? terms[terms.length - 1]?.id : id(req.body.endTermId ?? startTermId, 'end term ID');
+    validateTermRange(terms, current, startTermId, endTermId);
     await connection.beginTransaction(); started = true;
     await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [current.academic_year_id, schoolId]);
     const locked = await offering(connection, schoolId, offeringId);
@@ -278,8 +303,8 @@ async function createClass(req, res, next) {
       fail('This subject is waiting for DepEd source verification; new classes cannot be added yet.', 409);
     await teacher(connection, schoolId, teacherId);
     const [result] = await connection.execute(
-      `INSERT INTO shs_elective_classes (school_id, offering_id, teacher_user_id, class_name, capacity)
-       VALUES (?, ?, ?, ?, ?)`, [schoolId, offeringId, teacherId, className, capacity]
+      `INSERT INTO shs_elective_classes (school_id, offering_id, teacher_user_id, class_name, capacity, start_term_id, end_term_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`, [schoolId, offeringId, teacherId, className, capacity, startTermId, endTermId]
     );
     await writeAuditLog(connection, req, 'shs_elective_class_created', 'shs_elective_class', result.insertId, {
       summary: className, className, subjectName: current.subject_name,
@@ -301,12 +326,41 @@ async function updateClass(req, res, next) {
     const className = req.body.className === undefined ? current.class_name : name(req.body.className, 'Class name');
     const capacity = req.body.capacity === undefined ? Number(current.capacity) : id(req.body.capacity, 'capacity');
     const active = req.body.isActive === undefined ? Boolean(current.is_active) : boolean(req.body.isActive);
+    const startTermId = req.body.startTermId === undefined ? current.start_term_id : id(req.body.startTermId, 'start term ID');
+    const endTermId = req.body.endTermId === undefined ? current.end_term_id : id(req.body.endTermId, 'end term ID');
     if (capacity > 500) fail('Capacity cannot exceed 500.');
     const assignedTeacher = await teacher(connection, schoolId, teacherId);
     await connection.beginTransaction(); started = true;
     await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [current.academicYearId, schoolId]);
     if ((await electiveClass(connection, schoolId, classId)).yearStatus === 'archived') fail('Archived school years are read-only.', 409);
     await teacher(connection, schoolId, teacherId);
+    if (startTermId && endTermId) {
+      const terms = await schoolTerms(connection, schoolId, current.academicYearId, current.schoolLevelId);
+      const range = validateTermRange(terms, current, startTermId, endTermId);
+      const [outside] = await connection.execute(
+        `SELECT
+          (SELECT COUNT(*) FROM published_final_grades p JOIN academic_terms t ON t.id = p.academic_term_id
+            WHERE p.school_id = ? AND p.shs_elective_class_id = ? AND t.sequence_number NOT BETWEEN ? AND ?) AS grades,
+          (SELECT COUNT(*) FROM grading_items i JOIN academic_terms t ON t.id = i.academic_term_id
+            WHERE i.school_id = ? AND i.shs_elective_class_id = ? AND t.sequence_number NOT BETWEEN ? AND ?) AS items,
+          (SELECT COUNT(*) FROM assignments a JOIN academic_terms t ON t.id = a.academic_term_id
+            WHERE a.school_id = ? AND a.shs_elective_class_id = ? AND t.sequence_number NOT BETWEEN ? AND ?) AS assignments,
+          (SELECT COUNT(*) FROM learning_materials m JOIN academic_terms t ON t.id = m.academic_term_id
+            WHERE m.school_id = ? AND m.shs_elective_class_id = ? AND t.sequence_number NOT BETWEEN ? AND ?) AS materials,
+          (SELECT COUNT(*) FROM attendance_sessions s WHERE s.school_id = ? AND s.shs_elective_class_id = ?
+            AND (s.attendance_date < ? OR s.attendance_date > ?)) AS attendance,
+          (SELECT COUNT(*) FROM scheduled_classes sc JOIN timetable_meetings m
+            ON m.scheduled_class_id = sc.id AND m.school_id = sc.school_id
+            WHERE sc.school_id = ? AND sc.shs_elective_class_id = ?
+              AND (m.start_date < ? OR m.end_date > ?)) AS meetings`,
+        [schoolId, classId, range.start.sequenceNumber, range.end.sequenceNumber,
+          schoolId, classId, range.start.sequenceNumber, range.end.sequenceNumber,
+          schoolId, classId, range.start.sequenceNumber, range.end.sequenceNumber,
+          schoolId, classId, range.start.sequenceNumber, range.end.sequenceNumber,
+          schoolId, classId, range.start.startDate, range.end.endDate,
+          schoolId, classId, range.start.startDate, range.end.endDate]);
+      if (Object.values(outside[0]).some(Number)) fail('Existing class work or grades fall outside these terms. Review the records first.', 409);
+    } else if (startTermId || endTermId) fail('Set both class terms.', 400);
     const [members] = await connection.execute(
       `SELECT COUNT(*) AS total FROM shs_elective_class_students WHERE school_id = ? AND elective_class_id = ? AND withdrawn_at IS NULL`, [schoolId, classId]
     );
@@ -316,8 +370,9 @@ async function updateClass(req, res, next) {
       await assertElectiveTeacherScheduleAvailable(connection, schoolId, current.academicYearId, classId, teacherId);
     }
     await connection.execute(
-      `UPDATE shs_elective_classes SET teacher_user_id = ?, class_name = ?, capacity = ?, is_active = ?
-       WHERE id = ? AND school_id = ?`, [teacherId, className, capacity, active, classId, schoolId]
+      `UPDATE shs_elective_classes SET teacher_user_id = ?, class_name = ?, capacity = ?, is_active = ?,
+         start_term_id = ?, end_term_id = ?
+       WHERE id = ? AND school_id = ?`, [teacherId, className, capacity, active, startTermId, endTermId, classId, schoolId]
     );
     const changes = {};
     if (className !== current.class_name) changes.className = { from: current.class_name, to: className };

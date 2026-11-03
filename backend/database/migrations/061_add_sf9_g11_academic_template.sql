@@ -1,0 +1,63 @@
+-- Register the adviser-generated Grade 11 Academic SF9 for school year 2026-2027.
+INSERT IGNORE INTO school_form_templates
+  (form_code, form_name, version, source_type, template_status, mapping_status,
+   file_name, file_path, default_sheet_name, requires_academic_term)
+VALUES
+  ('SF9', 'Learner''s Performance Report (Grade 11 Academic)', 'g11-academic-2026-2027',
+   'official', 'active', 'ready', 'SF9-G11-Academic.xlsx',
+   '/assets/templates/school-forms/sf9-g11-academic.xlsx', 'SF9 - GRADE 11 ACADEMIC', FALSE);
+
+INSERT IGNORE INTO school_form_template_mappings
+  (school_form_template_id, field_key, worksheet_name, cell_reference, data_source)
+SELECT id, 'region', default_sheet_name, 'B7', 'schools.region_name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'division', default_sheet_name, 'B8', 'schools.division_name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'district', default_sheet_name, 'B9', 'schools.district_name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'address', default_sheet_name, 'B10', 'schools.address_line'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'schoolName', default_sheet_name, 'B12', 'schools.name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'schoolYear', default_sheet_name, 'B15', 'academic_years.label'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'learnerName', default_sheet_name, 'C17', 'users, student_profiles'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'age', default_sheet_name, 'I17', 'student_profiles.birth_date, June 1 of school-year start'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'sex', default_sheet_name, 'K17', 'student_profiles.sex'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'lrn', default_sheet_name, 'C18', 'student_profiles.lrn'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'gradeLevel', default_sheet_name, 'I18', 'school_grade_levels.display_name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'section', default_sheet_name, 'K18', 'sections.name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'track', default_sheet_name, 'E19', 'school_shs_tracks.display_name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'adviser', default_sheet_name, 'H27', 'users.display_name'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'communicationSubject', default_sheet_name, 'B33', 'Grade 11 core subject catalog'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'communicationCombinedFirstTerm', default_sheet_name, 'F33', 'published component-average grade for Term 1'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'englishComponentFirstTerm', default_sheet_name, 'F34', 'shs_communication_component_grades, english'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'filipinoComponentFirstTerm', default_sheet_name, 'F35', 'shs_communication_component_grades, filipino'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'mathematicsSubject', default_sheet_name, 'B36', 'Grade 11 core subject catalog'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'scienceSubject', default_sheet_name, 'B37', 'Grade 11 core subject catalog'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'lifeCareerSubject', default_sheet_name, 'B38', 'Grade 11 core subject catalog'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'philippineHistorySubject', default_sheet_name, 'B39', 'Grade 11 core subject catalog'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'electiveSubject1', default_sheet_name, 'B41', 'approved shs_selection_request_classes'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'electiveSubject2', default_sheet_name, 'B42', 'approved shs_selection_request_classes'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'electiveSubject3', default_sheet_name, 'B43', 'approved shs_selection_request_classes'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027'
+UNION ALL SELECT id, 'generalAverage', default_sheet_name, 'I44', 'left blank for adviser review for SY 2026-2027'
+FROM school_form_templates WHERE form_code = 'SF9' AND version = 'g11-academic-2026-2027';

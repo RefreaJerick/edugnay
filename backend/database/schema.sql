@@ -564,13 +564,17 @@ CREATE TABLE IF NOT EXISTS shs_elective_classes (
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   class_name VARCHAR(100) NOT NULL,
   capacity SMALLINT UNSIGNED NOT NULL,
+  start_term_id BIGINT UNSIGNED NULL,
+  end_term_id BIGINT UNSIGNED NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_shs_elective_class_name (offering_id, class_name),
   UNIQUE KEY uq_shs_elective_class_school_id (school_id, id),
   CONSTRAINT fk_shs_elective_class_offering FOREIGN KEY (school_id, offering_id) REFERENCES shs_offerings(school_id, id) ON DELETE RESTRICT,
-  CONSTRAINT fk_shs_elective_class_teacher FOREIGN KEY (school_id, teacher_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+  CONSTRAINT fk_shs_elective_class_teacher FOREIGN KEY (school_id, teacher_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_elective_class_start_term FOREIGN KEY (school_id, start_term_id) REFERENCES academic_terms(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_elective_class_end_term FOREIGN KEY (school_id, end_term_id) REFERENCES academic_terms(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS scheduled_classes (

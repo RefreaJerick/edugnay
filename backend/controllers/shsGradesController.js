@@ -21,6 +21,7 @@ async function resolveScope(db, user, input, write = false) {
       yearStatus: item.yearStatus,
       group: item.assessmentGroup, offeringId: Number(item.offeringId), subjectName: item.subjectName, className: item.className,
       classActive: Boolean(item.classActive), offeringActive: Boolean(item.offeringActive), teacherStatus: item.teacherStatus,
+      startTermSequence: item.startTermSequence, endTermSequence: item.endTermSequence,
       schoolId: user.schoolId };
     scope.policy = await loadShsPolicy(db, scope);
     if (!scope.policy) fail(policyBlockReason(scope.group, scope.yearLabel, scope.gradeCode), 409);
@@ -85,7 +86,9 @@ async function loadTerms(db, scope) {
       DATE_FORMAT(planned_start_date, '%Y-%m-%d') AS startDate,
       DATE_FORMAT(planned_end_date, '%Y-%m-%d') AS endDate
      FROM academic_terms WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ?
-     ORDER BY sequence_number`, [scope.schoolId, scope.yearId, scope.levelId]
+       ${scope.kind === 'elective' ? 'AND sequence_number BETWEEN ? AND ?' : ''}
+     ORDER BY sequence_number`, [scope.schoolId, scope.yearId, scope.levelId,
+      ...(scope.kind === 'elective' ? [scope.startTermSequence || 0, scope.endTermSequence || 0] : [])]
   );
   return terms;
 }

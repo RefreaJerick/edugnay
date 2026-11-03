@@ -137,6 +137,10 @@
   font-weight: 700;
 }
 
+.report-card .report-correction-notice {
+  margin-top: 6px;
+}
+
 .latest-report-hero .lr-head .report-correction-notice {
   flex: 0 0 auto;
   margin: 0;

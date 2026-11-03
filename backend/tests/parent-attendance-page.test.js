@@ -97,8 +97,10 @@ test('parent attendance uses API children, records, and school date', async () =
   assert.match(detail, /badge-orange/);
   assert.doesNotMatch(detail, /day-detail-banner|subject-dot|ddb-icon/);
   page.selectChild('5');
-  assert.equal(page.elements.get('summary-strip').hidden, true);
-  assert.equal(page.elements.get('summary-strip').textContent, '');
+  const emptySummary = page.elements.get('summary-strip').innerHTML;
+  assert.equal(page.elements.get('summary-strip').hidden, false);
+  assert.equal((emptySummary.match(/class="stat-card (?:green|orange|red)"/g) || []).length, 3);
+  assert.equal((emptySummary.match(/class="stat-card-num">0<\/div>/g) || []).length, 3);
   assert.match(page.elements.get('cal-month-label').textContent, /October 2026/);
   const emptyCalendar = page.elements.get('cal-grid').innerHTML;
   assert.equal((emptyCalendar.match(/data-attendance-day=/g) || []).length, 31);

@@ -13,12 +13,13 @@ function createDatabase() {
   const memberships = [];
   const emptyChoiceRequests = new Set();
   const choiceIds = new Map([[1, [1, 2, 3]], [2, [1, 2, 3]]]);
-  let learnerPlacement = { sectionId: 30, yearId: 20, gradeId: 11, gradeCode: 'grade-11', trackCode: 'academic', yearStatus: 'active' };
+  let learnerPlacement = { sectionId: 30, yearId: 20, gradeId: 11, gradeCode: 'grade-11', trackCode: 'academic', yearStatus: 'active', yearStart: '2026-06-01' };
   let availableClasses = [1, 2, 3].map(classId => {
     const entry = getCatalogEntry(`AE00${classId}`);
     return { id: classId, className: `Group ${classId}`, capacity: 1, classActive: 1,
       catalogVersion: entry.version, catalogCode: entry.code, trackCode: entry.trackCode,
       subjectName: entry.name, subjectType: entry.type, instructionalHours: entry.hours, gradeCode: 'grade-11', offeringActive: 1,
+      startTermId: classId, endTermId: classId, startTermSequence: classId, endTermSequence: classId,
       teacherName: 'Teacher', teacherStatus: 'active', teacherRole: 'teacher',
       enrolledCount: memberships.filter(item => item.classId === classId).length };
   });
@@ -28,20 +29,22 @@ function createDatabase() {
     useRequiredTechProImmersion(requestId) {
       const request = requests.get(Number(requestId));
       Object.assign(request, { grade_level_id: 12, pathway_code: 'techpro', status: 'pending' });
-      learnerPlacement = { sectionId: 30, yearId: 20, gradeId: 12, gradeCode: 'grade-12', trackCode: 'techpro', yearStatus: 'active' };
-      const entry = getCatalogEntry('WI-320');
+      learnerPlacement = { sectionId: 30, yearId: 20, gradeId: 12, gradeCode: 'grade-12', trackCode: 'techpro', yearStatus: 'active', yearStart: '2026-06-01' };
+      const entry = getCatalogEntry('WI-640');
       const elective = getCatalogEntry('TP-AF-01');
       availableClasses = [
         { id: 4, className: 'TechPro Work Immersion', capacity: 1, classActive: 1,
           catalogVersion: entry.version, catalogCode: entry.code, trackCode: entry.trackCode,
           subjectName: entry.name, subjectType: entry.type, instructionalHours: entry.hours, gradeCode: 'grade-12', offeringActive: 1,
+          startTermId: 1, endTermId: 2, startTermSequence: 1, endTermSequence: 2,
           teacherName: 'Teacher', teacherStatus: 'active', teacherRole: 'teacher', enrolledCount: 0 },
         { id: 5, className: 'TechPro elective', capacity: 1, classActive: 1,
           catalogVersion: elective.version, catalogCode: elective.code, trackCode: elective.trackCode,
           subjectName: elective.name, subjectType: elective.type, instructionalHours: elective.hours, gradeCode: 'grade-12', offeringActive: 1,
+          startTermId: 1, endTermId: 1, startTermSequence: 1, endTermSequence: 1,
           teacherName: 'Teacher', teacherStatus: 'active', teacherRole: 'teacher', enrolledCount: 0 }
       ];
-      choiceIds.set(Number(requestId), [4]);
+      choiceIds.set(Number(requestId), [4, 5]);
       emptyChoiceRequests.delete(Number(requestId));
       memberships.length = 0;
     },
@@ -82,6 +85,8 @@ function createDatabase() {
             startDate: '2026-10-01', endDate: '2027-06-30'
           }))];
           if (sql.includes('SELECT COUNT(DISTINCT sub.id) AS total')) return [[{ total: 5 }]];
+          if (sql.includes('SELECT DISTINCT o.catalog_code AS catalogCode')
+            || sql.includes('FROM shs_verified_prior_electives h')) return [[]];
           if (sql.includes('SELECT m.weekday') && sql.includes('FROM timetable_meetings')) return [[]];
           if (sql.includes('INSERT INTO shs_elective_class_students')) {
             const item = { classId: Number(args[1]), studentId: Number(args[2]) };
@@ -135,7 +140,7 @@ test('confirming a Grade 12 TechPro selection places the learner in required Wor
   await new Promise(resolve => decide(req, { json(value) { result = value; resolve(); } }, value => { error = value; resolve(); }));
   assert.equal(error, undefined);
   assert.deepEqual(result, { id: 1, status: 'approved' });
-  assert.deepEqual(database.memberships, [{ classId: 4, studentId: 101 }]);
+  assert.deepEqual(database.memberships, [{ classId: 4, studentId: 101 }, { classId: 5, studentId: 101 }]);
   assert.equal(database.requests.get(1).status, 'approved');
 });
 
@@ -146,7 +151,7 @@ test('editing a confirmed Grade 12 TechPro selection cannot remove required Work
   const req = { user: { id: 9, schoolId: 7 }, params: { requestId: '1' }, body: { classIds: [5] } };
   let error;
   await new Promise(resolve => changeApproved(req, { json: resolve }, value => { error = value; resolve(); }));
-  assert.match(error?.message || '', /include exactly one eligible TechPro Work Immersion class/);
+  assert.match(error?.message || '', /Work Immersion totaling 960 hours/);
   assert.equal(database.requests.get(1).status, 'approved');
   assert.deepEqual(database.memberships, [{ classId: 4, studentId: 101 }]);
 });

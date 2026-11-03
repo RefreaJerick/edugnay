@@ -1,5 +1,5 @@
 const { getDatabase } = require('../config/database');
-const { meetingsConflict, normalizeClassIds, validateRecordedChoices } = require('../config/shsSelection');
+const { meetingsConflict, normalizeClassIds, validateRecordedChoices, validateSelection } = require('../config/shsSelection');
 const { getCatalogEntry, matchesCatalogSnapshot, isCatalogGradeEligible, isCatalogAvailableForNewUse } = require('../config/shsApprovedCatalog');
 const { writeAuditLog } = require('../utils/auditLog');
 const { findStudentShsPlacementRows, getStudentShsPlacementIssue } = require('../utils/shsSelectionPlacement');
@@ -50,12 +50,53 @@ function sameClassIds(left, right) {
   return left.length === right.length && left.every(classId => right.includes(classId));
 }
 
+function pathwayFor(place, selected, prior = []) {
+  const crossTrack = place.trackCode === 'academic'
+    ? selected.some(item => item.subjectType === 'techpro_elective')
+    : selected.some(item => item.subjectType === 'academic_elective')
+      || prior.some(item => item.subjectType === 'academic_elective');
+  return crossTrack ? `${place.trackCode}_cross_track` : place.trackCode;
+}
+
+async function priorElectives(db, schoolId, studentId, place) {
+  if (place.gradeCode !== 'grade-12') return [];
+  const rows = await execute(db,
+    `SELECT DISTINCT o.catalog_code AS catalogCode, o.subject_type AS subjectType,
+      o.instructional_hours AS instructionalHours
+     FROM shs_selection_requests r
+     JOIN shs_selection_request_classes rc ON rc.request_id = r.id AND rc.school_id = r.school_id
+     JOIN shs_elective_classes c ON c.id = rc.elective_class_id AND c.school_id = r.school_id
+     JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
+     JOIN school_grade_levels g ON g.id = r.grade_level_id AND g.school_id = r.school_id
+     JOIN academic_years y ON y.id = r.academic_year_id AND y.school_id = r.school_id
+     WHERE r.school_id = ? AND r.student_user_id = ? AND r.status = 'approved'
+       AND g.grade_code = 'grade-11' AND y.start_date < ?`,
+    [schoolId, studentId, place.yearStart]);
+  const history = await execute(db,
+    `SELECT h.catalog_code AS catalogCode, 'academic_elective' AS subjectType,
+       h.instructional_hours AS instructionalHours
+     FROM shs_verified_prior_electives h WHERE h.school_id = ? AND h.student_user_id = ?`,
+    [schoolId, studentId]);
+  return [...rows, ...history];
+}
+
+async function validateLoad(db, schoolId, studentId, place, selected) {
+  const prior = await priorElectives(db, schoolId, studentId, place);
+  const pathway = pathwayFor(place, selected, prior);
+  const problem = validateSelection(pathway, Number(place.gradeCode.replace('grade-', '')), selected, prior);
+  if (problem) fail(problem, 409);
+  return pathway;
+}
+
 async function classRows(db, schoolId, yearId, gradeId, lockIds = [], countExcludeStudentId = null) {
   if (lockIds.length) await execute(db,
     `SELECT id FROM shs_elective_classes WHERE school_id = ? AND id IN (${lockIds.map(() => '?').join(',')}) ORDER BY id FOR UPDATE`,
     [schoolId, ...lockIds]);
   const classes = await execute(db,
     `SELECT c.id, c.class_name AS className, c.capacity, c.is_active AS classActive,
+      c.start_term_id AS startTermId, c.end_term_id AS endTermId,
+      first_term.name AS startTermName, last_term.name AS endTermName,
+      first_term.sequence_number AS startTermSequence, last_term.sequence_number AS endTermSequence,
       o.catalog_version AS catalogVersion, o.catalog_code AS catalogCode, o.track_code AS trackCode,
       o.subject_name AS subjectName, o.subject_type AS subjectType,
       o.instructional_hours AS instructionalHours, o.is_active AS offeringActive,
@@ -67,6 +108,8 @@ async function classRows(db, schoolId, yearId, gradeId, lockIds = [], countExclu
      FROM shs_elective_classes c JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
      JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
      JOIN users t ON t.id = c.teacher_user_id AND t.school_id = c.school_id
+     LEFT JOIN academic_terms first_term ON first_term.id = c.start_term_id AND first_term.school_id = c.school_id
+     LEFT JOIN academic_terms last_term ON last_term.id = c.end_term_id AND last_term.school_id = c.school_id
      WHERE c.school_id = ? AND o.academic_year_id = ? AND o.grade_level_id = ? ORDER BY o.subject_name, c.class_name`,
     [countExcludeStudentId, countExcludeStudentId, schoolId, yearId, gradeId]);
   const meetings = await execute(db,
@@ -150,19 +193,6 @@ async function validateChoices(db, schoolId, studentId, place, values, options =
     fail('A selected subject no longer matches the approved catalog. Ask school staff to review it.', 409);
   if (validation.selected.some(item => !item.catalogGradeEligible && !allowedLegacyIds.has(Number(item.id))))
     fail('A selected subject is no longer listed for this grade. Ask school staff to review the existing setup.', 409);
-  if (place.gradeCode === 'grade-12' && place.trackCode === 'techpro') {
-    const selectedImmersions = validation.selected.filter(item => item.assessmentGroup === 'work_immersion'
-      && item.trackCode === 'techpro' && item.catalogValid && item.catalogGradeEligible);
-    if (selectedImmersions.length !== 1) {
-      const hasEligibleOffering = classes.some(item => item.assessmentGroup === 'work_immersion'
-        && item.trackCode === 'techpro' && item.catalogValid && item.catalogGradeEligible
-        && item.catalogAvailableForNewUse);
-      if (!hasEligibleOffering) {
-        fail('Grade 12 TechPro requires one Work Immersion class, but no eligible class is offered. Ask school staff to add one before saving choices.', 409);
-      }
-      fail('Grade 12 TechPro choices must include exactly one eligible TechPro Work Immersion class.', 409);
-    }
-  }
   return validation.selected;
 }
 
@@ -184,7 +214,8 @@ async function choiceData(db, schoolId, studentId, yearId = null) {
   const chosenClasses = classes.filter(item => classIds.includes(Number(item.id)));
   const shownClasses = classes.map(item => {
     const otherChoices = chosenClasses.filter(choice => Number(choice.id) !== Number(item.id));
-    let unavailableReason = !item.catalogValid ? 'Subject setup needs staff review'
+    let unavailableReason = !item.startTermId || !item.endTermId ? 'Class term needs staff review'
+      : !item.catalogValid ? 'Subject setup needs staff review'
       : item.assessmentGroup === 'work_immersion' && item.trackCode !== place.trackCode
         ? `For ${item.trackCode === 'academic' ? 'Academic' : 'TechPro'} track students only`
       : !item.catalogAvailableForNewUse ? 'Waiting for DepEd source verification; not available for new choices'
@@ -206,6 +237,7 @@ async function choiceData(db, schoolId, studentId, yearId = null) {
     || savedClasses.length !== classIds.length));
   return {
     placement: place,
+    priorElectives: await priorElectives(db, schoolId, studentId, place),
     selection: request && { id: Number(request.id), status: hasEmptySubmittedRequest ? 'not_recorded' : request.status,
       decisionReason: request.decision_reason, revision: Number(request.revision), classIds, savedClasses, dataIssue },
     classes: shownClasses
@@ -241,6 +273,9 @@ async function saveChoices(connection, req, studentId, yearId, classIds, actorTy
     const selected = await validateChoices(connection, schoolId, studentId, place, classIds, {
       lock: true, allowLegacyClassIds: previousIds
     });
+    const pathway = actorType === 'student'
+      ? await validateLoad(connection, schoolId, studentId, place, selected)
+      : pathwayFor(place, selected, await priorElectives(connection, schoolId, studentId, place));
     if (actorType === 'student' && request?.status === 'pending' && sameClassIds(previousIds, submittedIds)) {
       await connection.commit(); started = false;
       return { id: Number(request.id), status: 'pending', revision: Number(request.revision), unchanged: true };
@@ -251,13 +286,13 @@ async function saveChoices(connection, req, studentId, yearId, classIds, actorTy
       requestId = Number(request.id);
       revision = Number(request.revision) + 1;
       await execute(connection, `UPDATE shs_selection_requests SET status = 'pending', revision = ?,
-        decision_reason = NULL, reviewed_by_user_id = NULL, reviewed_at = NULL
-        WHERE school_id = ? AND id = ?`, [revision, schoolId, requestId]);
+        pathway_code = ?, decision_reason = NULL, reviewed_by_user_id = NULL, reviewed_at = NULL
+        WHERE school_id = ? AND id = ?`, [revision, pathway, schoolId, requestId]);
       await execute(connection, 'DELETE FROM shs_selection_request_classes WHERE school_id = ? AND request_id = ?', [schoolId, requestId]);
     } else {
       const [result] = await connection.execute(
         `INSERT INTO shs_selection_requests (school_id, academic_year_id, grade_level_id, student_user_id, pathway_code)
-         VALUES (?, ?, ?, ?, ?)`, [schoolId, place.yearId, place.gradeId, studentId, place.trackCode]);
+         VALUES (?, ?, ?, ?, ?)`, [schoolId, place.yearId, place.gradeId, studentId, pathway]);
       requestId = Number(result.insertId);
       revision = 1;
     }
@@ -431,6 +466,7 @@ async function decide(req, res, next) {
     if (decision === 'approved') {
       const selected = await validateChoices(connection, schoolId, request.student_user_id, place, classIds,
         { lock: true, countExcludeStudentId: request.student_user_id, excludeClassIds: classIds });
+      await validateLoad(connection, schoolId, request.student_user_id, place, selected);
       await syncMemberships(connection, req, request, [], selected);
     }
     await execute(connection,
@@ -479,6 +515,7 @@ async function changeApproved(req, res, next) {
     const selected = await validateChoices(connection, schoolId, request.student_user_id, place, classIds,
       { lock: true, lockClassIds: oldIds, allowLegacyClassIds: oldIds,
         countExcludeStudentId: request.student_user_id, excludeClassIds: oldIds });
+    const pathway = await validateLoad(connection, schoolId, request.student_user_id, place, selected);
     await syncMemberships(connection, req, request, oldIds, selected);
     await execute(connection, 'DELETE FROM shs_selection_request_classes WHERE school_id = ? AND request_id = ?', [schoolId, requestId]);
     for (const item of selected) await execute(connection,
@@ -486,8 +523,8 @@ async function changeApproved(req, res, next) {
       [schoolId, requestId, Number(item.id)]);
     const revision = Number(request.revision) + 1;
     await execute(connection,
-      `UPDATE shs_selection_requests SET revision = ?, reviewed_by_user_id = ?, reviewed_at = NOW()
-       WHERE school_id = ? AND id = ?`, [revision, req.user.id, schoolId, requestId]);
+      `UPDATE shs_selection_requests SET revision = ?, pathway_code = ?, reviewed_by_user_id = ?, reviewed_at = NOW()
+       WHERE school_id = ? AND id = ?`, [revision, pathway, req.user.id, schoolId, requestId]);
     await execute(connection,
       `INSERT INTO shs_selection_history (school_id, request_id, actor_user_id, action, revision, details)
        VALUES (?, ?, ?, 'admin_changed', ?, ?)`, [schoolId, requestId, req.user.id, revision,

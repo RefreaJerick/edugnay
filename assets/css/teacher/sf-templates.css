@@ -60,6 +60,10 @@
   background: var(--panel-bg);
 }
 
+.sf-library-panel {
+  padding-bottom: 14px;
+}
+
 .sf-generator-panel {
   position: relative;
   z-index: 2;
@@ -203,6 +207,13 @@
 
 .sf-template-list {
   min-height: 220px;
+  max-height: min(60vh, 370px);
+  overflow-y: auto;
+}
+
+.sf-template-list:focus-visible {
+  outline: 2px solid var(--blue-mid);
+  outline-offset: -2px;
 }
 
 .sf-template-list > .panel-empty-state {
@@ -985,6 +996,10 @@ body.sf-validation-modal-open {
 
   .sf-filters {
     grid-template-columns: 1fr;
+  }
+
+  .sf-template-list {
+    max-height: min(50vh, 400px);
   }
 
   .sf-template-columns {

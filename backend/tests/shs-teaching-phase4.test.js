@@ -32,6 +32,9 @@ function classRow(overrides = {}) {
     teacherStatus: 'active',
     academicYearLabel: '2026-2027',
     yearStatus: 'active',
+    schoolLevelId: 3,
+    startTermSequence: 1,
+    endTermSequence: 1,
     yearStartDate: '2026-10-01',
     yearEndDate: '2027-06-30',
     ...overrides
@@ -167,28 +170,51 @@ test('catalog keeps Academic and TechPro Work Immersion distinct through teachin
 });
 
 test('teacher and student access is scoped to assigned teacher and explicit elective membership', async () => {
-  const teacherDb = { async execute() { return [[classRow()]]; } };
+  const term = { id: 1, name: 'Term 1', sequenceNumber: 1, status: 'active' };
+  const teacherDb = { async execute(sql) { return [sql.includes('FROM academic_terms') ? [term] : [classRow()]]; } };
   await assert.doesNotReject(() => access.assertElectiveTeacher(teacherDb, { id: 42, schoolId: 7 }, 51));
   await assert.rejects(() => access.assertElectiveTeacher(teacherDb, { id: 99, schoolId: 7 }, 51), /not found/i);
-  await assert.rejects(() => access.assertElectiveTeacher({ async execute() { return [[classRow({ yearStatus: 'archived' })]]; } },
+  await assert.rejects(() => access.assertElectiveTeacher({ async execute(sql) {
+    return [sql.includes('FROM academic_terms') ? [{ ...term, status: 'completed' }] : [classRow({ yearStatus: 'archived' })]];
+  } },
     { id: 42, schoolId: 7 }, 51, { write: true }), /archived/i);
 
   const calls = [];
   const studentDb = { async execute(sql, values) {
     calls.push({ sql, values });
+    if (sql.includes('FROM academic_terms')) return [[term]];
     if (sql.includes('FROM shs_elective_class_students')) return [[{ withdrawnAt: null }]];
     return [[classRow()]];
   } };
   await assert.doesNotReject(() => access.assertElectiveStudent(studentDb, { id: 73, schoolId: 7 }, 51, { write: true }));
-  assert.deepEqual(calls[1].values, [7, 51, 73]);
-  assert.match(calls[1].sql, /elective_class_id = \? AND student_user_id = \?/);
-  assert.doesNotMatch(calls[1].sql, /section_students/);
+  const membershipCall = calls.find(call => call.sql.includes('FROM shs_elective_class_students'));
+  assert.deepEqual(membershipCall.values, [7, 51, 73]);
+  assert.match(membershipCall.sql, /elective_class_id = \? AND student_user_id = \?/);
+  assert.doesNotMatch(membershipCall.sql, /section_students/);
 
   const withdrawnDb = { async execute(sql) {
+    if (sql.includes('FROM academic_terms')) return [[term]];
     return sql.includes('FROM shs_elective_class_students')
       ? [[{ withdrawnAt: '2027-01-01 10:00:00' }]] : [[classRow()]];
   } };
   await assert.rejects(() => access.assertElectiveStudent(withdrawnDb, { id: 73, schoolId: 7 }, 51, { write: true }), /no longer active/i);
+});
+
+test('a future elective denies direct teacher and student access until its term starts', async () => {
+  let activeSequence = 1;
+  const db = { async execute(sql) {
+    if (sql.includes('FROM academic_terms')) return [[{ id: activeSequence, name: `Term ${activeSequence}`,
+      sequenceNumber: activeSequence, status: 'active' }]];
+    if (sql.includes('FROM shs_elective_class_students')) return [[{ withdrawnAt: null }]];
+    return [[classRow({ startTermSequence: 2, endTermSequence: 2 })]];
+  } };
+  const teacher = { id: 42, schoolId: 7 };
+  const student = { id: 73, schoolId: 7 };
+  await assert.rejects(() => access.assertElectiveTeacher(db, teacher, 51), /current term/);
+  await assert.rejects(() => access.assertElectiveStudent(db, student, 51), /current term/);
+  activeSequence = 2;
+  await assert.doesNotReject(() => access.assertElectiveTeacher(db, teacher, 51));
+  await assert.doesNotReject(() => access.assertElectiveStudent(db, student, 51, { write: true }));
 });
 
 test('withdrawal blocks new elective work but retains the learnerâ€™s earlier records', () => {
@@ -583,7 +609,10 @@ test('a failed SHS assignment grade link rolls back the assignment', async () =>
   const calls = [];
   const connection = {
     async beginTransaction() { calls.push('begin'); },
-    async execute() { calls.push('insert'); return [{ insertId: 19 }]; },
+    async execute(sql) {
+      if (sql.includes('FROM academic_terms')) return [[{ id: 1 }]];
+      calls.push('insert'); return [{ insertId: 19 }];
+    },
     async commit() { calls.push('commit'); },
     async rollback() { calls.push('rollback'); },
     release() { calls.push('release'); }

@@ -1833,3 +1833,9 @@
     line-height: 1.35;
   }
 }
+
+@media (min-width: 521px) {
+  .reports-overview .stat-card {
+    min-height: auto;
+  }
+}

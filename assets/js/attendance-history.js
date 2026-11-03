@@ -28,7 +28,7 @@
 
     function renderSummary(month) {
       const strip = element('summary-strip');
-      if (!month) {
+      if (!month && (loading || error || !selected)) {
         const message = loading ? 'Loading attendance...' : error ? 'Attendance is unavailable.'
           : !selected ? 'Select a linked child to view attendance.' : '';
         strip.hidden = !message;
@@ -38,7 +38,7 @@
         return;
       }
       strip.hidden = false;
-      const entries = Object.values(month).flat();
+      const entries = Object.values(month || {}).flat();
       const count = status => entries.filter(record => record.status === status).length;
       strip.innerHTML = [
         ['green', 'check', count('present'), 'Subject sessions present', 'Present'],

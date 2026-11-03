@@ -6,6 +6,7 @@ const { promisify } = require('util');
 const { pathToFileURL } = require('url');
 const JSZip = require('jszip');
 const { getDatabase } = require('../config/database');
+const { classHasStartedSql } = require('../utils/shsClassTerms');
 const { assertGradeWriteAccess, validateGradeItemScope } = require('./gradesController');
 const { writeAuditLog } = require('../utils/auditLog');
 const { uploadDirectory } = require('../config/uploads');
@@ -373,6 +374,7 @@ async function listAssignments(req, res, next) {
       where.push('assignments.communication_component_code = ?');
       values.push(String(req.query.communicationComponentCode).trim().toLowerCase());
     }
+    if (req.user.role !== 'school_admin') where.push(`(assignments.shs_elective_class_id IS NULL OR ${classHasStartedSql('assignments.shs_elective_class_id', 'assignments.school_id')})`);
     if (req.query.electiveClassId) {
       where.push('assignments.shs_elective_class_id = ?');
       values.push(parseId(req.query.electiveClassId, 'elective class ID'));
@@ -561,6 +563,7 @@ async function getParentChildAssignments(req, res, next) {
            AND sub.assignment_id = a.id AND sub.student_user_id = ?
          WHERE a.school_id = ? AND a.status = 'published' AND y.status = 'active'
            AND ec.is_active = TRUE AND o.is_active = TRUE
+           AND ${classHasStartedSql('ec.id', 'ec.school_id')}
            AND EXISTS (SELECT 1 FROM shs_elective_class_students em WHERE em.school_id = a.school_id
              AND em.elective_class_id = ec.id AND em.student_user_id = ?
              AND (em.withdrawn_at IS NULL OR a.created_at <= em.withdrawn_at))
@@ -659,6 +662,7 @@ async function getParentAssignmentActivity(req, res, next) {
            AND s.student_user_id = ?
          WHERE a.school_id = ? AND a.status = 'published' AND a.due_at IS NOT NULL AND DATE(a.due_at) = ?
            AND ec.is_active = TRUE AND o.is_active = TRUE
+           AND ${classHasStartedSql('ec.id', 'ec.school_id')}
            AND EXISTS (SELECT 1 FROM student_parent_links pl WHERE pl.school_id = a.school_id
              AND pl.student_user_id = em.student_user_id AND pl.parent_user_id = ?)
          ORDER BY o.subject_name, a.title`,
@@ -1075,6 +1079,7 @@ async function getStudentAssignment(connection, schoolId, studentId, assignmentI
   if (electiveCondition) values.push(studentId);
   const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ?
     AND assignments.school_id = ? AND assignments.status = 'published'
+    AND (assignments.shs_elective_class_id IS NULL OR ${classHasStartedSql('assignments.shs_elective_class_id', 'assignments.school_id')})
     AND ((assignments.shs_elective_class_id IS NOT NULL AND assignments.section_id IS NULL)
       OR (assignments.shs_elective_class_id IS NULL AND assignments.section_id IS NOT NULL
         AND assignments.subject_id IS NOT NULL AND subjects.is_active = TRUE))

@@ -6,12 +6,16 @@ const vm = require('node:vm');
 const ExcelJS = require('exceljs');
 const JSZip = require('jszip');
 const { assertXlsxPackageIntegrity } = require('./helpers/assertXlsxPackageIntegrity');
-const { SF9, buildSf9Pages } = require('../config/sf9');
+const { SF9, SF9_GRADE11_ACADEMIC, buildSf9Pages, buildSf9Grade11AcademicPages } = require('../config/sf9');
 const { createExportWorkbook, getEditableCells } = require('../config/sfExports');
 
 const root = path.resolve(__dirname, '..', '..');
 const templatePath = path.join(root, 'assets/templates/school-forms/sf9.xlsx');
 const template = { formCode: 'SF9', filePath: '/assets/templates/school-forms/sf9.xlsx', sheetName: SF9.sheetName };
+const grade11Template = {
+  formCode: 'SF9', version: SF9_GRADE11_ACADEMIC.version,
+  filePath: '/assets/templates/school-forms/sf9-g11-academic.xlsx', sheetName: SF9_GRADE11_ACADEMIC.sheetName
+};
 const school = {
   schoolName: 'Sample School', depedSchoolId: '305614', region: 'VIII',
   division: 'Leyte', district: 'Tacloban', addressLine: 'Tacloban City'
@@ -369,6 +373,142 @@ test('SF9 source and generated workbook preserve its image, layout, and print se
   assert.equal(legacySheet.getCell('J32').value, null);
 });
 
+test('Grade 11 Academic SF9 template removes sample records and preserves its supplied layout', async () => {
+  const sourceBytes = await fs.readFile(path.join(root, 'assets/templates/school-forms/sf9-g11-academic.xlsx'));
+  const sourceZip = await JSZip.loadAsync(sourceBytes);
+  await assertXlsxPackageIntegrity(sourceZip);
+  const sourceXml = await firstWorksheetXml(sourceZip);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(sourceBytes);
+  const sheet = workbook.getWorksheet(SF9_GRADE11_ACADEMIC.sheetName);
+  assert.equal(workbook.worksheets.length, 1, 'the linked sample-data sheet must be removed');
+  assert.equal(sheet.state, 'visible');
+  assert.equal(sheet.getImages().length, 1);
+  assert.equal(sheet.pageSetup.orientation, 'landscape');
+  assert.equal(sheet.pageSetup.printArea, 'A2:AD53');
+  assert.equal(sheet.model.merges.length, 126);
+  assert.doesNotMatch(sourceXml, /<f\b|#REF!/);
+  for (const address of ['B7', 'B8', 'B9', 'B10', 'B12', 'B15', 'C17', 'I17', 'K17',
+    'C18', 'I18', 'K18', 'E19', 'B27', 'H27', 'R5', 'AB6', 'AC10']) {
+    assert.equal(sheet.getCell(address).value, null, `${address} should not contain sample data`);
+  }
+  assert.equal(sheet.getCell('B33').value, 'Effective Communication / Mabisang Komunikasyon');
+  assert.equal(sheet.getCell('B34').value, 'Effective Communication');
+  assert.equal(sheet.getCell('B35').value, 'Mabisang Komunikasyon');
+  assert.equal(sheet.getCell('B39').value, 'Pag-aaral ng Kasaysayan at Lipunang Pilipino');
+  assert.deepEqual(['F31', 'G31', 'H31'].map(address => sheet.getCell(address).value), ['T1', 'T2', 'T3']);
+});
+
+test('Grade 11 Academic SF9 preview and export keep component rows, elective terms, and the fixed print area', async () => {
+  const grade11Section = { ...section, gradeCode: 'grade-11', gradeLevel: 'Grade 11', trackName: 'Academic' };
+  const grade11Subjects = [
+    { id: 11, code: 'shs-core-communication' },
+    { id: 12, code: 'shs-core-mathematics' },
+    { id: 13, code: 'shs-core-science' },
+    { id: 14, code: 'shs-core-life-career' },
+    { id: 15, code: 'shs-core-philippine-history' }
+  ];
+  const grade11Terms = terms(3).map((term, index) => ({ ...term, name: `Term ${index + 1}`, sequenceNumber: index + 1 }));
+  const grade11Published = grade11Subjects.flatMap((subject, subjectIndex) => grade11Terms.map((term, termIndex) => ({
+    subjectId: subject.id, academicTermId: term.id,
+    finalGrade: subject.id === 11 ? [90, 88, 86][termIndex] : 90 + subjectIndex + termIndex,
+    communicationGradeSource: subject.id === 11 ? 'component_average' : null
+  })));
+  const componentGrades = ['english', 'filipino'].flatMap((communicationComponentCode, componentIndex) => grade11Terms.map((term, termIndex) => ({
+    subjectId: 11, communicationComponentCode, academicTermId: term.id,
+    finalGrade: 100 - componentIndex * 20 - termIndex * 2
+  })));
+  const electiveClasses = [
+    { electiveClassId: 201, electiveName: 'Contemporary Literature' },
+    { electiveClassId: 202, electiveName: 'Creative Composition' },
+    { electiveClassId: 203, electiveName: 'Biology' }
+  ];
+  const electiveGrades = [
+    { electiveClassId: 201, academicTermId: 21, termSequenceNumber: 1, finalGrade: 88 },
+    { electiveClassId: 202, academicTermId: 22, termSequenceNumber: 2, finalGrade: 90 },
+    { electiveClassId: 203, academicTermId: 23, termSequenceNumber: 3, finalGrade: 92 }
+  ];
+  const generated = buildSf9Grade11AcademicPages(school, grade11Section, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades, electiveClasses, electiveGrades);
+  const cells = new Map(generated.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.deepEqual(['B7', 'B8', 'B9', 'B10', 'B12', 'B15'].map(address => cells.get(address)), [
+    'VIII', 'Leyte', 'Tacloban', 'Tacloban City', 'Sample School', 'School Year 2026-2027'
+  ]);
+  assert.deepEqual(['C17', 'I17', 'K17', 'C18', 'I18', 'K18', 'E19', 'H27'].map(address => cells.get(address)), [
+    'Dela Cruz, Juan, A', 10, 'male', learner.lrn, 11, 'St. Matthew', 'Academic', 'Ms. Adviser'
+  ]);
+  assert.equal(cells.get('B33'), 'Effective Communication / Mabisang Komunikasyon');
+  assert.deepEqual(['B36', 'B37', 'B38', 'B39'].map(address => cells.get(address)), [
+    'General Mathematics', 'General Science', 'Life and Career Skills', 'Pag-aaral ng Kasaysayan at Lipunang Pilipino'
+  ]);
+  assert.deepEqual(['F34', 'G34', 'H34', 'I34'].map(address => cells.get(address)), [100, 98, 96, 98]);
+  assert.deepEqual(['F35', 'G35', 'H35', 'I35'].map(address => cells.get(address)), [80, 78, 76, 78]);
+  assert.deepEqual(['F33', 'G33', 'H33', 'I33'].map(address => cells.get(address)), [90, 88, 86, 88]);
+  assert.deepEqual(['B41', 'B42', 'B43'].map(address => cells.get(address)), [
+    'Contemporary Literature', 'Creative Composition', 'Biology'
+  ]);
+  assert.deepEqual(['F41', 'G42', 'H43'].map(address => cells.get(address)), [88, 90, 92]);
+  assert.equal(cells.get('I44'), '');
+  assert.equal(generated.generalAverage, null);
+
+  const editable = new Map((await getEditableCells(grade11Template, generated.pages[0]))
+    .map(cell => [cell.cellAddress, cell.type]));
+  assert.equal(editable.get('E19'), 'text');
+  assert.equal(editable.get('B34'), 'text');
+  assert.equal(editable.get('J34'), 'text');
+  assert.equal(editable.get('F34'), 'number');
+  assert.equal(editable.get('I44'), 'number');
+  assert.equal(editable.has('B40'), false, 'the Elective Subjects heading remains protected');
+
+  const sourceBytes = await fs.readFile(path.join(root, 'assets/templates/school-forms/sf9-g11-academic.xlsx'));
+  const sourceZip = await JSZip.loadAsync(sourceBytes);
+  const output = await createExportWorkbook(grade11Template, generated.pages);
+  const outputZip = await JSZip.loadAsync(output);
+  await assertXlsxPackageIntegrity(outputZip);
+  const sourceWorkbook = new ExcelJS.Workbook();
+  const outputWorkbook = new ExcelJS.Workbook();
+  await sourceWorkbook.xlsx.load(sourceBytes);
+  await outputWorkbook.xlsx.load(output);
+  const sheet = outputWorkbook.getWorksheet(SF9_GRADE11_ACADEMIC.sheetName);
+  assert.equal(sheet.pageSetup.printArea, 'A2:AD53');
+  assert.equal(sheet.getImages().length, 1);
+  assert.equal(sheet.getCell('I33').value, 88);
+  assert.equal(sheet.getCell('F34').value, 100);
+  assert.equal(sheet.getCell('B41').value, 'Contemporary Literature');
+  assert.equal(sheet.getCell('G42').value, 90);
+  assert.equal(sheet.getCell('I44').value, null);
+  assert.deepEqual(await outputZip.file('xl/styles.xml').async('nodebuffer'),
+    await sourceZip.file('xl/styles.xml').async('nodebuffer'));
+
+  const adviserEditedCells = generated.pages[0].map(cell => cell.cellAddress === 'I44'
+    ? { ...cell, value: 92 } : cell);
+  const editedOutput = await createExportWorkbook(grade11Template, [adviserEditedCells]);
+  const editedWorkbook = new ExcelJS.Workbook();
+  await editedWorkbook.xlsx.load(editedOutput);
+  assert.equal(editedWorkbook.getWorksheet(SF9_GRADE11_ACADEMIC.sheetName).getCell('I44').value, 92,
+    'an adviser edit must be included in the downloaded workbook');
+});
+
+test('Grade 11 Academic SF9 keeps unpublished component and elective marks blank', () => {
+  const grade11Section = { ...section, gradeCode: 'grade-11', gradeLevel: 'Grade 11', trackName: 'Academic' };
+  const grade11Subjects = [{ id: 11, code: 'shs-core-communication' }];
+  const grade11Terms = terms(3).map((term, index) => ({ ...term, name: `Term ${index + 1}`, sequenceNumber: index + 1 }));
+  const partial = buildSf9Grade11AcademicPages(school, grade11Section, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms,
+    [{ subjectId: 11, academicTermId: 21, finalGrade: 90, communicationGradeSource: 'component_average' }],
+    [{ subjectId: 11, communicationComponentCode: 'english', academicTermId: 21, finalGrade: 100 }],
+    [{ electiveClassId: 201, electiveName: 'Contemporary Literature' }],
+    [{ electiveClassId: 201, academicTermId: 22, termSequenceNumber: 2, finalGrade: 88 }]);
+  const cells = new Map(partial.pages[0].map(cell => [cell.cellAddress, cell.value]));
+
+  assert.deepEqual(['F33', 'G33', 'H33', 'I33'].map(address => cells.get(address)), [90, '', '', '']);
+  assert.deepEqual(['F34', 'G34', 'H34', 'I34'].map(address => cells.get(address)), [100, '', '', '']);
+  assert.deepEqual(['F35', 'G35', 'H35', 'I35'].map(address => cells.get(address)), ['', '', '', '']);
+  assert.deepEqual(['F41', 'G41', 'H41', 'I41'].map(address => cells.get(address)), ['', 88, '', 88]);
+  assert.ok(partial.issues.some(issue => issue.fieldKey === 'grade' && issue.cellReference === 'I33'));
+  assert.ok(partial.issues.some(issue => issue.fieldKey === 'communicationComponentGrade' && issue.cellReference === 'F35'));
+});
+
 test('SF9 learner selection and preview stay adviser-only, level-limited, and separate from combined forms', async () => {
   const rootFiles = await Promise.all([
     fs.readFile(path.join(root, 'backend/routes/sfTemplates.js'), 'utf8'),
@@ -384,6 +524,9 @@ test('SF9 learner selection and preview stay adviser-only, level-limited, and se
   assert.match(controller, /studentId = parseId\([\s\S]*?'learner ID'\)/);
   assert.match(controller, /learners\.find\(record => Number\(record\.userId\) === studentId\)/);
   assert.match(controller, /grade-\(\?:\[4-9\]\|10\)/);
+  assert.match(api, /record\.version === 'g11-academic-2026-2027'/);
+  assert.match(api, /'sf9-g11-academic-v1'/);
+  assert.match(api, /sf9-g11-academic/);
   assert.match(page, /sf9Only[\s\S]*academicYearStatus/);
   assert.match(page, /section\.status === 'active' && section\.academicYearStatus === 'active'/);
   assert.match(page, /section\.status === 'archived' && section\.academicYearStatus === 'closed'/);
@@ -401,18 +544,30 @@ test('advisory class eligibility follows API status as templates change', async 
     { id: 'active-grade-7', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-7' },
     { id: 'closed-grade-7', status: 'archived', academicYearStatus: 'closed', gradeCode: 'grade-7' },
     { id: 'active-grade-3', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-3' },
-    { id: 'active-grade-11', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-11' }
+    { id: 'active-grade-11', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-11' },
+    { id: 'active-grade-11-academic', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-11',
+      trackCode: 'academic', shsCurriculumCode: 'strengthened_2026', academicYear: '2026-2027' },
+    { id: 'active-grade-11-techpro', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-11',
+      trackCode: 'techpro', shsCurriculumCode: 'strengthened_2026', academicYear: '2026-2027' },
+    { id: 'active-grade-11-legacy', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-11',
+      trackCode: 'academic', shsCurriculumCode: 'legacy', academicYear: '2026-2027' },
+    { id: 'active-grade-11-old-year', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-11',
+      trackCode: 'academic', shsCurriculumCode: 'strengthened_2026', academicYear: '2025-2026' }
   ];
   const eligibleIds = templates => vm.runInNewContext(
     `${availableSectionsSource}; availableSections().map(section => section.id);`,
-    { sfState: { sections }, selectedTemplates: () => templates }
+    { sfState: { sections }, selectedTemplates: () => templates,
+      isGrade11AcademicSf9Template: template => template?.formCode === 'SF9'
+        && template.version === 'g11-academic-2026-2027' }
   );
 
   assert.deepEqual(eligibleIds([{ formCode: 'SF9' }]), ['active-grade-7', 'closed-grade-7']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF3' }, { formCode: 'SF5' }]), ['active-grade-7', 'active-grade-3']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF9' }]), ['active-grade-7', 'closed-grade-7']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF5' }]), ['active-grade-7', 'closed-grade-7', 'active-grade-3']);
-  assert.deepEqual(eligibleIds([{ formCode: 'SF3' }]), ['active-grade-7', 'active-grade-3', 'active-grade-11']);
+  assert.deepEqual(eligibleIds([{ formCode: 'SF3' }]), ['active-grade-7', 'active-grade-3', 'active-grade-11',
+    'active-grade-11-academic', 'active-grade-11-techpro', 'active-grade-11-legacy', 'active-grade-11-old-year']);
+  assert.deepEqual(eligibleIds([{ formCode: 'SF9', version: 'g11-academic-2026-2027' }]), ['active-grade-11-academic']);
 });
 
 test('incompatible SF9 selections show an error toast while supported combinations remain unchanged', async () => {
@@ -426,7 +581,8 @@ test('incompatible SF9 selections show an error toast while supported combinatio
     { id: 'sf3', formCode: 'SF3' },
     { id: 'sf5', formCode: 'SF5' },
     { id: 'sf8', formCode: 'SF8' },
-    { id: 'sf9', formCode: 'SF9' }
+    { id: 'sf9', formCode: 'SF9', version: '1.0' },
+    { id: 'sf9-g11-academic', formCode: 'SF9', version: 'g11-academic-2026-2027' }
   ];
   const inputs = templates.map(template => ({ value: template.id, checked: false, matches: () => true }));
   let changeHandler;
@@ -475,5 +631,14 @@ test('incompatible SF9 selections show an error toast while supported combinatio
 
   select('sf9');
   assert.deepEqual(selectedCodes(), []);
+  assert.equal(toastMessages.length, 2);
+
+  select('sf9');
+  select('sf9-g11-academic');
+  assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g11-academic']);
+  assert.equal(toastMessages.length, 2);
+
+  select('sf9');
+  assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9']);
   assert.equal(toastMessages.length, 2);
 });

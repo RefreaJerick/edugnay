@@ -1,4 +1,5 @@
 const { SHS_PATHWAYS } = require('./shsCurriculum');
+const { requiredTermCount } = require('../utils/shsClassTerms');
 
 function hasOccurrence(start, end, weekday) {
   const date = new Date(`${start}T00:00:00Z`);
@@ -67,6 +68,11 @@ function validateSelection(pathway, grade, classes, prior = []) {
   if (grade === 11) {
     if (pathway === 'academic' || pathway === 'academic_cross_track') {
       if (!exact('academic_elective', 3, 240) || classes.length !== 3) return 'Grade 11 Academic requires three Academic electives totaling 240 hours.';
+    } else if (pathway === 'techpro_cross_track') {
+      if (!exact('techpro_elective', 1, 320) || count('academic_elective') > 4
+        || byType('academic_elective').some(item => Number(item.instructionalHours) !== 80)
+        || classes.length !== 1 + count('academic_elective'))
+        return 'Grade 11 TechPro cross-track requires one 320-hour TechPro elective; optional Academic electives must be 80 hours each.';
     } else if (!exact('techpro_elective', 1, 320) || classes.length !== 1) {
       return 'Grade 11 TechPro requires one 320-hour TechPro elective.';
     }
@@ -88,6 +94,16 @@ function validateSelection(pathway, grade, classes, prior = []) {
         return 'TechPro cross-track needs four verified Academic electives across Grades 11 and 12, plus 320-hour TechPro and Work Immersion choices.';
     }
   } else return 'Only Grades 11 and 12 can choose electives.';
+  if (classes.some(item => !item.startTermSequence || !item.endTermSequence))
+    return 'A selected class needs its assigned term reviewed by school staff.';
+  if (classes.some(item => Number(item.endTermSequence) - Number(item.startTermSequence) + 1
+    !== requiredTermCount({ ...item, gradeCode: item.gradeCode || `grade-${grade}` })))
+    return 'A selected class does not cover its required terms.';
+  if (grade === 11 && (pathway === 'academic' || pathway === 'academic_cross_track')) {
+    const sequences = classes.map(item => Number(item.startTermSequence)).sort();
+    if (sequences.join(',') !== '1,2,3' || classes.some(item => Number(item.startTermSequence) !== Number(item.endTermSequence)))
+      return 'Grade 11 Academic requires one 80-hour elective in each of Terms 1, 2, and 3.';
+  }
   for (let i = 0; i < classes.length; i++) {
     for (let j = i + 1; j < classes.length; j++) {
       if (meetingsConflict(classes[i].meetings || [], classes[j].meetings || [])) return 'Selected classes have overlapping meetings.';

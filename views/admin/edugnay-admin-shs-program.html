@@ -10,12 +10,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css?v=2"><link rel="stylesheet" href="../../assets/css/modal-system.css">
-  <link rel="stylesheet" href="../../assets/css/timetables.css"><link rel="stylesheet" href="../../assets/css/shs-program.css?v=2">
+  <link rel="stylesheet" href="../../assets/css/timetables.css"><link rel="stylesheet" href="../../assets/css/shs-program.css?v=7">
   <link rel="stylesheet" href="../../assets/css/theme.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js?v=11"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
-  <script src="../../assets/js/admin/shell.js"></script><script src="../../assets/js/admin/shs-program.js?v=3"></script>
+  <script src="../../assets/js/admin/shell.js"></script><script src="../../assets/js/admin/shs-program.js?v=4"></script>
 </head>
 <body data-page-title="SHS Program" data-page-loading="Loading SHS program...">
 <div class="shell">
@@ -90,6 +90,8 @@
   <div class="timetable-field shs-class-field" hidden><label for="shs-class-name">Class name</label><input id="shs-class-name" name="className" maxlength="100" placeholder="e.g. Group A"></div>
   <div class="timetable-field shs-class-field" hidden><label for="shs-teacher">Assigned teacher</label><select id="shs-teacher" name="teacherId"></select></div>
   <div class="timetable-field shs-class-field" hidden><label for="shs-capacity">Capacity</label><input id="shs-capacity" name="capacity" type="number" min="1" max="500" value="40"></div>
+  <div class="timetable-field shs-class-field" id="shs-single-term-field" hidden><label for="shs-single-term">Term</label><select id="shs-single-term"></select></div>
+  <div class="shs-class-field" id="shs-term-range-fields" hidden><div class="timetable-field"><label for="shs-start-term">First term</label><select id="shs-start-term" name="startTermId"></select></div><div class="timetable-field"><label for="shs-end-term">Last term</label><select id="shs-end-term" name="endTermId"></select></div></div>
   <p class="timetable-error" id="shs-dialog-error" role="alert"></p></div><div class="modal-foot"><button class="btn btn-cancel" id="shs-cancel" type="button">Cancel</button><button class="btn btn-save" type="submit" id="shs-save">Save</button></div></form></div></div>
 <div class="modal-backdrop shs-dialog-overlay" id="shs-choice-overlay" hidden><div class="modal shs-dialog shs-choice-dialog" role="dialog" aria-modal="true" aria-labelledby="shs-choice-title" tabindex="-1">
   <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-check"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="shs-choice-title" tabindex="-1">Learner elective choices</h2><p class="modal-sub" id="shs-choice-subtitle"></p></div></div><button class="modal-close" id="shs-choice-close" type="button" aria-label="Close dialog"><i data-lucide="x" aria-hidden="true"></i></button></div>

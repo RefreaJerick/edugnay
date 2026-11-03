@@ -40,6 +40,54 @@
     return `${Number(item.instructionalHours)} hours${period}`;
   }
 
+  function selectionRequirement(placement, selected, prior = []) {
+    const grade = Number(String(placement.gradeCode).replace('grade-', ''));
+    const count = type => selected.filter(item => item.subjectType === type).length;
+    const hours = type => selected.filter(item => item.subjectType === type)
+      .reduce((sum, item) => sum + Number(item.instructionalHours), 0);
+    const total = selected.reduce((sum, item) => sum + Number(item.instructionalHours), 0);
+    const priorAcademic = prior.filter(item => item.subjectType === 'academic_elective');
+    const cross = placement.trackCode === 'academic' ? count('techpro_elective') > 0
+      : count('academic_elective') > 0 || priorAcademic.length > 0;
+    let guidance, valid;
+    if (grade === 11 && placement.trackCode === 'academic') {
+      guidance = 'Choose 3 Academic electives (240 hours), one in each term.';
+      valid = selected.length === 3 && hours('academic_elective') === 240
+        && selected.every(item => item.subjectType === 'academic_elective'
+          && item.startTermSequence === item.endTermSequence)
+        && selected.map(item => Number(item.startTermSequence)).sort().join(',') === '1,2,3';
+    } else if (grade === 11) {
+      guidance = 'Choose one 320-hour TechPro elective covering all three terms.';
+      valid = count('techpro_elective') === 1 && hours('techpro_elective') === 320
+        && (cross ? count('academic_elective') <= 4
+          && selected.length === 1 + count('academic_elective')
+          && selected.filter(item => item.subjectType === 'academic_elective')
+            .every(item => Number(item.instructionalHours) === 80) : selected.length === 1);
+    } else if (placement.trackCode === 'academic' && cross) {
+      guidance = 'Choose 8 Academic electives (640 hours) and one 320-hour TechPro elective.';
+      valid = selected.length === 9 && count('academic_elective') === 8
+        && hours('academic_elective') === 640 && count('techpro_elective') === 1
+        && hours('techpro_elective') === 320;
+    } else if (placement.trackCode === 'academic') {
+      guidance = 'Choose 9–12 Academic electives totaling 960 hours.';
+      valid = selected.length >= 9 && selected.length <= 12 && total === 960
+        && selected.length === count('academic_elective');
+    } else if (cross) {
+      guidance = 'Choose one 320-hour TechPro elective, 320-hour Work Immersion, and 4 Academic electives across Grades 11–12.';
+      valid = count('techpro_elective') === 1 && hours('techpro_elective') === 320
+        && count('work_immersion') === 1 && hours('work_immersion') === 320
+        && count('academic_elective') + priorAcademic.length === 4
+        && hours('academic_elective') + priorAcademic.reduce((sum, item) => sum + Number(item.instructionalHours), 0) === 320
+        && selected.length === count('academic_elective') + 2;
+    } else {
+      guidance = 'Choose 1–2 TechPro electives and Work Immersion totaling 960 hours.';
+      valid = count('techpro_elective') >= 1 && count('techpro_elective') <= 2
+        && count('work_immersion') === 1 && selected.length === count('techpro_elective') + 1
+        && total === 960;
+    }
+    return { guidance, valid, total };
+  }
+
   function sameMeeting(leftMeetings, rightMeetings) {
     return leftMeetings.some(left => rightMeetings.some(right => {
       if (Number(left.weekday) !== Number(right.weekday) || left.startTime >= right.endTime || left.endTime <= right.startTime) return false;
@@ -141,11 +189,19 @@
     };
   }
 
+  function termReviewRow(label) {
+    return `<span class="shs-term-review-row"><i data-lucide="triangle-alert" aria-hidden="true"></i><span>${escape(label)}</span></span>`;
+  }
+
   function classDetails(item) {
     const meetings = (item.meetings || []).map(meeting =>
       `${['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][meeting.weekday]} ${meeting.startTime}-${meeting.endTime}${meeting.room ? ` · ${meeting.room}` : ''}`
     ).join(', ');
-    return `<strong>${escape(item.subjectName)}</strong><span class="shs-saved-choice-meta">${escape(item.className)} &middot; ${escape(item.teacherName)}</span><small class="shs-saved-choice-schedule">${escape(meetings || 'Schedule not set yet')}</small>`;
+    const term = item.startTermName
+      ? (item.startTermId === item.endTermId ? item.startTermName : `${item.startTermName}–${item.endTermName}`)
+      : '';
+    const details = `<span class="shs-saved-choice-meta">${escape(item.className)} &middot; ${escape(item.teacherName)}${term ? ` &middot; ${escape(term)}` : ''}</span>`;
+    return `<strong>${escape(item.subjectName)}</strong>${details}<small class="shs-saved-choice-schedule">${escape(meetings || 'Schedule not set yet')}</small>`;
   }
 
   function savedChoicesEmptyState(selection, status, archived) {
@@ -192,9 +248,15 @@
     const savedChoices = savedChoiceDisplay.savedChoices;
     const status = statusDetails(displaySelection, savedChoices.length);
     const hasSavedChoices = savedChoices.length > 0;
-    const savedChoiceMarkup = hasSavedChoices ? savedChoices.map(item =>
-      `<article class="shs-saved-choice">${classDetails(item)}${item.unavailableReason ? `<small class="shs-choice-reason">${escape(item.unavailableReason)}</small>` : ''}</article>`
-    ).join('') : savedChoicesEmptyState(displaySelection, status, archived);
+    const savedChoiceMarkup = hasSavedChoices ? savedChoices.map(item => {
+      const termReview = item.startTermName ? '' : termReviewRow('Term review needed');
+      const staffReview = item.unavailableReason === 'Class term needs staff review';
+      const reason = item.unavailableReason
+        ? staffReview ? termReviewRow(item.unavailableReason)
+          : `<small class="shs-choice-reason">${escape(item.unavailableReason)}</small>`
+        : '';
+      return `<article class="shs-saved-choice">${classDetails(item)}${termReview}${reason}</article>`;
+    }).join('') : savedChoicesEmptyState(displaySelection, status, archived);
     $('elective-saved-choices').innerHTML = savedChoiceMarkup;
     $('elective-selection-state').hidden = !hasSavedChoices;
     $('elective-status').className = `badge ${status.badge}`;
@@ -202,22 +264,23 @@
     const guidanceNote = $('elective-guidance-note');
     guidanceNote.textContent = choiceGuidance(displaySelection, status, hasSavedChoices, archived);
     guidanceNote.hidden = !guidanceNote.textContent;
-    $('elective-summary').textContent = `${selected.length} selected`;
+    const requirement = selectionRequirement(data.placement, selected, data.priorElectives || []);
+    $('elective-summary').textContent = `${selected.length} selected · ${requirement.total} hours`;
     const immersion = workImmersionStatus(data.placement, data.classes, chosen);
     const requirementNote = $('elective-requirement-note');
-    requirementNote.hidden = !immersion.required;
-    if (immersion.required) {
-      requirementNote.textContent = !immersion.eligible.length
+    requirementNote.hidden = false;
+    requirementNote.textContent = requirement.guidance;
+    if (immersion.required && !immersion.satisfied) {
+      requirementNote.textContent += ' ' + (!immersion.eligible.length
         ? 'Grade 12 TechPro students must choose Work Immersion. Your school has not offered an eligible class yet; ask school staff to add one before saving.'
         : immersion.selected.length > 1
           ? 'Choose exactly one available Work Immersion class before saving your choices.'
           : immersion.selected.length === 1 && !immersion.satisfied
             ? 'Your selected Work Immersion class is unavailable. Choose an available class or ask school staff to make one available.'
-            : immersion.satisfied
-              ? 'Work Immersion is required for Grade 12 TechPro and is included in your selection.'
-              : 'Choose exactly one available Work Immersion class before saving your choices.';
+            : 'Choose exactly one available Work Immersion class before saving your choices.');
     }
-    $('elective-submit').disabled = readOnly || saving || !selected.length || !immersion.satisfied;
+    $('elective-submit').disabled = readOnly || saving || !requirement.valid || !immersion.satisfied
+      || selected.some(item => !item.startTermId || !item.endTermId || item.unavailableReason);
     $('elective-submit').textContent = 'Save my choices';
 
     $('elective-classes').innerHTML = data.classes.map(item => {
@@ -227,6 +290,12 @@
       const conflicts = otherChoices.some(other => sameMeeting(item.meetings || [], other.meetings || []));
       const reason = item.unavailableReason || (duplicate ? 'This subject is already selected.'
         : conflicts ? 'This class overlaps another selected class.' : '');
+      const termName = item.startTermName
+        ? (item.startTermId === item.endTermId ? item.startTermName : `${item.startTermName}–${item.endTermName}`) : '';
+      const termReview = termName ? '' : termReviewRow('Term review needed');
+      const reasonMarkup = reason === 'Class term needs staff review'
+        ? termReviewRow(reason)
+        : reason ? `<small class="shs-choice-reason">${escape(reason)}</small>` : '';
       const seatsLeft = Math.max(0, Number(item.capacity) - Number(item.enrolledCount));
       const meetings = (item.meetings || []).map(meeting =>
         `${['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][meeting.weekday]} ${meeting.startTime}\u2013${meeting.endTime}${meeting.room ? ` \u00b7 ${meeting.room}` : ''}`
@@ -237,10 +306,11 @@
         <span class="shs-choice-copy">
           <span class="shs-choice-head"><strong>${escape(item.subjectName)}</strong><span class="badge badge-gray shs-choice-seats">${seatsLeft} seats left</span></span>
           <small class="shs-choice-category">${escape(catalogGroupLabel(item.catalogGroup))}${item.clusterName ? ` &middot; ${escape(item.clusterName)}` : ''}${immersion.required && isEligibleTechProImmersion(item) ? ' &middot; Required' : ''}</small>
-          <small class="shs-choice-hours">${escape(availableHours(item))}</small>
+          <small class="shs-choice-hours">${escape(availableHours(item))}${termName ? ` · ${escape(termName)}` : ''}</small>
           <span class="shs-choice-meta">${escape(item.className)} &middot; ${escape(item.teacherName)}</span>
           <span class="shs-choice-schedule"><i data-lucide="calendar-days" aria-hidden="true"></i><span>${escape(meetings)}</span></span>
-          ${reason ? `<small class="shs-choice-reason">${escape(reason)}</small>` : ''}
+          ${termReview}
+          ${reasonMarkup}
         </span></label>`;
     }).join('') || window.EDUGNAY_CONFIG.renderPanelEmptyState({
       icon: 'calendar-x', title: 'No elective classes yet', text: 'Your school has not added elective classes for this grade and year.'

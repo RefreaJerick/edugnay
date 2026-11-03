@@ -10,6 +10,7 @@ const {
 const { loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
 const { getTrigger, notifyParents } = require('../utils/parentNotifications');
 const { isCommunicationComponentCode } = require('../config/shsCommunication');
+const { classHasStartedSql } = require('../utils/shsClassTerms');
 
 function createError(message, status = 400) { const error = new Error(message); error.status = status; return error; }
 function parseId(value, label) { const id = Number.parseInt(value, 10); if (!Number.isSafeInteger(id) || id < 1) throw createError(`Invalid ${label}.`); return id; }
@@ -36,6 +37,7 @@ async function loadPublishedElectiveGrades(database, user, { studentId, academic
     `YEAR(year.start_date) >= 2026`,
     `grade.grade_code IN ('grade-11', 'grade-12')`];
   const values = [user.schoolId];
+  if (user.role !== 'school_admin') where.push(classHasStartedSql('c.id', 'c.school_id'));
   if (studentId) { where.push('p.student_user_id = ?'); values.push(studentId); }
   if (academicYearId) { where.push('o.academic_year_id = ?'); values.push(academicYearId); }
   if (academicTermId) { where.push('p.academic_term_id = ?'); values.push(academicTermId); }
@@ -101,11 +103,20 @@ async function loadConfirmedElectiveClasses(database, schoolId, studentId) {
        AND grade_levels.school_id = offerings.school_id
      INNER JOIN school_levels ON school_levels.id = grade_levels.school_level_id
        AND school_levels.school_id = grade_levels.school_id AND school_levels.level_code = 'shs'
+     LEFT JOIN academic_terms start_term ON start_term.id = classes.start_term_id
+       AND start_term.school_id = classes.school_id
+     LEFT JOIN academic_terms end_term ON end_term.id = classes.end_term_id
+       AND end_term.school_id = classes.school_id
      LEFT JOIN academic_terms terms ON terms.school_id = years.school_id
        AND terms.academic_year_id = years.id AND terms.school_level_id = school_levels.id
+       AND terms.sequence_number BETWEEN start_term.sequence_number AND end_term.sequence_number
+     LEFT JOIN academic_terms active_term ON active_term.school_id = years.school_id
+       AND active_term.academic_year_id = years.id AND active_term.school_level_id = school_levels.id
+       AND active_term.status = 'active'
      WHERE memberships.school_id = ? AND memberships.student_user_id = ?
        AND memberships.withdrawn_at IS NULL AND YEAR(years.start_date) >= 2026
        AND grade_levels.grade_code IN ('grade-11', 'grade-12')
+       AND (years.status = 'archived' OR active_term.sequence_number >= start_term.sequence_number)
      ORDER BY years.start_date DESC, terms.sequence_number, offerings.subject_name, classes.class_name`,
     [schoolId, studentId]
   );

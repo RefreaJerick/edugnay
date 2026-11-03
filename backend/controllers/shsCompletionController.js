@@ -127,6 +127,7 @@ async function loadRequest(db, schoolId, section, studentId) {
   const request = rows[0];
   const [classes] = await db.execute(
     `SELECT c.id AS classId, c.class_name AS className, c.is_active AS classActive,
+      first_term.sequence_number AS startTermSequence, last_term.sequence_number AS endTermSequence,
       c.teacher_user_id AS teacherId, t.account_status AS teacherStatus,
       o.catalog_code AS catalogCode, o.catalog_version AS catalogVersion,
       o.subject_type AS subjectType, o.subject_name AS subjectName,
@@ -139,6 +140,8 @@ async function loadRequest(db, schoolId, section, studentId) {
      JOIN shs_elective_classes c ON c.id = choice.elective_class_id AND c.school_id = choice.school_id
      JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
      JOIN users t ON t.id = c.teacher_user_id AND t.school_id = c.school_id
+     LEFT JOIN academic_terms first_term ON first_term.id = c.start_term_id AND first_term.school_id = c.school_id
+     LEFT JOIN academic_terms last_term ON last_term.id = c.end_term_id AND last_term.school_id = c.school_id
      WHERE choice.school_id = ? AND choice.request_id = ? ORDER BY o.subject_name, c.class_name`,
     [studentId, schoolId, request.id]
   );
@@ -166,7 +169,10 @@ async function loadRequest(db, schoolId, section, studentId) {
       [section.academicYearId, schoolId, item.classId, studentId]
     );
     item.meetings = meetings;
-    item.gradeStatus = subjectGradeStatus(terms, grades);
+    item.gradeStatus = subjectGradeStatus(terms.filter(term =>
+      item.startTermSequence && item.endTermSequence
+      && Number(term.sequenceNumber) >= Number(item.startTermSequence)
+      && Number(term.sequenceNumber) <= Number(item.endTermSequence)), grades);
     item.evidence = grades.map(row => ({ ...row, finalGrade: Number(row.finalGrade) }));
     const entry = getCatalogEntry(item.catalogCode);
     item.catalogMatched = matchesCatalogSnapshot(entry, {

@@ -98,7 +98,7 @@ test('My Electives spaces its panels and uses shared empty, count, and checkbox 
   assert.match(client, /selection\?\.savedClasses/);
   assert.match(client, /selection\.dataIssue/);
   assert.match(client, /\$\('elective-selection-state'\)\.hidden = !hasSavedChoices/);
-  assert.match(client, /\$\('elective-summary'\)\.textContent = `\$\{selected\.length\} selected`/);
+  assert.match(client, /\$\('elective-summary'\)\.textContent = `\$\{selected\.length\} selected · \$\{requirement\.total\} hours`/);
   assert.match(client, /label: 'Confirmed by your school'/);
   assert.match(client, /label: 'Waiting for school confirmation'/);
   assert.match(client, /label: 'Not recorded'/);
@@ -148,13 +148,18 @@ test('Grade 12 TechPro students must select an offered Work Immersion class befo
   };
   vm.runInNewContext(source.replace("document.addEventListener('DOMContentLoaded', init);",
     'window.electiveTest = { setData(value) { data = value; }, chosen, render };'), context);
-  const immersion = { id: 301, catalogCode: 'WI-320', subjectName: 'Work Immersion',
+  const immersion = { id: 301, catalogCode: 'WI-640', subjectName: 'Work Immersion',
     catalogGroup: 'techpro_work_immersion', assessmentGroup: 'work_immersion', trackCode: 'techpro',
     catalogValid: true, catalogGradeEligible: true, catalogAvailableForNewUse: true,
-    gradeCode: 'grade-12', instructionalHours: 320, hoursUnit: 'per_term',
+    gradeCode: 'grade-12', instructionalHours: 640, hoursUnit: 'two_terms',
+    startTermId: 1, endTermId: 2, startTermSequence: 1, endTermSequence: 2,
     className: 'Immersion placement', teacherName: 'Teacher', capacity: 40, enrolledCount: 0, meetings: [] };
+  const techpro = { ...immersion, id: 302, catalogCode: 'TP-AF-01', subjectName: 'TechPro elective',
+    catalogGroup: 'techpro_electives', assessmentGroup: 'techpro', subjectType: 'techpro_elective',
+    instructionalHours: 320, startTermId: 3, endTermId: 3, startTermSequence: 3, endTermSequence: 3 };
+  immersion.subjectType = 'work_immersion';
   const placement = { gradeCode: 'grade-12', sectionName: 'QA-only', trackCode: 'techpro', yearStatus: 'active' };
-  context.window.electiveTest.setData({ placement, classes: [immersion] });
+  context.window.electiveTest.setData({ placement, classes: [immersion, techpro] });
   context.window.electiveTest.render();
   assert.match(nodes.get('elective-overview-context').textContent,
     /QA-only.*Grade 12.*TechPro track.*Choose electives agreed on with your school\.$/);
@@ -164,8 +169,11 @@ test('Grade 12 TechPro students must select an offered Work Immersion class befo
 
   context.window.electiveTest.chosen.add(301);
   context.window.electiveTest.render();
+  assert.equal(nodes.get('elective-submit').disabled, true);
+  context.window.electiveTest.chosen.add(302);
+  context.window.electiveTest.render();
   assert.equal(nodes.get('elective-submit').disabled, false);
-  assert.match(nodes.get('elective-requirement-note').textContent, /included in your selection/);
+  assert.match(nodes.get('elective-summary').textContent, /960 hours/);
 
   context.window.electiveTest.chosen.clear();
   context.window.electiveTest.setData({ placement, classes: [] });
@@ -174,7 +182,7 @@ test('Grade 12 TechPro students must select an offered Work Immersion class befo
   assert.match(nodes.get('elective-requirement-note').textContent, /not offered an eligible class.*add one before saving/i);
 
   const longSectionName = 'Grade 12 Technical Vocational Livelihood Industry Immersion Cohort';
-  context.window.electiveTest.setData({ placement: { ...placement, sectionName: longSectionName }, classes: [immersion] });
+  context.window.electiveTest.setData({ placement: { ...placement, sectionName: longSectionName }, classes: [immersion, techpro] });
   context.window.electiveTest.render();
   assert.match(nodes.get('elective-overview-context').textContent, new RegExp(longSectionName));
 });
@@ -200,6 +208,8 @@ test('available elective cards keep selection behavior and give class details a 
   const item = { id: 1, catalogCode: 'LIT-1', subjectName: 'Contemporary Literature & Writing',
     catalogGroup: 'academic_electives', clusterName: 'Arts, Social Sciences, and Humanities',
     trackCode: 'academic', gradeCode: 'grade-11', instructionalHours: 80, hoursUnit: 'per_term',
+    startTermId: 1, endTermId: 1, startTermSequence: 1, endTermSequence: 1,
+    startTermName: 'Term 1', endTermName: 'Term 1', subjectType: 'academic_elective',
     className: 'QA AE011', teacherName: 'Carlo Reyes', capacity: 40, enrolledCount: 0,
     meetings: [
       { weekday: 2, startTime: '09:00', endTime: '10:00', room: 'Room 204' },
@@ -229,13 +239,13 @@ test('available elective cards keep selection behavior and give class details a 
   assert.match(markup, /Schedule not set yet/);
   assert.match(markup, /No seats left\./);
   assert.match(markup, /value="2"[^>]*disabled/);
-  assert.equal(nodes.get('elective-summary').textContent, '0 selected');
+  assert.equal(nodes.get('elective-summary').textContent, '0 selected · 0 hours');
   assert.equal(nodes.get('elective-submit').disabled, true);
   context.window.electiveTest.chosen.add(1);
   context.window.electiveTest.render();
   assert.match(nodes.get('elective-classes').innerHTML, /value="1" checked/);
-  assert.equal(nodes.get('elective-summary').textContent, '1 selected');
-  assert.equal(nodes.get('elective-submit').disabled, false);
+  assert.equal(nodes.get('elective-summary').textContent, '1 selected · 80 hours');
+  assert.equal(nodes.get('elective-submit').disabled, true);
   assert.equal(iconsRendered, 2);
   context.window.electiveTest.setData({
     placement: { gradeCode: 'grade-11', sectionName: 'QA-only', trackCode: 'academic', yearStatus: 'active' },
@@ -391,7 +401,7 @@ test('selection API treats an empty legacy status without class links as not rec
   const context = {
     placement: async () => ({ yearId: 20, gradeId: 11, sectionId: 41 }),
     requestFor: async () => ({ id: 7, status: requestStatus, revision: 2, decision_reason: null }),
-    execute: async () => [], classRows: async () => [], homeMeetings: async () => []
+    execute: async () => [], classRows: async () => [], homeMeetings: async () => [], priorElectives: async () => []
   };
   const choiceData = vm.runInNewContext(`${choiceDataSource}\nchoiceData`, context);
   const cleared = await choiceData({}, 3, 5);
@@ -405,7 +415,7 @@ test('selection API treats an empty legacy status without class links as not rec
   assert.equal(confirmed.selection.dataIssue, true);
 });
 
-test('student choices remain gated, pathway-free, and separate from confirmed memberships', () => {
+test('student choices remain gated, validated before saving, and separate from confirmed memberships', () => {
   const migration = read('backend/database/migrations/052_shs_elective_selection.sql');
   const route = read('backend/routes/shsSelection.js');
   const server = read('backend/server.js');
@@ -486,7 +496,8 @@ test('student choices remain gated, pathway-free, and separate from confirmed me
   assert.match(bodyOf('decide'), /syncMemberships/);
   assert.match(bodyOf('changeApproved'), /syncMemberships/);
   assert.match(bodyOf('syncMemberships'), /withdrawn_at = NOW\(\)/);
-  assert.doesNotMatch(controllerSource, /priorElectives|verifyPrior|recordPrior/);
+  assert.match(controllerSource, /priorElectives/);
+  assert.doesNotMatch(controllerSource, /verifyPrior|recordPrior/);
   const programRoute = read('backend/routes/shsProgram.js');
   assert.doesNotMatch(programRoute, /completion|confirm/);
   assert.doesNotMatch(read('assets/js/admin/shs-program.js'), /getShsCompletion|confirmShsCompletion|verifyShsPrior|recordShsPrior|loadCompletion|renderCompletion/);
@@ -520,7 +531,7 @@ test('staff sees confirmed records with missing choices as read-only review issu
     }
   };
   vm.runInNewContext(source.replace(
-    "document.addEventListener('DOMContentLoaded', () => { if ($('shs-program-page')) init(); });",
+    "document.addEventListener('DOMContentLoaded', async () => {\n    if ($('shs-program-page')) await init();\n    window.EDUGNAY_PAGE_LOADING.ready();\n  });",
     'window.reviewTest = { renderReviews, renderChoiceClasses, setChoiceData(value) { state.choiceData = value; state.choiceStatus = value.selection?.status || "not_recorded"; } };'
   ), context);
   context.window.reviewTest.renderReviews({ year: { status: 'active' }, page: 1, pageSize: 25, total: 1, pages: 1,
@@ -557,7 +568,7 @@ test('staff treats empty pending requests as not recorded and offers recording c
     window: { EDUGNAY_CONFIG: { renderPanelEmptyState: () => '<div class="panel-empty-state"></div>' }, lucide: { createIcons() {} } }
   };
   vm.runInNewContext(source.replace(
-    "document.addEventListener('DOMContentLoaded', () => { if ($('shs-program-page')) init(); });",
+    "document.addEventListener('DOMContentLoaded', async () => {\n    if ($('shs-program-page')) await init();\n    window.EDUGNAY_PAGE_LOADING.ready();\n  });",
     'window.reviewTest = { renderReviews };'
   ), context);
   context.window.reviewTest.renderReviews({ year: { status: 'active' }, page: 1, pageSize: 25, total: 1, pages: 1,
@@ -579,7 +590,7 @@ test('staff can select a newly added class in the confirmed-choice editor', () =
     window: { EDUGNAY_CONFIG: { renderPanelEmptyState: () => '<div class="panel-empty-state"></div>' } }
   };
   vm.runInNewContext(source.replace(
-    "document.addEventListener('DOMContentLoaded', () => { if ($('shs-program-page')) init(); });",
+    "document.addEventListener('DOMContentLoaded', async () => {\n    if ($('shs-program-page')) await init();\n    window.EDUGNAY_PAGE_LOADING.ready();\n  });",
     "window.shsChoiceTest = { setData(value) { state.choiceData = value; state.choiceStatus = value.selection?.status || 'not_recorded'; }, renderChoiceClasses };"
   ), context);
   const selected = { id: 1, subjectName: 'Contemporary Literature', className: 'Class A', teacherName: 'Teacher',
@@ -608,7 +619,7 @@ test('Grade 12 TechPro staff choices cannot be saved or confirmed without Work I
     window: { EDUGNAY_CONFIG: { renderPanelEmptyState: () => '<div class="panel-empty-state"></div>' } }
   };
   vm.runInNewContext(source.replace(
-    "document.addEventListener('DOMContentLoaded', () => { if ($('shs-program-page')) init(); });",
+    "document.addEventListener('DOMContentLoaded', async () => {\n    if ($('shs-program-page')) await init();\n    window.EDUGNAY_PAGE_LOADING.ready();\n  });",
     "window.shsChoiceTest = { setData(value) { state.choiceData = value; state.choiceStatus = value.selection?.status || 'not_recorded'; }, renderChoiceClasses };"
   ), context);
   const placement = { gradeCode: 'grade-12', trackCode: 'techpro' };

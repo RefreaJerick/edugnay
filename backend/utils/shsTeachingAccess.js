@@ -1,4 +1,5 @@
 const { getCatalogEntry, matchesCatalogSnapshot } = require('../config/shsApprovedCatalog');
+const { activeTerm, classAvailable } = require('./shsClassTerms');
 
 function createError(message, status = 403) { const error = new Error(message); error.status = status; return error; }
 
@@ -13,6 +14,9 @@ async function getElectiveClass(connection, schoolId, classId, { includeArchived
   const [rows] = await connection.execute(
     `SELECT ec.id, ec.school_id AS schoolId, ec.offering_id AS offeringId,
       ec.teacher_user_id AS teacherId, ec.class_name AS className, ec.capacity, ec.is_active AS classActive,
+      ec.start_term_id AS startTermId, ec.end_term_id AS endTermId,
+      start_term.name AS startTermName, end_term.name AS endTermName,
+      start_term.sequence_number AS startTermSequence, end_term.sequence_number AS endTermSequence,
       o.academic_year_id AS academicYearId, o.grade_level_id AS gradeLevelId,
       g.school_level_id AS schoolLevelId,
       o.catalog_version AS catalogVersion, o.catalog_code AS catalogCode, o.track_code AS trackCode,
@@ -27,6 +31,8 @@ async function getElectiveClass(connection, schoolId, classId, { includeArchived
      JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
      JOIN users t ON t.id = ec.teacher_user_id AND t.school_id = ec.school_id
      JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
+     LEFT JOIN academic_terms start_term ON start_term.id = ec.start_term_id AND start_term.school_id = ec.school_id
+     LEFT JOIN academic_terms end_term ON end_term.id = ec.end_term_id AND end_term.school_id = ec.school_id
      WHERE ec.school_id = ? AND ec.id = ? LIMIT 1${forUpdate ? ' FOR UPDATE' : ''}`, [schoolId, classId]);
   const item = rows[0];
   if (!item || Number(item.schoolId) !== Number(schoolId) || Number(item.id) !== Number(classId)
@@ -48,6 +54,8 @@ async function getElectiveClass(connection, schoolId, classId, { includeArchived
 async function assertElectiveTeacher(connection, user, classId, { write = false } = {}) {
   const item = await getElectiveClass(connection, user.schoolId, classId, { includeArchived: true, forUpdate: write });
   if (!item || Number(item.teacherId) !== Number(user.id)) throw createError('Elective class not found.', 404);
+  const term = await activeTerm(connection, item);
+  if (!classAvailable(item, term, { history: !write })) throw createError('Elective class is not available in the current term.', 404);
   if (write && (item.yearStatus !== 'active' || !item.classActive || !item.offeringActive || item.teacherStatus !== 'active')) {
     throw createError(item.yearStatus !== 'active' ? 'Archived school years are read-only.' : 'This elective class is not currently available for teaching.', 409);
   }
@@ -57,6 +65,8 @@ async function assertElectiveTeacher(connection, user, classId, { write = false 
 async function assertElectiveStudent(connection, user, classId, { write = false, allowFormer = false } = {}) {
   const item = await getElectiveClass(connection, user.schoolId, classId, { includeArchived: true });
   if (!item) throw createError('Elective class not found.', 404);
+  const term = await activeTerm(connection, item);
+  if (!classAvailable(item, term, { history: !write })) throw createError('Elective class is not available in the current term.', 404);
   const [members] = await connection.execute(
     `SELECT withdrawn_at AS withdrawnAt FROM shs_elective_class_students
      WHERE school_id = ? AND elective_class_id = ? AND student_user_id = ?
@@ -76,6 +86,8 @@ async function assertElectiveStudent(connection, user, classId, { write = false,
 async function assertElectiveParent(connection, user, classId, studentId) {
   const item = await getElectiveClass(connection, user.schoolId, classId, { includeArchived: true });
   if (!item) throw createError('Elective class not found.', 404);
+  if (!classAvailable(item, await activeTerm(connection, item), { history: true }))
+    throw createError('Elective class is not available in the current term.', 404);
   const [links] = await connection.execute(
     `SELECT 1 FROM student_parent_links l
      JOIN shs_elective_class_students m ON m.student_user_id = l.student_user_id AND m.school_id = l.school_id

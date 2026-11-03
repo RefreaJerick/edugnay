@@ -2,7 +2,7 @@ const { SF2 } = require('./sf2');
 const { SF3 } = require('./sf3');
 const { SF5 } = require('./sf5');
 const { SF8 } = require('./sf8');
-const { SF9 } = require('./sf9');
+const { SF9, SF9_GRADE11_ACADEMIC } = require('./sf9');
 
 function range(startRow, endRow, startColumn, endColumn) {
   return { startRow, endRow, startColumn, endColumn };
@@ -72,11 +72,27 @@ const entries = {
       range(29, 32, columnNumber('Q'), columnNumber('AC')),
       range(34, 42, columnNumber('Q'), columnNumber('AC')),
       range(46, 51, columnNumber('Q'), columnNumber('AC'))]
+  },
+  SF9_GRADE11_ACADEMIC: {
+    addresses: [...Object.values(SF9_GRADE11_ACADEMIC.headers), `I${SF9_GRADE11_ACADEMIC.generalAverageRow}`],
+    ranges: [range(33, 39, columnNumber('B'), columnNumber('K')),
+      range(41, 43, columnNumber('B'), columnNumber('K')),
+      range(5, 10, columnNumber('R'), columnNumber('AC')),
+      range(15, 26, columnNumber('Q'), columnNumber('AC')),
+      range(27, 27, columnNumber('B'), columnNumber('K')),
+      range(29, 32, columnNumber('Q'), columnNumber('AC')),
+      range(34, 42, columnNumber('Q'), columnNumber('AC')),
+      range(46, 51, columnNumber('Q'), columnNumber('AC'))]
   }
 };
 
-function isFormEntryCell(formCode, address) {
-  const definition = entries[formCode];
+function entryDefinition(formCode, version) {
+  return formCode === 'SF9' && version === SF9_GRADE11_ACADEMIC.version
+    ? entries.SF9_GRADE11_ACADEMIC : entries[formCode];
+}
+
+function isFormEntryCell(formCode, address, version = '') {
+  const definition = entryDefinition(formCode, version);
   if (!definition) return false;
   const normalized = String(address || '').toUpperCase();
   if (definition.addresses.includes(normalized)) return true;
@@ -88,11 +104,11 @@ function isFormEntryCell(formCode, address) {
     && column >= area.startColumn && column <= area.endColumn);
 }
 
-function isFormEntryPlaceholder(formCode, address) {
-  return entries[formCode]?.placeholderAddresses?.includes(String(address || '').toUpperCase()) || false;
+function isFormEntryPlaceholder(formCode, address, version = '') {
+  return entryDefinition(formCode, version)?.placeholderAddresses?.includes(String(address || '').toUpperCase()) || false;
 }
 
-function getFormEntryType(formCode, address, cell) {
+function getFormEntryType(formCode, address, cell, version = '') {
   const normalized = String(address || '').toUpperCase();
   const parts = addressParts(normalized);
   const dateFormat = String(cell?.numFmt || '').toLowerCase();
@@ -118,6 +134,9 @@ function getFormEntryType(formCode, address, cell) {
   if (formCode === 'SF8' && parts && parts.row >= 12 && parts.row <= 108
     && parts.row !== 64 && parts.column >= columnNumber('H') && parts.column <= columnNumber('L')) return 'number';
   if (formCode === 'SF8' && parts && parts.row >= 114 && parts.row <= 116) return 'number';
+  if (formCode === 'SF9' && version === SF9_GRADE11_ACADEMIC.version && parts
+    && parts.row >= 33 && parts.row <= 43
+    && [columnNumber('B'), columnNumber('J')].includes(parts.column)) return 'text';
   if (formCode === 'SF9' && parts?.row === 17 && parts.column === columnNumber('I')) return 'number';
   if (formCode === 'SF9' && parts?.row === 18 && parts.column === columnNumber('I')) return 'number';
   if (formCode === 'SF9' && parts && parts.row >= 5 && parts.row <= 10
@@ -125,6 +144,12 @@ function getFormEntryType(formCode, address, cell) {
   if (formCode === 'SF9' && parts && parts.row >= 32 && parts.column >= columnNumber('F')
     && parts.column <= columnNumber(SF9.finalGradeColumn)) return 'number';
   if (formCode === 'SF9' && normalized === `${SF9.finalGradeColumn}42`) return 'number';
+  if (formCode === 'SF9' && version === SF9_GRADE11_ACADEMIC.version
+    && (parts?.row === 17 && parts.column === columnNumber('I')
+      || parts?.row === 18 && parts.column === columnNumber('I')
+      || parts?.row === SF9_GRADE11_ACADEMIC.generalAverageRow && parts.column === columnNumber('I')
+      || parts && parts.row >= 33 && parts.row <= 44
+        && parts.column >= columnNumber('F') && parts.column <= columnNumber('I'))) return 'number';
   if (formCode === 'SF3' && parts && parts.row === 9
     && parts.column >= columnNumber('D') && parts.column <= columnNumber('S')) return 'text';
   if (formCode === 'SF3' && parts && parts.row >= 12 && parts.row <= 59 && parts.row !== 36

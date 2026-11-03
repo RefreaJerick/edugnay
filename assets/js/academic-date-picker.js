@@ -357,6 +357,7 @@
     const year = Number(state.date.slice(0, 4));
     const isMonth = state.type === 'month';
     const isTimeOnly = state.type === 'time';
+    popup.classList.toggle('is-month', isMonth);
     popup.classList.toggle('is-time-only', isTimeOnly);
     popup.querySelector('[data-date-title]').textContent = state.label || (isTimeOnly ? 'Choose a time' : 'Choose a date');
     popup.querySelector('[data-date-step]').textContent = isTimeOnly ? 'Choose time' : isMonth ? 'Choose month' : state.type === 'datetime-local' ? 'Choose date and time' : 'Choose date';

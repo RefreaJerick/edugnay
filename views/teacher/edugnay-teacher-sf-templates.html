@@ -147,14 +147,6 @@
   <script src="../../assets/js/portal-header-init.js"></script>
 
     <main class="main sf-main">
-      <div class="sf-info-banner" role="note">
-        <div class="sf-info-banner-icon"><i data-lucide="info"></i></div>
-        <div>
-          <div class="sf-info-banner-title">Automatic form completion</div>
-          <div class="sf-info-banner-text">Forms use supported school records; unavailable fields stay blank. Edits apply only to the downloaded workbook and do not change AcadeMix records. Review the draft before using it as an official record.</div>
-        </div>
-      </div>
-
       <div class="sf-workspace">
         <section class="sf-panel sf-library-panel" aria-labelledby="sfLibraryTitle">
           <div class="sf-panel-head">
@@ -194,7 +186,7 @@
             <span role="columnheader">Workbook</span>
             <span role="columnheader">Actions</span>
           </div>
-          <div class="sf-template-list" id="sfTemplateList"></div>
+          <div class="sf-template-list" id="sfTemplateList" role="region" aria-label="Available form templates" tabindex="0"></div>
         </section>
 
         <aside class="sf-panel sf-generator-panel" aria-labelledby="sfGeneratorTitle">
@@ -230,6 +222,14 @@
             <button class="top-btn secondary sf-blank-download" id="sfBlankCombinedDownload" type="button" hidden><i data-lucide="download" aria-hidden="true"></i> Download blank combined XLSX</button>
           </form>
         </aside>
+      </div>
+
+      <div class="sf-info-banner" role="note">
+        <div class="sf-info-banner-icon"><i data-lucide="info"></i></div>
+        <div>
+          <div class="sf-info-banner-title">Automatic form completion</div>
+          <div class="sf-info-banner-text">Forms use supported school records; unavailable fields stay blank. Edits apply only to the downloaded workbook and do not change AcadeMix records. Review the draft before using it as an official record.</div>
+        </div>
       </div>
 
       <section class="sf-panel sf-preview-panel" aria-labelledby="sfPreviewTitle">

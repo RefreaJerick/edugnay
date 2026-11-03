@@ -4,9 +4,15 @@ const { confirmationStatus, evaluateCompletion, subjectGradeStatus } = require('
 
 const passing = { passed: true, complete: true, finalGrade: 82, detail: 'Final grade 82 (passing).' };
 const academic = (index, grade = 11) => ({ catalogCode: `AE${String(index).padStart(3, '0')}`,
-  subjectType: 'academic_elective', instructionalHours: 80, gradeStatus: passing, grade, catalogMatched: true, meetings: [], memberActive: true });
-const techpro = code => ({ catalogCode: code, subjectType: 'techpro_elective', instructionalHours: 320, gradeStatus: passing, catalogMatched: true, meetings: [], memberActive: true });
-const immersion = hours => ({ catalogCode: hours === 640 ? 'WI-640' : 'WI-320', subjectType: 'work_immersion', instructionalHours: hours, gradeStatus: passing, catalogMatched: true, meetings: [], memberActive: true });
+  subjectType: 'academic_elective', instructionalHours: 80, gradeStatus: passing, grade, catalogMatched: true,
+  startTermSequence: grade === 11 ? index : 1, endTermSequence: grade === 11 ? index : 1,
+  meetings: [], memberActive: true });
+const techpro = (code, grade = 12) => ({ catalogCode: code, subjectType: 'techpro_elective', instructionalHours: 320,
+  startTermSequence: 1, endTermSequence: grade === 11 ? 3 : 1,
+  gradeStatus: passing, catalogMatched: true, meetings: [], memberActive: true });
+const immersion = hours => ({ catalogCode: hours === 640 ? 'WI-640' : 'WI-320', subjectType: 'work_immersion', instructionalHours: hours,
+  startTermSequence: 1, endTermSequence: hours === 640 ? 2 : 1,
+  gradeStatus: passing, catalogMatched: true, meetings: [], memberActive: true });
 const core = Array.from({ length: 5 }, (_, index) => ({ subjectName: `Core ${index + 1}`, instructionalHours: 160, gradeStatus: passing }));
 const history = index => ({ catalogCode: `AE${String(index).padStart(3, '0')}`, instructionalHours: 80,
   finalGrade: 82, gradeSource: 'Official school record', verifiedBy: 3, verifiedAt: '2027-06-01', catalogMatched: true });
@@ -22,6 +28,17 @@ test('subject final requires every term, averages the published term grades, and
     { complete: true, passed: true, finalGrade: 75, detail: 'Final grade 75 (passing).' });
   assert.match(subjectGradeStatus(terms, [{ academicTermId: 1, finalGrade: 100 }]).detail, /Missing published grades/);
   assert.equal(subjectGradeStatus(terms, [{ academicTermId: 1, finalGrade: 74 }, { academicTermId: 2, finalGrade: 74 }, { academicTermId: 3, finalGrade: 74 }]).passed, false);
+});
+
+test('elective completion uses only its assigned terms', () => {
+  const oneTerm = [{ id: 2, name: 'Term 2' }];
+  assert.deepEqual(subjectGradeStatus(oneTerm, [{ academicTermId: 2, finalGrade: 86 }]),
+    { complete: true, passed: true, finalGrade: 86, detail: 'Final grade 86 (passing).' });
+  const twoTerms = [{ id: 2, name: 'Term 2' }, { id: 3, name: 'Term 3' }];
+  assert.equal(subjectGradeStatus(twoTerms, [{ academicTermId: 2, finalGrade: 80 }]).complete, false);
+  assert.equal(subjectGradeStatus(twoTerms, [
+    { academicTermId: 2, finalGrade: 80 }, { academicTermId: 3, finalGrade: 90 }
+  ]).finalGrade, 85);
 });
 
 test('a prior completion confirmation needs review when its evidence changes or is no longer ready', () => {
@@ -50,23 +67,23 @@ test('completion checklist validates Academic cross-track pathway and distinct s
 
 test('completion checklist validates TechPro pathway with Work Immersion hours', () => {
   const result = evaluateCompletion(input({ pathway: 'techpro', g11Track: 'techpro', g12Track: 'techpro',
-    g11: [techpro('TP-JAVA')], g12: [techpro('TP-NET'), immersion(640)] }));
+    g11: [techpro('TP-JAVA', 11)], g12: [techpro('TP-NET'), immersion(640)] }));
   assert.equal(result.ready, true);
 });
 
 test('TechPro cross-track requires verified passing prior Academic elective evidence', () => {
   const result = evaluateCompletion(input({ pathway: 'techpro_cross_track', g11Track: 'techpro', g12Track: 'techpro',
-    g11: [techpro('TP-JAVA')], g12: [techpro('TP-NET'), immersion(320)],
+    g11: [techpro('TP-JAVA', 11)], g12: [techpro('TP-NET'), immersion(320)],
     priorHistory: [history(1), history(2), history(3), history(4)] }));
   assert.equal(result.ready, true);
   const invalid = evaluateCompletion(input({ pathway: 'techpro_cross_track', g11Track: 'techpro', g12Track: 'techpro',
-    g11: [techpro('TP-JAVA')], g12: [techpro('TP-NET'), immersion(320)],
+    g11: [techpro('TP-JAVA', 11)], g12: [techpro('TP-NET'), immersion(320)],
     priorHistory: [history(1), history(2), history(3), { ...history(4), gradeSource: '', finalGrade: 74 }] }));
   assert.equal(invalid.ready, false);
   assert.equal(invalid.checks.find(check => check.key === 'prior-evidence').passed, false);
   for (const invalidGrade of [100.5, 101, -1]) {
     const invalidHistory = evaluateCompletion(input({ pathway: 'techpro_cross_track', g11Track: 'techpro', g12Track: 'techpro',
-      g11: [techpro('TP-JAVA')], g12: [techpro('TP-NET'), immersion(320)],
+      g11: [techpro('TP-JAVA', 11)], g12: [techpro('TP-NET'), immersion(320)],
       priorHistory: [history(1), history(2), history(3), { ...history(4), finalGrade: invalidGrade }] }));
     assert.equal(invalidHistory.checks.find(check => check.key === 'prior-evidence').passed, false);
   }

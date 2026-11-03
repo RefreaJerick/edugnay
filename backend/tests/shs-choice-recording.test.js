@@ -11,11 +11,13 @@ function createDatabase() {
   const queries = [];
   let nextRequestId = 1;
   let learnerPlacement = { gradeId: 11, gradeCode: 'grade-11', trackCode: 'academic' };
-  const classes = [101, 102].map((classId, index) => {
+  const classes = [101, 102, 103, 104].map((classId, index) => {
     const entry = getCatalogEntry(`AE00${classId - 100}`);
     return { id: classId, className: `Class ${classId}`, capacity: 20, classActive: 1,
       catalogVersion: entry.version, catalogCode: entry.code, trackCode: entry.trackCode,
       subjectName: entry.name, subjectType: entry.type, instructionalHours: entry.hours, gradeCode: 'grade-11',
+      startTermId: Math.min(index + 1, 3), endTermId: Math.min(index + 1, 3),
+      startTermSequence: Math.min(index + 1, 3), endTermSequence: Math.min(index + 1, 3),
       offeringActive: 1, teacherName: 'Active Teacher', teacherStatus: 'active', teacherRole: 'teacher', enrolledCount: 0 };
   });
 
@@ -27,7 +29,8 @@ function createDatabase() {
         || (yearId != null && Number(yearId) !== 20)) return [[], []];
       return [[{ sectionId: Number(studentId) + 100, sectionName: `Grade ${learnerPlacement.gradeId} ${studentId}`, yearId: 20,
         ...learnerPlacement, gradeName: `Grade ${learnerPlacement.gradeId}`, schoolYear: '2027-2028',
-        studentName: Number(studentId) === 41 ? 'Student One' : 'Student Two', yearStatus: 'active' }], []];
+        studentName: Number(studentId) === 41 ? 'Student One' : 'Student Two', yearStatus: 'active',
+        yearStart: '2027-06-01' }], []];
     }
     if (sql.includes('SELECT id, label, status FROM academic_years')) return [[{ id: 20, label: '2027-2028', status: 'active' }], []];
     if (sql.includes('SELECT status FROM academic_years') && sql.includes('FOR UPDATE')) return [[{ status: 'active' }], []];
@@ -52,10 +55,16 @@ function createDatabase() {
     }
     if (sql.includes('SELECT id FROM shs_elective_classes') && sql.includes('FOR UPDATE')) return [[], []];
     if (sql.includes('SELECT c.id, c.class_name AS className')) {
-      return [classes.map(item => ({ ...item })), []];
+      return [classes.map(item => {
+        const end = item.subjectType === 'work_immersion' && [540, 640].includes(Number(item.instructionalHours))
+          ? 2 : item.gradeCode === 'grade-11' && item.subjectType === 'techpro_elective' ? 3 : 1;
+        return { startTermId: 1, endTermId: end, startTermSequence: 1, endTermSequence: end, ...item };
+      }), []];
     }
     if (sql.includes('SELECT c.id AS classId, m.weekday')) return [[], []];
     if (sql.includes('SELECT m.weekday') && sql.includes('FROM timetable_meetings')) return [[], []];
+    if (sql.includes('SELECT DISTINCT o.catalog_code AS catalogCode')
+      || sql.includes('FROM shs_verified_prior_electives h')) return [[], []];
     if (sql.includes('INSERT INTO shs_selection_requests')) {
       const [schoolId, yearId, gradeId, studentId, pathwayCode] = args;
       const request = { id: nextRequestId++, school_id: Number(schoolId), academic_year_id: Number(yearId),
@@ -66,10 +75,10 @@ function createDatabase() {
       return [{ insertId: request.id }, []];
     }
     if (sql.includes("UPDATE shs_selection_requests SET status = 'pending'")) {
-      const [revision, schoolId, requestId] = args;
+      const [revision, pathwayCode, schoolId, requestId] = args;
       const request = requests.get(Number(requestId));
       assert.equal(request.school_id, Number(schoolId));
-      Object.assign(request, { status: 'pending', revision: Number(revision), decision_reason: null,
+      Object.assign(request, { status: 'pending', revision: Number(revision), pathway_code: pathwayCode, decision_reason: null,
         reviewed_by_user_id: null, reviewed_at: null });
       return [{ affectedRows: 1 }, []];
     }
@@ -113,38 +122,38 @@ function invoke(handler, req) {
   });
 }
 
-test('students can revise pending or returned choices without a pathway, hours, or selection window', async () => {
+test('students can revise complete Grade 11 Academic choices without a selection window', async () => {
   fixture = createDatabase();
-  const student = { user: { id: 41, schoolId: 7 }, body: { classIds: [101] } };
+  const student = { user: { id: 41, schoolId: 7 }, body: { classIds: [101, 102, 103] } };
   const first = await invoke(controller.submit, student);
   assert.deepEqual(first, { id: 1, status: 'pending', revision: 1 });
-  assert.deepEqual(fixture.choices.get(1), [101]);
-  assert.equal(fixture.requests.get(1).pathway_code, 'academic'); // Stored only for compatibility with the existing table.
+  assert.deepEqual(fixture.choices.get(1), [101, 102, 103]);
+  assert.equal(fixture.requests.get(1).pathway_code, 'academic');
 
   Object.assign(fixture.requests.get(1), { status: 'rejected', decision_reason: 'Please check your choices.' });
-  const revised = await invoke(controller.submit, { ...student, body: { classIds: ['102'] } });
+  const revised = await invoke(controller.submit, { ...student, body: { classIds: [101, 102, 104] } });
   assert.deepEqual(revised, { id: 1, status: 'pending', revision: 2 });
-  assert.deepEqual(fixture.choices.get(1), [102]);
+  assert.deepEqual(fixture.choices.get(1), [101, 102, 104]);
   assert.equal(fixture.requests.get(1).decision_reason, null);
   assert.deepEqual(fixture.history.map(item => item.action), ['submitted', 'revised']);
   assert.deepEqual(fixture.audit.map(item => item.action), ['shs_selection_submitted', 'shs_selection_revised']);
   assert.equal(fixture.audit[0].details.gradeName, 'Grade 11');
   assert.equal(fixture.audit[0].details.sectionName, 'Grade 11 41');
   assert.equal(fixture.audit[0].details.schoolYear, '2027-2028');
-  assert.equal(fixture.audit[0].details.classCount, 1);
-  assert.ok(fixture.queries.every(sql => !/shs_selection_windows|pathway_code\s*=/.test(sql)));
+  assert.equal(fixture.audit[0].details.classCount, 3);
+  assert.ok(fixture.queries.every(sql => !/shs_selection_windows/.test(sql)));
   assert.equal(fixture.queries.some(sql => /INSERT INTO shs_elective_class_students/.test(sql)), false);
 });
 
 test('identical student choices while waiting do not create a revision, history, or activity', async () => {
   fixture = createDatabase();
   const student = { user: { id: 41, schoolId: 7 } };
-  const first = await invoke(controller.submit, { ...student, body: { classIds: [101, 102] } });
+  const first = await invoke(controller.submit, { ...student, body: { classIds: [101, 102, 103] } });
   const queryStart = fixture.queries.length;
-  const repeat = await invoke(controller.submit, { ...student, body: { classIds: [102, 101] } });
+  const repeat = await invoke(controller.submit, { ...student, body: { classIds: [103, 102, 101] } });
 
   assert.deepEqual(repeat, { id: first.id, status: 'pending', revision: 1, unchanged: true });
-  assert.deepEqual(fixture.choices.get(first.id), [101, 102]);
+  assert.deepEqual(fixture.choices.get(first.id), [101, 102, 103]);
   assert.deepEqual(fixture.history.map(item => item.action), ['submitted']);
   assert.deepEqual(fixture.audit.map(item => item.action), ['shs_selection_submitted']);
   assert.ok(fixture.queries.slice(queryStart).every(sql => !/^\s*(?:INSERT|UPDATE|DELETE)\b/i.test(sql)));
@@ -153,16 +162,16 @@ test('identical student choices while waiting do not create a revision, history,
 test('resubmitting unchanged choices after staff returns them creates a real revision and activity', async () => {
   fixture = createDatabase();
   const student = { user: { id: 41, schoolId: 7 } };
-  const first = await invoke(controller.submit, { ...student, body: { classIds: [101] } });
+  const first = await invoke(controller.submit, { ...student, body: { classIds: [101, 102, 103] } });
   Object.assign(fixture.requests.get(first.id), { status: 'rejected', decision_reason: 'Please check your choices.' });
 
-  const resubmitted = await invoke(controller.submit, { ...student, body: { classIds: [101] } });
+  const resubmitted = await invoke(controller.submit, { ...student, body: { classIds: [101, 102, 103] } });
 
   assert.deepEqual(resubmitted, { id: first.id, status: 'pending', revision: 2 });
-  assert.deepEqual(fixture.choices.get(first.id), [101]);
+  assert.deepEqual(fixture.choices.get(first.id), [101, 102, 103]);
   assert.deepEqual(fixture.history.map(item => item.action), ['submitted', 'revised']);
   assert.deepEqual(fixture.audit.map(item => item.action), ['shs_selection_submitted', 'shs_selection_revised']);
-  assert.equal(fixture.audit[1].details.classCount, 1);
+  assert.equal(fixture.audit[1].details.classCount, 3);
 });
 
 test('a learner can submit new choices after staff clears the confirmed record', async () => {
@@ -171,9 +180,9 @@ test('a learner can submit new choices after staff clears the confirmed record',
     student_user_id: 41, pathway_code: 'academic', status: 'not_recorded', revision: 3,
     decision_reason: null, reviewed_by_user_id: null, reviewed_at: null });
   fixture.choices.set(1, []);
-  const result = await invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [102] } });
+  const result = await invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [101, 102, 103] } });
   assert.deepEqual(result, { id: 1, status: 'pending', revision: 4 });
-  assert.deepEqual(fixture.choices.get(1), [102]);
+  assert.deepEqual(fixture.choices.get(1), [101, 102, 103]);
   assert.equal(fixture.history[0].action, 'submitted');
   assert.equal(fixture.audit[0].action, 'shs_selection_submitted');
 });
@@ -183,9 +192,9 @@ test('a learner can resubmit an empty pending record as a first submission', asy
   fixture.requests.set(1, { id: 1, school_id: 7, academic_year_id: 20, grade_level_id: 11,
     student_user_id: 41, pathway_code: 'academic', status: 'pending', revision: 4 });
   fixture.choices.set(1, []);
-  const result = await invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [102] } });
+  const result = await invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [101, 102, 103] } });
   assert.deepEqual(result, { id: 1, status: 'pending', revision: 5 });
-  assert.deepEqual(fixture.choices.get(1), [102]);
+  assert.deepEqual(fixture.choices.get(1), [101, 102, 103]);
   assert.equal(fixture.history[0].action, 'submitted');
   assert.equal(fixture.audit[0].action, 'shs_selection_submitted');
 });
@@ -359,7 +368,7 @@ test('annex-verified Work Immersion can be recorded for its intended track', asy
   }
 });
 
-test('Grade 12 TechPro student and staff choices require exactly one offered Work Immersion class', async () => {
+test('Grade 12 TechPro student choices need a complete load while staff can record incomplete choices for review', async () => {
   const immersionRow = (id, code) => {
     const entry = getCatalogEntry(code);
     return { id, className: `Work Immersion ${code}`, capacity: 20, classActive: 1,
@@ -370,7 +379,7 @@ test('Grade 12 TechPro student and staff choices require exactly one offered Wor
   fixture = createDatabase();
   fixture.setPlacement({ gradeId: 12, gradeCode: 'grade-12', trackCode: 'techpro' });
   const techproElective = getCatalogEntry('TP-AF-01');
-  fixture.classes.splice(0, fixture.classes.length, immersionRow(201, 'WI-320'), immersionRow(202, 'WI-540'), {
+  fixture.classes.splice(0, fixture.classes.length, immersionRow(201, 'WI-320'), immersionRow(202, 'WI-640'), {
     id: 203, className: 'TechPro elective', capacity: 20, classActive: 1,
     catalogVersion: techproElective.version, catalogCode: techproElective.code,
     trackCode: techproElective.trackCode, subjectName: techproElective.name,
@@ -379,25 +388,18 @@ test('Grade 12 TechPro student and staff choices require exactly one offered Wor
   });
 
   await assert.rejects(invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [203] } }),
-    /include exactly one eligible TechPro Work Immersion class/);
-  await assert.rejects(invoke(controller.recordStudentChoices, {
+    /Work Immersion totaling 960 hours/);
+  const pending = await invoke(controller.recordStudentChoices, {
     user: { id: 9, schoolId: 7 }, params: { studentId: '42' }, query: { academicYearId: '20' }, body: { classIds: [203] }
-  }), /include exactly one eligible TechPro Work Immersion class/);
+  });
+  assert.equal(pending.status, 'pending');
   await assert.rejects(invoke(controller.submit, {
     user: { id: 41, schoolId: 7 }, body: { classIds: [201, 202] }
-  }), /include exactly one eligible TechPro Work Immersion class/);
-  assert.equal(fixture.requests.size, 0);
-  assert.deepEqual(fixture.history, []);
-  assert.deepEqual(fixture.audit, []);
+  }), /Work Immersion totaling 960 hours/);
 
-  const studentResult = await invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [201] } });
+  const studentResult = await invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [202, 203] } });
   assert.equal(studentResult.status, 'pending');
-  assert.deepEqual(fixture.choices.get(studentResult.id), [201]);
-  const staffResult = await invoke(controller.recordStudentChoices, {
-    user: { id: 9, schoolId: 7 }, params: { studentId: '42' }, query: { academicYearId: '20' }, body: { classIds: [202] }
-  });
-  assert.equal(staffResult.status, 'pending');
-  assert.deepEqual(fixture.choices.get(staffResult.id), [202]);
+  assert.deepEqual(fixture.choices.get(studentResult.id), [202, 203]);
 });
 
 test('an unchanged Grade 12 TechPro request is rechecked against the Work Immersion requirement', async () => {
@@ -412,7 +414,7 @@ test('an unchanged Grade 12 TechPro request is rechecked against the Work Immers
     catalogCode: entry.code, trackCode: entry.trackCode, subjectName: entry.name,
     subjectType: entry.type, instructionalHours: entry.hours });
   await assert.rejects(invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [101] } }),
-    /no eligible class is offered/);
+    /TechPro cross-track needs four verified Academic electives/);
   assert.equal(fixture.requests.get(9).revision, 3);
   assert.deepEqual(fixture.choices.get(9), [101]);
   assert.deepEqual(fixture.history, []);
@@ -431,7 +433,7 @@ test('Grade 12 TechPro reports when the school has not offered an eligible immer
     offeringActive: 1, teacherName: 'Active Teacher', teacherStatus: 'active', teacherRole: 'teacher', enrolledCount: 0
   });
   await assert.rejects(invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [205] } }),
-    /no eligible class is offered.*ask school staff to add one/i);
+    /Work Immersion totaling 960 hours/i);
   assert.equal(fixture.requests.size, 0);
   assert.deepEqual(fixture.history, []);
 });
@@ -447,7 +449,9 @@ test('Grade 12 Academic Field Experience and Grade 11 TechPro choices do not req
     subjectType: fieldExperience.type, instructionalHours: fieldExperience.hours, gradeCode: 'grade-12',
     offeringActive: 1, teacherName: 'Active Teacher', teacherStatus: 'active', teacherRole: 'teacher', enrolledCount: 0
   });
-  const academic = await invoke(controller.submit, { user: { id: 41, schoolId: 7 }, body: { classIds: [203] } });
+  const academic = await invoke(controller.recordStudentChoices, {
+    user: { id: 9, schoolId: 7 }, params: { studentId: '41' }, query: { academicYearId: '20' }, body: { classIds: [203] }
+  });
   assert.equal(academic.status, 'pending');
 
   fixture = createDatabase();

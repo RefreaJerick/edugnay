@@ -663,6 +663,56 @@ button:focus-visible,
   line-height: 1.4;
 }
 
+/* Non-dashboard summary cards share the same tablet and desktop content placement. */
+@media (min-width: 521px) {
+  .summary-card-layout > .stat-card,
+  .summary-card-layout > .rs-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 38px;
+    grid-template-rows: 38px auto auto;
+    align-content: start;
+    gap: 0;
+    min-height: auto;
+  }
+
+  .summary-card-layout > .stat-card .stat-card-top,
+  .summary-card-layout > .rs-card .rs-card-top {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: flex-end;
+    align-items: center;
+    margin: 0;
+  }
+
+  .summary-card-layout > .stat-card .stat-card-num,
+  .summary-card-layout > .rs-card .rs-num {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    margin: 0;
+  }
+
+  .summary-card-layout > .stat-card .stat-card-label,
+  .summary-card-layout > .rs-card .rs-label {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 8px;
+    line-height: 1.25;
+  }
+
+  .summary-card-layout > .stat-card .stat-card-sub,
+  .summary-card-layout > .rs-card .rs-caption {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 4px;
+    line-height: 1.35;
+  }
+
+  .summary-card-layout > .rs-card .rs-info {
+    display: contents;
+  }
+}
+
 /* ══════════════════════════════
     SIDEBAR
 ══════════════════════════════ */
@@ -3874,7 +3924,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
   .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
   .onboarding-form-area, .table-wrap, .school-account-table-wrap,
   .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
-  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip,
+  .sf-template-list
 ) {
   scrollbar-width: thin;
   scrollbar-color: var(--gray-300) var(--gray-50);
@@ -3893,7 +3944,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
   .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
   .onboarding-form-area, .table-wrap, .school-account-table-wrap,
   .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
-  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip,
+  .sf-template-list
 )::-webkit-scrollbar { width: 6px; height: 6px; }
 
 :is(
@@ -3909,7 +3961,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
   .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
   .onboarding-form-area, .table-wrap, .school-account-table-wrap,
   .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
-  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip,
+  .sf-template-list
 )::-webkit-scrollbar-track { background: var(--gray-50); border-radius: 6px; }
 
 :is(
@@ -3925,7 +3978,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
   .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
   .onboarding-form-area, .table-wrap, .school-account-table-wrap,
   .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
-  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip,
+  .sf-template-list
 )::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 6px; }
 
 :is(

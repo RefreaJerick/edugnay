@@ -86,7 +86,10 @@
           const reviewCount = Number(c.trackReviewCount) || 0;
           const trackReview = reviewCount ? `<small class="shs-track-review">Review needed: ${reviewCount} active learner${reviewCount === 1 ? '' : 's'} may be enrolled in Work Immersion for the other track. Their enrollment has not been changed.</small>` : '';
           const classActive = Boolean(c.classActive);
-          return `<div class="shs-class"><div class="shs-class-copy"><strong>${escape(c.className)}</strong><span>${escape(c.teacherName)} · ${c.enrolledCount}/${c.capacity} seats · ${c.meetingCount} meetings</span>
+          const termName = c.startTermName
+            ? (c.startTermId === c.endTermId ? c.startTermName : `${c.startTermName}–${c.endTermName}`) : '';
+          const termReview = termName ? '' : '<span class="badge badge-orange shs-term-review"><i data-lucide="triangle-alert" aria-hidden="true"></i>Term review needed</span>';
+          return `<div class="shs-class"><div class="shs-class-copy"><strong>${escape(c.className)}</strong><span>${escape(c.teacherName)} · ${c.enrolledCount}/${c.capacity} seats · ${c.meetingCount} meetings${termName ? ` · ${escape(termName)}` : ''}</span>${termReview}
             <small>${reason ? escape(reason) : 'Scheduled and available'}</small>${trackReview}</div><div class="shs-class-menu">
             <button class="shs-class-menu-trigger" id="shs-class-menu-trigger-${c.id}" type="button" data-class-menu-toggle="${c.id}" aria-label="Actions for ${escape(c.className)}" aria-haspopup="menu" aria-expanded="false" aria-controls="shs-class-menu-${c.id}"><i data-lucide="more-vertical" aria-hidden="true"></i></button>
             <div class="shs-class-action-menu" id="shs-class-menu-${c.id}" role="menu" aria-labelledby="shs-class-menu-trigger-${c.id}">
@@ -519,13 +522,34 @@
       const offering = state.data.offerings.find(item => Number(item.id) === Number(existing?.offeringId || id));
       $('shs-class-offering').value = offering?.subjectName || '';
       setOptions($('shs-teacher'), state.data.teachers, 'Choose a teacher', item => item.id, item => item.name);
+      setOptions($('shs-single-term'), state.data.terms || [], 'Choose a term', item => item.id, item => item.name);
+      setOptions($('shs-start-term'), state.data.terms || [], 'Choose first term', item => item.id, item => item.name);
+      setOptions($('shs-end-term'), state.data.terms || [], 'Choose last term', item => item.id, item => item.name);
+      const yearLong = offering?.gradeCode === 'grade-11' && offering?.subjectType === 'techpro_elective';
+      const twoTerms = offering?.subjectType === 'work_immersion'
+        && [540, 640].includes(Number(offering.instructionalHours));
+      $('shs-single-term-field').hidden = yearLong || twoTerms;
+      $('shs-term-range-fields').hidden = yearLong || !twoTerms;
+      $('shs-single-term').required = !yearLong && !twoTerms;
+      $('shs-start-term').required = twoTerms;
+      $('shs-end-term').required = twoTerms;
+      $('shs-single-term').value = '';
+      $('shs-start-term').value = '';
+      $('shs-end-term').value = '';
       if (existing) {
         $('shs-class-name').value = existing.className;
         $('shs-teacher').value = String(existing.teacherId);
         $('shs-capacity').value = String(existing.capacity);
+        $('shs-single-term').value = String(existing.startTermId || '');
+        $('shs-start-term').value = String(existing.startTermId || '');
+        $('shs-end-term').value = String(existing.endTermId || '');
       }
       $('shs-dialog-title').textContent = existing ? 'Edit elective class' : 'Add elective class';
-      $('shs-dialog-subtitle').textContent = 'Assign an active teacher and set the available seats.';
+      $('shs-dialog-subtitle').textContent = yearLong
+        ? 'Assign a teacher and seats. This Grade 11 TechPro class covers all three terms.'
+        : twoTerms
+          ? 'Assign a teacher, seats, and the consecutive terms when this class is taught.'
+          : 'Assign a teacher, seats, and the term when this class is taught.';
     }
     $('shs-dialog-error').textContent = '';
     $('shs-dialog-overlay').hidden = false;
@@ -597,7 +621,12 @@
         const result = await api().activateShsOffering({ academicYearId: state.data.year.id, gradeLevelId: Number($('shs-dialog-grade').value), catalogCodes: [...state.catalogCodes] });
         message = `${result.added?.length || state.catalogCodes.size} approved subject${(result.added?.length || state.catalogCodes.size) === 1 ? '' : 's'} added.`;
       } else {
-        const values = { className: $('shs-class-name').value, teacherId: Number($('shs-teacher').value), capacity: Number($('shs-capacity').value) };
+        const singleTerm = $('shs-single-term').required;
+        const termRange = $('shs-start-term').required;
+        const startTermId = singleTerm ? Number($('shs-single-term').value) : Number($('shs-start-term').value);
+        const endTermId = singleTerm ? startTermId : Number($('shs-end-term').value);
+        const values = { className: $('shs-class-name').value, teacherId: Number($('shs-teacher').value), capacity: Number($('shs-capacity').value),
+          ...(singleTerm || termRange ? { startTermId, endTermId } : {}) };
         if (state.mode === 'edit') await api().updateShsClass(state.classId, values);
         else await api().createShsClass({ ...values, offeringId: state.offeringId });
       }

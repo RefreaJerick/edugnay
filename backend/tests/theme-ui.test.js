@@ -207,3 +207,39 @@ test('dark summary cards share the panel surface and blue icons while light tint
   assert.match(users, /\.rs-card\.stud\s*\{[^}]*background: var\(--surface-success-wash\)/);
   assert.match(users, /\.rs-card\.selected\s*\{[^}]*background: var\(--blue-xpale\)/);
 });
+
+test('non-dashboard summary cards share the desktop value and icon arrangement', () => {
+  const shared = read('assets/css/styles.css');
+  const adminManagement = read('views/admin/edugnay-admin-management.html');
+  const adminReports = read('views/admin/edugnay-admin-reports.html');
+  const adminArchive = read('views/admin/edugnay-admin-archive.html');
+  const adminUsers = read('views/admin/edugnay-admin-users.html');
+  const teacherJournals = read('views/teacher/edugnay-teacher-journals.html');
+  const studentAttendance = read('views/student/edugnay-student-attendance.html');
+  const parentAttendance = read('views/parent/edugnay-parent-attendance.html');
+  const adminDashboard = read('views/admin/edugnay-admin-dashboard.html');
+  const teacherDashboard = read('views/teacher/edugnay-teacher-dashboard.html');
+
+  assert.match(shared, /@media \(min-width: 1181px\)\s*\{/);
+  assert.match(shared, /\.summary-card-layout > \.stat-card,[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 38px;/);
+  assert.match(shared, /\.summary-card-layout > \.stat-card \.stat-card-num,[\s\S]*?grid-column: 1;/);
+  assert.match(shared, /\.summary-card-layout > \.stat-card \.stat-card-top,[\s\S]*?grid-column: 2;/);
+  assert.match(shared, /\.summary-card-layout > \.rs-card \.rs-info\s*\{\s*display: contents;/);
+
+  for (const [page, id] of [
+    [adminManagement, 'sections-summary-cards'],
+    [adminManagement, 'subjects-summary-cards'],
+    [adminManagement, 'teacher-summary-cards'],
+    [adminManagement, 'students-summary-cards'],
+    [adminReports, 'report-stat-grid'],
+    [adminArchive, 'archive-summary-cards'],
+    [teacherJournals, 'journal-summary-strip'],
+    [studentAttendance, 'summary-strip'],
+    [parentAttendance, 'summary-strip']
+  ]) {
+    assert.match(page, new RegExp(`class="[^"]*summary-card-layout[^"]*" id="${id}"`));
+  }
+  assert.match(adminUsers, /class="role-summary summary-card-layout"/);
+  assert.doesNotMatch(adminDashboard, /summary-card-layout/);
+  assert.doesNotMatch(teacherDashboard, /summary-card-layout/);
+});

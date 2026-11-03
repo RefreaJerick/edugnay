@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const JSZip = require('jszip');
 const { getDatabase } = require('../config/database');
+const { classHasStartedSql } = require('../utils/shsClassTerms');
 const { materialUploadDirectory, materialTypes } = require('../config/uploads');
 const { writeAuditLog } = require('../utils/auditLog');
 const { assertElectiveStudent, assertElectiveTeacher } = require('../utils/shsTeachingAccess');
@@ -153,6 +154,7 @@ async function listMaterials(req, res, next) {
         OR (materials.shs_elective_class_id IS NULL AND materials.section_id IS NOT NULL
           AND materials.subject_id IS NOT NULL AND subjects.is_active = TRUE))`];
     const values = [req.user.schoolId];
+    where.push(`(materials.shs_elective_class_id IS NULL OR ${classHasStartedSql('materials.shs_elective_class_id', 'materials.school_id')})`);
     if (process.env.SHS_SELECTION_ENABLED !== 'true') where.push('materials.shs_elective_class_id IS NULL');
     if (req.user.role === 'teacher') {
       where.push(`((materials.shs_elective_class_id IS NULL AND materials.teacher_user_id = ? AND EXISTS (
@@ -247,6 +249,11 @@ async function createMaterial(req, res, next) {
     if (req.materialElectiveClassId) {
       const electiveClass = await assertElectiveTeacher(connection, req.user, req.materialElectiveClassId, { write: true });
       electiveClassId = electiveClass.id;
+      const [terms] = await connection.execute(
+        `SELECT id FROM academic_terms WHERE school_id = ? AND academic_year_id = ?
+          AND school_level_id = ? AND status = 'active' LIMIT 1`,
+        [electiveClass.schoolId, electiveClass.academicYearId, electiveClass.schoolLevelId]);
+      academicTermId = terms[0]?.id || null;
     } else {
       const assignment = await teacherAssignment(connection, req.user, sectionId, subjectId, componentCode);
       if (!assignment) fail('You are not assigned to this section and subject.', 403);
@@ -291,6 +298,7 @@ async function findMaterial(req, database, lock = false) {
       OR (materials.shs_elective_class_id IS NULL AND materials.section_id IS NOT NULL
         AND materials.subject_id IS NOT NULL AND subjects.is_active = TRUE))`];
   const values = [materialId, req.user.schoolId];
+  where.push(`(materials.shs_elective_class_id IS NULL OR ${classHasStartedSql('materials.shs_elective_class_id', 'materials.school_id')})`);
   if (process.env.SHS_SELECTION_ENABLED !== 'true') where.push('materials.shs_elective_class_id IS NULL');
   if (req.user.role === 'teacher') {
     where.push(`((materials.shs_elective_class_id IS NULL AND materials.teacher_user_id = ? AND EXISTS (

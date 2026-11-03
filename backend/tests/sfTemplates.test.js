@@ -90,11 +90,16 @@ let learnerRows = null;
 let sectionQuery = null;
 let sectionGradeCode = 'grade-7';
 let sectionGradeLevel = 'Grade 7';
+let sectionTrackCode = 'academic';
+let sectionShsCurriculumCode = 'strengthened_2026';
+let sectionAcademicYear = '2026-2027';
 let sectionStrandName = null;
 let publishedFinalGrade = 90;
 let includePublishedGrade = true;
 let sf9ConfiguredTerms = null;
 let sf9PublishedGrades = null;
+let sf9CommunicationGrades = [];
+let sf9ElectiveRecords = [];
 let sf9AdviserName = 'Ms. Maria Reyes';
 let sfTemplatesEnabled = 1;
 let templateCatalogReads = 0;
@@ -111,6 +116,10 @@ const database = {
       id: 9, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grades 4-10)', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9.xlsx',
       sheetName: 'SF9 - GRADE 4-10', requiresAcademicTerm: 0
+      }, {
+        id: 10, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grade 11 Academic)', version: 'g11-academic-2026-2027',
+        mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9-g11-academic.xlsx',
+        sheetName: 'SF9 - GRADE 11 ACADEMIC', requiresAcademicTerm: 0
       }]];
     }
     if (/FROM school_form_templates/.test(sql)) {
@@ -119,6 +128,10 @@ const database = {
       id: 9, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grades 4-10)', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9.xlsx',
       sheetName: 'SF9 - GRADE 4-10', requiresAcademicTerm: 0
+      } : Number(values[0]) === 10 ? {
+      id: 10, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grade 11 Academic)', version: 'g11-academic-2026-2027',
+      mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9-g11-academic.xlsx',
+      sheetName: 'SF9 - GRADE 11 ACADEMIC', requiresAcademicTerm: 0
     } : Number(values[0]) === 8 ? {
       id: 8, formCode: 'SF8', formName: 'Learner\'s Basic Health and Nutrition Report', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf8.xlsx',
@@ -145,8 +158,9 @@ const database = {
       sectionQuery = { sql, values };
       const current = { id: 8, schoolId: 1, name: 'St. Matthew', sectionStatus: 'active', academicYearId: 2,
         schoolLevelId: 2, gradeLevelId: 7, gradeCode: sectionGradeCode, strandId: null,
-        academicYear: '2026-2027', academicYearStatus: 'active', startDate: '2026-06-01',
-        endDate: '2027-03-31', gradeLevel: sectionGradeLevel, strandName: sectionStrandName };
+        trackId: 5, trackCode: sectionTrackCode, trackName: sectionTrackCode === 'academic' ? 'Academic' : 'TechPro',
+        shsCurriculumCode: sectionShsCurriculumCode, academicYear: sectionAcademicYear, academicYearStatus: 'active',
+        startDate: '2026-06-01', endDate: '2027-03-31', gradeLevel: sectionGradeLevel, strandName: sectionStrandName };
       const historical = { ...current, id: 1, sectionStatus: 'archived', academicYearId: 1, academicYear: '2025-2026',
         academicYearStatus: 'closed', endDate: '2026-03-31' };
       if (/sections.id = \?/.test(sql)) {
@@ -162,6 +176,8 @@ const database = {
       schoolName: 'St. Columban’s College', depedSchoolId: '305614',
       region: 'VIII', division: 'Leyte', district: 'Tacloban'
     }]];
+    if (/FROM shs_communication_component_grades/.test(sql)) return [sf9CommunicationGrades];
+    if (/FROM shs_selection_requests/.test(sql)) return [sf9ElectiveRecords];
     if (/FROM published_final_grades/.test(sql)) return [sf9PublishedGrades || (includePublishedGrade ? [{
       studentId: 10, subjectId: 11, academicTermId: 21, finalGrade: publishedFinalGrade, sectionName: 'St. Matthew'
     }] : [])];
@@ -169,9 +185,16 @@ const database = {
     if (/FROM student_parent_links/.test(sql)) return [[]];
     if (/FROM section_teachers/.test(sql)) {
       assert.match(sql, /subjects\.subject_code AS code/);
+      if (sectionGradeCode === 'grade-11') return [[
+        { id: 11, name: 'Effective Communication / Mabisang Komunikasyon', code: 'shs-core-communication' },
+        { id: 12, name: 'General Mathematics', code: 'shs-core-mathematics' },
+        { id: 13, name: 'General Science', code: 'shs-core-science' },
+        { id: 14, name: 'Life and Career Skills', code: 'shs-core-life-career' },
+        { id: 15, name: 'Pag-aaral ng Kasaysayan at Lipunang Pilipino', code: 'shs-core-philippine-history' }
+      ]];
       return [[{ id: 11, name: 'English' }]];
     }
-    if (/FROM academic_terms/.test(sql)) return [sf9ConfiguredTerms || [{ id: 21, name: 'Quarter 1' }]];
+    if (/FROM academic_terms/.test(sql)) return [sf9ConfiguredTerms || [{ id: 21, name: 'Quarter 1', sequenceNumber: 1 }]];
     if (/FROM users/.test(sql)) return values[0] === 3 && values[1] === 1 ? [[{ displayName: sf9AdviserName }]] : [[]];
     if (/INSERT INTO audit_logs/.test(sql)) {
       writes += 1;
@@ -605,6 +628,115 @@ test('SF9 exposes archived closed-year sections and rejects stale preview export
   assert.equal(writes, 0);
 
   ({ sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades } = previous);
+});
+
+test('Grade 11 Academic SF9 maps communication components, core marks, and approved electives to its supplied rows', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sectionTrackCode, sectionShsCurriculumCode,
+    sectionAcademicYear, sf9ConfiguredTerms, sf9PublishedGrades, sf9CommunicationGrades, sf9ElectiveRecords };
+  sectionGradeCode = 'grade-11';
+  sectionGradeLevel = 'Grade 11';
+  sectionTrackCode = 'academic';
+  sectionShsCurriculumCode = 'strengthened_2026';
+  sectionAcademicYear = '2026-2027';
+  sf9ConfiguredTerms = [
+    { id: 21, name: 'Term 1', sequenceNumber: 1 },
+    { id: 22, name: 'Term 2', sequenceNumber: 2 },
+    { id: 23, name: 'Term 3', sequenceNumber: 3 }
+  ];
+  sf9PublishedGrades = [11, 12, 13, 14, 15].flatMap((subjectId, index) => sf9ConfiguredTerms.map((term, termIndex) => ({
+    studentId: 10, subjectId, academicTermId: term.id,
+    finalGrade: subjectId === 11 ? [90, 88, 86][termIndex] : 90 + index + termIndex,
+    communicationGradeSource: subjectId === 11 ? 'component_average' : null, sectionName: 'St. Matthew'
+  })));
+  sf9CommunicationGrades = ['english', 'filipino'].flatMap((communicationComponentCode, componentIndex) => sf9ConfiguredTerms.map((term, termIndex) => ({
+    subjectId: 11, communicationComponentCode, academicTermId: term.id,
+    finalGrade: 100 - componentIndex * 20 - termIndex * 2, sectionName: 'St. Matthew'
+  })));
+  sf9ElectiveRecords = [
+    { electiveClassId: 201, catalogCode: 'lit-contemporary', electiveName: 'Contemporary Literature', academicTermId: 21, termName: 'Term 1', termSequenceNumber: 1, finalGrade: 88 },
+    { electiveClassId: 202, catalogCode: 'creative-composition', electiveName: 'Creative Composition', academicTermId: 22, termName: 'Term 2', termSequenceNumber: 2, finalGrade: 90 },
+    { electiveClassId: 203, catalogCode: 'biology', electiveName: 'Biology', academicTermId: 23, termName: 'Term 3', termSequenceNumber: 3, finalGrade: 92 }
+  ];
+
+  const learners = await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '10');
+  assert.equal(learners.error, null);
+  const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '10');
+  assert.equal(preview.error, null);
+  const cells = new Map(preview.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(cells.get('I18'), 11);
+  assert.equal(cells.get('E19'), 'Academic');
+  assert.equal(cells.get('B33'), 'Effective Communication / Mabisang Komunikasyon');
+  assert.deepEqual(['F33', 'G33', 'H33', 'I33'].map(address => cells.get(address)), [90, 88, 86, 88]);
+  assert.deepEqual(['F34', 'G34', 'H34', 'I34'].map(address => cells.get(address)), [100, 98, 96, 98]);
+  assert.deepEqual(['F35', 'G35', 'H35', 'I35'].map(address => cells.get(address)), [80, 78, 76, 78]);
+  assert.equal(cells.get('B39'), 'Pag-aaral ng Kasaysayan at Lipunang Pilipino');
+  assert.deepEqual([41, 42, 43].map(row => cells.get(`B${row}`)), [
+    'Contemporary Literature', 'Creative Composition', 'Biology'
+  ]);
+  assert.deepEqual(['F41', 'G42', 'H43'].map(address => cells.get(address)), [88, 90, 92]);
+  assert.deepEqual(['I41', 'I42', 'I43'].map(address => cells.get(address)), [88, 90, 92]);
+  assert.equal(cells.get('I44'), '');
+  assert.ok(preview.body.issues.some(issue => issue.fieldKey === 'generalAverage'));
+  assert.equal(preview.body.issues.some(issue => issue.severity === 'error'), false);
+
+  const details = await call(controller.getTemplateDetails, 'GET', {}, {}, '10');
+  assert.equal(details.error, null);
+  assert.equal(details.body.template.version, 'g11-academic-2026-2027');
+  assert.equal(details.body.mappings.find(mapping => mapping.fieldKey === 'track').cellReference, 'E19');
+  assert.equal(details.body.mappings.find(mapping => mapping.fieldKey === 'generalAverage').cellReference, 'I44');
+  assert.equal(details.body.maxLearners, 1);
+
+  const combined = await call(controller.previewCombinedTemplates, 'POST', { templateIds: [1, 10], sectionId: 8 });
+  assert.match(combined.error?.message || '', /each available SF form only once/);
+  ({ sectionGradeCode, sectionGradeLevel, sectionTrackCode, sectionShsCurriculumCode,
+    sectionAcademicYear, sf9ConfiguredTerms, sf9PublishedGrades, sf9CommunicationGrades, sf9ElectiveRecords } = previous);
+});
+
+test('Grade 11 Academic SF9 rejects wrong track, curriculum, year, and grade; flags conflicting and excess elective rows', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sectionTrackCode, sectionShsCurriculumCode,
+    sectionAcademicYear, sf9ConfiguredTerms, sf9PublishedGrades, sf9CommunicationGrades, sf9ElectiveRecords };
+  sectionGradeCode = 'grade-11';
+  sectionGradeLevel = 'Grade 11';
+  sectionTrackCode = 'academic';
+  sectionShsCurriculumCode = 'strengthened_2026';
+  sectionAcademicYear = '2026-2027';
+  sf9ConfiguredTerms = [1, 2, 3].map(index => ({ id: 20 + index, name: `Term ${index}`, sequenceNumber: index }));
+  sf9PublishedGrades = [];
+  sf9CommunicationGrades = [];
+  sf9ElectiveRecords = [];
+
+  sectionTrackCode = 'techpro';
+  assert.equal((await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '10')).error?.status, 403);
+  sectionTrackCode = 'academic';
+  sectionShsCurriculumCode = 'legacy';
+  assert.equal((await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '10')).error?.status, 403);
+  sectionShsCurriculumCode = 'strengthened_2026';
+  sectionAcademicYear = '2025-2026';
+  assert.equal((await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '10')).error?.status, 403);
+  sectionAcademicYear = '2026-2027';
+  sectionGradeCode = 'grade-10';
+  sectionGradeLevel = 'Grade 10';
+  assert.equal((await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '10')).error?.status, 403);
+
+  sectionGradeCode = 'grade-11';
+  sectionGradeLevel = 'Grade 11';
+  sf9ElectiveRecords = [
+    { electiveClassId: 201, electiveName: 'Contemporary Literature', academicTermId: 21, termSequenceNumber: 1, finalGrade: 88 },
+    { electiveClassId: 201, electiveName: 'Contemporary Literature', academicTermId: 22, termSequenceNumber: 2, finalGrade: 90 },
+    { electiveClassId: 202, electiveName: 'Creative Composition', academicTermId: 22, termSequenceNumber: 2, finalGrade: 91 },
+    { electiveClassId: 203, electiveName: 'Biology', academicTermId: 23, termSequenceNumber: 3, finalGrade: 92 },
+    { electiveClassId: 204, electiveName: 'Statistics', academicTermId: 23, termSequenceNumber: 3, finalGrade: 93 }
+  ];
+  const conflict = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '10');
+  assert.equal(conflict.error, null);
+  const cells = new Map(conflict.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(cells.get('I41'), '');
+  assert.ok(conflict.body.issues.some(issue => /more than one term/.test(issue.message)));
+  assert.ok(conflict.body.issues.some(issue => issue.severity === 'error' && /only three elective rows/.test(issue.message)));
+  assert.ok(conflict.body.issues.some(issue => issue.severity === 'error' && !issue.canBeCorrectedInDownload));
+
+  ({ sectionGradeCode, sectionGradeLevel, sectionTrackCode, sectionShsCurriculumCode,
+    sectionAcademicYear, sf9ConfiguredTerms, sf9PublishedGrades, sf9CommunicationGrades, sf9ElectiveRecords } = previous);
 });
 
 test('combined preview supports all 15 selections containing SF8', async () => {

@@ -13,25 +13,31 @@ async function classList(req, res, next) {
     const joinValues = [];
     const accessValues = [];
     if (req.user.role === 'teacher') {
-      access = 'AND ec.teacher_user_id = ? AND ec.is_active = TRUE AND o.is_active = TRUE AND t.account_status = \'active\'';
+      access = `AND ec.teacher_user_id = ? AND ec.is_active = TRUE AND o.is_active = TRUE
+        AND t.account_status = 'active'
+        AND active_term.sequence_number BETWEEN start_term.sequence_number AND end_term.sequence_number`;
       accessValues.push(req.user.id);
     } else if (req.user.role === 'student') {
       membershipJoin = `JOIN shs_elective_class_students m ON m.school_id = ec.school_id
         AND m.elective_class_id = ec.id AND m.student_user_id = ? AND m.withdrawn_at IS NULL`;
       joinValues.push(req.user.id);
-      access = "AND ec.is_active = TRUE AND o.is_active = TRUE AND y.status = 'active'";
+      access = `AND ec.is_active = TRUE AND o.is_active = TRUE AND y.status = 'active'
+        AND active_term.sequence_number BETWEEN start_term.sequence_number AND end_term.sequence_number`;
     } else if (req.user.role === 'parent') {
       membershipJoin = `JOIN shs_elective_class_students m ON m.school_id = ec.school_id
         AND m.elective_class_id = ec.id AND m.withdrawn_at IS NULL
         JOIN student_parent_links pl ON pl.school_id = m.school_id AND pl.student_user_id = m.student_user_id
           AND pl.parent_user_id = ?`;
       joinValues.push(req.user.id);
-      access = "AND ec.is_active = TRUE AND o.is_active = TRUE AND y.status = 'active'";
+      access = `AND ec.is_active = TRUE AND o.is_active = TRUE AND y.status = 'active'
+        AND active_term.sequence_number BETWEEN start_term.sequence_number AND end_term.sequence_number`;
     } else if (req.user.role !== 'school_admin') fail('Elective classes are not available to this role.', 403);
     const values = [...joinValues, schoolId, ...accessValues];
     const [rows] = await getDatabase().execute(
       `SELECT ec.id AS electiveClassId, ec.class_name AS className, ec.teacher_user_id AS teacherId,
         ec.capacity, ec.is_active AS classActive, o.academic_year_id AS academicYearId,
+        ec.start_term_id AS startTermId, ec.end_term_id AS endTermId,
+        start_term.name AS startTermName, end_term.name AS endTermName,
         o.grade_level_id AS gradeLevelId, o.track_code AS trackCode, o.subject_name AS subjectName,
         o.subject_type AS subjectType, o.instructional_hours AS instructionalHours,
         o.is_active AS offeringActive, g.grade_code AS gradeCode, g.display_name AS gradeName,
@@ -54,6 +60,11 @@ async function classList(req, res, next) {
        JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
        JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
        JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
+       LEFT JOIN academic_terms start_term ON start_term.id = ec.start_term_id AND start_term.school_id = ec.school_id
+       LEFT JOIN academic_terms end_term ON end_term.id = ec.end_term_id AND end_term.school_id = ec.school_id
+       LEFT JOIN academic_terms active_term ON active_term.school_id = ec.school_id
+         AND active_term.academic_year_id = o.academic_year_id
+         AND active_term.school_level_id = g.school_level_id AND active_term.status = 'active'
        JOIN users t ON t.id = ec.teacher_user_id AND t.school_id = ec.school_id
        ${membershipJoin}
        WHERE ec.school_id = ? ${access}

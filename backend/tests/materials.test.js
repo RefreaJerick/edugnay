@@ -37,7 +37,7 @@ const database = {
     lastValues = values;
     queryLog.push({ sql, values });
     if (sql.includes('FROM section_teachers') && !sql.includes('FROM learning_materials AS materials')) return [assigned ? [{ id: 8 }] : []];
-    if (sql.includes('FROM academic_terms')) return [[]];
+    if (sql.includes('FROM academic_terms') && !sql.includes('FROM learning_materials AS materials')) return [[]];
     if (sql.includes('INSERT INTO learning_materials')) {
       material.title = values[7];
       material.status = values[13];

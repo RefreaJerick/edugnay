@@ -70,11 +70,13 @@ test('teaching scope returns no adviser-only section', async () => {
 
 test('general teacher section list keeps adviser access for advisory features', async () => {
   calls.length = 0;
-  sectionRows = [section(10, 'St. John')];
+  sectionRows = [{ ...section(21, 'QA-only'), gradeCode: 'grade-11', gradeLevelName: 'Grade 11',
+    schoolLevelCode: 'shs', trackCode: 'academic', shsCurriculumCode: 'strengthened_2026' }];
   const result = await callList({ scope: '' });
 
   assert.equal(result.error, null);
   assert.equal(result.body.sections.length, 1);
+  assert.equal(result.body.sections[0].shsCurriculumCode, 'strengthened_2026');
   assert.match(calls[0].sql, /sections\.adviser_user_id = \?/);
   assert.deepEqual(calls[0].values, [1, 3, 3]);
 });

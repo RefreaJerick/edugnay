@@ -71,6 +71,45 @@
       },
       rows: []
     },
+    'sf9-g11-academic-v1': {
+      templateId: 'sf9-g11-academic-v1',
+      sheetName: 'SF9 - GRADE 11 ACADEMIC',
+      requiredSheets: ['SF9 - GRADE 11 ACADEMIC'],
+      previewRows: 53,
+      previewColumns: 30,
+      excludeTrailingRows: true,
+      excludeTrailingColumns: true,
+      mergeCount: 126,
+      anchors: {
+        B14: "LEARNER'S PERFORMANCE REPORT",
+        B29: 'LEARNING PROGRESS AND ACHIEVEMENT',
+        B32: 'Core Subjects',
+        B40: 'Elective Subjects',
+        F31: 'T1',
+        G31: 'T2',
+        H31: 'T3',
+        I30: 'Final Grade',
+        J30: 'Remarks'
+      },
+      fields: {
+        region: { cellAddress: 'B7', source: 'header.region', type: 'text' },
+        division: { cellAddress: 'B8', source: 'header.division', type: 'text' },
+        district: { cellAddress: 'B9', source: 'header.district', type: 'text' },
+        address: { cellAddress: 'B10', source: 'header.address', type: 'text' },
+        schoolName: { cellAddress: 'B12', source: 'header.schoolName', type: 'text' },
+        schoolYear: { cellAddress: 'B15', source: 'header.schoolYear', type: 'text' },
+        learnerName: { cellAddress: 'C17', source: 'header.learnerName', type: 'text' },
+        age: { cellAddress: 'I17', source: 'header.age', type: 'number' },
+        sex: { cellAddress: 'K17', source: 'header.sex', type: 'text' },
+        lrn: { cellAddress: 'C18', source: 'header.lrn', type: 'text' },
+        gradeLevel: { cellAddress: 'I18', source: 'header.gradeLevel', type: 'number' },
+        section: { cellAddress: 'K18', source: 'header.section', type: 'text' },
+        track: { cellAddress: 'E19', source: 'header.track', type: 'text' },
+        adviser: { cellAddress: 'H27', source: 'header.adviser', type: 'text' },
+        generalAverage: { cellAddress: 'I44', source: 'calculation.generalAverage', type: 'number' }
+      },
+      rows: []
+    },
     'sf5-promotion-proficiency-v1': {
       templateId: 'sf5-promotion-proficiency-v1',
       sheetName: 'School Form 5 (SF5)',
@@ -699,11 +738,11 @@
     if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF template mapping is invalid.');
 
     const worksheet = workbook.getWorksheet(template.sheetName);
-    const sf9SubjectCount = template.formCode === 'SF9'
+    const sf9SubjectCount = template.formCode === 'SF9' && template.id === 'sf9-learner-performance-v1'
       ? new Set(mappedCells.map(record => /^B(\d+)$/.exec(String(record.cellAddress || '').toUpperCase()))
         .filter(match => match && Number(match[1]) >= 32).map(match => Number(match[1]))).size
       : 0;
-    const sf9ExtraRows = template.formCode === 'SF9' ? extendSf9PreviewRows(worksheet, sf9SubjectCount) : 0;
+    const sf9ExtraRows = sf9SubjectCount ? extendSf9PreviewRows(worksheet, sf9SubjectCount) : 0;
     const previewTemplate = sf9ExtraRows ? { ...template, previewRows: 52 + sf9ExtraRows } : template;
     const types = new Map(mappedCells.map(record => [String(record.cellAddress || '').toUpperCase(), record.type || 'text']));
     const entryCells = Array.isArray(editableCells) ? editableCells : editableAddresses(template).map(cellAddress => ({

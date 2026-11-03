@@ -20,6 +20,11 @@
 .shs-class-list > .shs-muted { grid-column: 1 / -1; }
 .shs-class small { color: var(--theme-accent-text); }
 .shs-class small.shs-track-review { color: var(--theme-warning-text); font-weight: 700; }
+.shs-class-copy > .shs-term-review { justify-self: start; max-width: 100%; color: var(--pill-color); font-size: 10px; line-height: 1.2; white-space: normal; }
+.shs-term-review-row { display: flex; align-items: flex-start; gap: 7px; min-width: 0; color: var(--gray-600); font-size: 11px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
+.shs-term-review-row > svg { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--theme-warning-strong); }
+.shs-saved-choice .shs-term-review-row { margin-top: 4px; font-size: 12px; font-weight: 400; }
+.shs-saved-choice .shs-term-review-row > span { color: var(--gray-600); font-size: 12px; font-weight: 400; line-height: 1.45; overflow-wrap: anywhere; }
 .shs-offering-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .shs-class-copy { min-width: 0; overflow-wrap: anywhere; }
 .shs-class-menu { position: relative; z-index: 1; display: flex; justify-self: end; align-self: start; }
@@ -153,6 +158,8 @@
 #elective-classes .shs-choice-schedule { display: flex; align-items: flex-start; gap: 7px; min-width: 0; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--panel-divider); color: var(--theme-accent-text); }
 #elective-classes .shs-choice-schedule > svg { flex: none; width: 14px; height: 14px; margin-top: 2px; }
 #elective-classes .shs-choice-schedule > span { color: var(--gray-600); font-size: 11px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
+#elective-classes .shs-term-review-row { margin-top: 8px; }
+#elective-classes .shs-term-review-row > span { color: var(--gray-600); font-size: 11px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
 .shs-choice-unavailable { opacity: .7; cursor: default; }
 .shs-selection-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; border-top: 1px solid var(--panel-divider); }
 .shs-selection-footer > div { display: grid; align-content: center; gap: 4px; min-width: 0; }

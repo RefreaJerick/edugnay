@@ -470,11 +470,14 @@ test('offering activation respects grade eligibility, archived years, and enable
 
 test('elective classes reject invalid capacity and inactive teachers', async () => {
   let calls = 0;
+  const subject = getCatalogEntry('AE001');
   database = { getConnection: async () => ({
     async execute(sql) {
       calls++;
       if (sql.includes('FROM shs_offerings o')) return [[{ id: 9, academic_year_id: 3, yearStatus: 'active', is_active: 1,
-        catalog_code: 'AE001' }]];
+        catalog_code: 'AE001', catalog_version: CATALOG_VERSION, track_code: subject.trackCode,
+        subject_type: subject.type, subject_name: subject.name, instructional_hours: subject.hours,
+        gradeCode: 'grade-11' }]];
       if (sql.includes('FROM users')) return [[]];
       return [[]];
     }, release() {}
@@ -565,7 +568,8 @@ test('elective meeting writes lock the year before checking cross-class conflict
       if (sql.includes('FROM shs_elective_classes c') && sql.includes('LIMIT 1')) return [[{
         id: 7, teacherId: 4, academicYearId: 3, yearStatus: 'active',
         classActive: 1, offeringActive: 1, teacherStatus: 'active',
-        startDate: '2026-06-01', endDate: '2027-03-31'
+        startDate: '2026-06-01', endDate: '2027-03-31',
+        firstTermStartDate: '2026-06-01', lastTermEndDate: '2027-03-31'
       }]];
       if (sql.includes('m.start_time <')) return [[]];
       if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 11 }]];
@@ -590,6 +594,7 @@ test('Grade 12 Strengthened elective meetings can be scheduled without a school-
   const classRow = {
     id: 7, teacherId: 4, academicYearId: 3, yearStatus: 'active',
     startDate: '2027-06-01', endDate: '2028-03-31', classActive: 1,
+    firstTermStartDate: '2027-06-01', lastTermEndDate: '2028-03-31',
     offeringActive: 1, teacherStatus: 'active'
   };
   database = { getConnection: async () => ({

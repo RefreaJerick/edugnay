@@ -143,7 +143,7 @@ test('student attendance includes SHS classes without a section subject ID', asy
   assert.match(detail, /Creative Writing · Class B/);
 });
 
-test('student empty, failure, and retry states do not show sample attendance', async () => {
+test('student empty months show zero summary cards and failure/retry states do not show sample attendance', async () => {
   let fail = false;
   let records = [];
   const page = createPage({
@@ -154,8 +154,13 @@ test('student empty, failure, and retry states do not show sample attendance', a
     }
   });
   await page.load();
-  assert.equal(page.elements.get('summary-strip').hidden, true);
-  assert.equal(page.elements.get('summary-strip').textContent, '');
+  const emptySummary = page.elements.get('summary-strip').innerHTML;
+  assert.equal(page.elements.get('summary-strip').hidden, false);
+  assert.equal((emptySummary.match(/class="stat-card (?:green|orange|red)"/g) || []).length, 3);
+  assert.equal((emptySummary.match(/class="stat-card-num">0<\/div>/g) || []).length, 3);
+  assert.match(emptySummary, /Subject sessions present/);
+  assert.match(emptySummary, /Subject sessions late/);
+  assert.match(emptySummary, /Subject sessions absent/);
   assert.match(page.elements.get('cal-month-label').textContent, /October 2026/);
   const emptyCalendar = page.elements.get('cal-grid').innerHTML;
   assert.equal((emptyCalendar.match(/data-attendance-day=/g) || []).length, 31);
@@ -203,6 +208,25 @@ test('student attendance month navigation crosses year boundaries and Today retu
   page.elements.get('cal-today').listeners.click();
   assert.match(page.elements.get('cal-month-label').textContent, /December 2026/);
   assert.equal(page.elements.get('cal-today').disabled, true);
+});
+
+test('student summary switches between zero and recorded counts when changing months', async () => {
+  const page = createPage({ isBackendAvailable: true, getStudentAttendance: async () => ({
+    currentDate: '2026-10-18',
+    records: [{ subjectId: '1', subjectName: 'English', date: '2026-09-30', status: 'late' }]
+  }) });
+  await page.load();
+  let summary = page.elements.get('summary-strip').innerHTML;
+  assert.equal((summary.match(/class="stat-card-num">0<\/div>/g) || []).length, 3);
+
+  vm.runInContext('attendanceHistory.changeMonth(-1)', page.context);
+  summary = page.elements.get('summary-strip').innerHTML;
+  assert.match(summary, /Subject sessions late/);
+  assert.match(summary, /class="stat-card-num">1<\/div>/);
+
+  vm.runInContext('attendanceHistory.changeMonth(1)', page.context);
+  summary = page.elements.get('summary-strip').innerHTML;
+  assert.equal((summary.match(/class="stat-card-num">0<\/div>/g) || []).length, 3);
 });
 
 test('student page remains available when the legacy attendance flag is disabled', async () => {

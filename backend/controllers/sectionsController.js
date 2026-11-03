@@ -97,6 +97,7 @@ function formatSection(row) {
     academicYearEndDate: row.academicYearEndDate,
     schoolLevelId: row.schoolLevelId, schoolLevelCode: row.schoolLevelCode, schoolLevelName: row.schoolLevelName,
     gradeLevelId: row.gradeLevelId, gradeCode: row.gradeCode, gradeLevelName: row.gradeLevelName,
+    shsCurriculumCode: row.shsCurriculumCode,
     trackId: row.trackId, trackCode: row.trackCode, trackName: row.trackName,
     strandId: row.strandId, strandCode: row.strandCode, strandName: row.strandName,
     needsCurriculumSetup: Boolean(row.needsCurriculumSetup),

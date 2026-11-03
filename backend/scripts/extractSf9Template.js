@@ -3,8 +3,31 @@ const path = require('node:path');
 const JSZip = require('jszip');
 
 const sourcePath = process.argv[2];
-const sheetName = 'SF9 - GRADE 4-10';
-const outputPath = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms', 'sf9.xlsx');
+const variants = {
+  'grade4-10': {
+    sheetName: 'SF9 - GRADE 4-10',
+    outputFile: 'sf9.xlsx',
+    sourceSheetName: 'SF9 - GRADE 4-10',
+    clearAddresses: ['B9', 'B12', 'B15', ...Array.from({ length: 10 }, (_, index) => `B${32 + index}`)]
+  },
+  'grade11-academic': {
+    sheetName: 'SF9 - GRADE 11 ACADEMIC',
+    outputFile: 'sf9-g11-academic.xlsx',
+    sourceSheetName: 'SF9 - GRADE 11 ACADEMIC',
+    clearAddresses: ['B7', 'B8', 'B9', 'B10', 'B12', 'B15', 'C17', 'I17', 'K17', 'C18', 'I18', 'K18',
+      'E19', 'B27', 'H27', ...['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC']
+        .flatMap(column => Array.from({ length: 6 }, (_, index) => `${column}${5 + index}`))],
+    labels: {
+      B33: 'Effective Communication / Mabisang Komunikasyon',
+      B34: 'Effective Communication',
+      B35: 'Mabisang Komunikasyon',
+      B39: 'Pag-aaral ng Kasaysayan at Lipunang Pilipino'
+    }
+  }
+};
+const variantName = process.argv[3] || 'grade4-10';
+const variant = variants[variantName];
+const outputPath = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms', variant?.outputFile || '');
 
 function attribute(tag, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -54,11 +77,12 @@ function rewriteCell(cellTag, rowNumber, newColumn = null, contents = null) {
 function clearFormulaCell(cellTag) {
   const opening = /^<c\b[^>]*>/.exec(cellTag)?.[0];
   if (!opening) return cellTag;
-  const attributes = opening.replace(/\s+t="[^"]*"/i, '');
-  return `${attributes.slice(0, -1)}/>`;
+  const attributes = opening.slice(2, -1).replace(/\/$/, '').replace(/\s+t="[^"]*"/i, '');
+  return `<c${attributes}/>`;
 }
 
-function transformSf9Worksheet(xml) {
+function transformSf9Worksheet(xml, options) {
+  const clearAddresses = new Set(options.clearAddresses);
   let nextXml = xml.replace(/<row\b[^>]*>[\s\S]*?<\/row>/g, rowXml => {
     const rowNumber = Number(/\br="(\d+)"/.exec(rowXml)?.[1] || 0);
     return rowXml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, cellTag => {
@@ -66,14 +90,19 @@ function transformSf9Worksheet(xml) {
       if (!address) return cellTag;
       const cellRow = Number(address[2]);
       const cellColumn = address[1].toUpperCase();
+      const cellAddress = `${cellColumn}${cellRow}`;
+      if (options.labels?.[cellAddress]) return setInlineCell(cellTag, options.labels[cellAddress]);
       const isFormula = /<f\b/i.test(cellTag)
-        || /^I(?:3[2-9]|4[0-3])$/.test(`${cellColumn}${cellRow}`);
+        || (options.sheetName === 'SF9 - GRADE 4-10' && /^I(?:3[2-9]|4[0-3])$/.test(`${cellColumn}${cellRow}`));
+      if (clearAddresses.has(`${cellColumn}${cellRow}`)) return clearFormulaCell(cellTag);
       return rewriteCell(cellTag, rowNumber, null, isFormula ? 'clear' : null);
     });
   });
 
-  nextXml = nextXml.replace(/(<c\b(?=[^>]*\br="(?:B12|B15|B9|B(?:3[2-9]|4[01]))")[^>]*\/>|<c\b(?=[^>]*\br="(?:B12|B15|B9|B(?:3[2-9]|4[01]))")[^>]*>[\s\S]*?<\/c>)/gi,
-    cellTag => clearFormulaCell(cellTag));
+  if (options.sheetName === 'SF9 - GRADE 4-10') {
+    nextXml = nextXml.replace(/(<c\b(?=[^>]*\br="(?:B12|B15|B9|B(?:3[2-9]|4[01]))")[^>]*\/>|<c\b(?=[^>]*\br="(?:B12|B15|B9|B(?:3[2-9]|4[01]))")[^>]*>[\s\S]*?<\/c>)/gi,
+      cellTag => clearFormulaCell(cellTag));
+  }
   nextXml = nextXml.replace(/<extLst\b[^>]*>[\s\S]*?<\/extLst>/gi, extensionList => {
     const cleaned = extensionList
       .replace(/<x14:dataValidations\b[^>]*>[\s\S]*?#REF![\s\S]*?<\/x14:dataValidations>/gi, '')
@@ -83,16 +112,16 @@ function transformSf9Worksheet(xml) {
   return nextXml;
 }
 
-function updateSelectedSheet(workbookXml, sourceSheet, selectedSheet, sourceSheetIndex) {
+function updateSelectedSheet(workbookXml, sourceSheet, selectedSheet, sourceSheetIndex, targetSheetName) {
   let result = workbookXml.replace(/<mc:AlternateContent\b[\s\S]*?<\/mc:AlternateContent>/, '')
     .replace(/firstSheet="\d+"/, 'firstSheet="0"')
     .replace(/activeTab="\d+"/, 'activeTab="0"')
     .replace(/<sheets>[\s\S]*?<\/sheets>/,
-      `<sheets>${selectedSheet.replace(attribute(selectedSheet, 'name'), sheetName)}</sheets>`);
+      `<sheets>${selectedSheet.replace(attribute(selectedSheet, 'name'), targetSheetName)}</sheets>`);
   result = result.replace(/<definedNames>[\s\S]*?<\/definedNames>/, block => {
     const names = [...block.matchAll(/<definedName\b([^>]*)>([\s\S]*?)<\/definedName>/g)]
       .filter(match => Number(attribute(`<definedName${match[1]}>`, 'localSheetId')) === sourceSheetIndex)
-      .map(match => `<definedName${match[1].replace(/localSheetId="\d+"/, 'localSheetId="0"')}>${match[2].replaceAll(sourceSheet, sheetName)}</definedName>`);
+      .map(match => `<definedName${match[1].replace(/localSheetId="\d+"/, 'localSheetId="0"')}>${match[2].replaceAll(sourceSheet, targetSheetName)}</definedName>`);
     return names.length ? `<definedNames>${names.join('')}</definedNames>` : '';
   });
   return result;
@@ -100,6 +129,7 @@ function updateSelectedSheet(workbookXml, sourceSheet, selectedSheet, sourceShee
 
 async function main() {
   if (!sourcePath) throw new Error('Pass the path to the teacher-supplied SF9 workbook.');
+  if (!variant) throw new Error(`Unknown SF9 workbook variant "${variantName}". Choose grade4-10 or grade11-academic.`);
   const source = await JSZip.loadAsync(await fs.readFile(path.resolve(sourcePath)));
   const output = new JSZip();
   const workbookPath = 'xl/workbook.xml';
@@ -108,8 +138,8 @@ async function main() {
   if (!workbookXml || !workbookRelationships) throw new Error('The supplied SF9 workbook is incomplete.');
 
   const sheets = [...workbookXml.matchAll(/<sheet\b[^>]*\/?\s*>/g)].map(match => match[0]);
-  const selectedSheet = sheets.find(tag => attribute(tag, 'name') === sheetName);
-  if (!selectedSheet) throw new Error(`The supplied workbook does not contain ${sheetName}.`);
+  const selectedSheet = sheets.find(tag => attribute(tag, 'name') === variant.sourceSheetName);
+  if (!selectedSheet) throw new Error(`The supplied workbook does not contain ${variant.sourceSheetName}.`);
   const selectedIndex = sheets.indexOf(selectedSheet);
   const sourceSheetRelationshipId = attribute(selectedSheet, 'r:id');
   const sourceSheetRelationship = relationshipTags(workbookRelationships)
@@ -136,7 +166,7 @@ async function main() {
 
   const outputWorksheetPath = sourceSheetPath;
   const outputRelationshipsPath = sourceSheetRelationshipsPath;
-  output.file(outputWorksheetPath, transformSf9Worksheet(sourceWorksheetXml));
+  output.file(outputWorksheetPath, transformSf9Worksheet(sourceWorksheetXml, variant));
   output.file(outputRelationshipsPath, sourceSheetRelationships);
   await copyPart(source, output, drawingSourcePath);
   await copyPart(source, output, printerSourcePath);
@@ -163,7 +193,7 @@ async function main() {
   output.file('xl/_rels/workbook.xml.rels',
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${requiredWorkbookRelationships.join('')}</Relationships>`);
 
-  output.file(workbookPath, updateSelectedSheet(workbookXml, sheetName, selectedSheet, selectedIndex));
+  output.file(workbookPath, updateSelectedSheet(workbookXml, variant.sourceSheetName, selectedSheet, selectedIndex, variant.sheetName));
   const rootRelationships = await source.file('_rels/.rels')?.async('string');
   if (!rootRelationships) throw new Error('The SF9 workbook package metadata is missing.');
   output.file('_rels/.rels', rootRelationships.replace(/<Relationship\b[^>]*\/>/g, tag => (

@@ -75,6 +75,10 @@ function schoolLevelsLabel(levels) {
   return (Array.isArray(levels) ? levels : []).map(schoolLevelLabel).join(', ');
 }
 
+function isGrade11AcademicSf9Template(template) {
+  return template?.formCode === 'SF9' && template.version === 'g11-academic-2026-2027';
+}
+
 function formatTemplateDate(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -170,13 +174,17 @@ function availableSections() {
   const sf5Only = templates.length === 1 && includesSf5;
   const includesSf9 = templates.some(template => template.formCode === 'SF9');
   const sf9Only = templates.length === 1 && includesSf9;
+  const grade11AcademicSf9 = sf9Only && isGrade11AcademicSf9Template(templates[0]);
   return sfState.sections.filter(section => {
     const currentSection = section.status === 'active' && section.academicYearStatus === 'active';
     const closedSection = (sf5Only || sf9Only)
       && section.status === 'archived' && section.academicYearStatus === 'closed';
     return (currentSection || closedSection)
       && (!includesSf5 || /^grade-(?:[2-9]|10)$/.test(section.gradeCode))
-      && (!includesSf9 || /^grade-(?:[4-9]|10)$/.test(section.gradeCode));
+      && (!includesSf9 || (grade11AcademicSf9
+        ? section.gradeCode === 'grade-11' && section.trackCode === 'academic'
+          && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
+        : /^grade-(?:[4-9]|10)$/.test(section.gradeCode)));
   });
 }
 
@@ -945,11 +953,13 @@ sfElements.templateList.addEventListener('change', event => {
   if (!event.target.matches('input[type="checkbox"]')) return;
   const checkedTemplates = selectedTemplates();
   if (checkedTemplates.some(template => template.formCode === 'SF9') && checkedTemplates.length > 1) {
-    const selectedSf9 = checkedTemplates.find(template => template.formCode === 'SF9');
-    showAppToast('The selected form cannot be combined with other forms.', 'error');
-    if (event.target.checked && selectedSf9.id === event.target.value) {
+    const selected = checkedTemplates.find(template => template.id === event.target.value);
+    const switchingSf9Version = event.target.checked && selected?.formCode === 'SF9'
+      && checkedTemplates.every(template => template.formCode === 'SF9');
+    if (!switchingSf9Version) showAppToast('The selected form cannot be combined with other forms.', 'error');
+    if (event.target.checked && selected?.formCode === 'SF9') {
       sfElements.templateList.querySelectorAll('input[type="checkbox"]').forEach(input => {
-        if (input.value !== selectedSf9.id) input.checked = false;
+        if (input.value !== selected.id) input.checked = false;
       });
     } else {
       event.target.checked = false;

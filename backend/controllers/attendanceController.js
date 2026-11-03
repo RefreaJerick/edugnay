@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { classHasStartedSql } = require('../utils/shsClassTerms');
 const { avatarFields } = require('../config/avatars');
 const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 const { getStudentFlags } = require('../utils/studentFlags');
@@ -623,6 +624,7 @@ async function getParentAttendance(req, res, next) {
          JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
          JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
          WHERE ar.school_id = ? AND s.status = 'confirmed' AND s.attendance_date <= ? AND y.status = 'active'
+           AND ${classHasStartedSql('ec.id', 'ec.school_id')}
            AND EXISTS (SELECT 1 FROM shs_elective_class_students em WHERE em.school_id = ar.school_id
              AND em.elective_class_id = ec.id AND em.student_user_id = ar.student_user_id
              AND (em.withdrawn_at IS NULL OR s.attendance_date <= DATE(em.withdrawn_at)))
@@ -693,6 +695,7 @@ async function getStudentAttendance(req, res, next) {
          JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
          WHERE ar.school_id = ? AND ar.student_user_id = ? AND s.status = 'confirmed'
            AND s.attendance_date <= ? AND y.status = 'active'
+           AND ${classHasStartedSql('ec.id', 'ec.school_id')}
            AND EXISTS (SELECT 1 FROM shs_elective_class_students em WHERE em.school_id = ar.school_id
              AND em.elective_class_id = ec.id AND em.student_user_id = ar.student_user_id
              AND (em.withdrawn_at IS NULL OR s.attendance_date <= DATE(em.withdrawn_at)))

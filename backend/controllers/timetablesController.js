@@ -85,6 +85,8 @@ async function getMeetingOwner(connection, schoolId, meetingId) {
 async function getElectiveClass(connection, schoolId, classId) {
   const [rows] = await connection.execute(
     `SELECT c.id, c.class_name AS className, c.teacher_user_id AS teacherId, c.is_active AS classActive,
+      DATE_FORMAT(first_term.planned_start_date, '%Y-%m-%d') AS firstTermStartDate,
+      DATE_FORMAT(last_term.planned_end_date, '%Y-%m-%d') AS lastTermEndDate,
       teacher.display_name AS teacherName, teacher.account_status AS teacherStatus,
       o.subject_name AS subjectName, o.track_code AS trackCode, g.grade_code AS gradeCode,
       o.academic_year_id AS academicYearId, o.is_active AS offeringActive,
@@ -96,6 +98,8 @@ async function getElectiveClass(connection, schoolId, classId) {
      JOIN shs_offerings o ON o.id = c.offering_id AND o.school_id = c.school_id
      JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
      JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
+     LEFT JOIN academic_terms first_term ON first_term.id = c.start_term_id AND first_term.school_id = c.school_id
+     LEFT JOIN academic_terms last_term ON last_term.id = c.end_term_id AND last_term.school_id = c.school_id
      WHERE c.id = ? AND c.school_id = ? LIMIT 1`, [classId, schoolId]
   );
   return rows[0];
@@ -187,16 +191,19 @@ async function list(req, res, next) {
       let electiveAccess = '';
       const electiveValues = [];
       if (req.user.role === 'teacher') {
-        electiveAccess = ' AND ec.teacher_user_id = ?';
+        electiveAccess = ' AND ec.teacher_user_id = ? AND active_term.sequence_number BETWEEN start_term.sequence_number AND end_term.sequence_number';
         electiveValues.push(req.user.id);
       } else if (req.user.role === 'student') {
-        electiveAccess = ` AND EXISTS (SELECT 1 FROM shs_elective_class_students em
+        electiveAccess = ` AND active_term.sequence_number BETWEEN start_term.sequence_number AND end_term.sequence_number
+          AND EXISTS (SELECT 1 FROM shs_elective_class_students em
           WHERE em.school_id = ec.school_id AND em.elective_class_id = ec.id
             AND em.student_user_id = ? AND em.withdrawn_at IS NULL)`;
         electiveValues.push(req.user.id);
       }
       const [electives] = await getDatabase().execute(
         `SELECT ec.id AS electiveClassId, ec.class_name AS className, ec.teacher_user_id AS teacherId,
+          ec.start_term_id AS startTermId, ec.end_term_id AS endTermId,
+          start_term.name AS startTermName, end_term.name AS endTermName,
           ec.is_active AS classActive, o.is_active AS offeringActive,
           o.subject_name AS subjectName, g.display_name AS gradeName,
           teacher.display_name AS teacherName, sc.id AS scheduledClassId,
@@ -208,6 +215,11 @@ async function list(req, res, next) {
          JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
          JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
          JOIN users teacher ON teacher.id = ec.teacher_user_id AND teacher.school_id = ec.school_id
+         LEFT JOIN academic_terms start_term ON start_term.id = ec.start_term_id AND start_term.school_id = ec.school_id
+         LEFT JOIN academic_terms end_term ON end_term.id = ec.end_term_id AND end_term.school_id = ec.school_id
+         LEFT JOIN academic_terms active_term ON active_term.school_id = ec.school_id
+           AND active_term.academic_year_id = o.academic_year_id
+           AND active_term.school_level_id = g.school_level_id AND active_term.status = 'active'
          LEFT JOIN scheduled_classes sc ON sc.shs_elective_class_id = ec.id AND sc.school_id = ec.school_id
          LEFT JOIN timetable_meetings m ON m.scheduled_class_id = sc.id AND m.school_id = sc.school_id
          WHERE ec.school_id = ? AND o.academic_year_id = ? AND ec.is_active = TRUE AND o.is_active = TRUE${electiveAccess}
@@ -392,6 +404,10 @@ async function saveElective(req, res, next) {
     if (elective.yearStatus === 'archived' || !elective.classActive || !elective.offeringActive) fail('This school year or class is read-only.', 409);
     if (elective.teacherStatus !== 'active') fail('Assign an active teacher before scheduling this class.', 409);
     const meeting = validateMeeting(req.body, elective);
+    if (!elective.firstTermStartDate || !elective.lastTermEndDate
+      || meeting.startDate < elective.firstTermStartDate || meeting.endDate > elective.lastTermEndDate) {
+      fail('Schedule this class only within its assigned terms. Review its term assignment first.', 409);
+    }
     if (meetingId) {
       const owner = await getMeetingOwner(connection, schoolId, meetingId);
       if (Number(owner?.electiveClassId) !== classId) fail('Meeting not found.', 404);
