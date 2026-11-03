@@ -151,7 +151,7 @@ test('SHS approved-subject form keeps the searchable multiselect visible in a re
   assert.match(client, /catalogCodes: \[\.\.\.state\.catalogCodes\]/);
 });
 
-test('SHS offering cards have responsive layout, clear actions, and shared status-pill styling', () => {
+test('SHS offering cards have responsive layout, clear actions, and Available classes status rows', () => {
   const client = read('assets/js/admin/shs-program.js');
   const styles = read('assets/css/shs-program.css');
   const sharedStyles = read('assets/css/styles.css');
@@ -163,6 +163,10 @@ test('SHS offering cards have responsive layout, clear actions, and shared statu
   assert.match(styles, /\.shs-class\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+35px[^}]*column-gap:\s*12px/s);
   assert.match(styles, /\.shs-class-menu\s*\{[^}]*justify-self:\s*end[^}]*align-self:\s*start/s);
   assert.match(styles, /\.shs-class-copy\s*\{[^}]*min-width:\s*0[^}]*overflow-wrap:\s*anywhere/s);
+  assert.match(styles, /\.shs-class-statuses\s*\{[^}]*display:\s*grid[^}]*gap:\s*8px[^}]*border-top:\s*1px solid var\(--panel-divider\)/s);
+  assert.match(styles, /\.shs-class-status-row\s*\{[^}]*display:\s*flex[^}]*gap:\s*7px[^}]*font-size:\s*11px[^}]*overflow-wrap:\s*anywhere/s);
+  assert.match(styles, /\.shs-class-status-schedule\s*>\s*svg\s*\{[^}]*color:\s*var\(--theme-accent-text\)/s);
+  assert.match(styles, /\.shs-class-status-warning\s*>\s*svg\s*\{[^}]*color:\s*var\(--theme-warning-strong\)/s);
   assert.match(styles, /\.shs-offering-head\s*>\s*div\s*>\s*span/);
   assert.match(styles, /\.shs-class-copy\s*>\s*span/);
   assert.match(styles, /\.shs-class-menu-trigger\s*\{[^}]*width:\s*35px[^}]*min-height:\s*34px/s);
@@ -181,6 +185,9 @@ test('SHS offering cards have responsive layout, clear actions, and shared statu
   assert.match(client, /data-edit-class="\$\{c\.id\}" \$\{archived \? 'disabled' : ''\}/);
   assert.match(client, /data-toggle-class="\$\{c\.id\}" \$\{archived \? 'disabled' : ''\}/);
   assert.match(client, /data-delete-class="\$\{c\.id\}" \$\{archived \? 'disabled' : ''\}/);
+  assert.match(client, /class="shs-class-status-row shs-class-status-schedule"><i data-lucide="calendar-days" aria-hidden="true"><\/i><span>No meeting scheduled<\/span>/);
+  assert.match(client, /class="shs-class-status-row shs-class-status-warning"><i data-lucide="triangle-alert" aria-hidden="true"><\/i><span>Term review needed<\/span>/);
+  assert.doesNotMatch(client, /badge badge-orange shs-term-review/);
   assert.match(client, /deleteShsClass\(state\.deleteClassId\)/);
   assert.match(client, /updateShsClass\(item\.id, \{ isActive: nextActive \}\)/);
   assert.match(client, /function closeClassMenus\(restoreFocus = false\)/);

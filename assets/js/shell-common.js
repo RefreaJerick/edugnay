@@ -3319,8 +3319,10 @@ function applyCurrentDateToGradingBanners() {
     const response = await requestApi('/sf-templates');
     return (response.templates || []).map(record => {
       const grade11AcademicSf9 = record.formCode === 'SF9' && record.version === 'g11-academic-2026-2027';
+      const grade11TechProSf9 = record.formCode === 'SF9' && record.version === 'g11-techpro-2026-2027';
       return {
         id: grade11AcademicSf9 ? 'sf9-g11-academic-v1'
+          : grade11TechProSf9 ? 'sf9-g11-techpro-v1'
           : record.formCode === 'SF1' ? 'sf1-school-register-v1'
             : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1'
               : record.formCode === 'SF3' ? 'sf3-books-issued-returned-v1'
@@ -3331,13 +3333,15 @@ function applyCurrentDateToGradingBanners() {
         formCode: record.formCode,
         formName: record.formName,
         version: record.version,
-        schoolLevels: grade11AcademicSf9 ? ['shs']
+        schoolLevels: grade11AcademicSf9 || grade11TechProSf9 ? ['shs']
           : ['SF5', 'SF9'].includes(record.formCode) ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
         source: 'official',
         status: record.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : 'draft',
         mappingStatus: record.mappingStatus,
-        fileName: grade11AcademicSf9 ? 'SF9-G11-Academic.xlsx' : `${record.formCode}.xlsx`,
-        templateFileUrl: `../../assets/templates/school-forms/${grade11AcademicSf9 ? 'sf9-g11-academic' : record.formCode.toLowerCase()}.xlsx`,
+        fileName: grade11AcademicSf9 ? 'SF9-G11-Academic.xlsx'
+          : grade11TechProSf9 ? 'SF9-G11-TechPro.xlsx' : `${record.formCode}.xlsx`,
+        templateFileUrl: `../../assets/templates/school-forms/${grade11AcademicSf9 ? 'sf9-g11-academic'
+          : grade11TechProSf9 ? 'sf9-g11-techpro' : record.formCode.toLowerCase()}.xlsx`,
         sheetName: record.sheetName,
         requiresAcademicPeriod: Boolean(record.requiresAcademicTerm),
         sheets: [{ name: record.sheetName, hidden: false }],
@@ -3379,8 +3383,10 @@ function applyCurrentDateToGradingBanners() {
       throw new Error('The selected official template is unavailable.');
     }
     const buffer = await window.EDUGNAY_SF_WORKBOOK.getOfficialTemplateFile(template);
-    return { buffer, fileName: template.id === 'sf9-g11-academic-v1'
-      ? 'SF9-G11-Academic-blank-template.xlsx' : `${template.formCode}-blank-template.xlsx` };
+    const fileName = template.id === 'sf9-g11-academic-v1' ? 'SF9-G11-Academic-blank-template.xlsx'
+      : template.id === 'sf9-g11-techpro-v1' ? 'SF9-G11-TechPro-blank-template.xlsx'
+        : `${template.formCode}-blank-template.xlsx`;
+    return { buffer, fileName };
   }
 
   async function downloadBlankCombinedSfTemplates(templateIds) {

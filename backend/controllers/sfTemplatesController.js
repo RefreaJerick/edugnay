@@ -6,8 +6,9 @@ const { SF2, monthInYear, buildSf2Pages } = require('../config/sf2');
 const { SF3, buildSf3Pages } = require('../config/sf3');
 const { SF5, buildSf5Pages } = require('../config/sf5');
 const { SF8, buildSf8Pages } = require('../config/sf8');
-const { SF9, SF9_GRADE11_ACADEMIC, buildSf9Pages, buildSf9Grade11AcademicPages,
-  displayName: sf9DisplayName, isGrade11AcademicSf9 } = require('../config/sf9');
+const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, buildSf9Pages,
+  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages,
+  displayName: sf9DisplayName, isGrade11AcademicSf9, isGrade11TechProSf9 } = require('../config/sf9');
 
 const SF1_TEMPLATE = {
   formCode: 'SF1',
@@ -361,10 +362,13 @@ async function getSf9Grade11CommunicationGrades(database, schoolId, section, lea
   return grades;
 }
 
-async function getSf9Grade11ElectiveData(database, schoolId, section, learner) {
+async function getSf9Grade11ElectiveData(database, schoolId, section, learner, filters = {}) {
   const [records] = await database.execute(
     `SELECT elective_classes.id AS electiveClassId, offerings.catalog_code AS catalogCode,
       offerings.subject_name AS electiveName, published_grades.academic_term_id AS academicTermId,
+      offerings.track_code AS trackCode, offerings.subject_type AS subjectType,
+      elective_classes.start_term_id AS startTermId, elective_classes.end_term_id AS endTermId,
+      start_term.sequence_number AS startTermSequenceNumber, end_term.sequence_number AS endTermSequenceNumber,
       terms.name AS termName, terms.sequence_number AS termSequenceNumber,
       published_grades.final_grade AS finalGrade
     FROM shs_selection_requests AS requests
@@ -374,6 +378,10 @@ async function getSf9Grade11ElectiveData(database, schoolId, section, learner) {
       ON elective_classes.school_id = request_classes.school_id AND elective_classes.id = request_classes.elective_class_id
     INNER JOIN shs_offerings AS offerings
       ON offerings.school_id = elective_classes.school_id AND offerings.id = elective_classes.offering_id
+    LEFT JOIN academic_terms AS start_term
+      ON start_term.school_id = elective_classes.school_id AND start_term.id = elective_classes.start_term_id
+    LEFT JOIN academic_terms AS end_term
+      ON end_term.school_id = elective_classes.school_id AND end_term.id = elective_classes.end_term_id
     LEFT JOIN published_final_grades AS published_grades
       ON published_grades.school_id = requests.school_id
       AND published_grades.shs_elective_class_id = elective_classes.id
@@ -384,10 +392,11 @@ async function getSf9Grade11ElectiveData(database, schoolId, section, learner) {
     WHERE requests.school_id = ? AND requests.academic_year_id = ?
       AND requests.grade_level_id = ? AND requests.student_user_id = ? AND requests.status = 'approved'
       AND offerings.academic_year_id = ? AND offerings.grade_level_id = ?
-      AND offerings.track_code = 'academic' AND offerings.subject_type = 'academic_elective'
+      AND (? IS NULL OR offerings.track_code = ?) AND (? IS NULL OR offerings.subject_type = ?)
     ORDER BY offerings.subject_name, elective_classes.id, terms.sequence_number`,
     [schoolId, section.academicYearId, section.gradeLevelId, learner.userId,
-      section.academicYearId, section.gradeLevelId]
+      section.academicYearId, section.gradeLevelId, filters.trackCode ?? null, filters.trackCode ?? null,
+      filters.subjectType ?? null, filters.subjectType ?? null]
   );
   const electiveClasses = new Map();
   const electiveGrades = [];
@@ -396,7 +405,13 @@ async function getSf9Grade11ElectiveData(database, schoolId, section, learner) {
     if (!electiveClasses.has(key)) electiveClasses.set(key, {
       electiveClassId: record.electiveClassId,
       catalogCode: record.catalogCode,
-      electiveName: record.electiveName
+      electiveName: record.electiveName,
+      trackCode: record.trackCode,
+      subjectType: record.subjectType,
+      startTermId: record.startTermId,
+      endTermId: record.endTermId,
+      startTermSequenceNumber: record.startTermSequenceNumber,
+      endTermSequenceNumber: record.endTermSequenceNumber
     });
     if (record.academicTermId !== null && record.academicTermId !== undefined) {
       electiveGrades.push({ ...record, electiveClassId: record.electiveClassId });
@@ -410,10 +425,17 @@ function sf9SectionIsEligible(template, section) {
     return section.gradeCode === 'grade-11' && section.trackCode === 'academic'
       && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
   }
+  if (isGrade11TechProSf9(template)) {
+    return section.gradeCode === 'grade-11' && section.trackCode === 'techpro'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
+  }
   return /^grade-(?:[4-9]|10)$/.test(section.gradeCode);
 }
 
 function sf9EligibilityMessage(template) {
+  if (isGrade11TechProSf9(template)) {
+    return 'The Grade 11 TechPro SF9 is available only for Strengthened SHS TechPro sections in school year 2026-2027.';
+  }
   return isGrade11AcademicSf9(template)
     ? 'The Grade 11 Academic SF9 is available only for Strengthened SHS Academic sections in school year 2026-2027.'
     : 'SF9 is available only for Grades 4–10.';
@@ -680,13 +702,21 @@ async function getTemplateDetails(req, res, next) {
     const database = getDatabase();
     await ensureFeatureEnabled(database, req.user.schoolId);
     const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
-    const mappings = template.formCode === 'SF9' && isGrade11AcademicSf9(template)
-      ? [...Object.entries(SF9_GRADE11_ACADEMIC.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9_GRADE11_ACADEMIC.sheetName, cellReference })),
-        ...[
-          ['subjectName', 'B33'], ['englishComponentGrade', 'F34'], ['filipinoComponentGrade', 'F35'],
-          ['firstPeriodGrade', 'F33'], ['electiveSubject1', 'B41'], ['electiveSubject2', 'B42'],
-          ['electiveSubject3', 'B43'], ['generalAverage', 'I44']
-        ].map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9_GRADE11_ACADEMIC.sheetName, cellReference }))]
+    const grade11Sf9Definition = isGrade11AcademicSf9(template) ? SF9_GRADE11_ACADEMIC
+      : isGrade11TechProSf9(template) ? SF9_GRADE11_TECHPRO : null;
+    const grade11Sf9Fields = isGrade11TechProSf9(template)
+      ? [['subjectName', 'B33'], ['englishComponentGrade', 'F34'], ['filipinoComponentGrade', 'F35'],
+        ['firstPeriodGrade', 'F33'], ['techproElective', 'B41'], ['techproElectiveFirstTermGrade', 'F41'],
+        ['generalAverage', 'I43']]
+      : [['subjectName', 'B33'], ['englishComponentGrade', 'F34'], ['filipinoComponentGrade', 'F35'],
+        ['firstPeriodGrade', 'F33'], ['electiveSubject1', 'B41'], ['electiveSubject2', 'B42'],
+        ['electiveSubject3', 'B43'], ['generalAverage', 'I44']];
+    const mappings = grade11Sf9Definition
+      ? [...Object.entries(grade11Sf9Definition.headers).map(([fieldKey, cellReference]) => ({
+        fieldKey, worksheetName: grade11Sf9Definition.sheetName, cellReference
+      })), ...grade11Sf9Fields.map(([fieldKey, cellReference]) => ({
+        fieldKey, worksheetName: grade11Sf9Definition.sheetName, cellReference
+      }))]
       : template.formCode === 'SF9'
       ? [...Object.entries(SF9.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9.sheetName, cellReference })),
         { fieldKey: 'subjectName', worksheetName: SF9.sheetName, cellReference: `B${SF9.firstSubjectRow}` },
@@ -822,8 +852,17 @@ async function preparePreview(req, database) {
       const communicationSubject = gradeData.subjects.find(subject => subject.code === 'shs-core-communication');
       const communicationGrades = await getSf9Grade11CommunicationGrades(database, req.user.schoolId,
         section, learner, gradeData.terms, communicationSubject?.id);
-      const electiveData = await getSf9Grade11ElectiveData(database, req.user.schoolId, section, learner);
+      const electiveData = await getSf9Grade11ElectiveData(database, req.user.schoolId, section, learner,
+        { trackCode: 'academic', subjectType: 'academic_elective' });
       data = buildSf9Grade11AcademicPages(schools[0], section, advisers[0]?.displayName || '', learner,
+        gradeData.subjects, gradeData.terms, gradeData.grades, communicationGrades,
+        electiveData.electiveClasses, electiveData.electiveGrades);
+    } else if (isGrade11TechProSf9(template)) {
+      const communicationSubject = gradeData.subjects.find(subject => subject.code === 'shs-core-communication');
+      const communicationGrades = await getSf9Grade11CommunicationGrades(database, req.user.schoolId,
+        section, learner, gradeData.terms, communicationSubject?.id);
+      const electiveData = await getSf9Grade11ElectiveData(database, req.user.schoolId, section, learner);
+      data = buildSf9Grade11TechProPages(schools[0], section, advisers[0]?.displayName || '', learner,
         gradeData.subjects, gradeData.terms, gradeData.grades, communicationGrades,
         electiveData.electiveClasses, electiveData.electiveGrades);
     } else {

@@ -110,6 +110,46 @@
       },
       rows: []
     },
+    'sf9-g11-techpro-v1': {
+      templateId: 'sf9-g11-techpro-v1',
+      sheetName: 'SF9 - GRADE 11 TECHPRO',
+      requiredSheets: ['SF9 - GRADE 11 TECHPRO'],
+      previewRows: 53,
+      previewColumns: 30,
+      excludeTrailingRows: true,
+      excludeTrailingColumns: true,
+      mergeCount: 126,
+      anchors: {
+        B14: "LEARNER'S PERFORMANCE REPORT",
+        B29: 'LEARNING PROGRESS AND ACHIEVEMENT',
+        B32: 'Core Subjects',
+        B40: 'Elective Subjects',
+        F31: 'T1',
+        G31: 'T2',
+        H31: 'T3',
+        I30: 'Final Grade',
+        J30: 'Remarks'
+      },
+      fields: {
+        region: { cellAddress: 'B7', source: 'header.region', type: 'text' },
+        division: { cellAddress: 'B8', source: 'header.division', type: 'text' },
+        district: { cellAddress: 'B9', source: 'header.district', type: 'text' },
+        address: { cellAddress: 'B10', source: 'header.address', type: 'text' },
+        schoolName: { cellAddress: 'B12', source: 'header.schoolName', type: 'text' },
+        schoolYear: { cellAddress: 'B15', source: 'header.schoolYear', type: 'text' },
+        learnerName: { cellAddress: 'C17', source: 'header.learnerName', type: 'text' },
+        age: { cellAddress: 'I17', source: 'header.age', type: 'number' },
+        sex: { cellAddress: 'K17', source: 'header.sex', type: 'text' },
+        lrn: { cellAddress: 'C18', source: 'header.lrn', type: 'text' },
+        gradeLevel: { cellAddress: 'I18', source: 'header.gradeLevel', type: 'number' },
+        section: { cellAddress: 'K18', source: 'header.section', type: 'text' },
+        track: { cellAddress: 'E19', source: 'header.track', type: 'text' },
+        adviser: { cellAddress: 'H27', source: 'header.adviser', type: 'text' },
+        techproElective: { cellAddress: 'B41', source: 'approved Grade 11 TechPro elective', type: 'text' },
+        generalAverage: { cellAddress: 'I43', source: 'adviser review', type: 'number' }
+      },
+      rows: []
+    },
     'sf5-promotion-proficiency-v1': {
       templateId: 'sf5-promotion-proficiency-v1',
       sheetName: 'School Form 5 (SF5)',

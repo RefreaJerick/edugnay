@@ -88,9 +88,12 @@
           const classActive = Boolean(c.classActive);
           const termName = c.startTermName
             ? (c.startTermId === c.endTermId ? c.startTermName : `${c.startTermName}–${c.endTermName}`) : '';
-          const termReview = termName ? '' : '<span class="badge badge-orange shs-term-review"><i data-lucide="triangle-alert" aria-hidden="true"></i>Term review needed</span>';
-          return `<div class="shs-class"><div class="shs-class-copy"><strong>${escape(c.className)}</strong><span>${escape(c.teacherName)} · ${c.enrolledCount}/${c.capacity} seats · ${c.meetingCount} meetings${termName ? ` · ${escape(termName)}` : ''}</span>${termReview}
-            <small>${reason ? escape(reason) : 'Scheduled and available'}</small>${trackReview}</div><div class="shs-class-menu">
+          const termReview = termName ? '' : '<span class="shs-class-status-row shs-class-status-warning"><i data-lucide="triangle-alert" aria-hidden="true"></i><span>Term review needed</span></span>';
+          const availabilityStatus = reason === 'No meeting scheduled'
+            ? '<span class="shs-class-status-row shs-class-status-schedule"><i data-lucide="calendar-days" aria-hidden="true"></i><span>No meeting scheduled</span></span>'
+            : `<small>${reason ? escape(reason) : 'Scheduled and available'}</small>`;
+          return `<div class="shs-class"><div class="shs-class-copy"><strong>${escape(c.className)}</strong><span>${escape(c.teacherName)} · ${c.enrolledCount}/${c.capacity} seats · ${c.meetingCount} meetings${termName ? ` · ${escape(termName)}` : ''}</span>
+            <div class="shs-class-statuses">${availabilityStatus}${termReview}</div>${trackReview}</div><div class="shs-class-menu">
             <button class="shs-class-menu-trigger" id="shs-class-menu-trigger-${c.id}" type="button" data-class-menu-toggle="${c.id}" aria-label="Actions for ${escape(c.className)}" aria-haspopup="menu" aria-expanded="false" aria-controls="shs-class-menu-${c.id}"><i data-lucide="more-vertical" aria-hidden="true"></i></button>
             <div class="shs-class-action-menu" id="shs-class-menu-${c.id}" role="menu" aria-labelledby="shs-class-menu-trigger-${c.id}">
               <button class="shs-class-menu-item" type="button" role="menuitem" data-edit-class="${c.id}" ${archived ? 'disabled' : ''}><i data-lucide="pencil" aria-hidden="true"></i>Edit class</button>

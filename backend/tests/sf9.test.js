@@ -6,7 +6,8 @@ const vm = require('node:vm');
 const ExcelJS = require('exceljs');
 const JSZip = require('jszip');
 const { assertXlsxPackageIntegrity } = require('./helpers/assertXlsxPackageIntegrity');
-const { SF9, SF9_GRADE11_ACADEMIC, buildSf9Pages, buildSf9Grade11AcademicPages } = require('../config/sf9');
+const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, buildSf9Pages,
+  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages } = require('../config/sf9');
 const { createExportWorkbook, getEditableCells } = require('../config/sfExports');
 
 const root = path.resolve(__dirname, '..', '..');
@@ -15,6 +16,10 @@ const template = { formCode: 'SF9', filePath: '/assets/templates/school-forms/sf
 const grade11Template = {
   formCode: 'SF9', version: SF9_GRADE11_ACADEMIC.version,
   filePath: '/assets/templates/school-forms/sf9-g11-academic.xlsx', sheetName: SF9_GRADE11_ACADEMIC.sheetName
+};
+const grade11TechProTemplate = {
+  formCode: 'SF9', version: SF9_GRADE11_TECHPRO.version,
+  filePath: '/assets/templates/school-forms/sf9-g11-techpro.xlsx', sheetName: SF9_GRADE11_TECHPRO.sheetName
 };
 const school = {
   schoolName: 'Sample School', depedSchoolId: '305614', region: 'VIII',
@@ -509,6 +514,178 @@ test('Grade 11 Academic SF9 keeps unpublished component and elective marks blank
   assert.ok(partial.issues.some(issue => issue.fieldKey === 'communicationComponentGrade' && issue.cellReference === 'F35'));
 });
 
+test('Grade 11 TechPro SF9 template removes sample data and preserves its supplied layout', async () => {
+  const sourceBytes = await fs.readFile(path.join(root, 'assets/templates/school-forms/sf9-g11-techpro.xlsx'));
+  const sourceZip = await JSZip.loadAsync(sourceBytes);
+  await assertXlsxPackageIntegrity(sourceZip);
+  const sourceXml = await firstWorksheetXml(sourceZip);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(sourceBytes);
+  const sheet = workbook.getWorksheet(SF9_GRADE11_TECHPRO.sheetName);
+  assert.equal(workbook.worksheets.length, 1, 'the linked sample-data sheet must be removed');
+  assert.equal(sheet.state, 'visible');
+  assert.equal(sheet.getImages().length, 1);
+  assert.equal(sheet.pageSetup.orientation, 'landscape');
+  assert.equal(sheet.pageSetup.printArea, 'A2:AD53');
+  assert.equal(sheet.model.merges.length, 126);
+  assert.doesNotMatch(sourceXml, /<f\b|#REF!/);
+  for (const address of ['B7', 'B8', 'B9', 'B10', 'B12', 'B15', 'C17', 'I17', 'K17',
+    'C18', 'I18', 'K18', 'E19', 'B27', 'H27', 'B41', 'R5', 'AB6', 'AC10']) {
+    assert.equal(sheet.getCell(address).value, null, `${address} should not contain sample data`);
+  }
+  assert.equal(sheet.getCell('B33').value, 'Effective Communication / Mabisang Komunikasyon');
+  assert.equal(sheet.getCell('B34').value, 'Effective Communication');
+  assert.equal(sheet.getCell('B35').value, 'Mabisang Komunikasyon');
+  assert.equal(sheet.getCell('B39').value, 'Pag-aaral ng Kasaysayan at Lipunang Pilipino');
+  assert.deepEqual(['F31', 'G31', 'H31'].map(address => sheet.getCell(address).value), ['T1', 'T2', 'T3']);
+
+  const workbookScript = await fs.readFile(path.join(root, 'assets/js/sf-workbook.js'), 'utf8');
+  const exposed = workbookScript.replace('  window.EDUGNAY_SF_WORKBOOK = {',
+    '  window.EDUGNAY_SF_WORKBOOK = { worksheetPreview, validateDefinition,');
+  const window = {};
+  vm.runInNewContext(exposed, { window, Date });
+  const browser = window.EDUGNAY_SF_WORKBOOK;
+  const templateDefinition = { id: 'sf9-g11-techpro-v1', formCode: 'SF9' };
+  assert.equal(browser.validateDefinition(workbook, templateDefinition).mappingStatus, 'ready');
+  const preview = browser.worksheetPreview(sheet, templateDefinition);
+  assert.equal(preview.rows.length, 53);
+  assert.equal(preview.columnWidths.length, 30);
+  assert.equal(preview.truncated, false);
+});
+
+test('Grade 11 TechPro SF9 maps core and component grades plus one three-term elective', async () => {
+  const techProSection = { ...section, gradeCode: 'grade-11', gradeLevel: 'Grade 11',
+    trackName: 'Technical Professional (TechPro)' };
+  const grade11Subjects = [
+    { id: 11, code: 'shs-core-communication' },
+    { id: 12, code: 'shs-core-mathematics' },
+    { id: 13, code: 'shs-core-science' },
+    { id: 14, code: 'shs-core-life-career' },
+    { id: 15, code: 'shs-core-philippine-history' }
+  ];
+  const grade11Terms = terms(3).map((term, index) => ({ ...term, name: `Term ${index + 1}`, sequenceNumber: index + 1 }));
+  const grade11Published = grade11Subjects.flatMap((subject, subjectIndex) => grade11Terms.map((term, termIndex) => ({
+    subjectId: subject.id, academicTermId: term.id,
+    finalGrade: subject.id === 11 ? [90, 88, 86][termIndex] : 90 + subjectIndex + termIndex,
+    communicationGradeSource: subject.id === 11 ? 'component_average' : null
+  })));
+  const componentGrades = ['english', 'filipino'].flatMap((communicationComponentCode, componentIndex) => grade11Terms.map((term, termIndex) => ({
+    subjectId: 11, communicationComponentCode, academicTermId: term.id,
+    finalGrade: 100 - componentIndex * 20 - termIndex * 2
+  })));
+  const elective = { electiveClassId: 301, catalogCode: 'techpro-it', electiveName: 'Computer Systems Servicing',
+    trackCode: 'techpro', subjectType: 'techpro_elective', startTermId: 21, endTermId: 23,
+    startTermSequenceNumber: 1, endTermSequenceNumber: 3 };
+  const electiveGrades = grade11Terms.map((term, index) => ({ electiveClassId: 301,
+    academicTermId: term.id, termSequenceNumber: term.sequenceNumber, finalGrade: [88, 90, 92][index] }));
+  const generated = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades, [elective], electiveGrades);
+  const cells = new Map(generated.pages[0].map(cell => [cell.cellAddress, cell.value]));
+
+  assert.equal(cells.get('E19'), 'Technical Professional');
+  assert.equal(cells.get('B33'), 'Effective Communication / Mabisang Komunikasyon');
+  assert.deepEqual(['F33', 'G33', 'H33', 'I33'].map(address => cells.get(address)), [90, 88, 86, 88]);
+  assert.deepEqual(['F34', 'G34', 'H34', 'I34'].map(address => cells.get(address)), [100, 98, 96, 98]);
+  assert.deepEqual(['F35', 'G35', 'H35', 'I35'].map(address => cells.get(address)), [80, 78, 76, 78]);
+  assert.equal(cells.get('B39'), 'Pag-aaral ng Kasaysayan at Lipunang Pilipino');
+  assert.equal(cells.get('B41'), 'Computer Systems Servicing');
+  assert.deepEqual(['F41', 'G41', 'H41', 'I41'].map(address => cells.get(address)), [88, 90, 92, 90]);
+  assert.equal(cells.get('I43'), '');
+  assert.equal(generated.generalAverage, null);
+  assert.equal(generated.issues.some(issue => issue.severity === 'error'), false);
+
+  const editable = new Map((await getEditableCells(grade11TechProTemplate, generated.pages[0]))
+    .map(cell => [cell.cellAddress, cell.type]));
+  assert.equal(editable.get('E19'), 'text');
+  assert.equal(editable.get('B41'), 'text');
+  assert.equal(editable.get('F41'), 'number');
+  assert.equal(editable.get('I43'), 'number');
+  assert.equal(editable.has('B40'), false, 'the Elective Subjects heading remains protected');
+  assert.equal(editable.has('B42'), false, 'cells below the single elective row remain protected');
+
+  const sourceBytes = await fs.readFile(path.join(root, 'assets/templates/school-forms/sf9-g11-techpro.xlsx'));
+  const sourceZip = await JSZip.loadAsync(sourceBytes);
+  const output = await createExportWorkbook(grade11TechProTemplate, generated.pages);
+  const outputZip = await JSZip.loadAsync(output);
+  await assertXlsxPackageIntegrity(outputZip);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(output);
+  const sheet = workbook.getWorksheet(SF9_GRADE11_TECHPRO.sheetName);
+  assert.equal(sheet.pageSetup.printArea, 'A2:AD53');
+  assert.equal(sheet.getImages().length, 1);
+  assert.equal(sheet.getCell('E19').value, 'Technical Professional');
+  assert.equal(sheet.getCell('B41').value, 'Computer Systems Servicing');
+  assert.equal(sheet.getCell('I41').value, 90);
+  assert.equal(sheet.getCell('I43').value, null);
+  assert.equal(sheet.getCell('B43').value, 'General Average');
+  assert.deepEqual(await outputZip.file('xl/styles.xml').async('nodebuffer'),
+    await sourceZip.file('xl/styles.xml').async('nodebuffer'));
+
+  const adviserEdits = generated.pages[0].map(cell => cell.cellAddress === 'I43'
+    ? { ...cell, value: 89, type: 'number' } : cell);
+  const editedOutput = await createExportWorkbook(grade11TechProTemplate, adviserEdits);
+  const reopenedDraft = new ExcelJS.Workbook();
+  await reopenedDraft.xlsx.load(editedOutput);
+  assert.equal(reopenedDraft.getWorksheet(SF9_GRADE11_TECHPRO.sheetName).getCell('I43').value, 89,
+    'an adviser edit is retained when the downloaded draft is reopened');
+
+  const partial = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades, [elective], [electiveGrades[0]]);
+  const partialCells = new Map(partial.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.deepEqual(['F41', 'G41', 'H41', 'I41'].map(address => partialCells.get(address)), [88, '', '', '']);
+  assert.ok(partial.issues.some(issue => /no published grade/.test(issue.message) && issue.cellReference === 'G41'));
+
+  const noElective = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades, [], []);
+  const noElectiveCells = new Map(noElective.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.deepEqual(['B41', 'F41', 'G41', 'H41', 'I41'].map(address => noElectiveCells.get(address)),
+    ['', '', '', '', '']);
+  assert.ok(noElective.issues.some(issue => /No approved Grade 11 TechPro elective/.test(issue.message)));
+
+  const duplicate = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades, [elective],
+    [...electiveGrades, { ...electiveGrades[0], finalGrade: 95 }]);
+  const duplicateCells = new Map(duplicate.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.deepEqual(['F41', 'I41'].map(address => duplicateCells.get(address)), ['', '']);
+  assert.ok(duplicate.issues.some(issue => /conflicting published grades/.test(issue.message)));
+
+  const invalidGrade = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades, [elective],
+    electiveGrades.map((grade, index) => index === 1 ? { ...grade, finalGrade: 101 } : grade));
+  const invalidCells = new Map(invalidGrade.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.deepEqual(['F41', 'G41', 'H41', 'I41'].map(address => invalidCells.get(address)), [88, '', 92, '']);
+  assert.ok(invalidGrade.issues.some(issue => /invalid published grade/.test(issue.message)
+    && issue.cellReference === 'G41'));
+
+  const mismatchedTerms = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades,
+    [{ ...elective, startTermId: 999, endTermId: 1001 }], electiveGrades);
+  const mismatchedTermCells = new Map(mismatchedTerms.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(mismatchedTermCells.get('I41'), '');
+  assert.ok(mismatchedTerms.issues.some(issue => issue.severity === 'error'
+    && /assigned across Terms 1/.test(issue.message)));
+
+  const extraCrossTrack = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades,
+    [elective, { electiveClassId: 302, electiveName: 'Contemporary Literature', trackCode: 'academic', subjectType: 'academic_elective' }],
+    electiveGrades);
+  assert.ok(extraCrossTrack.issues.some(issue => issue.severity === 'error' && /cross-track/.test(issue.message)));
+
+  const multipleTechPro = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades,
+    [elective, { ...elective, electiveClassId: 302, electiveName: 'Electrical Installation and Maintenance' }],
+    electiveGrades);
+  assert.ok(multipleTechPro.issues.some(issue => issue.severity === 'error'
+    && /more than one TechPro elective/.test(issue.message)));
+
+  const unexpected = buildSf9Grade11TechProPages(school, techProSection, 'Ms. Adviser', learner,
+    grade11Subjects, grade11Terms, grade11Published, componentGrades, [elective],
+    [...electiveGrades, { electiveClassId: 301, academicTermId: 24, termSequenceNumber: 4, finalGrade: 95 }]);
+  const unexpectedCells = new Map(unexpected.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(unexpectedCells.get('I41'), '');
+  assert.ok(unexpected.issues.some(issue => /outside the configured Terms 1–3/.test(issue.message)));
+});
+
 test('SF9 learner selection and preview stay adviser-only, level-limited, and separate from combined forms', async () => {
   const rootFiles = await Promise.all([
     fs.readFile(path.join(root, 'backend/routes/sfTemplates.js'), 'utf8'),
@@ -527,7 +704,12 @@ test('SF9 learner selection and preview stay adviser-only, level-limited, and se
   assert.match(api, /record\.version === 'g11-academic-2026-2027'/);
   assert.match(api, /'sf9-g11-academic-v1'/);
   assert.match(api, /sf9-g11-academic/);
+  assert.match(api, /record\.version === 'g11-techpro-2026-2027'/);
+  assert.match(api, /'sf9-g11-techpro-v1'/);
+  assert.match(api, /sf9-g11-techpro/);
   assert.match(page, /sf9Only[\s\S]*academicYearStatus/);
+  assert.match(page, /g11-techpro-2026-2027/);
+  assert.match(page, /section\.trackCode === 'techpro'/);
   assert.match(page, /section\.status === 'active' && section\.academicYearStatus === 'active'/);
   assert.match(page, /section\.status === 'archived' && section\.academicYearStatus === 'closed'/);
   assert.match(page, /!formCodes\.includes\('SF9'\)/);
@@ -558,7 +740,9 @@ test('advisory class eligibility follows API status as templates change', async 
     `${availableSectionsSource}; availableSections().map(section => section.id);`,
     { sfState: { sections }, selectedTemplates: () => templates,
       isGrade11AcademicSf9Template: template => template?.formCode === 'SF9'
-        && template.version === 'g11-academic-2026-2027' }
+        && template.version === 'g11-academic-2026-2027',
+      isGrade11TechProSf9Template: template => template?.formCode === 'SF9'
+        && template.version === 'g11-techpro-2026-2027' }
   );
 
   assert.deepEqual(eligibleIds([{ formCode: 'SF9' }]), ['active-grade-7', 'closed-grade-7']);
@@ -568,6 +752,7 @@ test('advisory class eligibility follows API status as templates change', async 
   assert.deepEqual(eligibleIds([{ formCode: 'SF3' }]), ['active-grade-7', 'active-grade-3', 'active-grade-11',
     'active-grade-11-academic', 'active-grade-11-techpro', 'active-grade-11-legacy', 'active-grade-11-old-year']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF9', version: 'g11-academic-2026-2027' }]), ['active-grade-11-academic']);
+  assert.deepEqual(eligibleIds([{ formCode: 'SF9', version: 'g11-techpro-2026-2027' }]), ['active-grade-11-techpro']);
 });
 
 test('incompatible SF9 selections show an error toast while supported combinations remain unchanged', async () => {
@@ -582,7 +767,8 @@ test('incompatible SF9 selections show an error toast while supported combinatio
     { id: 'sf5', formCode: 'SF5' },
     { id: 'sf8', formCode: 'SF8' },
     { id: 'sf9', formCode: 'SF9', version: '1.0' },
-    { id: 'sf9-g11-academic', formCode: 'SF9', version: 'g11-academic-2026-2027' }
+    { id: 'sf9-g11-academic', formCode: 'SF9', version: 'g11-academic-2026-2027' },
+    { id: 'sf9-g11-techpro', formCode: 'SF9', version: 'g11-techpro-2026-2027' }
   ];
   const inputs = templates.map(template => ({ value: template.id, checked: false, matches: () => true }));
   let changeHandler;
@@ -640,5 +826,11 @@ test('incompatible SF9 selections show an error toast while supported combinatio
 
   select('sf9');
   assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9']);
+  assert.equal(toastMessages.length, 2);
+
+  select('sf9-g11-techpro');
+  assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g11-techpro']);
+  select('sf9-g11-academic');
+  assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g11-academic']);
   assert.equal(toastMessages.length, 2);
 });

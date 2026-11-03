@@ -23,6 +23,20 @@ const variants = {
       B35: 'Mabisang Komunikasyon',
       B39: 'Pag-aaral ng Kasaysayan at Lipunang Pilipino'
     }
+  },
+  'grade11-techpro': {
+    sheetName: 'SF9 - GRADE 11 TECHPRO',
+    outputFile: 'sf9-g11-techpro.xlsx',
+    sourceSheetName: 'SF9 - GRADE 11 TechPro',
+    clearAddresses: ['B7', 'B8', 'B9', 'B10', 'B12', 'B15', 'C17', 'I17', 'K17', 'C18', 'I18', 'K18',
+      'E19', 'B27', 'H27', 'B41', ...['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC']
+        .flatMap(column => Array.from({ length: 6 }, (_, index) => `${column}${5 + index}`))],
+    labels: {
+      B33: 'Effective Communication / Mabisang Komunikasyon',
+      B34: 'Effective Communication',
+      B35: 'Mabisang Komunikasyon',
+      B39: 'Pag-aaral ng Kasaysayan at Lipunang Pilipino'
+    }
   }
 };
 const variantName = process.argv[3] || 'grade4-10';
@@ -129,7 +143,7 @@ function updateSelectedSheet(workbookXml, sourceSheet, selectedSheet, sourceShee
 
 async function main() {
   if (!sourcePath) throw new Error('Pass the path to the teacher-supplied SF9 workbook.');
-  if (!variant) throw new Error(`Unknown SF9 workbook variant "${variantName}". Choose grade4-10 or grade11-academic.`);
+  if (!variant) throw new Error(`Unknown SF9 workbook variant "${variantName}". Choose grade4-10, grade11-academic, or grade11-techpro.`);
   const source = await JSZip.loadAsync(await fs.readFile(path.resolve(sourcePath)));
   const output = new JSZip();
   const workbookPath = 'xl/workbook.xml';

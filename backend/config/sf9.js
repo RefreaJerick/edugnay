@@ -66,6 +66,35 @@ const SF9_GRADE11_ACADEMIC = {
   ]
 };
 
+const SF9_GRADE11_TECHPRO = {
+  formCode: 'SF9',
+  version: 'g11-techpro-2026-2027',
+  sheetName: 'SF9 - GRADE 11 TECHPRO',
+  periodColumns: ['F', 'G', 'H'],
+  finalGradeColumn: 'I',
+  remarksColumn: 'J',
+  electiveRow: 41,
+  generalAverageRow: 43,
+  headers: {
+    region: 'B7',
+    division: 'B8',
+    district: 'B9',
+    address: 'B10',
+    schoolName: 'B12',
+    schoolYear: 'B15',
+    learnerName: 'C17',
+    age: 'I17',
+    sex: 'K17',
+    lrn: 'C18',
+    gradeLevel: 'I18',
+    section: 'K18',
+    track: 'E19',
+    adviser: 'H27'
+  },
+  coreSubjects: SF9_GRADE11_ACADEMIC.coreSubjects,
+  communicationComponents: SF9_GRADE11_ACADEMIC.communicationComponents
+};
+
 function displayName(learner) {
   return [learner.lastName, learner.firstName, learner.middleName]
     .map(value => String(value || '').trim())
@@ -76,6 +105,11 @@ function displayName(learner) {
 function isGrade11AcademicSf9(template) {
   return template?.formCode === SF9_GRADE11_ACADEMIC.formCode
     && template?.version === SF9_GRADE11_ACADEMIC.version;
+}
+
+function isGrade11TechProSf9(template) {
+  return template?.formCode === SF9_GRADE11_TECHPRO.formCode
+    && template?.version === SF9_GRADE11_TECHPRO.version;
 }
 
 function learnerAge(birthDate, schoolYear) {
@@ -234,8 +268,8 @@ function displayGrade11SectionName(school, section, adviser, learner) {
   };
 }
 
-function buildSf9Grade11AcademicPages(school, section, adviser, learner, subjects, terms, grades,
-  communicationGrades, electiveClasses, electiveGrades) {
+function buildSf9Grade11CorePages(school, section, adviser, learner, subjects, terms, grades,
+  communicationGrades, definition, trackLabel) {
   const issues = [{ severity: 'warning', fieldKey: 'draft', cellReference: null,
     message: 'SF9 is a draft. The general average, attendance, comments, signatures, transfer details, and school head information are left for adviser review and completion from verified records.' }];
   const requireValue = (value, fieldKey, cellReference, label) => {
@@ -244,23 +278,23 @@ function buildSf9Grade11AcademicPages(school, section, adviser, learner, subject
   };
 
   requireValue(school.depedSchoolId, 'schoolId', null, 'School ID');
-  requireValue(school.region, 'region', SF9_GRADE11_ACADEMIC.headers.region, 'Region');
-  requireValue(school.division, 'division', SF9_GRADE11_ACADEMIC.headers.division, 'Division');
-  requireValue(school.district, 'district', SF9_GRADE11_ACADEMIC.headers.district, 'District');
-  requireValue(school.addressLine, 'address', SF9_GRADE11_ACADEMIC.headers.address, 'School address');
-  requireValue(school.schoolName, 'schoolName', SF9_GRADE11_ACADEMIC.headers.schoolName, 'School name');
-  requireValue(learner.lrn, 'lrn', SF9_GRADE11_ACADEMIC.headers.lrn, `${displayName(learner)}'s LRN`);
+  requireValue(school.region, 'region', definition.headers.region, 'Region');
+  requireValue(school.division, 'division', definition.headers.division, 'Division');
+  requireValue(school.district, 'district', definition.headers.district, 'District');
+  requireValue(school.addressLine, 'address', definition.headers.address, 'School address');
+  requireValue(school.schoolName, 'schoolName', definition.headers.schoolName, 'School name');
+  requireValue(learner.lrn, 'lrn', definition.headers.lrn, `${displayName(learner)}'s LRN`);
   const sex = String(learner.sex || '').trim().toLowerCase();
   if (!['male', 'm', 'female', 'f'].includes(sex)) {
-    issues.push({ severity: 'warning', fieldKey: 'sex', cellReference: SF9_GRADE11_ACADEMIC.headers.sex,
+    issues.push({ severity: 'warning', fieldKey: 'sex', cellReference: definition.headers.sex,
       message: `${displayName(learner) || 'The learner'} has no valid recorded sex.` });
   }
-  requireValue(learner.birthDate, 'birthDate', SF9_GRADE11_ACADEMIC.headers.age, `${displayName(learner)}'s birthdate`);
+  requireValue(learner.birthDate, 'birthDate', definition.headers.age, `${displayName(learner)}'s birthdate`);
   if (!String(learner.firstName || '').trim() || !String(learner.lastName || '').trim()) {
-    issues.push({ severity: 'warning', fieldKey: 'learnerName', cellReference: SF9_GRADE11_ACADEMIC.headers.learnerName,
+    issues.push({ severity: 'warning', fieldKey: 'learnerName', cellReference: definition.headers.learnerName,
       message: 'The learner profile has an incomplete name.' });
   }
-  requireValue(section.trackName, 'track', SF9_GRADE11_ACADEMIC.headers.track, 'Academic track');
+  requireValue(section.trackName, 'track', definition.headers.track, trackLabel);
 
   const sortedTerms = [...terms].sort((left, right) => Number(left.sequenceNumber) - Number(right.sequenceNumber));
   const termBySequence = new Map();
@@ -268,7 +302,7 @@ function buildSf9Grade11AcademicPages(school, section, adviser, learner, subject
     const sequence = Number(term.sequenceNumber);
     if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence > 3 || termBySequence.has(sequence)) {
       issues.push({ severity: 'error', fieldKey: 'terms', cellReference: null,
-        message: 'The Grade 11 Academic SF9 needs exactly one configured term for each of Terms 1, 2, and 3.' });
+        message: `The Grade 11 ${trackLabel.replace(' track', '')} SF9 needs exactly one configured term for each of Terms 1, 2, and 3.` });
       break;
     }
     termBySequence.set(sequence, term);
@@ -276,14 +310,16 @@ function buildSf9Grade11AcademicPages(school, section, adviser, learner, subject
   if (terms.length !== 3 || [1, 2, 3].some(sequence => !termBySequence.has(sequence))) {
     if (!issues.some(issue => issue.fieldKey === 'terms')) {
       issues.push({ severity: 'error', fieldKey: 'terms', cellReference: null,
-        message: `The Grade 11 Academic SF9 has three term columns, but this section has ${terms.length} configured terms. Configure Terms 1–3 before generating this form.` });
+        message: `The Grade 11 ${trackLabel.replace(' track', '')} SF9 has three term columns, but this section has ${terms.length} configured terms. Configure Terms 1–3 before generating this form.` });
     }
   }
 
   const cells = [];
   const header = displayGrade11SectionName(school, section, adviser, learner);
-  Object.entries(SF9_GRADE11_ACADEMIC.headers).forEach(([fieldKey, cellAddress]) => {
-    cells.push({ cellAddress, value: header[fieldKey] ?? '',
+  Object.entries(definition.headers).forEach(([fieldKey, cellAddress]) => {
+    const value = fieldKey === 'track' && isGrade11TechProSf9(definition)
+      ? 'Technical Professional' : header[fieldKey] ?? '';
+    cells.push({ cellAddress, value,
       type: ['age', 'gradeLevel'].includes(fieldKey) ? 'number' : 'text' });
   });
 
@@ -296,7 +332,7 @@ function buildSf9Grade11AcademicPages(school, section, adviser, learner, subject
     let complete = terms.length === 3;
     for (let sequence = 1; sequence <= 3; sequence += 1) {
       const term = termBySequence.get(sequence);
-      const cellAddress = `${SF9_GRADE11_ACADEMIC.periodColumns[sequence - 1]}${row}`;
+      const cellAddress = `${definition.periodColumns[sequence - 1]}${row}`;
       const matches = term ? gradeRows.filter(grade => Number(grade.academicTermId) === Number(term.id)) : [];
       if (matches.length !== 1 || !validGrade(matches[0]?.finalGrade)) {
         complete = false;
@@ -320,31 +356,39 @@ function buildSf9Grade11AcademicPages(school, section, adviser, learner, subject
     cells.push({ cellAddress: `J${row}`, value: '', type: 'text' });
   };
 
-  for (const definition of SF9_GRADE11_ACADEMIC.coreSubjects) {
-    const catalogSubject = DEPED_SHS_CORE_SUBJECTS.find(subject => subject.code === definition.code);
-    const assignedSubject = subjectByCode.get(definition.code);
-    const label = catalogSubject?.name || assignedSubject?.name || definition.code;
-    const matchingGrades = definition.code === 'shs-core-communication'
+  for (const subjectDefinition of definition.coreSubjects) {
+    const catalogSubject = DEPED_SHS_CORE_SUBJECTS.find(subject => subject.code === subjectDefinition.code);
+    const assignedSubject = subjectByCode.get(subjectDefinition.code);
+    const label = catalogSubject?.name || assignedSubject?.name || subjectDefinition.code;
+    const matchingGrades = subjectDefinition.code === 'shs-core-communication'
       ? grades.filter(grade => Number(grade.subjectId) === Number(assignedSubject?.id)
         && grade.communicationGradeSource === 'component_average')
       : grades.filter(grade => Number(grade.subjectId) === Number(assignedSubject?.id));
     if (!assignedSubject) {
-      issues.push({ severity: 'warning', fieldKey: 'subject', cellReference: `B${definition.row}`,
+      issues.push({ severity: 'warning', fieldKey: 'subject', cellReference: `B${subjectDefinition.row}`,
         message: `${label} is not assigned to this section.` });
     }
-    addPublishedGrades({ row: definition.row, label, gradeRows: matchingGrades, fieldKey: 'grade' });
+    addPublishedGrades({ row: subjectDefinition.row, label, gradeRows: matchingGrades, fieldKey: 'grade' });
   }
 
   const componentNames = COMMUNICATION_COMPONENTS;
   const communicationSubjectId = subjectByCode.get('shs-core-communication')?.id;
-  for (const definition of SF9_GRADE11_ACADEMIC.communicationComponents) {
-    const label = componentNames[definition.code];
+  for (const componentDefinition of definition.communicationComponents) {
+    const label = componentNames[componentDefinition.code];
     const componentRows = communicationGrades.filter(grade => Number(grade.subjectId) === Number(communicationSubjectId)
-      && grade.communicationComponentCode === definition.code);
+      && grade.communicationComponentCode === componentDefinition.code);
     if (!componentRows.length) issues.push({ severity: 'warning', fieldKey: 'communicationComponent',
-      cellReference: `B${definition.row}`, message: `${label} has no published component grades.` });
-    addPublishedGrades({ row: definition.row, label, gradeRows: componentRows, fieldKey: 'communicationComponentGrade' });
+      cellReference: `B${componentDefinition.row}`, message: `${label} has no published component grades.` });
+    addPublishedGrades({ row: componentDefinition.row, label, gradeRows: componentRows, fieldKey: 'communicationComponentGrade' });
   }
+
+  return { issues, cells, validGrade, termBySequence };
+}
+
+function buildSf9Grade11AcademicPages(school, section, adviser, learner, subjects, terms, grades,
+  communicationGrades, electiveClasses, electiveGrades) {
+  const { issues, cells, validGrade } = buildSf9Grade11CorePages(school, section, adviser, learner,
+    subjects, terms, grades, communicationGrades, SF9_GRADE11_ACADEMIC, 'Academic track');
 
   const uniqueElectives = new Map();
   electiveClasses.forEach(record => uniqueElectives.set(String(record.electiveClassId), record));
@@ -415,5 +459,91 @@ function buildSf9Grade11AcademicPages(school, section, adviser, learner, subject
   return { pages: [cells], issues, generalAverage: null, averageCellAddress: `I${SF9_GRADE11_ACADEMIC.generalAverageRow}` };
 }
 
-module.exports = { SF9, SF9_GRADE11_ACADEMIC, buildSf9Pages, buildSf9Grade11AcademicPages,
-  displayName, isGrade11AcademicSf9, learnerAge };
+function buildSf9Grade11TechProPages(school, section, adviser, learner, subjects, terms, grades,
+  communicationGrades, electiveClasses, electiveGrades) {
+  const { issues, cells, validGrade, termBySequence } = buildSf9Grade11CorePages(school, section, adviser, learner,
+    subjects, terms, grades, communicationGrades, SF9_GRADE11_TECHPRO, 'TechPro track');
+  const uniqueClasses = new Map();
+  electiveClasses.forEach(record => uniqueClasses.set(String(record.electiveClassId), record));
+  const approvedClasses = [...uniqueClasses.values()];
+  const techProElectives = approvedClasses.filter(record => record.trackCode === 'techpro'
+    && record.subjectType === 'techpro_elective');
+  const unsupportedChoices = approvedClasses.filter(record => record.trackCode !== 'techpro'
+    || record.subjectType !== 'techpro_elective');
+
+  if (unsupportedChoices.length) issues.push({ severity: 'error', fieldKey: 'electives', cellReference: null,
+    message: 'This Grade 11 TechPro SF9 has one elective row. The learner has additional cross-track or unsupported elective choices that cannot fit in this workbook.' });
+  if (techProElectives.length > 1) issues.push({ severity: 'error', fieldKey: 'electives', cellReference: null,
+    message: 'This Grade 11 TechPro SF9 has one elective row, but more than one TechPro elective is approved.' });
+
+  const elective = techProElectives.length === 1 ? techProElectives[0] : null;
+  const label = String(elective?.electiveName || '').trim();
+  const classGrades = elective
+    ? electiveGrades.filter(grade => String(grade.electiveClassId) === String(elective.electiveClassId)) : [];
+  const gradesBySequence = new Map();
+  let hasUnexpectedGrade = false;
+  classGrades.forEach(grade => {
+    const sequence = Number(grade.termSequenceNumber);
+    const matchingTerm = termBySequence.get(sequence);
+    if (!matchingTerm || Number(grade.academicTermId) !== Number(matchingTerm.id)) {
+      hasUnexpectedGrade = true;
+      const column = sequence >= 1 && sequence <= 3 ? SF9_GRADE11_TECHPRO.periodColumns[sequence - 1] : 'I';
+      issues.push({ severity: 'warning', fieldKey: 'electiveGrade', cellReference: `${column}${SF9_GRADE11_TECHPRO.electiveRow}`,
+        message: `${label || 'The TechPro elective'} has a published grade outside the configured Terms 1–3.` });
+      return;
+    }
+    const rows = gradesBySequence.get(sequence) || [];
+    rows.push(grade);
+    gradesBySequence.set(sequence, rows);
+  });
+
+  const startSequence = Number(elective?.startTermSequenceNumber);
+  const endSequence = Number(elective?.endTermSequenceNumber);
+  const firstConfiguredTerm = termBySequence.get(1);
+  const lastConfiguredTerm = termBySequence.get(3);
+  const termSpanValid = Boolean(elective && startSequence === 1 && endSequence === 3
+    && firstConfiguredTerm && lastConfiguredTerm
+    && String(elective.startTermId) === String(firstConfiguredTerm.id)
+    && String(elective.endTermId) === String(lastConfiguredTerm.id));
+  if (elective && !termSpanValid) issues.push({ severity: 'error', fieldKey: 'electiveTerms',
+    cellReference: 'B41', message: `${label} must be assigned across Terms 1–3 before this SF9 can be generated.` });
+
+  const termGrades = [];
+  let allTermsValid = Boolean(elective && termSpanValid && terms.length === 3);
+  for (let sequence = 1; sequence <= 3; sequence += 1) {
+    const cellAddress = `${SF9_GRADE11_TECHPRO.periodColumns[sequence - 1]}${SF9_GRADE11_TECHPRO.electiveRow}`;
+    const matchingGrades = gradesBySequence.get(sequence) || [];
+    if (matchingGrades.length !== 1 || !validGrade(matchingGrades[0]?.finalGrade)) {
+      allTermsValid = false;
+      const reason = matchingGrades.length > 1 ? 'conflicting published grades'
+        : matchingGrades.length === 1 ? 'invalid published grade' : 'no published grade';
+      if (elective) issues.push({ severity: 'warning', fieldKey: 'electiveGrade', cellReference: cellAddress,
+        message: `${label}, Term ${sequence}: ${reason}.` });
+      cells.push({ cellAddress, value: '', type: 'number' });
+    } else {
+      const grade = Number(matchingGrades[0].finalGrade);
+      termGrades.push(grade);
+      cells.push({ cellAddress, value: grade, type: 'number' });
+    }
+  }
+  if (hasUnexpectedGrade) allTermsValid = false;
+
+  if (!techProElectives.length) issues.push({ severity: 'warning', fieldKey: 'elective', cellReference: 'B41',
+    message: 'No approved Grade 11 TechPro elective is recorded for this learner.' });
+  const finalGrade = allTermsValid && termGrades.length === 3 ? calculateSubjectFinal(termGrades) : null;
+  if (elective && finalGrade === null) issues.push({ severity: 'warning', fieldKey: 'electiveGrade',
+    cellReference: 'I41', message: `${label}: the final grade remains blank until valid grades are published for Terms 1, 2, and 3.` });
+  cells.push({ cellAddress: 'B41', value: label, type: 'text' });
+  cells.push({ cellAddress: 'I41', value: finalGrade ?? '', type: 'number' });
+  cells.push({ cellAddress: 'J41', value: '', type: 'text' });
+  cells.push({ cellAddress: `I${SF9_GRADE11_TECHPRO.generalAverageRow}`, value: '', type: 'number' });
+  issues.push({ severity: 'warning', fieldKey: 'generalAverage',
+    cellReference: `I${SF9_GRADE11_TECHPRO.generalAverageRow}`, message: 'The general average is left blank for adviser review.' });
+
+  return { pages: [cells], issues, generalAverage: null,
+    averageCellAddress: `I${SF9_GRADE11_TECHPRO.generalAverageRow}` };
+}
+
+module.exports = { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, buildSf9Pages,
+  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages,
+  displayName, isGrade11AcademicSf9, isGrade11TechProSf9, learnerAge };

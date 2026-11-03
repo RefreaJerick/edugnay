@@ -79,6 +79,10 @@ function isGrade11AcademicSf9Template(template) {
   return template?.formCode === 'SF9' && template.version === 'g11-academic-2026-2027';
 }
 
+function isGrade11TechProSf9Template(template) {
+  return template?.formCode === 'SF9' && template.version === 'g11-techpro-2026-2027';
+}
+
 function formatTemplateDate(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -175,6 +179,7 @@ function availableSections() {
   const includesSf9 = templates.some(template => template.formCode === 'SF9');
   const sf9Only = templates.length === 1 && includesSf9;
   const grade11AcademicSf9 = sf9Only && isGrade11AcademicSf9Template(templates[0]);
+  const grade11TechProSf9 = sf9Only && isGrade11TechProSf9Template(templates[0]);
   return sfState.sections.filter(section => {
     const currentSection = section.status === 'active' && section.academicYearStatus === 'active';
     const closedSection = (sf5Only || sf9Only)
@@ -184,7 +189,10 @@ function availableSections() {
       && (!includesSf9 || (grade11AcademicSf9
         ? section.gradeCode === 'grade-11' && section.trackCode === 'academic'
           && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
-        : /^grade-(?:[4-9]|10)$/.test(section.gradeCode)));
+        : grade11TechProSf9
+          ? section.gradeCode === 'grade-11' && section.trackCode === 'techpro'
+            && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
+          : /^grade-(?:[4-9]|10)$/.test(section.gradeCode)));
   });
 }
 
