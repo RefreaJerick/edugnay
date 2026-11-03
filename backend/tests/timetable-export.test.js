@@ -10,8 +10,8 @@ const read = file => pageFs.readFileSync(path.join(root, file), 'utf8');
 
 function timetableSnapshot() {
   const source = read('assets/js/timetables.js').replace(
-    "  document.addEventListener('DOMContentLoaded', () => {",
-    "  globalThis.exportWeekForTest = exportWeek;\n  document.addEventListener('DOMContentLoaded', () => {"
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.exportWeekForTest = exportWeek;\n  document.addEventListener('DOMContentLoaded', async () => {"
   );
   const context = {
     document: { addEventListener() {}, getElementById: () => null }, window: {}
@@ -22,7 +22,7 @@ function timetableSnapshot() {
 
 function week(role = 'student') {
   const assignments = [
-    { id: 1, weekday: 1, startTime: '10:00', endTime: '11:00', startDate: '2026-12-28', endDate: '2027-01-03', subjectName: 'Advanced Biology and Environmental Science', gradeName: 'Grade 12', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: 'Science Lab' },
+    { id: 1, weekday: 1, startTime: '10:00', endTime: '11:00', startDate: '2026-12-28', endDate: '2027-01-03', subjectName: 'Effective Communication / Mabisang Komunikasyon', communicationComponentName: 'Effective Communication', gradeName: 'Grade 12', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: 'Science Lab' },
     { id: 2, weekday: 1, startTime: '08:00', endTime: '09:00', startDate: '2026-12-28', endDate: '2027-01-03', subjectName: 'Mathematics', gradeName: 'Grade 12', sectionName: 'St. Peter', teacherName: 'Ana Cruz', room: '' },
     { id: 3, weekday: 1, startTime: '13:00', endTime: '14:00', startDate: '2026-12-29', endDate: '2027-01-03', subjectName: 'Not effective Monday', gradeName: 'Grade 12', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: '' },
     { id: 4, weekday: 7, startTime: '09:00', endTime: '10:00', startDate: '2027-01-01', endDate: '2027-01-03', subjectName: 'Sunday Class', gradeName: 'Grade 12', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: '' }
@@ -59,7 +59,7 @@ test('selected-week snapshot filters effective dates, sorts times, and includes 
   assert.equal(student.days[0].date, '2026-12-28');
   assert.equal(student.days[6].date, '2027-01-03');
   assert.equal(student.days[0].meetings.length, 2);
-  assert.deepEqual(Array.from(student.days[0].meetings, item => item.subject), ['Mathematics', 'Advanced Biology and Environmental Science']);
+  assert.deepEqual(Array.from(student.days[0].meetings, item => item.subject), ['Mathematics', 'Effective Communication']);
   assert.equal(student.days[2].meetings.length, 0);
   assert.equal(student.days[6].meetings[0].subject, 'Sunday Class');
   assert.deepEqual(Array.from(student.days[0].meetings[1].details), ['Teacher: Maya Santos', 'Room: Science Lab']);

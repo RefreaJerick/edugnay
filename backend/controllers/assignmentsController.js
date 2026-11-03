@@ -11,6 +11,7 @@ const { writeAuditLog } = require('../utils/auditLog');
 const { uploadDirectory } = require('../config/uploads');
 const { assertElectiveStudent, assertElectiveTeacher } = require('../utils/shsTeachingAccess');
 const { createLinkedAssignmentItem } = require('./shsGradesController');
+const { COMMUNICATION_COMPONENTS } = require('../config/shsCommunication');
 
 const ASSIGNMENT_STATUSES = new Set(['draft', 'published', 'closed']);
 const SUBMISSION_STATUSES = new Set(['pending', 'submitted', 'not_submitted']);
@@ -97,9 +98,15 @@ function getSchoolCurrentDate() {
 }
 
 function formatAssignment(row) {
+  const legacyCommunication = row.subjectCode === 'shs-core-communication'
+    && row.shsCurriculumCode === 'strengthened_2026' && row.gradeCode === 'grade-11'
+    && !row.communicationComponentCode;
   return {
     id: row.id, schoolId: row.schoolId, sectionId: row.sectionId, sectionName: row.sectionName,
     subjectId: row.subjectId, subjectName: row.subjectName, academicTermId: row.academicTermId,
+    communicationComponentCode: row.communicationComponentCode || null,
+    communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
+    legacyCommunication,
     electiveClassId: row.electiveClassId == null ? null : String(row.electiveClassId),
     scopeType: row.electiveClassId == null ? 'section' : 'elective',
     sectionGrade: row.sectionGrade || row.electiveGrade || null,
@@ -120,7 +127,9 @@ function formatAssignment(row) {
 
 function assignmentSelect() {
   return `SELECT assignments.id, assignments.school_id AS schoolId, assignments.section_id AS sectionId,
-    assignments.subject_id AS subjectId, assignments.shs_elective_class_id AS electiveClassId,
+    assignments.subject_id AS subjectId,
+    assignments.communication_component_code AS communicationComponentCode,
+    assignments.shs_elective_class_id AS electiveClassId,
     assignments.academic_term_id AS academicTermId,
     assignments.grading_category_id AS gradingCategoryId,
     assignments.subject_grading_component_id AS subjectGradingComponentId,
@@ -131,11 +140,13 @@ function assignmentSelect() {
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
     sections.name AS sectionName, school_grade_levels.display_name AS sectionGrade,
+    sections.shs_curriculum_code AS shsCurriculumCode, school_grade_levels.grade_code AS gradeCode,
     elective_grade.display_name AS electiveGrade, elective_class.class_name AS electiveClassName,
     elective_class.teacher_user_id AS currentClassTeacherId,
     academic_years.status AS sectionYearStatus, elective_year.status AS electiveYearStatus,
     COALESCE(academic_years.status, elective_year.status) AS academicYearStatus,
     COALESCE(subjects.name, elective_offering.subject_name) AS subjectName, academic_terms.name AS academicTermName,
+    subjects.subject_code AS subjectCode,
     grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName,
     subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName,
     subject_grading_exam_parts.code AS subjectGradingExamPartCode, subject_grading_exam_parts.name AS subjectGradingExamPartName,
@@ -201,19 +212,29 @@ function assignmentDetailsChanged(current, next) {
       .some(field => String(current[field] || '') !== String(next[field] || ''));
 }
 
-async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId) {
+async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId, communicationComponentCode = null) {
   const [assignments] = await connection.execute(
     `SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId,
-      sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId, sections.status
+      sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId, sections.status,
+      sections.shs_curriculum_code AS shsCurriculumCode, school_grade_levels.grade_code AS gradeCode,
+      subjects.subject_code AS subjectCode,
+      section_teachers.communication_component_code AS communicationComponentCode
     FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id
       AND sections.school_id = section_teachers.school_id
     INNER JOIN subjects ON subjects.id = section_teachers.subject_id
       AND subjects.school_id = section_teachers.school_id AND subjects.is_active = TRUE
+    INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+      AND school_grade_levels.school_id = sections.school_id
     WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ?
+      AND section_teachers.communication_component_code <=> ?
       AND sections.status = 'active' LIMIT 1`,
-    [teacherId, sectionId, subjectId]
+    [teacherId, sectionId, subjectId, communicationComponentCode]
   );
-  return assignments[0] || null;
+  const assignment = assignments[0] || null;
+  if (assignment) assignment.legacyCommunication = assignment.subjectCode === 'shs-core-communication'
+    && assignment.shsCurriculumCode === 'strengthened_2026' && assignment.gradeCode === 'grade-11'
+    && !assignment.communicationComponentCode;
+  return assignment;
 }
 
 async function getAssignmentForManagement(connection, user, assignmentId, lock = false) {
@@ -348,6 +369,10 @@ async function listAssignments(req, res, next) {
     } else if (req.user.role !== 'school_admin') throw createError('You do not have access to assignments.', 403);
     if (req.query.sectionId) { where.push('assignments.section_id = ?'); values.push(parseId(req.query.sectionId, 'section ID')); }
     if (req.query.subjectId) { where.push('assignments.subject_id = ?'); values.push(parseId(req.query.subjectId, 'subject ID')); }
+    if (req.query.communicationComponentCode) {
+      where.push('assignments.communication_component_code = ?');
+      values.push(String(req.query.communicationComponentCode).trim().toLowerCase());
+    }
     if (req.query.electiveClassId) {
       where.push('assignments.shs_elective_class_id = ?');
       values.push(parseId(req.query.electiveClassId, 'elective class ID'));
@@ -411,6 +436,7 @@ async function getPreviousSectionWork(database, schoolId, studentId, currentDate
   const [rows] = await database.execute(
     `SELECT assignments.id, assignments.section_id AS sectionId, sections.name AS sectionName,
       assignments.subject_id AS subjectId, assignments.academic_term_id AS academicTermId,
+      assignments.communication_component_code AS communicationComponentCode,
       assignments.title, assignments.description, assignments.online_submission_enabled AS onlineSubmissionEnabled,
       DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
       subjects.name AS subjectName, teachers.display_name AS teacherName,
@@ -449,7 +475,10 @@ async function getPreviousSectionWork(database, schoolId, studentId, currentDate
     subjectId: String(row.subjectId), academicTermId: String(row.academicTermId),
     academicYearLabel: row.academicYearLabel, academicTermName: row.academicTermName,
     title: row.title, description: row.description, dueDate: row.dueDate,
-    subjectName: row.subjectName, teacherName: row.teacherName,
+    subjectName: row.subjectName,
+    communicationComponentCode: row.communicationComponentCode || null,
+    communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
+    teacherName: row.teacherName,
     submissionStatus: parentSubmissionStatus(row, currentDate),
     submittedAt: row.submittedAt,
     ...(includeFileName ? { fileName: row.fileName || null, fileAvailable: Boolean(row.hasUploadedFile) } : {})
@@ -482,7 +511,9 @@ async function getParentChildAssignments(req, res, next) {
     const currentDate = getSchoolCurrentDate();
     const [rows] = await database.execute(
       `SELECT assignments.id, assignments.section_id AS sectionId, assignments.subject_id AS subjectId,
-        assignments.academic_term_id AS academicTermId, assignments.title, assignments.description,
+        assignments.academic_term_id AS academicTermId,
+        assignments.communication_component_code AS communicationComponentCode,
+        assignments.title, assignments.description,
         DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
         assignments.online_submission_enabled AS onlineSubmissionEnabled,
         subjects.name AS subjectName, teachers.display_name AS teacherName,
@@ -540,7 +571,10 @@ async function getParentChildAssignments(req, res, next) {
     const sectionAssignments = rows.map(row => ({
       id: String(row.id), sectionId: String(row.sectionId), subjectId: String(row.subjectId),
       academicTermId: String(row.academicTermId), title: row.title, description: row.description,
-      dueDate: row.dueDate, subjectName: row.subjectName, teacherName: row.teacherName,
+      dueDate: row.dueDate, subjectName: row.subjectName,
+      communicationComponentCode: row.communicationComponentCode || null,
+      communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
+      teacherName: row.teacherName,
       onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
       submissionStatus: parentSubmissionStatus(row, currentDate),
       submittedAt: row.savedStatus === 'submitted' && row.hasUploadedFile ? row.submittedAt : null
@@ -575,6 +609,7 @@ async function getParentAssignmentActivity(req, res, next) {
     const currentDate = getSchoolCurrentDate();
     const [rows] = await database.execute(
       `SELECT assignments.id AS assignmentId, assignments.subject_id AS subjectId,
+        assignments.communication_component_code AS communicationComponentCode,
         subjects.name AS subjectName, assignments.title,
         DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
         assignments.online_submission_enabled AS onlineSubmissionEnabled,
@@ -640,6 +675,8 @@ async function getParentAssignmentActivity(req, res, next) {
         id: String(row.assignmentId),
         subjectId: String(row.subjectId),
         subjectName: row.subjectName,
+        communicationComponentCode: row.communicationComponentCode || null,
+        communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
         title: row.title,
         dueDate: row.dueDate,
         onlineSubmissionEnabled,
@@ -721,8 +758,14 @@ async function createAssignment(req, res, next) {
     transactionStarted = true;
     const sectionId = parseId(req.body.sectionId, 'section ID');
     const subjectId = parseId(req.body.subjectId, 'subject ID');
-    const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId);
+    const communicationComponentCode = req.body.communicationComponentCode == null || req.body.communicationComponentCode === ''
+      ? null : String(req.body.communicationComponentCode).trim().toLowerCase();
+    if (communicationComponentCode && !['english', 'filipino'].includes(communicationComponentCode)) {
+      throw createError('The communication component is invalid.');
+    }
+    const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId, communicationComponentCode);
     if (!section) throw createError('You are not assigned to this section and subject.', 403);
+    if (section.legacyCommunication) throw createError('Legacy combined communication records are read-only. Assign a language component to create new records.', 409);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId);
     const gradingCategoryId = optionalId(req.body.gradingCategoryId, 'grading category ID');
     const subjectGradingComponentId = optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
@@ -743,13 +786,13 @@ async function createAssignment(req, res, next) {
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
-    const [result] = await connection.execute('INSERT INTO assignments (school_id, section_id, subject_id, academic_term_id, grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title, description, due_at, max_score, online_submission_enabled, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, description, dueAt, maxScore, onlineSubmissionEnabled, status]);
+    const [result] = await connection.execute('INSERT INTO assignments (school_id, section_id, subject_id, communication_component_code, academic_term_id, grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title, description, due_at, max_score, online_submission_enabled, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, description, dueAt, maxScore, onlineSubmissionEnabled, status]);
     if (isGraded) {
       const [item] = await connection.execute(
-        `INSERT INTO grading_items (school_id, section_id, subject_id, academic_term_id,
+        `INSERT INTO grading_items (school_id, section_id, subject_id, communication_component_code, academic_term_id,
           grading_category_id, subject_grading_component_id, subject_grading_exam_part_id,
-          teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, maxScore]
+          teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, maxScore]
       );
       await connection.execute(
         'UPDATE assignments SET grading_item_id = ? WHERE id = ? AND school_id = ?',
@@ -822,8 +865,10 @@ async function updateAssignment(req, res, next) {
       transactionStarted = false;
       return res.json({ assignment: formatAssignment(updated) });
     }
-    const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId, current.subjectId);
+    const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId,
+      current.subjectId, current.communicationComponentCode);
     if (!section) throw createError('The assignment section-subject relationship is no longer active.', 409);
+    if (section.legacyCommunication) throw createError('Legacy combined communication records are read-only.', 409);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId === undefined ? current.academicTermId : req.body.academicTermId);
     const gradingCategoryId = req.body.gradingCategoryId === undefined ? current.gradingCategoryId : optionalId(req.body.gradingCategoryId, 'grading category ID');
     const subjectGradingComponentId = req.body.subjectGradingComponentId === undefined ? current.subjectGradingComponentId : optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
@@ -907,19 +952,21 @@ async function deleteAssignment(req, res, next) {
     if (!assignment) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(assignment);
     const original = assignment;
-    if (assignment.gradingItemId) {
-      const section = await getTeacherSectionSubject(connection, assignment.teacherUserId, assignment.sectionId, assignment.subjectId);
+    if (!assignment.electiveClassId) {
+      const section = await getTeacherSectionSubject(connection, assignment.teacherUserId, assignment.sectionId,
+        assignment.subjectId, assignment.communicationComponentCode);
       if (!section || Number(section.schoolId) !== Number(req.user.schoolId)) {
         throw createError('The assignment section-subject relationship is no longer active.', 409);
       }
-      await assertGradeWriteAccess(connection, req.user, assignment);
+      if (section.legacyCommunication) throw createError('Legacy combined communication assignments are retained for review and cannot be deleted.', 409);
+      if (assignment.gradingItemId) await assertGradeWriteAccess(connection, req.user, assignment);
     }
     assignment = await getAssignmentForManagement(connection, req.user, assignmentId, true);
     if (!assignment) throw createError('Assignment was not found.', 404);
     if (assignment.electiveClassId) {
       await assertElectiveTeacher(connection, req.user, assignment.electiveClassId, { write: true });
     }
-    if (['sectionId', 'subjectId', 'academicTermId', 'gradingCategoryId', 'teacherUserId', 'gradingItemId']
+    if (['sectionId', 'subjectId', 'communicationComponentCode', 'academicTermId', 'gradingCategoryId', 'teacherUserId', 'gradingItemId']
       .some(field => String(assignment[field]) !== String(original[field]))) {
       throw createError('The assignment changed while deletion was being prepared. Reload and try again.', 409);
     }
@@ -934,6 +981,7 @@ async function deleteAssignment(req, res, next) {
     if (assignment.gradingItemId) {
       const [items] = await connection.execute(
         `SELECT id, section_id AS sectionId, subject_id AS subjectId,
+          communication_component_code AS communicationComponentCode,
           academic_term_id AS academicTermId, grading_category_id AS gradingCategoryId,
           teacher_user_id AS teacherUserId, used_in_published_grades AS usedInPublishedGrades
         FROM grading_items WHERE id = ? AND school_id = ? FOR UPDATE`,
@@ -942,6 +990,7 @@ async function deleteAssignment(req, res, next) {
       const item = items[0];
       if (!item || Number(item.sectionId) !== Number(assignment.sectionId)
         || Number(item.subjectId) !== Number(assignment.subjectId)
+        || (item.communicationComponentCode || null) !== (assignment.communicationComponentCode || null)
         || Number(item.academicTermId) !== Number(assignment.academicTermId)
         || Number(item.gradingCategoryId) !== Number(assignment.gradingCategoryId)
         || Number(item.teacherUserId) !== Number(assignment.teacherUserId)) {

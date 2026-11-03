@@ -15,7 +15,11 @@ async function main() {
   if (snapshot.database !== process.env.DB_NAME || snapshot.database === target) throw new Error('Snapshot source does not match the configured database.');
   const connection = await mysql.createConnection({
     host: process.env.DB_HOST, port: Number(process.env.DB_PORT) || 3306,
-    user: process.env.DB_USER, password: process.env.DB_PASSWORD || '', multipleStatements: false
+    user: process.env.DB_MIGRATION_USER || process.env.DB_USER,
+    password: process.env.DB_MIGRATION_USER
+      ? (process.env.DB_MIGRATION_PASSWORD || '')
+      : (process.env.DB_PASSWORD || ''),
+    multipleStatements: false
   });
   try {
     const [existing] = await connection.query('SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [target]);

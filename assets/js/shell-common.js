@@ -643,11 +643,12 @@ function normalizeApiAssignment(record) {
     schoolId: record.schoolId == null ? '' : String(record.schoolId),
     sectionId: record.sectionId == null ? null : String(record.sectionId),
     subjectId: record.subjectId == null ? null : String(record.subjectId),
+    communicationComponentCode: record.communicationComponentCode || null,
     electiveClassId: record.electiveClassId == null ? null : String(record.electiveClassId),
     scopeType: record.electiveClassId == null ? 'section' : 'elective',
     teacherId: String(record.teacherUserId || ''),
     teacher: record.teacherName || '',
-    subject: record.subjectName || '',
+    subject: record.communicationComponentName || record.subjectName || '',
     subjectName: record.subjectName || '',
     academicPeriodId: record.academicTermId ? String(record.academicTermId) : null,
     gradingItemId: record.gradingItemId ? String(record.gradingItemId) : null,
@@ -667,7 +668,7 @@ function normalizeApiAssignment(record) {
 
 async function getApiAssignments(filters = {}) {
   const params = new URLSearchParams();
-  ['sectionId', 'subjectId', 'electiveClassId', 'status'].forEach(name => {
+  ['sectionId', 'subjectId', 'communicationComponentCode', 'electiveClassId', 'status'].forEach(name => {
     if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
       params.set(name, String(filters[name]).trim());
     }
@@ -698,7 +699,7 @@ async function getApiParentAssignmentActivity(studentId, date) {
     ...assignment,
     id: String(assignment.id),
     subjectId: String(assignment.subjectId),
-    subject: assignment.subjectName || '',
+    subject: assignment.communicationComponentName || assignment.subjectName || '',
     task: assignment.title || '',
     status: assignment.submissionStatus || 'pending'
   })) : [];
@@ -847,6 +848,7 @@ async function createApiAssignment(values = {}) {
     body: JSON.stringify({
       sectionId: Number(values.sectionId),
       subjectId: Number(values.subjectId),
+      communicationComponentCode: values.communicationComponentCode || null,
       academicTermId: values.academicTermId ? Number(values.academicTermId) : null,
       gradingCategoryId: values.gradingCategoryId ? Number(values.gradingCategoryId) : null,
       subjectGradingComponentId: values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null,
@@ -914,6 +916,7 @@ function normalizeApiGradingItem(record) {
     apiId: Number(record.id),
     sectionId: record.sectionId == null ? null : String(record.sectionId),
     subjectId: record.subjectId == null ? null : String(record.subjectId),
+    communicationComponentCode: record.communicationComponentCode || null,
     electiveClassId: record.electiveClassId == null ? null : String(record.electiveClassId),
     academicTermId: String(record.academicTermId),
     academicPeriodId: String(record.academicTermId),
@@ -937,7 +940,7 @@ function normalizeApiGradingItem(record) {
 
 async function getApiGradingItems(filters = {}) {
   const params = new URLSearchParams();
-  ['sectionId', 'studentId'].forEach(name => {
+  ['sectionId', 'subjectId', 'communicationComponentCode', 'studentId'].forEach(name => {
     if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
       params.set(name, String(filters[name]).trim());
     }
@@ -1125,7 +1128,18 @@ function gradeScoreClass(subject) {
 
 function buildApiFinalGradeYears(overview) {
   const grades = Array.isArray(overview?.publishedGrades) ? overview.publishedGrades : [];
+  const communicationComponentGrades = Array.isArray(overview?.communicationComponentGrades)
+    ? overview.communicationComponentGrades : [];
   const years = Array.isArray(overview?.academicYears) ? overview.academicYears.map(year => ({ ...year })) : [];
+  const communicationComponentsFor = (sectionId, subjectId, academicTermId) => Object.fromEntries(
+    communicationComponentGrades
+      .filter(component => String(component.sectionId) === String(sectionId)
+        && String(component.subjectId) === String(subjectId)
+        && String(component.academicTermId) === String(academicTermId))
+      .map(component => [component.communicationComponentCode, {
+        finalGrade: Number(component.finalGrade), publishedAt: component.publishedAt
+      }])
+  );
 
   grades.forEach(grade => {
     if (!years.some(year => year.id === grade.academicYearId)) {
@@ -1191,12 +1205,21 @@ function buildApiFinalGradeYears(overview) {
             && String(item.academicYearId) === String(year.id)
             && String(item.academicTermId) === String(term.id)
             && String(item.subjectId) === String(subject.subjectId));
+          const componentGrades = subject.subjectCode === 'shs-core-communication'
+            ? Object.keys(grade?.communicationComponents || {}).length
+              ? grade.communicationComponents
+              : communicationComponentsFor(section.id, subject.subjectId, term.id)
+            : null;
           period.subjects.push({
             sectionId: section.id,
             subjectId: subject.subjectId,
             subjectName: subject.subjectName,
+            subjectCode: subject.subjectCode || null,
             sectionName: section.name,
             finalGrade: grade ? grade.finalGrade : null,
+            communicationComponentGrades: componentGrades,
+            communicationGradeSource: grade?.communicationGradeSource || null,
+            legacyCombinedGrade: grade?.legacyCombinedGrade || null,
             passingGradeThreshold: grade?.passingGradeThreshold ?? section.passingGradeThreshold,
             publishedAt: grade?.publishedAt || null
           });
@@ -1263,6 +1286,10 @@ function buildApiFinalGradeYears(overview) {
         subjectName: grade.subjectName,
         sectionName: grade.sectionName,
         finalGrade: grade.finalGrade,
+        subjectCode: grade.subjectCode || null,
+        communicationComponentGrades: grade.communicationComponents || null,
+        communicationGradeSource: grade.communicationGradeSource || null,
+        legacyCombinedGrade: grade.legacyCombinedGrade || null,
         passingGradeThreshold: grade.passingGradeThreshold,
         publishedAt: grade.publishedAt
       });
@@ -1356,6 +1383,13 @@ async function getApiFinalGradesOverview(studentId) {
       academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
       finalGrade: Number(grade.finalGrade)
     })),
+    communicationComponentGrades: (overview.communicationComponentGrades || []).map(component => ({
+      ...component,
+      sectionId: String(component.sectionId),
+      subjectId: String(component.subjectId),
+      academicTermId: String(component.academicTermId),
+      finalGrade: Number(component.finalGrade)
+    }))
   };
 }
 
@@ -1528,14 +1562,20 @@ function normalizeApiAttendanceData(data) {
   };
 }
 
-async function getApiSectionAttendance(sectionId, subjectId, date) {
-  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+async function getApiSectionAttendance(sectionId, subjectId, date, communicationComponentCode = '') {
+  const params = new URLSearchParams();
+  if (date) params.set('date', date);
+  if (communicationComponentCode) params.set('communicationComponentCode', communicationComponentCode);
+  const query = params.size ? `?${params}` : '';
   const response = await requestApi(`/attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}${query}`);
   return normalizeApiAttendanceData(response);
 }
 
-async function getApiSectionAttendanceHistory(sectionId, subjectId) {
-  const response = await requestApi(`/attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/history`);
+async function getApiSectionAttendanceHistory(sectionId, subjectId, communicationComponentCode = '') {
+  const params = new URLSearchParams();
+  if (communicationComponentCode) params.set('communicationComponentCode', communicationComponentCode);
+  const query = params.size ? `?${params}` : '';
+  const response = await requestApi(`/attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/history${query}`);
   return {
     section: response?.section || null,
     sessions: Array.isArray(response?.sessions)
@@ -1549,6 +1589,7 @@ async function saveApiSectionAttendance(sectionId, subjectId, values = {}) {
     method: 'PUT',
     body: JSON.stringify({
       attendanceDate: values.attendanceDate,
+      communicationComponentCode: values.communicationComponentCode || null,
       records: (values.records || []).map(record => ({
         studentId: Number(record.studentId),
         status: record.status,
@@ -1559,13 +1600,19 @@ async function saveApiSectionAttendance(sectionId, subjectId, values = {}) {
   return normalizeApiAttendanceData(response);
 }
 
-async function getApiQrAttendance(sectionId, subjectId) {
-  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}`);
+async function getApiQrAttendance(sectionId, subjectId, communicationComponentCode = '') {
+  const params = new URLSearchParams();
+  if (communicationComponentCode) params.set('communicationComponentCode', communicationComponentCode);
+  const query = params.size ? `?${params}` : '';
+  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}${query}`);
   return normalizeApiAttendanceData(response);
 }
 
-async function startApiQrAttendance(sectionId, subjectId) {
-  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/start`, { method: 'POST' });
+async function startApiQrAttendance(sectionId, subjectId, communicationComponentCode = '') {
+  const params = new URLSearchParams();
+  if (communicationComponentCode) params.set('communicationComponentCode', communicationComponentCode);
+  const query = params.size ? `?${params}` : '';
+  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/start${query}`, { method: 'POST' });
   return normalizeApiAttendanceData(response);
 }
 
@@ -3074,6 +3121,7 @@ function applyCurrentDateToGradingBanners() {
       teacherName: record.teacherName || '',
       teacherEmail: record.teacherEmail || '',
       subjectId: String(record.subjectId),
+      communicationComponentCode: record.communicationComponentCode || null,
       subjectCode: record.subjectCode || '',
       subjectName: record.subjectName || ''
     } : null;
@@ -3194,10 +3242,10 @@ function applyCurrentDateToGradingBanners() {
     return true;
   }
 
-  async function assignApiTeacher(sectionId, teacherId, subjectId) {
+  async function assignApiTeacher(sectionId, teacherId, subjectId, communicationComponentCode = null) {
     return requestApi(`/sections/${Number(sectionId)}/teachers`, {
       method: 'POST',
-      body: JSON.stringify({ teacherId: Number(teacherId), subjectId: Number(subjectId) })
+      body: JSON.stringify({ teacherId: Number(teacherId), subjectId: Number(subjectId), communicationComponentCode })
     });
   }
 
@@ -3230,6 +3278,7 @@ function applyCurrentDateToGradingBanners() {
     const params = new URLSearchParams();
     if (filters.sectionId) params.set('sectionId', filters.sectionId);
     if (filters.subjectId) params.set('subjectId', filters.subjectId);
+    if (filters.communicationComponentCode) params.set('communicationComponentCode', filters.communicationComponentCode);
     if (filters.electiveClassId) params.set('electiveClassId', filters.electiveClassId);
     const response = await requestApi(`/materials${params.size ? `?${params}` : ''}`);
     return response.materials || [];
@@ -3240,7 +3289,9 @@ function applyCurrentDateToGradingBanners() {
     form.set('file', values.file);
     form.set('title', values.title);
     form.set('status', values.status);
-    const response = await requestApiMultipart(`/materials/sections/${encodeURIComponent(sectionId)}/subjects/${encodeURIComponent(subjectId)}`, form);
+    const component = values.communicationComponentCode
+      ? `?communicationComponentCode=${encodeURIComponent(values.communicationComponentCode)}` : '';
+    const response = await requestApiMultipart(`/materials/sections/${encodeURIComponent(sectionId)}/subjects/${encodeURIComponent(subjectId)}${component}`, form);
     return response.material;
   }
 

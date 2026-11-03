@@ -2,6 +2,7 @@ const { getDatabase } = require('../config/database');
 const { avatarFields } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
 const { assertTeacherScheduleAvailable } = require('./timetablesController');
+const { COMMUNICATION_COMPONENTS, COMMUNICATION_COMPONENT_HOURS } = require('../config/shsCommunication');
 
 const SECTION_STATUSES = new Set(['active', 'archived']);
 
@@ -39,7 +40,9 @@ function sectionSelect() {
   return `SELECT
     sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId,
     sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId,
-    sections.track_id AS trackId, sections.strand_id AS strandId, sections.name, sections.capacity, sections.adviser_user_id AS adviserUserId,
+    sections.track_id AS trackId, sections.strand_id AS strandId,
+    sections.shs_curriculum_code AS shsCurriculumCode,
+    sections.name, sections.capacity, sections.adviser_user_id AS adviserUserId,
     sections.status, academic_years.label AS academicYearLabel, academic_years.status AS academicYearStatus,
     DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate,
     DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate,
@@ -152,6 +155,7 @@ async function getSectionReferences(connection, sectionId) {
       (SELECT COUNT(*) FROM assignments WHERE section_id = ?) AS assignments,
       (SELECT COUNT(*) FROM grading_items WHERE section_id = ?) AS gradingItems,
       (SELECT COUNT(*) FROM published_final_grades WHERE section_id = ?) AS publishedGrades,
+      (SELECT COUNT(*) FROM shs_communication_component_grades WHERE section_id = ?) AS communicationComponentGrades,
       (SELECT COUNT(*) FROM attendance_sessions WHERE section_id = ?) AS attendanceSessions,
       (SELECT COUNT(*) FROM grading_period_reopen_requests WHERE section_id = ?) AS reopenRequests,
       (SELECT COUNT(*) FROM learning_materials WHERE section_id = ?) AS learningMaterials,
@@ -161,7 +165,7 @@ async function getSectionReferences(connection, sectionId) {
       (SELECT COUNT(*) FROM intervention_plans WHERE section_id = ?) AS interventions,
       (SELECT COUNT(*) FROM school_form_exports WHERE section_id = ?) AS formExports,
       (SELECT COUNT(*) FROM announcement_audiences WHERE section_id = ?) AS announcementAudiences`,
-    Array(14).fill(sectionId)
+    Array(15).fill(sectionId)
   );
   return references;
 }
@@ -217,7 +221,8 @@ async function listSections(req, res, next) {
     const [assignments] = await getDatabase().execute(
       `SELECT section_teachers.section_id AS sectionId, subjects.id AS subjectId,
         subjects.subject_code AS subjectCode, subjects.name AS subjectName,
-        subjects.shs_subject_type AS shsSubjectType
+        subjects.shs_subject_type AS shsSubjectType,
+        section_teachers.communication_component_code AS communicationComponentCode
       FROM section_teachers
       INNER JOIN subjects ON subjects.id = section_teachers.subject_id
         AND subjects.school_id = ? AND subjects.is_active = TRUE
@@ -233,7 +238,10 @@ async function listSections(req, res, next) {
           subjectId: String(assignment.subjectId),
           subjectCode: assignment.subjectCode,
           subjectName: assignment.subjectName,
-          shsSubjectType: assignment.shsSubjectType || null
+          shsSubjectType: assignment.shsSubjectType || null,
+          communicationComponentCode: assignment.communicationComponentCode || null,
+          communicationComponentName: COMMUNICATION_COMPONENTS[assignment.communicationComponentCode] || null,
+          communicationComponentHours: COMMUNICATION_COMPONENT_HOURS[assignment.communicationComponentCode] || null
         }));
     });
     res.json({ sections: formatted });
@@ -701,7 +709,7 @@ async function listSectionTeachers(req, res, next) {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const section = await findAccessibleSection(req, sectionId);
     if (!section) throw createError('Section not found.', 404);
-    const [teachers] = await getDatabase().execute('SELECT section_teachers.id AS assignmentId, teachers.id AS teacherId, teachers.display_name AS teacherName, teachers.school_email AS teacherEmail, teachers.initials, teachers.avatar_filename AS avatarFilename, teachers.avatar_version AS avatarVersion, subjects.id AS subjectId, subjects.subject_code AS subjectCode, subjects.name AS subjectName FROM section_teachers INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.section_id = ? ORDER BY teachers.last_name, subjects.name', [sectionId]);
+    const [teachers] = await getDatabase().execute('SELECT section_teachers.id AS assignmentId, teachers.id AS teacherId, teachers.display_name AS teacherName, teachers.school_email AS teacherEmail, teachers.initials, teachers.avatar_filename AS avatarFilename, teachers.avatar_version AS avatarVersion, subjects.id AS subjectId, subjects.subject_code AS subjectCode, subjects.name AS subjectName, section_teachers.communication_component_code AS communicationComponentCode FROM section_teachers INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.section_id = ? ORDER BY teachers.last_name, subjects.name, section_teachers.communication_component_code', [sectionId]);
     res.json({ section: formatSection(section), teachers: teachers.map(({ avatarFilename, avatarVersion, ...teacher }) => ({
       ...teacher, ...avatarFields({ id: teacher.teacherId, avatarFilename, avatarVersion })
     })) });
@@ -715,12 +723,15 @@ async function assignTeacher(req, res, next) {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const teacherId = parseId(req.body.teacherId, 'teacher ID');
     const subjectId = parseId(req.body.subjectId, 'subject ID');
+    const communicationComponentCode = req.body.communicationComponentCode == null || req.body.communicationComponentCode === ''
+      ? null : String(req.body.communicationComponentCode).trim().toLowerCase();
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
     assertShsPlacementReviewed(section);
     const [teachers] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='teacher' AND account_status='active' LIMIT 1", [teacherId, req.user.schoolId]);
     const [subjects] = await connection.execute(
-      `SELECT subjects.id, subjects.name, subjects.shs_subject_type AS shsSubjectType
+      `SELECT subjects.id, subjects.subject_code AS subjectCode, subjects.name,
+        subjects.shs_subject_type AS shsSubjectType
       FROM subjects WHERE subjects.id = ? AND subjects.school_id = ? AND subjects.is_active = TRUE
         AND (subjects.school_level_id IS NULL OR subjects.school_level_id = ?)
         AND EXISTS (
@@ -736,20 +747,28 @@ async function assignTeacher(req, res, next) {
     if (section.schoolLevelCode === 'shs' && !subjects[0].shsSubjectType) {
       throw createError('Choose a Strengthened SHS subject type before assigning it to a section.', 409);
     }
+    const isStrengthenedCommunication = subjects[0].subjectCode === 'shs-core-communication'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.gradeCode === 'grade-11';
+    if (isStrengthenedCommunication && !['english', 'filipino'].includes(communicationComponentCode)) {
+      throw createError('Choose the English or Filipino component for this subject assignment.');
+    }
+    if (!isStrengthenedCommunication && communicationComponentCode !== null) {
+      throw createError('A communication component can only be selected for the Strengthened SHS communication subject.');
+    }
     await connection.beginTransaction();
     transactionStarted = true;
-    const [result] = await connection.execute('INSERT INTO section_teachers (school_id, section_id, teacher_user_id, subject_id) VALUES (?, ?, ?, ?)', [req.user.schoolId, sectionId, teacherId, subjectId]);
+    const [result] = await connection.execute('INSERT INTO section_teachers (school_id, section_id, teacher_user_id, subject_id, communication_component_code) VALUES (?, ?, ?, ?, ?)', [req.user.schoolId, sectionId, teacherId, subjectId, communicationComponentCode]);
     await writeAuditLog(connection, req, 'teacher_assigned', 'section_teacher', result.insertId, {
       teacherName: teachers[0].displayName, sectionName: section.name, sectionId: Number(section.id),
-      subjectName: subjects[0].name, schoolLevelCode: section.schoolLevelCode,
+      subjectName: subjects[0].name, communicationComponentCode, schoolLevelCode: section.schoolLevelCode,
       summary: `${teachers[0].displayName} · ${section.name} · ${subjects[0].name}`
     });
     await connection.commit();
     transactionStarted = false;
-    res.status(201).json({ assignmentId: result.insertId, sectionId, teacherId, subjectId });
+    res.status(201).json({ assignmentId: result.insertId, sectionId, teacherId, subjectId, communicationComponentCode });
   } catch (error) {
     if (transactionStarted) { try { await connection.rollback(); } catch {} }
-    if (error.code === 'ER_DUP_ENTRY') return next(createError('This teacher is already assigned to the subject in this section.', 409));
+    if (error.code === 'ER_DUP_ENTRY') return next(createError('This teacher or communication component is already assigned to the subject in this section.', 409));
     next(error);
   } finally { connection.release(); }
 }
@@ -763,8 +782,13 @@ async function removeTeacherAssignment(req, res, next) {
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section) throw createError('Section not found.', 404);
     assertSectionYearWritable(section);
-    const [assignments] = await connection.execute('SELECT users.display_name AS teacherName, subjects.name AS subjectName FROM section_teachers INNER JOIN users ON users.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.id = ? AND section_teachers.section_id = ? LIMIT 1', [assignmentId, sectionId]);
+    const [assignments] = await connection.execute('SELECT users.display_name AS teacherName, subjects.name AS subjectName, subjects.subject_code AS subjectCode, section_teachers.communication_component_code AS communicationComponentCode FROM section_teachers INNER JOIN users ON users.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.id = ? AND section_teachers.section_id = ? LIMIT 1', [assignmentId, sectionId]);
     if (!assignments.length) throw createError('Teacher assignment was not found.', 404);
+    if (assignments[0].subjectCode === 'shs-core-communication'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.gradeCode === 'grade-11'
+      && !assignments[0].communicationComponentCode) {
+      throw createError('Legacy combined communication assignments are retained for review and cannot be removed.', 409);
+    }
     await connection.beginTransaction();
     transactionStarted = true;
     await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [section.academicYearId, req.user.schoolId]);
@@ -801,8 +825,13 @@ async function updateTeacherAssignment(req, res, next) {
     assertShsPlacementReviewed(section);
     const [teachers] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='teacher' AND account_status='active' LIMIT 1", [teacherId, req.user.schoolId]);
     if (!teachers.length) throw createError('The teacher was not found in this school.', 404);
-    const [currentRows] = await connection.execute('SELECT subjects.name AS subjectName, users.display_name AS previousTeacher FROM section_teachers INNER JOIN users ON users.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.id = ? AND section_teachers.section_id = ? LIMIT 1', [assignmentId, sectionId]);
+    const [currentRows] = await connection.execute('SELECT subjects.name AS subjectName, subjects.subject_code AS subjectCode, section_teachers.communication_component_code AS communicationComponentCode, users.display_name AS previousTeacher FROM section_teachers INNER JOIN users ON users.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.id = ? AND section_teachers.section_id = ? LIMIT 1', [assignmentId, sectionId]);
     if (!currentRows.length) throw createError('Teacher assignment was not found.', 404);
+    if (currentRows[0].subjectCode === 'shs-core-communication'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.gradeCode === 'grade-11'
+      && !currentRows[0].communicationComponentCode) {
+      throw createError('Legacy combined communication assignments are retained for review and cannot be changed.', 409);
+    }
     await connection.beginTransaction();
     transactionStarted = true;
     await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [section.academicYearId, req.user.schoolId]);

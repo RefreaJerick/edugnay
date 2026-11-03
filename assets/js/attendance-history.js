@@ -125,8 +125,10 @@
       };
       element('day-detail-modal-content').innerHTML = `<div>${subjects.map(record => {
         const [tone, icon, label] = badges[record.status] || badges.absent;
+        const componentName = record.communicationComponentName || '';
         const name = record.electiveClassId && record.className
-          ? `${record.subjectName || 'Subject'} · ${record.className}` : record.subjectName || 'Subject';
+          ? `${record.subjectName || 'Subject'} · ${record.className}`
+          : componentName || record.subjectName || 'Subject';
         return `<div class="subject-att-row"><div class="subject-att-name">${escape(name)}</div><span class="badge badge-${tone}">${icon ? `<i data-lucide="${icon}" style="width:8px;height:8px;"></i> ` : ''}${label}</span></div>`;
       }).join('')}</div>`;
       icons();

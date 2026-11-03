@@ -57,8 +57,8 @@ test('schedule pages share the Attendance-style week navigation and wide two-col
 
 test('Today returns to the current week and school year, or stays disabled without one', async () => {
   const source = read('assets/js/timetables.js').replace(
-    "  document.addEventListener('DOMContentLoaded', () => {",
-    "  globalThis.todayActions = { goToToday, renderWeek };\n  document.addEventListener('DOMContentLoaded', () => {"
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.todayActions = { goToToday, renderWeek };\n  document.addEventListener('DOMContentLoaded', async () => {"
   );
   let currentDate = '2026-10-25T12:00:00';
   const NativeDate = Date;
@@ -132,8 +132,8 @@ test('two- and four-column weeks show a muted, non-interactive next Monday witho
   assert.match(css, /@media \(min-width: 1280px\) and \(max-width: 1699px\), \(min-width: 761px\) and \(max-width: 1180px\), \(min-width: 421px\) and \(max-width: 760px\)\s*\{\s*\.timetable-day-preview\s*\{\s*display: flex/);
 
   const source = read('assets/js/timetables.js').replace(
-    "  document.addEventListener('DOMContentLoaded', () => {",
-    "  globalThis.renderTimetableWeek = renderWeek;\n  document.addEventListener('DOMContentLoaded', () => {"
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.renderTimetableWeek = renderWeek;\n  document.addEventListener('DOMContentLoaded', async () => {"
   );
   const elements = new Map();
   const context = {
@@ -170,8 +170,8 @@ test('today uses a navy date badge and is announced only when the selected week 
   assert.match(css, /\.timetable-day\.today \.timetable-day-head time\s*\{[^}]*border-radius: 999px;[^}]*background: var\(--navy\); color: var\(--white\)/);
 
   const source = read('assets/js/timetables.js').replace(
-    "  document.addEventListener('DOMContentLoaded', () => {",
-    "  globalThis.renderTimetableWeek = renderWeek;\n  document.addEventListener('DOMContentLoaded', () => {"
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.renderTimetableWeek = renderWeek;\n  document.addEventListener('DOMContentLoaded', async () => {"
   );
   let currentDate = '2026-10-19T12:00:00';
   const NativeDate = Date;
@@ -283,8 +283,8 @@ test('meeting dialog separates section, subject, and assigned teacher without lo
 
 test('meeting assignment choices follow the section and prefill existing meetings', () => {
   const source = read('assets/js/timetables.js').replace(
-    "  document.addEventListener('DOMContentLoaded', () => {",
-    "  globalThis.dialogChoices = { renderDialogSections, renderDialogSubjects, openDialog };\n  document.addEventListener('DOMContentLoaded', () => {"
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.dialogChoices = { renderDialogSections, renderDialogSubjects, openDialog };\n  document.addEventListener('DOMContentLoaded', async () => {"
   );
   class Select {
     constructor() { this.options = []; this.value = ''; this.disabled = false; }
@@ -350,8 +350,8 @@ test('timetable events separate subject, time, class, and optional role details'
   const script = read('assets/js/timetables.js');
   const css = read('assets/css/timetables.css');
   const source = script.replace(
-    "  document.addEventListener('DOMContentLoaded', () => {",
-    "  globalThis.renderTimetableEvent = eventHtml;\n  document.addEventListener('DOMContentLoaded', () => {"
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.renderTimetableEvent = eventHtml;\n  document.addEventListener('DOMContentLoaded', async () => {"
   );
   const context = { document: { addEventListener() {} }, window: {} };
   vm.runInNewContext(source, context);
@@ -428,16 +428,16 @@ test('meeting removal uses the custom confirmation modal and keeps cancel, escap
 
   const cancelFlow = script.match(/function closeDeleteConfirmation\(state, restoreFocus = true, force = false\) \{([\s\S]*?)\n  \}/)?.[1] || '';
   assert.doesNotMatch(cancelFlow, /timetable-dialog-overlay|closeDialog\(/, 'cancel only closes the confirmation and leaves editing open');
-  const deleteFlow = script.match(/async function deleteMeeting\(state\) \{([\s\S]*?)\n  \}\n\n  async function load/)?.[1] || '';
-  const failureFlow = deleteFlow.match(/catch \(error\) \{([\s\S]*?)\n    \} finally/)?.[1] || '';
+  const deleteFlow = script.match(/async function deleteMeeting\(state\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function load/)?.[1] || '';
+  const failureFlow = deleteFlow.match(/catch \(error\) \{([\s\S]*?)\r?\n    \} finally/)?.[1] || '';
   assert.doesNotMatch(failureFlow, /closeDialog\(/, 'failed removal leaves the meeting editor open');
   assert.match(failureFlow, /timetable-error'\)\.textContent/);
 });
 
 test('timetable actions toast their outcomes without changing dialog or navigation behavior', async () => {
   const source = read('assets/js/timetables.js').replace(
-    "  document.addEventListener('DOMContentLoaded', () => {",
-    "  globalThis.timetableActions = { saveMeeting, deleteMeeting, closeDialog, renderWeek };\n  document.addEventListener('DOMContentLoaded', () => {"
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.timetableActions = { saveMeeting, deleteMeeting, closeDialog, renderWeek };\n  document.addEventListener('DOMContentLoaded', async () => {"
   );
 
   function setup(editingId = null) {

@@ -3,6 +3,7 @@ const { assertElectiveTeacher } = require('../utils/shsTeachingAccess');
 const { writeAuditLog } = require('../utils/auditLog');
 const { policyBlockReason, requiredParts, calculateTermGrade } = require('../config/shsGrading');
 const { loadShsPolicy } = require('../utils/shsGradingProfiles');
+const { COMMUNICATION_COMPONENTS, averageCommunicationGrades, isCommunicationComponentCode } = require('../config/shsCommunication');
 
 function fail(message, status = 400) { const error = new Error(message); error.status = status; throw error; }
 function id(value, label) {
@@ -27,11 +28,18 @@ async function resolveScope(db, user, input, write = false) {
   }
   const sectionId = id(input.sectionId, 'section ID');
   const subjectId = id(input.subjectId, 'subject ID');
+  const communicationComponentCode = input.communicationComponentCode == null || input.communicationComponentCode === ''
+    ? null : String(input.communicationComponentCode).trim().toLowerCase();
+  if (communicationComponentCode && !isCommunicationComponentCode(communicationComponentCode)) {
+    fail('The communication component is invalid.');
+  }
   const [rows] = await db.execute(
     `SELECT s.id AS sectionId, s.name AS className, s.academic_year_id AS yearId,
       s.school_level_id AS levelId, g.grade_code AS gradeCode,
+      s.shs_curriculum_code AS shsCurriculumCode,
       y.label AS yearLabel, y.status AS yearStatus,
-      sub.name AS subjectName
+      sub.name AS subjectName, sub.subject_code AS subjectCode,
+      st.communication_component_code AS communicationComponentCode
      FROM section_teachers st
      JOIN sections s ON s.id = st.section_id AND s.school_id = st.school_id
      JOIN school_grade_levels g ON g.id = s.grade_level_id AND g.school_id = s.school_id
@@ -40,13 +48,23 @@ async function resolveScope(db, user, input, write = false) {
      JOIN subjects sub ON sub.id = st.subject_id AND sub.school_id = st.school_id AND sub.is_active = TRUE
      JOIN users t ON t.id = st.teacher_user_id AND t.school_id = st.school_id
      WHERE st.school_id = ? AND st.teacher_user_id = ? AND st.section_id = ? AND st.subject_id = ?
+       AND st.communication_component_code <=> ?
        AND t.account_status = 'active' AND s.status = 'active'
        AND s.shs_curriculum_code = 'strengthened_2026' AND l.level_code = 'shs'
        AND sub.shs_subject_type = 'core' LIMIT 1${write ? ' FOR UPDATE' : ''}`,
-    [user.schoolId, user.id, sectionId, subjectId]
+    [user.schoolId, user.id, sectionId, subjectId, communicationComponentCode]
   );
   if (!rows.length) fail('This Strengthened SHS core subject is not assigned to you.', 404);
-  const scope = { ...rows[0], kind: 'core', sectionId, subjectId, group: 'core', schoolId: user.schoolId };
+  const communicationSubject = rows[0].subjectCode === 'shs-core-communication'
+    && rows[0].shsCurriculumCode === 'strengthened_2026' && rows[0].gradeCode === 'grade-11';
+  if (communicationComponentCode && !communicationSubject) fail('This subject does not have communication components.');
+  const scope = { ...rows[0], kind: 'core', sectionId, subjectId, group: 'core', schoolId: user.schoolId,
+    communicationComponentCode, communicationSubject,
+    communicationComponentName: COMMUNICATION_COMPONENTS[communicationComponentCode] || null,
+    legacyCommunication: communicationSubject && !communicationComponentCode };
+  if (write && scope.legacyCommunication) {
+    fail('Legacy combined communication records are read-only. Assign an English or Filipino component to enter new grades.', 409);
+  }
   if (write && scope.yearStatus !== 'active') fail('Archived school years are read-only.', 409);
   scope.policy = await loadShsPolicy(db, scope);
   if (!scope.policy) fail(policyBlockReason(scope.group, scope.yearLabel, scope.gradeCode), 409);
@@ -105,13 +123,17 @@ async function roster(db, scope, forUpdate = false) {
 async function loadItems(db, scope, termId, forUpdate = false) {
   const [items] = await db.execute(
     `SELECT id, title, max_score AS maxScore, shs_component_code AS componentCode,
-      shs_exam_part_code AS examPartCode, used_in_published_grades AS usedInPublishedGrades
+      shs_exam_part_code AS examPartCode,
+      communication_component_code AS communicationComponentCode,
+      used_in_published_grades AS usedInPublishedGrades
      FROM grading_items WHERE school_id = ? AND academic_term_id = ?
        AND ${scope.kind === 'core'
-         ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL'
+         ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL AND communication_component_code <=> ?'
          : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL'}
      ORDER BY recorded_at, id${forUpdate ? ' FOR UPDATE' : ''}`,
-    [scope.schoolId, termId, ...(scope.kind === 'core' ? [scope.sectionId, scope.subjectId] : [scope.classId])]
+    [scope.schoolId, termId, ...(scope.kind === 'core'
+      ? [scope.sectionId, scope.subjectId, scope.communicationComponentCode]
+      : [scope.classId])]
   );
   return items;
 }
@@ -175,16 +197,30 @@ async function workspace(req, res, next) {
         : { problem: policyBlockReason(scope.group, scope.yearLabel, scope.gradeCode) };
       return { ...student, ...calculated, componentAverages };
     });
-    const published = term ? (await db.execute(
-      `SELECT student_user_id AS studentId, final_grade AS finalGrade,
-        publication_version AS publicationVersion, correction_reason AS correctionReason,
-        published_at AS publishedAt
-       FROM published_final_grades WHERE school_id = ? AND academic_term_id = ?
-         AND ${scope.kind === 'core'
-           ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL'
-           : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL'}`,
-      [scope.schoolId, termId, ...(scope.kind === 'core' ? [scope.sectionId, scope.subjectId] : [scope.classId])]
-    ))[0] : [];
+    let published = [];
+    if (term && scope.kind === 'core' && scope.communicationComponentCode) {
+      [published] = await db.execute(
+        `SELECT student_user_id AS studentId, final_grade AS finalGrade,
+          communication_component_code AS communicationComponentCode,
+          publication_version AS publicationVersion, correction_reason AS correctionReason,
+          published_at AS publishedAt
+         FROM shs_communication_component_grades WHERE school_id = ? AND academic_term_id = ?
+           AND section_id = ? AND subject_id = ? AND communication_component_code = ?`,
+        [scope.schoolId, termId, scope.sectionId, scope.subjectId, scope.communicationComponentCode]
+      );
+    } else if (term) {
+      [published] = await db.execute(
+        `SELECT student_user_id AS studentId, final_grade AS finalGrade,
+          communication_grade_source AS communicationGradeSource,
+          publication_version AS publicationVersion, correction_reason AS correctionReason,
+          published_at AS publishedAt
+         FROM published_final_grades WHERE school_id = ? AND academic_term_id = ?
+           AND ${scope.kind === 'core'
+             ? `section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL${scope.legacyCommunication ? " AND communication_grade_source = 'legacy_combined'" : ''}`
+             : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL'}`,
+        [scope.schoolId, termId, ...(scope.kind === 'core' ? [scope.sectionId, scope.subjectId] : [scope.classId])]
+      );
+    }
     res.json({ scope: { ...scope, policy: scope.policy && {
       group: scope.policy.group, weights: scope.policy.weights, components: scope.policy.components,
       method: scope.policy.method,
@@ -219,11 +255,14 @@ async function insertItem(connection, req, scope, termId, values, options = {}) 
       || maxScore > 999999.99 || Math.abs(Math.round(maxScore * 100) - maxScore * 100) > 1e-7)
       fail('Enter a title and a positive maximum score.');
     const [result] = await connection.execute(
-      `INSERT INTO grading_items (school_id, section_id, subject_id, shs_elective_class_id,
-        academic_term_id, teacher_user_id, title, max_score, shs_component_code, shs_exam_part_code)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO grading_items (school_id, section_id, subject_id, communication_component_code,
+        shs_elective_class_id, academic_term_id, teacher_user_id, title, max_score,
+        shs_component_code, shs_exam_part_code)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [scope.schoolId, scope.kind === 'core' ? scope.sectionId : null,
-        scope.kind === 'core' ? scope.subjectId : null, scope.kind === 'elective' ? scope.classId : null,
+        scope.kind === 'core' ? scope.subjectId : null,
+        scope.kind === 'core' ? scope.communicationComponentCode : null,
+        scope.kind === 'elective' ? scope.classId : null,
         termId, req.user.id, title, maxScore, component, part]
     );
     if (assignment) {
@@ -336,14 +375,22 @@ async function correctScore(req, res, next) {
     );
     if (!existing.length) fail('There is no saved score to correct.', 404);
     if (!item.usedInPublishedGrades) fail('This score has not been published. Use the regular Save action instead.');
-    const [published] = await connection.execute(
-      `SELECT id, publication_version AS publicationVersion, latest_history_id AS publishedHistoryId
-       FROM published_final_grades WHERE school_id = ? AND academic_term_id = ?
-       AND student_user_id = ? AND ${scope.kind === 'core'
-         ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL'
-         : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL'} LIMIT 1 FOR UPDATE`,
-      [scope.schoolId, termId, studentId, ...(scope.kind === 'core' ? [scope.sectionId, scope.subjectId] : [scope.classId])]
-    );
+    const [published] = scope.kind === 'core' && scope.communicationComponentCode
+      ? await connection.execute(
+        `SELECT id, publication_version AS publicationVersion, latest_history_id AS publishedHistoryId
+         FROM shs_communication_component_grades WHERE school_id = ? AND academic_term_id = ?
+           AND student_user_id = ? AND section_id = ? AND subject_id = ?
+           AND communication_component_code = ? LIMIT 1 FOR UPDATE`,
+        [scope.schoolId, termId, studentId, scope.sectionId, scope.subjectId, scope.communicationComponentCode]
+      )
+      : await connection.execute(
+        `SELECT id, publication_version AS publicationVersion, latest_history_id AS publishedHistoryId
+         FROM published_final_grades WHERE school_id = ? AND academic_term_id = ?
+         AND student_user_id = ? AND ${scope.kind === 'core'
+           ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL'
+           : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL'} LIMIT 1 FOR UPDATE`,
+        [scope.schoolId, termId, studentId, ...(scope.kind === 'core' ? [scope.sectionId, scope.subjectId] : [scope.classId])]
+      );
     if (!published.length) fail('There is no published grade snapshot for this learner and term.', 409);
     if (!published[0].publishedHistoryId) fail('The published grade has no audit snapshot. The score cannot be corrected safely.', 409);
     await connection.execute(
@@ -398,6 +445,135 @@ async function preview(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function publishCommunicationComponent(connection, req, scope, termId, previewResult) {
+  const componentCode = scope.communicationComponentCode;
+  const scopeValues = [scope.schoolId, scope.sectionId, scope.subjectId, componentCode, termId];
+  const [priorRows] = await connection.execute(
+    `SELECT COUNT(*) AS total FROM shs_communication_component_grades
+     WHERE school_id = ? AND section_id = ? AND subject_id = ?
+       AND communication_component_code = ? AND academic_term_id = ?`, scopeValues
+  );
+  const correctionReason = String(req.body.correctionReason || '').trim();
+  if (Number(priorRows[0]?.total || 0) && (correctionReason.length < 10 || correctionReason.length > 500)) {
+    fail('Republishing changed grades requires a correction reason of 10 to 500 characters.', 409);
+  }
+  const [versions] = await connection.execute(
+    `SELECT COALESCE(MAX(publication_version), 0) AS currentVersion
+     FROM shs_grade_publication_history WHERE school_id = ? AND section_id = ?
+       AND subject_id = ? AND communication_component_code = ? AND academic_term_id = ?`, scopeValues
+  );
+  const publicationVersion = Number(versions[0]?.currentVersion || 0) + 1;
+
+  for (const student of previewResult.students) {
+    const scoreSnapshot = { ...student.scoreSnapshot, communicationComponentCode: componentCode };
+    const [history] = await connection.execute(
+      `INSERT INTO shs_grade_publication_history
+        (school_id, section_id, subject_id, communication_component_code,
+         shs_elective_class_id, academic_term_id, student_user_id, final_grade,
+         publication_version, correction_reason, score_snapshot, published_by_user_id)
+       VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+      [scope.schoolId, scope.sectionId, scope.subjectId, componentCode, termId,
+        student.studentId, student.termGrade, publicationVersion, correctionReason || null,
+        JSON.stringify(scoreSnapshot), req.user.id]
+    );
+    await connection.execute(
+      `INSERT INTO shs_communication_component_grades
+        (school_id, section_id, subject_id, communication_component_code,
+         academic_term_id, student_user_id, final_grade, publication_version,
+         latest_history_id, correction_reason, published_by_user_id, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE final_grade = VALUES(final_grade),
+         publication_version = VALUES(publication_version), latest_history_id = VALUES(latest_history_id),
+         correction_reason = VALUES(correction_reason), published_by_user_id = VALUES(published_by_user_id),
+         published_at = NOW()`,
+      [scope.schoolId, scope.sectionId, scope.subjectId, componentCode, termId,
+        student.studentId, student.termGrade, publicationVersion, history.insertId,
+        correctionReason || null, req.user.id]
+    );
+  }
+
+  const [componentGrades] = await connection.execute(
+    `SELECT student_user_id AS studentId, communication_component_code AS componentCode,
+      final_grade AS finalGrade, latest_history_id AS historyId
+     FROM shs_communication_component_grades
+     WHERE school_id = ? AND section_id = ? AND subject_id = ? AND academic_term_id = ?`,
+    [scope.schoolId, scope.sectionId, scope.subjectId, termId]
+  );
+  const componentsByStudent = new Map();
+  componentGrades.forEach(row => {
+    const key = String(row.studentId);
+    if (!componentsByStudent.has(key)) componentsByStudent.set(key, {});
+    componentsByStudent.get(key)[row.componentCode] = {
+      finalGrade: Number(row.finalGrade), historyId: Number(row.historyId)
+    };
+  });
+  let combinedCount = 0;
+  for (const student of previewResult.students) {
+    const components = componentsByStudent.get(String(student.studentId)) || {};
+    const combinedGrade = averageCommunicationGrades(components.english?.finalGrade, components.filipino?.finalGrade);
+    if (combinedGrade === null) continue;
+    const [currentRows] = await connection.execute(
+      `SELECT publication_version AS publicationVersion,
+        communication_grade_source AS communicationGradeSource
+       FROM published_final_grades WHERE school_id = ? AND section_id = ? AND subject_id = ?
+         AND academic_term_id = ? AND student_user_id = ? LIMIT 1 FOR UPDATE`,
+      [scope.schoolId, scope.sectionId, scope.subjectId, termId, student.studentId]
+    );
+    const current = currentRows[0] || null;
+    const combinedVersion = Number(current?.publicationVersion || 0) + 1;
+    const snapshot = {
+      communicationGradeSource: 'component_average',
+      calculation: 'rounded arithmetic average of the English and Filipino component term grades',
+      components: {
+        english: components.english,
+        filipino: components.filipino
+      }
+    };
+    const [history] = await connection.execute(
+      `INSERT INTO shs_grade_publication_history
+        (school_id, section_id, subject_id, communication_component_code,
+         shs_elective_class_id, academic_term_id, student_user_id, final_grade,
+         publication_version, correction_reason, score_snapshot, published_by_user_id)
+       VALUES (?, ?, ?, 'combined', NULL, ?, ?, ?, ?, ?, ?, ?)`,
+      [scope.schoolId, scope.sectionId, scope.subjectId, termId, student.studentId,
+        combinedGrade, combinedVersion,
+        current?.communicationGradeSource === 'component_average' ? correctionReason || null : null,
+        JSON.stringify(snapshot), req.user.id]
+    );
+    await connection.execute(
+      `INSERT INTO published_final_grades
+        (school_id, section_id, subject_id, shs_elective_class_id, academic_term_id,
+         student_user_id, final_grade, publication_version, latest_history_id,
+         correction_reason, communication_grade_source, published_by_user_id, published_at)
+       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 'component_average', ?, NOW())
+       ON DUPLICATE KEY UPDATE final_grade = VALUES(final_grade),
+         publication_version = VALUES(publication_version), latest_history_id = VALUES(latest_history_id),
+         correction_reason = VALUES(correction_reason), communication_grade_source = 'component_average',
+         published_by_user_id = VALUES(published_by_user_id), published_at = NOW()`,
+      [scope.schoolId, scope.sectionId, scope.subjectId, termId, student.studentId,
+        combinedGrade, combinedVersion, history.insertId,
+        current?.communicationGradeSource === 'component_average' ? correctionReason || null : null,
+        req.user.id]
+    );
+    combinedCount += 1;
+  }
+
+  if (previewResult.items.length) {
+    await connection.execute(
+      `UPDATE grading_items SET used_in_published_grades = TRUE WHERE school_id = ?
+       AND id IN (${previewResult.items.map(() => '?').join(',')})`,
+      [scope.schoolId, ...previewResult.items.map(item => item.id)]
+    );
+  }
+  await writeAuditLog(connection, req, 'shs_grades_published', 'academic_term', termId,
+    { sectionId: scope.sectionId, subjectId: scope.subjectId, communicationComponentCode: componentCode,
+      studentCount: previewResult.students.length, combinedCount, publicationVersion,
+      correctionReason: correctionReason || null, subjectName: scope.subjectName,
+      className: scope.className, gradeCode: scope.gradeCode, schoolYear: scope.yearLabel });
+  return { published: true, count: previewResult.students.length, combinedCount,
+    communicationComponentCode: componentCode, publicationVersion };
+}
+
 async function publish(req, res, next) {
   const connection = await getDatabase().getConnection(); let started = false;
   try {
@@ -411,6 +587,11 @@ async function publish(req, res, next) {
     if (previewResult.term.status !== 'active') fail('This grading period is locked.', 409);
     if (!previewResult.students.length || previewResult.students.some(student => student.problem))
       fail('Resolve missing scores and assessment items before publishing.', 409);
+    if (scope.communicationComponentCode) {
+      const result = await publishCommunicationComponent(connection, req, scope, termId, previewResult);
+      await connection.commit(); started = false;
+      return res.json(result);
+    }
     const scopeSql = scope.kind === 'core'
       ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL'
       : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL';

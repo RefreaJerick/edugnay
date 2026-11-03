@@ -265,6 +265,7 @@ async function loadManagementApiData() {
     section.teacherAssignments = (teachersResult.teachers || []).map(assignment => ({
       assignmentId: assignment.assignmentId,
       subjectId: assignment.subjectId,
+      communicationComponentCode: assignment.communicationComponentCode || null,
       teacherId: assignment.teacherId,
       teacherName: assignment.teacherName,
       teacherEmail: assignment.teacherEmail,
@@ -767,17 +768,44 @@ function teacherAssignmentsForSection(section) {
     subject.grades.some(key => managementSubjectFilterMatches(sectionKey, [key]))
   ));
   const storedAssignments = Array.isArray(section.teacherAssignments) ? section.teacherAssignments : [];
-  return subjects.map(subject => {
-    const assignment = storedAssignments.find(record => record.subjectId === subject.id);
+  return subjects.flatMap(subject => {
     const avClass = SUBJECT_AVATAR_CLASSES[subject.id] || SUBJECT_AVATAR_CLASSES[subject.code] || 'av-blue';
-    return {
+    const communicationSlots = subject.code === 'shs-core-communication'
+      && section.level === 'shs' && managementGradeKey(section.grade) === '11' && !section.needsCurriculumSetup;
+    if (communicationSlots) {
+      const matching = storedAssignments.filter(record => record.subjectId === subject.id);
+      const components = [
+        ['english', 'Effective Communication'],
+        ['filipino', 'Mabisang Komunikasyon']
+      ].map(([communicationComponentCode, componentLabel]) => {
+        const assignment = matching.find(record => record.communicationComponentCode === communicationComponentCode);
+        return {
+          subjectId: subject.id,
+          name: subject.name,
+          code: subject.code,
+          componentLabel,
+          communicationComponentCode,
+          isLegacyCommunication: false,
+          avClass,
+          teacherId: assignment?.teacherId || null,
+          assignmentId: assignment?.assignmentId || assignment?.id || null
+        };
+      });
+      return components;
+    }
+    const assignment = storedAssignments.find(record => record.subjectId === subject.id
+      && !record.communicationComponentCode);
+    return [{
       subjectId: subject.id,
       name: subject.name,
       code: subject.code,
+      componentLabel: '',
+      communicationComponentCode: null,
+      isLegacyCommunication: false,
       avClass,
       teacherId: assignment?.teacherId || null,
       assignmentId: assignment?.assignmentId || assignment?.id || null
-    };
+    }];
   });
 }
 
@@ -937,6 +965,7 @@ document.getElementById('depedSubjectReviewModal').addEventListener('click', eve
 const managementTeacherCollapseState = {};
 let teacherTargetSection = null;
 let teacherTargetSubjectId = null;
+let teacherTargetCommunicationComponentCode = null;
 
 function bindTeacherRemoveButtons(container) {
   container.querySelectorAll('.section-block .row-btn.remove').forEach(button => {
@@ -981,14 +1010,19 @@ function renderTeacherAssignments() {
   const html = sections.map(section => {
     const sectionSubjects = teacherAssignmentsForSection(section);
     const assignedCount = sectionSubjects.filter(subject => subject.teacherId).length;
-    const total = sectionSubjects.length;
-    const full = total > 0 && assignedCount === total;
-    const pct = total ? Math.round((assignedCount / total) * 100) : 0;
+    const totalSlots = sectionSubjects.length;
+    const subjectCount = new Set(sectionSubjects.map(subject => String(subject.subjectId))).size;
+    const full = totalSlots > 0 && assignedCount === totalSlots;
+    const pct = totalSlots ? Math.round((assignedCount / totalSlots) * 100) : 0;
       const rows = sectionSubjects.length ? sectionSubjects.map(subject => {
         const teacher = teacherRecordById(subject.teacherId);
+        const isCommunicationComponent = Boolean(subject.communicationComponentCode);
+        const rowTitle = isCommunicationComponent ? subject.componentLabel : subject.name;
+        const rowCode = isCommunicationComponent
+          ? `${subject.code} · ${subject.communicationComponentCode}` : subject.code;
         return `
-      <div class="subject-row" data-subject-id="${subject.subjectId || ''}" data-assignment-id="${subject.assignmentId || ''}">
-        <div class="subj-name-wrap"><div><div class="subj-name">${subject.name}</div><div class="subj-code">${subject.code || ''}</div></div></div>
+      <div class="subject-row" data-subject-id="${subject.subjectId || ''}" data-assignment-id="${subject.assignmentId || ''}" data-communication-component-code="${subject.communicationComponentCode || ''}">
+        <div class="subj-name-wrap"><div><div class="subj-name">${rowTitle}</div><div class="subj-code">${rowCode || ''}</div></div></div>
         ${subject.teacherId ? `
           <div class="teacher-assign">${window.EDUGNAY_AVATAR.html(teacher || {}, { className: 'teacher-av', role: 'teacher' })}<div><div class="teacher-name">${teacher?.displayName || 'Teacher'}</div><div class="teacher-email">${teacher?.schoolEmail || ''}</div></div></div>
           <div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div>
@@ -1004,9 +1038,9 @@ function renderTeacherAssignments() {
         <div class="section-head" data-page-click="g5c6ac1f61c0a">
           <div class="section-head-left"><span class="section-grade-pill gp-${managementSectionTone(section.level, section.gradeValue)}" title="${window.EDUGNAY_CONFIG.escapeHtml(managementSectionBadgeLabel(section))}">${window.EDUGNAY_CONFIG.escapeHtml(managementSectionCompactBadgeLabel(section))}</span><div class="section-name">${section.name}</div></div>
           <div class="section-meta">
-            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>${total}</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>${subjectCount}</strong> ${subjectCount === 1 ? 'Subject' : 'Subjects'}</div>
             <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong${section.adviser ? '' : ' style="color:var(--red)"'}>${section.adviser || 'None'}</strong></div>
-            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill ${full ? 'fill-full' : 'fill-partial'}" style="width:${pct}%"></div></div><span class="coverage-label ${full ? 'label-full' : 'label-partial'}">${assignedCount}/${total} Assigned</span></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill ${full ? 'fill-full' : 'fill-partial'}" style="width:${pct}%"></div></div><span class="coverage-label ${full ? 'label-full' : 'label-partial'}">${assignedCount}/${totalSlots} Assigned</span></div>
             ${full ? '<span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>' : '<span class="badge badge-orange"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Incomplete</span>'}
           </div>
           <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
@@ -1027,7 +1061,9 @@ function renderTeacherAssignments() {
     const row = button.closest('.subject-row');
     teacherTargetSection = block.dataset.id;
     teacherTargetSubjectId = row?.dataset.subjectId || '';
-    const subjectName = row?.querySelector('.subj-name')?.textContent.trim() || '';
+    teacherTargetCommunicationComponentCode = row?.dataset.communicationComponentCode || null;
+    const subjectName = [row?.querySelector('.subj-name')?.textContent.trim(),
+      row?.querySelector('.subj-code')?.textContent.trim()].filter(Boolean).join(' · ');
     const section = managementSectionById(block.dataset.id);
     const placement = section ? managementSectionBadgeLabel(section) : block.querySelector('.section-grade-pill').textContent.trim();
     openTeacherModal(`${placement} · ${block.querySelector('.section-name').textContent.trim()} · ${subjectName}`);
@@ -1572,6 +1608,7 @@ function openTeacherModal(context) {
   document.getElementById('teacherCtxVal').textContent = ctx;
   document.getElementById('teacherAssignmentSectionId').value = teacherTargetSection || '';
   document.getElementById('teacherAssignmentSubjectId').value = teacherTargetSubjectId || '';
+  document.getElementById('teacherAssignmentCommunicationComponentCode').value = teacherTargetCommunicationComponentCode || '';
   document.getElementById('teacherModalBackdrop').classList.add('open');
   document.getElementById('teacherPreview').classList.remove('visible');
   const select = document.getElementById('teacherSelect');
@@ -1603,6 +1640,7 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
   event.preventDefault();
   const sectionId = document.getElementById('teacherAssignmentSectionId').value;
   const subjectId = document.getElementById('teacherAssignmentSubjectId').value;
+  const communicationComponentCode = document.getElementById('teacherAssignmentCommunicationComponentCode').value || null;
   const teacherId = document.getElementById('teacherSelect').value || null;
   if (!sectionId || !subjectId || !teacherId) {
     alert('Choose a faculty member first.');
@@ -1615,7 +1653,8 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
     let saved = false;
     try {
       const section = managementSectionById(sectionId);
-      const currentAssignment = section?.teacherAssignments?.find(item => item.subjectId === subjectId);
+      const currentAssignment = section?.teacherAssignments?.find(item => item.subjectId === subjectId
+        && (item.communicationComponentCode || null) === communicationComponentCode);
       if (currentAssignment?.teacherId === teacherId) {
         closeTeacherModal();
         await refreshManagementViews();
@@ -1624,7 +1663,7 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
       if (currentAssignment?.assignmentId) {
         await window.EDUGNAY_API.updateTeacherAssignment(sectionId, currentAssignment.assignmentId, teacherId);
       } else {
-        await window.EDUGNAY_API.assignTeacher(sectionId, teacherId, subjectId);
+        await window.EDUGNAY_API.assignTeacher(sectionId, teacherId, subjectId, communicationComponentCode);
       }
       saved = true;
       closeTeacherModal();

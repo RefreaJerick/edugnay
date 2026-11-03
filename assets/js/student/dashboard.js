@@ -87,7 +87,7 @@ lucide.createIcons();
           .slice(0, 3).map(material => {
             const display = MATERIAL_TYPE_DISPLAY[material.type] || MATERIAL_TYPE_DISPLAY.pdf;
             const posted = new Date(material.postedAt);
-            return { ...material, subject: material.subjectName || 'Subject',
+            return { ...material, subject: material.communicationComponentName || material.subjectName || 'Subject',
               posted: Number.isNaN(posted.getTime()) ? 'Date unavailable'
                 : `Posted ${posted.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
               icon: display.icon, tone: display.tone };
@@ -208,7 +208,7 @@ lucide.createIcons();
           : MATERIALS.length ? MATERIALS.map(item => `
           <div class="material-row" data-page-click="g95ad2b8d5975">
             <div class="material-icon" style="${toneStyles[item.tone]}"><i data-lucide="${item.icon}" style="width:18px;height:18px;"></i></div>
-            <div class="material-info"><div class="material-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</div><div class="material-meta">${window.EDUGNAY_CONFIG.escapeHtml(item.subject)} · ${window.EDUGNAY_CONFIG.escapeHtml(item.posted)}</div></div>
+            <div class="material-info"><div class="material-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</div><div class="material-meta">${window.EDUGNAY_CONFIG.escapeHtml(item.communicationComponentName || item.subject)} · ${window.EDUGNAY_CONFIG.escapeHtml(item.posted)}</div></div>
             <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
           </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'folder-open', title: 'No learning materials yet', text: 'Materials shared by your teachers will appear here.' });
       }

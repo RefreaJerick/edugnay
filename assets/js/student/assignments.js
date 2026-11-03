@@ -111,7 +111,8 @@ lucide.createIcons();
     }
 
     function assignmentSubjectKey(item) {
-      return isElectiveAssignment(item) ? 'elective:' + String(item.electiveClassId) : 'subject:' + String(item.subjectId);
+      return isElectiveAssignment(item) ? 'elective:' + String(item.electiveClassId)
+        : 'subject:' + String(item.subjectId) + ':' + String(item.communicationComponentCode || '');
     }
 
     async function loadBackendAssignments() {
@@ -253,13 +254,15 @@ lucide.createIcons();
           ? '<button class="top-btn assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">' +
               '<i data-lucide="file-up" style="width:13px;height:13px;"></i> ' + (hasOnlineSubmission ? 'Replace file' : 'Submit work') + '</button>'
           : '<span class="assignment-action-muted">Submit in class</span>';
-        const assignmentScope = isElectiveAssignment(item)
-          ? 'Elective class' + (item.className ? ' · ' + item.className : '')
-          : '';
+        const assignmentScope = [
+          isElectiveAssignment(item) ? 'Elective class' + (item.className ? ' · ' + item.className : '') : '',
+          item.communicationComponentName || ''
+        ].filter(Boolean).join(' · ');
+        const subjectName = item.communicationComponentName || item.subjectName || item.subject;
         return '<article class="assignment-row assignment-details-trigger" data-assignment-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="View details for ' + escapeHtml(item.title) + '">' +
           '<div class="assignment-row-content">' +
             '<h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
-            '<div class="assignment-row-meta">' + escapeHtml(item.subject) + ' · Due ' + formatDate(item.dueDate) + ' · ' + escapeHtml(item.teacher) + (assignmentScope ? ' · ' + escapeHtml(assignmentScope) : '') + '</div>' +
+            '<div class="assignment-row-meta">' + escapeHtml(subjectName) + ' · Due ' + formatDate(item.dueDate) + ' · ' + escapeHtml(item.teacher) + (assignmentScope ? ' · ' + escapeHtml(assignmentScope) : '') + '</div>' +
           '</div>' +
           '<div class="assignment-online-cell" data-label="Online submission">' +
             '<span class="assignment-online-status ' + onlineClass + '">' + onlineLabel + '</span>' +
@@ -287,7 +290,7 @@ lucide.createIcons();
       document.getElementById('assignmentHistoryList').innerHTML = ASSIGNMENT_HISTORY.map(function (item) {
         const status = STATUS_META[item.submissionStatus] || STATUS_META.pending;
         return '<article class="assignment-row"><div class="assignment-row-content"><h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
-          '<div class="assignment-row-meta">' + escapeHtml(item.sectionName) + ' · ' + escapeHtml(item.academicYearLabel) + ' · ' + escapeHtml(item.academicTermName) + ' · ' + escapeHtml(item.subjectName) + '</div></div>' +
+          '<div class="assignment-row-meta">' + escapeHtml(item.sectionName) + ' · ' + escapeHtml(item.academicYearLabel) + ' · ' + escapeHtml(item.academicTermName) + ' · ' + escapeHtml(item.communicationComponentName || item.subjectName) + '</div></div>' +
           '<div class="assignment-status-cell" data-label="Status"><span class="assignment-status ' + escapeHtml(item.submissionStatus) + '">' + escapeHtml(status.label) + '</span></div>' +
           '<div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary" type="button" data-history-id="' + escapeHtml(item.id) + '">View details</button></div></article>';
       }).join('');
@@ -300,7 +303,7 @@ lucide.createIcons();
       document.getElementById('submissionModalTitle').textContent = 'Previous section work';
       document.getElementById('submissionModalSub').textContent = item.sectionName + ' · ' + item.academicTermName + ' · Read only';
       document.getElementById('assignmentDetailTitle').textContent = item.title || '—';
-      document.getElementById('assignmentDetailSubject').textContent = item.subjectName || '—';
+      document.getElementById('assignmentDetailSubject').textContent = item.communicationComponentName || item.subjectName || '—';
       document.getElementById('assignmentDetailTeacher').textContent = item.teacherName || '—';
       document.getElementById('assignmentDetailDueDate').textContent = item.dueDate ? formatDate(item.dueDate) : 'No due date';
       document.getElementById('assignmentDetailInstructions').textContent = item.description || 'No additional instructions were provided.';
@@ -322,7 +325,7 @@ lucide.createIcons();
         if (!subjects.has(key)) {
           const label = isElectiveAssignment(item)
             ? [item.subjectName || item.subject, item.className].filter(Boolean).join(' · ')
-            : item.subjectName || item.subject;
+            : item.communicationComponentName || item.subjectName || item.subject;
           subjects.set(key, label || 'Subject');
         }
       });

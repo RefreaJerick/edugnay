@@ -60,7 +60,8 @@
   }
 
   function assignmentSubjectKey(item) {
-    return isElectiveAssignment(item) ? `elective:${String(item.electiveClassId)}` : `subject:${String(item.subjectId)}`;
+    return isElectiveAssignment(item) ? `elective:${String(item.electiveClassId)}`
+      : `subject:${String(item.subjectId)}:${String(item.communicationComponentCode || '')}`;
   }
 
   function latestTermInYear(yearTerms) {
@@ -118,7 +119,7 @@
       const key = assignmentSubjectKey(item);
       if (!subjects.has(key)) subjects.set(key, isElectiveAssignment(item)
         ? [item.subjectName, item.electiveClassName].filter(Boolean).join(' · ')
-        : item.subjectName);
+        : item.communicationComponentName || item.subjectName);
     });
     const subject = element('assignmentSubjectFilter');
     const previous = subject.value;
@@ -166,7 +167,7 @@
         ? `Elective class${item.electiveClassName ? ` · ${escape(item.electiveClassName)}` : ''} · `
         : '';
       return `<article class="assignment-row">
-        <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${classContext}${escape(item.subjectName)} · Due ${escape(formatDate(item.dueDate))} · ${escape(item.teacherName)}</div></div>
+        <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${classContext}${escape(item.communicationComponentName || item.subjectName)} · Due ${escape(formatDate(item.dueDate))} · ${escape(item.teacherName)}</div></div>
         <div class="assignment-online-cell" data-label="Online submission"><span class="assignment-online-status ${item.onlineSubmissionEnabled ? 'available' : 'not-available'}">${item.onlineSubmissionEnabled ? 'Available' : 'Not available'}</span></div>
         <div class="assignment-status-cell" data-label="Status"><span class="assignment-status ${statusKey}"><i data-lucide="${icons[statusKey]}" style="width:12px;height:12px;"></i><span class="assignment-status-label">${status}</span></span></div>
         <div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary parent-assignment-view" type="button" data-assignment-id="${escape(item.id)}" aria-label="View details for ${escape(item.title)}">View details</button></div>
@@ -195,7 +196,7 @@
     element('assignmentHistoryList').innerHTML = history.map(item => {
       const status = labels[item.submissionStatus] || labels.pending;
       return `<article class="assignment-row">
-        <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${escape(item.sectionName)} · ${escape(item.academicYearLabel)} · ${escape(item.academicTermName)} · ${escape(item.subjectName)}</div></div>
+        <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${escape(item.sectionName)} · ${escape(item.academicYearLabel)} · ${escape(item.academicTermName)} · ${escape(item.communicationComponentName || item.subjectName)}</div></div>
         <div class="assignment-status-cell" data-label="Status"><span class="assignment-status ${escape(item.submissionStatus)}">${escape(status)}</span></div>
         <div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary parent-assignment-view" type="button" data-history-id="${escape(item.id)}">View details</button></div>
       </article>`;
@@ -217,7 +218,7 @@
     if (!item) return;
     lastDetailButton = button;
     element('assignmentDetailTitle').textContent = item.title || '—';
-    element('assignmentDetailSubject').textContent = item.subjectName || '—';
+    element('assignmentDetailSubject').textContent = item.communicationComponentName || item.subjectName || '—';
     element('assignmentDetailTeacher').textContent = item.teacherName || '—';
     element('assignmentDetailDueDate').textContent = formatDate(item.dueDate);
     element('assignmentDetailStatus').textContent = labels[item.submissionStatus] || labels.pending;

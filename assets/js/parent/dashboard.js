@@ -51,9 +51,10 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       if (!records.length) return null;
 
       const subjects = records.filter(record => record.subjectId || record.electiveClassId).map(record => {
-        const subject = ATTENDANCE_SUBJECT_META[record.subjectId] || { name: record.subjectName || 'Subject', color: 'var(--blue-mid)' };
+        const componentName = record.communicationComponentName || '';
+        const subject = ATTENDANCE_SUBJECT_META[record.subjectId] || { name: componentName || record.subjectName || 'Subject', color: 'var(--blue-mid)' };
         const name = record.electiveClassId && record.className
-          ? `${record.subjectName || 'Subject'} · ${record.className}` : record.subjectName || subject.name;
+          ? `${record.subjectName || 'Subject'} · ${record.className}` : componentName || record.subjectName || subject.name;
         return { name, status: record.status, color: subject.color };
       });
       return { subjects };

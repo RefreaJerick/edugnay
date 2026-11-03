@@ -32,8 +32,22 @@ lucide.createIcons();
     let TEACHER_PENDING_REPORTS_ERROR = '';
     const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
 
+    function getTeacherAssignmentName(assignment) {
+      return assignment.communicationComponentName || assignment.subjectName || 'Assigned subject';
+    }
+
+    function getTeacherAssignmentValue(assignment) {
+      return `${assignment.subjectId}|${assignment.communicationComponentCode || ''}`;
+    }
+
+    function parseTeacherAssignmentValue(value) {
+      const [subjectId, communicationComponentCode = ''] = String(value || '').split('|');
+      return { subjectId, communicationComponentCode };
+    }
+
     function getTeacherSectionSub(section) {
-      return [section.isAdviser ? 'Class Adviser' : '', section.subjectName || '']
+      const subjectNames = section.subjectAssignments?.map(getTeacherAssignmentName).filter(Boolean) || [];
+      return [section.isAdviser ? 'Class Adviser' : '', [...new Set(subjectNames)].join(', ') || section.subjectName || '']
         .filter(Boolean)
         .join(' · ');
     }
@@ -328,10 +342,10 @@ lucide.createIcons();
         ''
       ));
       assignments.forEach(assignment => {
-        subjectSelect.add(new Option(assignment.subjectName, assignment.subjectId));
+        subjectSelect.add(new Option(getTeacherAssignmentName(assignment), getTeacherAssignmentValue(assignment)));
       });
       subjectSelect.disabled = assignments.length === 0;
-      if (assignments.length === 1) subjectSelect.value = assignments[0].subjectId;
+      if (assignments.length === 1) subjectSelect.value = getTeacherAssignmentValue(assignments[0]);
       setDashboardFeedback('teacherQrAttendanceFeedback');
       updateTeacherQrAttendanceButton();
     }
@@ -346,11 +360,14 @@ lucide.createIcons();
     function startTeacherQrAttendance(event) {
       event?.preventDefault();
       const sectionId = document.getElementById('teacherQrAttendanceSection')?.value;
-      const subjectId = document.getElementById('teacherQrAttendanceSubject')?.value;
+      const { subjectId, communicationComponentCode } = parseTeacherAssignmentValue(
+        document.getElementById('teacherQrAttendanceSubject')?.value
+      );
       const section = getTeacherQrAttendanceSections()
         .find(item => item.sectionId === sectionId);
       const assignment = section?.subjectAssignments
-        .find(item => item.subjectId === subjectId);
+        .find(item => item.subjectId === subjectId
+          && (item.communicationComponentCode || '') === communicationComponentCode);
 
       if (!section || !assignment) {
         setDashboardFeedback(
@@ -369,6 +386,11 @@ lucide.createIcons();
       const target = new URL('./edugnay-teacher-sections.html', window.location.href);
       target.searchParams.set('sectionId', section.sectionId);
       target.searchParams.set('subjectId', assignment.subjectId);
+      if (assignment.communicationComponentCode) {
+        target.searchParams.set('communicationComponentCode', assignment.communicationComponentCode);
+      } else {
+        target.searchParams.delete('communicationComponentCode');
+      }
       target.searchParams.set('tab', 'attendance');
       target.searchParams.set('action', 'qr');
       window.location.assign(target.href);
@@ -396,7 +418,7 @@ lucide.createIcons();
       if (!select) return;
       const subjects = getTeacherMaterialSubjects(section);
       select.replaceChildren(new Option('Select a subject', ''), ...subjects.map(subject =>
-        new Option(subject.subjectName, subject.subjectId)
+        new Option(getTeacherAssignmentName(subject), getTeacherAssignmentValue(subject))
       ));
       select.disabled = subjects.length === 0;
       select.required = TEACHER_DASHBOARD_API_ENABLED;
@@ -445,7 +467,9 @@ lucide.createIcons();
       const title = document.getElementById('teacherMaterialTitle')?.value.trim();
       const grade = document.getElementById('teacherMaterialGrade')?.value;
       const section = getSelectedTeacherMaterialSection();
-      const subjectId = document.getElementById('teacherMaterialSubject')?.value;
+      const { subjectId, communicationComponentCode } = parseTeacherAssignmentValue(
+        document.getElementById('teacherMaterialSubject')?.value
+      );
       const status = document.getElementById('teacherMaterialVisibility')?.value || 'published';
       const button = document.getElementById('teacherMaterialUploadSubmit');
       const fail = message => setDashboardFeedback('teacherMaterialFeedback', message);
@@ -466,10 +490,12 @@ lucide.createIcons();
       button.disabled = true;
       button.textContent = 'Uploading…';
       try {
-        const material = await window.EDUGNAY_API.uploadMaterial(section.sectionId, subjectId, { file, title, status });
+        const material = await window.EDUGNAY_API.uploadMaterial(section.sectionId, subjectId, {
+          file, title, status, communicationComponentCode
+        });
         let refreshMessage = '';
         try {
-          const materials = await window.EDUGNAY_API.getMaterials({ sectionId: section.sectionId, subjectId });
+          const materials = await window.EDUGNAY_API.getMaterials({ sectionId: section.sectionId, subjectId, communicationComponentCode });
           if (!materials.some(item => String(item.id) === String(material.id))) throw new Error('The uploaded material was not returned by the materials list.');
         } catch (error) {
           refreshMessage = ` The file was uploaded, but the list could not refresh: ${error.message || 'reload My Classes.'}`;
@@ -731,10 +757,12 @@ lucide.createIcons();
           capacity: Number(section.capacity) || 0,
           isAdviser: String(section.adviserId || '') === DASHBOARD_TEACHER_ID,
           subjectId: assignments[0]?.subjectId || null,
-          subjectName: [...new Set(assignments.map(item => item.subjectName).filter(Boolean))].join(', '),
+          subjectName: [...new Set(assignments.map(getTeacherAssignmentName).filter(Boolean))].join(', '),
           subjectAssignments: assignments.map(item => ({
             subjectId: String(item.subjectId),
-            subjectName: item.subjectName
+            subjectName: item.subjectName,
+            communicationComponentCode: item.communicationComponentCode || null,
+            communicationComponentName: item.communicationComponentName || null
           }))
         };
       });

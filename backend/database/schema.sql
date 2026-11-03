@@ -517,8 +517,10 @@ CREATE TABLE IF NOT EXISTS section_teachers (
   section_id BIGINT UNSIGNED NOT NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   subject_id BIGINT UNSIGNED NOT NULL,
+  communication_component_code VARCHAR(20) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_section_teachers_assignment (section_id, teacher_user_id, subject_id),
+  UNIQUE KEY uq_section_teachers_communication_component (section_id, subject_id, communication_component_code),
   UNIQUE KEY uq_section_teachers_school_id (school_id, id),
   KEY idx_section_teachers_teacher (teacher_user_id),
   CONSTRAINT fk_section_teachers_section
@@ -832,6 +834,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NULL,
   subject_id BIGINT UNSIGNED NULL,
+  communication_component_code VARCHAR(20) NULL,
   shs_elective_class_id BIGINT UNSIGNED NULL,
   academic_term_id BIGINT UNSIGNED NULL,
   grading_category_id BIGINT UNSIGNED NULL,
@@ -903,6 +906,7 @@ CREATE TABLE IF NOT EXISTS grading_items (
   school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NULL,
   subject_id BIGINT UNSIGNED NULL,
+  communication_component_code VARCHAR(20) NULL,
   shs_elective_class_id BIGINT UNSIGNED NULL,
   academic_term_id BIGINT UNSIGNED NOT NULL,
   grading_category_id BIGINT UNSIGNED NULL,
@@ -987,6 +991,7 @@ CREATE TABLE IF NOT EXISTS shs_grade_publication_history (
   school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NULL,
   subject_id BIGINT UNSIGNED NULL,
+  communication_component_code VARCHAR(20) NULL,
   shs_elective_class_id BIGINT UNSIGNED NULL,
   academic_term_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
@@ -998,6 +1003,8 @@ CREATE TABLE IF NOT EXISTS shs_grade_publication_history (
   published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_shs_grade_history_school_id (school_id, id),
   KEY idx_shs_grade_history_scope (school_id, academic_term_id, section_id, subject_id, shs_elective_class_id, publication_version),
+  KEY idx_shs_grade_history_communication_component
+    (school_id, section_id, subject_id, communication_component_code, academic_term_id, student_user_id, publication_version),
   KEY idx_shs_grade_history_student (school_id, student_user_id, academic_term_id),
   CONSTRAINT fk_shs_grade_history_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_shs_grade_history_section FOREIGN KEY (school_id, section_id) REFERENCES sections(school_id, id) ON DELETE RESTRICT,
@@ -1044,6 +1051,7 @@ CREATE TABLE IF NOT EXISTS published_final_grades (
   publication_version INT UNSIGNED NOT NULL DEFAULT 1,
   latest_history_id BIGINT UNSIGNED NULL,
   correction_reason VARCHAR(500) NULL,
+  communication_grade_source VARCHAR(30) NULL,
   published_by_user_id BIGINT UNSIGNED NOT NULL,
   published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1067,13 +1075,54 @@ CREATE TABLE IF NOT EXISTS published_final_grades (
   )
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS shs_communication_component_grades (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NOT NULL,
+  communication_component_code VARCHAR(20) NOT NULL,
+  academic_term_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  final_grade DECIMAL(5,2) NOT NULL,
+  publication_version INT UNSIGNED NOT NULL DEFAULT 1,
+  latest_history_id BIGINT UNSIGNED NOT NULL,
+  correction_reason VARCHAR(500) NULL,
+  published_by_user_id BIGINT UNSIGNED NOT NULL,
+  published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_shs_comm_component_grade
+    (school_id, section_id, subject_id, communication_component_code, academic_term_id, student_user_id),
+  UNIQUE KEY uq_shs_comm_component_grade_school_id (school_id, id),
+  KEY idx_shs_comm_component_grade_student (school_id, student_user_id, academic_term_id),
+  CONSTRAINT fk_shs_comm_component_grade_school FOREIGN KEY (school_id)
+    REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_comm_component_grade_section FOREIGN KEY (school_id, section_id)
+    REFERENCES sections(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_comm_component_grade_subject FOREIGN KEY (school_id, subject_id)
+    REFERENCES subjects(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_comm_component_grade_term FOREIGN KEY (school_id, academic_term_id)
+    REFERENCES academic_terms(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_comm_component_grade_student FOREIGN KEY (school_id, student_user_id)
+    REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_comm_component_grade_history FOREIGN KEY (school_id, latest_history_id)
+    REFERENCES shs_grade_publication_history(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shs_comm_component_grade_publisher FOREIGN KEY (school_id, published_by_user_id)
+    REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT ck_shs_comm_component_grade_code
+    CHECK (communication_component_code IN ('english', 'filipino')),
+  CONSTRAINT ck_shs_comm_component_grade_value CHECK (final_grade BETWEEN 0 AND 100)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS attendance_sessions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NULL,
   subject_id BIGINT UNSIGNED NULL,
+  communication_component_code VARCHAR(20) NULL,
   shs_elective_class_id BIGINT UNSIGNED NULL,
   subject_scope_id BIGINT UNSIGNED AS (COALESCE(subject_id, 0)) STORED,
+  communication_component_scope_code VARCHAR(20) AS (COALESCE(communication_component_code, '')) STORED,
   attendance_date DATE NOT NULL,
   method VARCHAR(30) NOT NULL DEFAULT 'manual',
   status VARCHAR(30) NOT NULL DEFAULT 'draft',
@@ -1082,7 +1131,7 @@ CREATE TABLE IF NOT EXISTS attendance_sessions (
   confirmed_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_attendance_sessions_scope (section_id, subject_scope_id, attendance_date),
+  UNIQUE KEY uq_attendance_sessions_scope (section_id, subject_scope_id, communication_component_scope_code, attendance_date),
   UNIQUE KEY uq_attendance_elective_class_date (school_id, shs_elective_class_id, attendance_date),
   UNIQUE KEY uq_attendance_sessions_school_id (school_id, id),
   CONSTRAINT fk_attendance_sessions_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
@@ -1313,6 +1362,7 @@ CREATE TABLE IF NOT EXISTS learning_materials (
   school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NULL,
   subject_id BIGINT UNSIGNED NULL,
+  communication_component_code VARCHAR(20) NULL,
   shs_elective_class_id BIGINT UNSIGNED NULL,
   academic_term_id BIGINT UNSIGNED NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
@@ -1328,6 +1378,8 @@ CREATE TABLE IF NOT EXISTS learning_materials (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_materials_section_subject_status (section_id, subject_id, status),
+  KEY idx_materials_communication_component
+    (school_id, section_id, subject_id, communication_component_code, status),
   KEY idx_materials_elective_class (school_id, shs_elective_class_id),
   CONSTRAINT fk_materials_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_materials_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,

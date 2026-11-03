@@ -22,6 +22,10 @@ const assignment = {
 };
 
 async function executeQuery(sql) {
+  if (sql.includes('FROM section_teachers INNER JOIN sections')
+      && sql.includes('communication_component_code <=> ?')) {
+    return [[{ schoolId: assignment.schoolId, subjectCode: 'math', communicationComponentCode: null }]];
+  }
   if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ?')
       && sql.includes('FROM assignments')) return [[assignment]];
   if (sql.includes('FROM assignment_submissions INNER JOIN users AS students')) return [listedSubmissionRows];

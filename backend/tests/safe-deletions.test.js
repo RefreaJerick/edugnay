@@ -247,7 +247,7 @@ test('subject deletion deactivates linked subjects and permanently removes unuse
     assert.match(referenceCheck.sql, /FROM subject_grading_profiles WHERE school_id = \? AND subject_id = \?/);
     assert.match(referenceCheck.sql, /FROM shs_grading_profiles WHERE school_id = \? AND subject_id = \?/);
     assert.match(referenceCheck.sql, /FROM shs_grade_publication_history WHERE school_id = \? AND subject_id = \?/);
-    assert.equal(referenceCheck.values.length, 24);
+    assert.equal(referenceCheck.values.length, 26);
     assert.ok(referenceCheck.values.every((value, index) => index % 2 ? value === 6 : value === 1));
     assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM subjects')));
   });

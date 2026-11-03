@@ -33,7 +33,8 @@ const FEATURE_FIELDS = ['gradesEnabled', 'narrativeReportsEnabled', 'journalsEna
 const SCHOOL_ACTIVITY_TABLES = [
   'attendance_status_codes', 'parent_notification_triggers', 'subjects', 'sections',
   'section_students', 'section_teachers', 'grading_categories', 'assignments',
-  'published_final_grades', 'attendance_sessions', 'grading_period_reopen_requests',
+  'published_final_grades', 'shs_communication_component_grades',
+  'attendance_sessions', 'grading_period_reopen_requests',
   'announcements', 'learning_materials', 'journal_subjects', 'narrative_reports',
   'intervention_plans', 'school_form_exports', 'holidays'
 ];

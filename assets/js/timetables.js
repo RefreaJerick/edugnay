@@ -12,7 +12,8 @@
   const shortDate = value => dateAtUtc(value).toLocaleDateString('en-PH', { timeZone: 'UTC', month: 'short', day: 'numeric' });
   const timeLabel = value => { const [hour, minute] = String(value || '').split(':').map(Number); return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`; };
   const activeOn = (meeting, date) => meeting.weekday === weekday(date) && date >= meeting.startDate && date <= meeting.endDate;
-  const byTime = (a, b) => a.startTime.localeCompare(b.startTime) || a.subjectName.localeCompare(b.subjectName);
+  const displaySubjectName = item => item.communicationComponentName || item.subjectName;
+  const byTime = (a, b) => a.startTime.localeCompare(b.startTime) || displaySubjectName(a).localeCompare(displaySubjectName(b));
   const api = () => window.EDUGNAY_API;
 
   function selectedMeetings(state) {
@@ -56,9 +57,9 @@
     const assignments = state.data.assignments.filter(item => String(item.sectionId) === String(sectionId)
       && (item.sectionStatus === 'active' || String(item.assignmentId) === String(assignmentId)));
     const names = new Map();
-    for (const item of assignments) names.set(item.subjectName, (names.get(item.subjectName) || 0) + 1);
+    for (const item of assignments) names.set(displaySubjectName(item), (names.get(displaySubjectName(item)) || 0) + 1);
     assignmentSelect.replaceChildren(new Option('Choose a subject', ''), ...assignments.map(item =>
-      new Option(names.get(item.subjectName) > 1 ? `${item.subjectName} (${item.teacherName})` : item.subjectName, String(item.assignmentId))));
+      new Option(names.get(displaySubjectName(item)) > 1 ? `${displaySubjectName(item)} (${item.teacherName})` : displaySubjectName(item), String(item.assignmentId))));
     assignmentSelect.disabled = !sectionId;
     assignmentSelect.value = String(assignmentId);
     const selected = assignments.find(item => String(item.assignmentId) === assignmentSelect.value);
@@ -72,11 +73,11 @@
     if (item.room) details.push(`Room: ${item.room}`);
     const classDetails = state.role === 'student' ? ''
       : `<span class="timetable-event-class">${escape(item.gradeName)} · ${escape(item.sectionName)}</span>`;
-    const content = `<strong class="timetable-event-subject">${escape(item.subjectName)}</strong>
+    const content = `<strong class="timetable-event-subject">${escape(displaySubjectName(item))}</strong>
       <span class="timetable-event-time">${escape(time)}</span>
       ${classDetails}
       ${details.map(detail => `<span class="timetable-event-meta">${escape(detail)}</span>`).join('')}`;
-    const label = [item.subjectName, time, ...(state.role === 'student' ? [] : [item.gradeName, item.sectionName]), ...details].join(', ');
+    const label = [displaySubjectName(item), time, ...(state.role === 'student' ? [] : [item.gradeName, item.sectionName]), ...details].join(', ');
     return state.role === 'admin' && state.data.year?.status !== 'archived'
       ? `<button class="timetable-event" type="button" data-meeting-id="${item.id}" aria-label="Edit ${escape(label)}">${content}</button>`
       : `<div class="timetable-event">${content}</div>`;
@@ -119,7 +120,7 @@
           name,
           date,
           meetings: meetings.filter(item => activeOn(item, date)).sort(byTime).map(item => ({
-            subject: item.subjectName,
+            subject: displaySubjectName(item),
             time: `${timeLabel(item.startTime)} - ${timeLabel(item.endTime)}`,
             details: [
               ...(state.role === 'student' ? [`Teacher: ${item.teacherName}`] : [`${item.gradeName} · ${item.sectionName}`]),
@@ -143,7 +144,7 @@
       && !sectionId && (!teacherId || String(item.teacherId) === teacherId));
     document.getElementById('timetable-unscheduled-count').textContent = `${items.length + electives.length} unscheduled`;
     document.getElementById('timetable-unscheduled').innerHTML = items.length + electives.length ? items.map(item =>
-      `<div class="timetable-unscheduled-item"><div><strong>${escape(item.subjectName)}</strong>
+      `<div class="timetable-unscheduled-item"><div><strong>${escape(displaySubjectName(item))}</strong>
        <span>${escape(item.gradeName)} · ${escape(item.sectionName)} · ${escape(item.teacherName)}</span></div>
        ${state.data.year?.status !== 'archived' && item.sectionStatus === 'active'
         ? `<button class="timetable-button secondary" type="button" data-assignment-id="${item.assignmentId}">Schedule</button>` : ''}</div>`

@@ -1,4 +1,5 @@
 const { isDepedNumericalGradeCode } = require('../config/depedK10Grading');
+const { COMMUNICATION_COMPONENTS } = require('../config/shsCommunication');
 const { consecutiveMissedMeetingDates } = require('./attendanceStreak');
 
 function dateKey(value) {
@@ -19,7 +20,8 @@ function lowScoreReasons(scores = []) {
   for (const score of scores) {
     if (score.score == null || !Number.isFinite(Number(score.score)) || !(Number(score.maxScore) > 0)) continue;
     const key = score.electiveClassId
-      ? `${score.studentId}:class:${score.electiveClassId}` : `${score.studentId}:subject:${score.subjectId}`;
+      ? `${score.studentId}:class:${score.electiveClassId}`
+      : `${score.studentId}:subject:${score.subjectId}:${score.communicationComponentCode || ''}`;
     if (!bySubject.has(key)) bySubject.set(key, []);
     bySubject.get(key).push(score);
   }
@@ -30,8 +32,10 @@ function lowScoreReasons(scores = []) {
     if (latest.length !== 3 || !latest.every(item => Number(item.score) / Number(item.maxScore) < .75)) continue;
     const studentId = String(latest[0].studentId);
     if (!reasons.has(studentId)) reasons.set(studentId, []);
+    const componentName = COMMUNICATION_COMPONENTS[latest[0].communicationComponentCode];
     reasons.get(studentId).push({ type: 'low_scores',
-      subject: latest[0].className ? `${latest[0].subjectName} · ${latest[0].className}` : latest[0].subjectName,
+      subject: latest[0].className ? `${latest[0].subjectName} · ${latest[0].className}`
+        : componentName ? `${latest[0].subjectName} · ${componentName}` : latest[0].subjectName,
       count: 3,
       scores: latest.map(item => ({ scoreId: String(item.scoreId), itemId: String(item.itemId), title: item.title,
         date: String(item.itemDate).slice(0, 10), score: Number(item.score), maxScore: Number(item.maxScore) })) });
@@ -60,7 +64,8 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
     day.excused ||= record.status === 'excused';
     days.set(dayKey, day);
     const subjectKey = record.electiveClassId
-      ? `${id}:class:${record.electiveClassId}` : `${id}:${record.sectionId}:${record.subjectId}`;
+      ? `${id}:class:${record.electiveClassId}`
+      : `${id}:${record.sectionId}:${record.subjectId}:${record.communicationComponentCode || ''}`;
     if (!subjectRecords.has(subjectKey)) subjectRecords.set(subjectKey, []);
     subjectRecords.get(subjectKey).push(record);
   }
@@ -81,7 +86,10 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
       student.reasons.push({
         type: 'consecutive', count, threshold: consecutive,
         subject: records[0].className
-          ? `${records[0].subjectName} · ${records[0].className}` : records[0].subjectName
+          ? `${records[0].subjectName} · ${records[0].className}`
+          : COMMUNICATION_COMPONENTS[records[0].communicationComponentCode]
+            ? `${records[0].subjectName} · ${COMMUNICATION_COMPONENTS[records[0].communicationComponentCode]}`
+            : records[0].subjectName
       });
     }
   }
@@ -166,6 +174,7 @@ async function getStudentFlags(database, { schoolId, yearId, teacherId = null })
   const [attendance] = await database.execute(
     `SELECT records.student_user_id AS studentId, sessions.id AS sessionId,
       sessions.section_id AS sectionId, sessions.subject_id AS subjectId,
+      sessions.communication_component_code AS communicationComponentCode,
       DATE_FORMAT(sessions.attendance_date, '%Y-%m-%d') AS date,
       records.attendance_status AS status,
       subjects.name AS subjectName
@@ -243,6 +252,7 @@ async function getStudentFlags(database, { schoolId, yearId, teacherId = null })
     `SELECT scores.id AS scoreId, scores.student_user_id AS studentId, items.id AS itemId,
       items.section_id AS sectionId,
       items.subject_id AS subjectId, subjects.name AS subjectName,
+      items.communication_component_code AS communicationComponentCode,
       items.title, items.max_score AS maxScore, scores.score,
       DATE_FORMAT(items.recorded_at, '%Y-%m-%d') AS itemDate
     FROM student_scores AS scores

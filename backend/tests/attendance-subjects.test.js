@@ -19,7 +19,8 @@ const database = {
     if (sql.includes('SELECT name AS subjectName FROM subjects')) return [[{ subjectName: 'Mathematics' }]];
     if (sql.includes('FROM student_qr_credentials WHERE school_id = ?')) return [[]];
     if (sql.includes('FROM sections') && sql.includes('section_teachers')) {
-      return [values[0] === 8 && values[1] === 1 && values[2] === 3 && [1, 2].includes(values[3]) ? [section] : []];
+      return [values[0] === 3 && [1, 2].includes(values[1]) && values[2] == null
+        && values[3] === 8 && values[4] === 1 ? [{ ...section, subjectCode: 'math' }] : []];
     }
     if (sql.includes('SELECT id FROM academic_years WHERE id = ? AND school_id = ?')) {
       return [values[0] === 5 && values[1] === 1 ? [{ id: 5 }] : []];

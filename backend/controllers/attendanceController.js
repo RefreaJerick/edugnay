@@ -3,6 +3,7 @@ const { avatarFields } = require('../config/avatars');
 const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 const { getStudentFlags } = require('../utils/studentFlags');
 const { assertElectiveTeacher, getElectiveRoster } = require('../utils/shsTeachingAccess');
+const { COMMUNICATION_COMPONENTS, isCommunicationComponentCode } = require('../config/shsCommunication');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
 
@@ -16,6 +17,17 @@ function parseId(value, label) {
   const id = Number.parseInt(value, 10);
   if (!Number.isSafeInteger(id) || id < 1) throw createError(`Invalid ${label}.`);
   return id;
+}
+
+function communicationComponentCode(value) {
+  if (value == null || value === '') return null;
+  const code = String(value).trim().toLowerCase();
+  if (!isCommunicationComponentCode(code)) throw createError('The communication component is invalid.');
+  return code;
+}
+
+function communicationComponentName(code) {
+  return COMMUNICATION_COMPONENTS[code] || null;
 }
 
 function normalizeDate(value) {
@@ -64,30 +76,40 @@ function attendanceOutcomeCounts(records) {
   ]));
 }
 
-async function getTeachingSection(database, teacher, sectionId, subjectId) {
+async function getTeachingSection(database, teacher, sectionId, subjectId, componentCode = null) {
   const [sections] = await database.execute(
     `SELECT
       sections.id,
       sections.school_id AS schoolId,
       sections.name,
+      sections.shs_curriculum_code AS shsCurriculumCode,
+      school_grade_levels.grade_code AS gradeCode,
+      subjects.subject_code AS subjectCode,
+      section_teachers.communication_component_code AS communicationComponentCode,
       DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate,
       DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate
     FROM sections
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+    INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+      AND school_grade_levels.school_id = sections.school_id
+    INNER JOIN section_teachers ON section_teachers.section_id = sections.id
+      AND section_teachers.school_id = sections.school_id
+      AND section_teachers.teacher_user_id = ? AND section_teachers.subject_id = ?
+      AND section_teachers.communication_component_code <=> ?
+    INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+      AND subjects.school_id = section_teachers.school_id AND subjects.is_active = TRUE
     WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
       AND academic_years.status = 'active'
-      AND EXISTS (
-        SELECT 1 FROM section_teachers
-        INNER JOIN subjects ON subjects.id = section_teachers.subject_id
-        WHERE section_teachers.section_id = sections.id
-          AND section_teachers.teacher_user_id = ?
-          AND section_teachers.subject_id = ?
-          AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
-      )
     LIMIT 1`,
-    [sectionId, teacher.schoolId, teacher.id, subjectId]
+    [teacher.id, subjectId, componentCode, sectionId, teacher.schoolId]
   );
-  return sections[0] || null;
+  const section = sections[0] || null;
+  if (section) {
+    section.legacyCommunication = section.subjectCode === 'shs-core-communication'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.gradeCode === 'grade-11'
+      && !section.communicationComponentCode;
+  }
+  return section;
 }
 
 function getCurrentDate() {
@@ -139,7 +161,7 @@ async function getActiveStudentIds(database, schoolId, sectionId) {
   return students.map(student => student.studentId);
 }
 
-async function getAttendanceData(database, section, subjectId, attendanceDate) {
+async function getAttendanceData(database, section, subjectId, attendanceDate, componentCode = null) {
   const currentDate = getCurrentDate();
   const canEdit = await getAttendanceEditPermission(database, section, attendanceDate);
   const [sessions] = await database.execute(
@@ -152,9 +174,10 @@ async function getAttendanceData(database, section, subjectId, attendanceDate) {
       confirmed_by_user_id AS confirmedByUserId,
       confirmed_at AS confirmedAt
     FROM attendance_sessions
-    WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ?
+    WHERE school_id = ? AND section_id = ? AND subject_id = ?
+      AND communication_component_code <=> ? AND attendance_date = ?
     LIMIT 1`,
-    [section.schoolId, section.id, subjectId, attendanceDate]
+    [section.schoolId, section.id, subjectId, componentCode, attendanceDate]
   );
   const session = sessions[0] || null;
   const [students] = await database.execute(
@@ -182,6 +205,7 @@ async function getAttendanceData(database, section, subjectId, attendanceDate) {
   return {
     section: { id: section.id, schoolId: section.schoolId, name: section.name },
     subjectId,
+    communicationComponentCode: componentCode,
     attendanceDate,
     currentDate,
     canEdit,
@@ -209,12 +233,13 @@ async function getSectionAttendance(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const subjectId = parseId(req.params.subjectId, 'subject ID');
+    const componentCode = communicationComponentCode(req.query?.communicationComponentCode);
     const attendanceDate = req.query.date ? normalizeDate(req.query.date) : getCurrentDate();
     const database = getDatabase();
-    const section = await getTeachingSection(database, req.user, sectionId, subjectId);
+    const section = await getTeachingSection(database, req.user, sectionId, subjectId, componentCode);
     if (!section) throw createError('Section not found.', 404);
 
-    res.status(200).json(await getAttendanceData(database, section, subjectId, attendanceDate));
+    res.status(200).json(await getAttendanceData(database, section, subjectId, attendanceDate, componentCode));
   } catch (error) {
     next(error);
   }
@@ -224,8 +249,9 @@ async function getSectionAttendanceHistory(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const subjectId = parseId(req.params.subjectId, 'subject ID');
+    const componentCode = communicationComponentCode(req.query?.communicationComponentCode);
     const database = getDatabase();
-    const section = await getTeachingSection(database, req.user, sectionId, subjectId);
+    const section = await getTeachingSection(database, req.user, sectionId, subjectId, componentCode);
     if (!section) throw createError('Section not found.', 404);
 
     const [rows] = await database.execute(
@@ -246,11 +272,12 @@ async function getSectionAttendanceHistory(req, res, next) {
       LEFT JOIN users AS students ON students.id = attendance_records.student_user_id
       WHERE attendance_sessions.section_id = ?
         AND attendance_sessions.subject_id = ?
+        AND attendance_sessions.communication_component_code <=> ?
         AND attendance_sessions.status = 'confirmed'
         AND attendance_sessions.attendance_date BETWEEN ? AND ?
         AND attendance_sessions.attendance_date <= ?
       ORDER BY attendance_sessions.attendance_date DESC, students.last_name, students.first_name`,
-      [section.id, subjectId, section.academicYearStartDate, section.academicYearEndDate, getCurrentDate()]
+      [section.id, subjectId, componentCode, section.academicYearStartDate, section.academicYearEndDate, getCurrentDate()]
     );
 
     const sessionsByDate = new Map();
@@ -284,6 +311,7 @@ async function getSectionAttendanceHistory(req, res, next) {
     res.status(200).json({
       section: { id: section.id, schoolId: section.schoolId, name: section.name },
       subjectId,
+      communicationComponentCode: componentCode,
       sessions: Array.from(sessionsByDate.values())
     });
   } catch (error) {
@@ -296,14 +324,16 @@ async function saveSectionAttendance(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const subjectId = parseId(req.params.subjectId, 'subject ID');
+    const componentCode = communicationComponentCode(req.body.communicationComponentCode);
     const attendanceDate = normalizeDate(req.body.attendanceDate);
     const records = normalizeRecords(req.body.records);
     const database = getDatabase();
     connection = await database.getConnection();
     await connection.beginTransaction();
 
-    const section = await getTeachingSection(connection, req.user, sectionId, subjectId);
+    const section = await getTeachingSection(connection, req.user, sectionId, subjectId, componentCode);
     if (!section) throw createError('Section not found.', 404);
+    if (section.legacyCommunication) throw createError('Legacy combined communication attendance is read-only. Assign an English or Filipino component to record attendance.', 409);
     const [[subject]] = await connection.execute('SELECT name AS subjectName FROM subjects WHERE id = ? AND school_id = ? LIMIT 1',
       [subjectId, section.schoolId]);
     await assertAttendanceCanBeEdited(connection, section, attendanceDate);
@@ -318,8 +348,9 @@ async function saveSectionAttendance(req, res, next) {
       `SELECT id, method, status
       FROM attendance_sessions
       WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ?
+        AND communication_component_code <=> ?
       FOR UPDATE`,
-      [section.schoolId, sectionId, subjectId, attendanceDate]
+      [section.schoolId, sectionId, subjectId, attendanceDate, componentCode]
     );
     const existingSession = sessions[0];
     if (existingSession?.method === 'qr' && existingSession.status === 'draft') {
@@ -330,10 +361,10 @@ async function saveSectionAttendance(req, res, next) {
     if (!sessionId) {
       const [result] = await connection.execute(
         `INSERT INTO attendance_sessions (
-          school_id, section_id, subject_id, attendance_date, method, status,
+          school_id, section_id, subject_id, communication_component_code, attendance_date, method, status,
           created_by_user_id, confirmed_by_user_id, confirmed_at
-        ) VALUES (?, ?, ?, ?, 'manual', 'confirmed', ?, ?, NOW())`,
-        [section.schoolId, sectionId, subjectId, attendanceDate, req.user.id, req.user.id]
+        ) VALUES (?, ?, ?, ?, ?, 'manual', 'confirmed', ?, ?, NOW())`,
+        [section.schoolId, sectionId, subjectId, componentCode, attendanceDate, req.user.id, req.user.id]
       );
       sessionId = result.insertId;
     } else {
@@ -360,7 +391,8 @@ async function saveSectionAttendance(req, res, next) {
     }
 
     for (const record of records) {
-      if (record.status === 'absent') await notifyConsecutiveAbsences(connection, section.schoolId, sectionId, subjectId, record.studentId);
+      if (record.status === 'absent') await notifyConsecutiveAbsences(connection, section.schoolId,
+        sectionId, subjectId, record.studentId, componentCode);
     }
 
     await connection.execute(
@@ -374,7 +406,7 @@ async function saveSectionAttendance(req, res, next) {
     );
 
     await connection.commit();
-    const data = await getAttendanceData(database, section, subjectId, attendanceDate);
+    const data = await getAttendanceData(database, section, subjectId, attendanceDate, componentCode);
     res.status(200).json(data);
   } catch (error) {
     if (connection) await connection.rollback();
@@ -545,6 +577,11 @@ async function getParentAttendance(req, res, next) {
         DATE_FORMAT(attendance_sessions.attendance_date, '%Y-%m-%d') AS date,
         attendance_sessions.section_id AS sectionId,
         attendance_sessions.subject_id AS subjectId,
+        attendance_sessions.communication_component_code AS communicationComponentCode,
+        (subjects.subject_code = 'shs-core-communication'
+          AND sections.shs_curriculum_code = 'strengthened_2026'
+          AND school_grade_levels.grade_code = 'grade-11'
+          AND attendance_sessions.communication_component_code IS NULL) AS legacyCommunication,
         subjects.name AS subjectName,
         attendance_records.attendance_status AS status,
         attendance_records.remarks AS remark
@@ -555,6 +592,8 @@ async function getParentAttendance(req, res, next) {
         AND subjects.school_id = attendance_sessions.school_id AND subjects.is_active = TRUE
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
         AND sections.school_id = attendance_sessions.school_id
+      INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+        AND school_grade_levels.school_id = sections.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
         AND academic_years.school_id = sections.school_id
       WHERE attendance_sessions.school_id = ?
@@ -594,7 +633,9 @@ async function getParentAttendance(req, res, next) {
     }
     res.json({ currentDate: getCurrentDate(), children: children.map(({ avatarFilename, avatarVersion, ...child }) => ({
       ...child, ...avatarFields({ id: child.studentId, avatarFilename, avatarVersion }), studentId: String(child.studentId)
-    })), records: [...records.map(record => ({ ...record, studentId: String(record.studentId),
+    })), records: [...records.map(record => ({ ...record,
+      communicationComponentName: communicationComponentName(record.communicationComponentCode),
+      studentId: String(record.studentId),
       sectionId: String(record.sectionId), subjectId: String(record.subjectId) })), ...electiveRecords.map(record => ({
       ...record, studentId: String(record.studentId), sectionId: null, subjectId: null,
       electiveClassId: String(record.electiveClassId), scopeType: 'elective'
@@ -611,6 +652,11 @@ async function getStudentAttendance(req, res, next) {
         DATE_FORMAT(attendance_sessions.attendance_date, '%Y-%m-%d') AS date,
         attendance_sessions.section_id AS sectionId,
         attendance_sessions.subject_id AS subjectId,
+        attendance_sessions.communication_component_code AS communicationComponentCode,
+        (subjects.subject_code = 'shs-core-communication'
+          AND sections.shs_curriculum_code = 'strengthened_2026'
+          AND school_grade_levels.grade_code = 'grade-11'
+          AND attendance_sessions.communication_component_code IS NULL) AS legacyCommunication,
         subjects.name AS subjectName,
         attendance_records.attendance_status AS status,
         attendance_records.remarks AS remark
@@ -621,6 +667,8 @@ async function getStudentAttendance(req, res, next) {
         AND subjects.school_id = attendance_sessions.school_id AND subjects.is_active = TRUE
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
         AND sections.school_id = attendance_sessions.school_id
+      INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+        AND school_grade_levels.school_id = sections.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
         AND academic_years.school_id = sections.school_id
       WHERE attendance_sessions.school_id = ?
@@ -653,6 +701,7 @@ async function getStudentAttendance(req, res, next) {
     }
     res.json({ currentDate, records: records.map(record => ({
       ...record,
+      communicationComponentName: communicationComponentName(record.communicationComponentCode),
       studentId: String(record.studentId),
       sectionId: String(record.sectionId),
       subjectId: String(record.subjectId)

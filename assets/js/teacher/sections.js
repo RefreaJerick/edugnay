@@ -245,12 +245,15 @@ lucide.createIcons();
           let refreshFailed = false;
           try {
             const [assignments, items, scores] = await Promise.all([
-              window.EDUGNAY_API.getAssignments({ sectionId: BACKEND_GRADE_CONTEXT.sectionId, subjectId: BACKEND_GRADE_CONTEXT.subjectId }),
-              window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId }),
+              window.EDUGNAY_API.getAssignments({ sectionId: BACKEND_GRADE_CONTEXT.sectionId, subjectId: BACKEND_GRADE_CONTEXT.subjectId, communicationComponentCode: BACKEND_GRADE_CONTEXT.communicationComponentCode }),
+              window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId,
+                subjectId: BACKEND_GRADE_CONTEXT.subjectId,
+                communicationComponentCode: BACKEND_GRADE_CONTEXT.communicationComponentCode }),
               window.EDUGNAY_API.getStudentScores({})
             ]);
             BACKEND_ASSIGNMENTS = assignments;
-            BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId));
+            BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId)
+              && (item.communicationComponentCode || null) === (BACKEND_GRADE_CONTEXT.communicationComponentCode || null));
             BACKEND_STUDENT_SCORES = scores;
           } catch { refreshFailed = true; }
           closeAssignmentMenus();
@@ -279,10 +282,13 @@ lucide.createIcons();
           let refreshFailed = false;
           try {
             const [items, scores] = await Promise.all([
-              window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId }),
+              window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId,
+                subjectId: BACKEND_GRADE_CONTEXT.subjectId,
+                communicationComponentCode: BACKEND_GRADE_CONTEXT.communicationComponentCode }),
               window.EDUGNAY_API.getStudentScores({})
             ]);
-            BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId));
+            BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId)
+              && (item.communicationComponentCode || null) === (BACKEND_GRADE_CONTEXT.communicationComponentCode || null));
             BACKEND_STUDENT_SCORES = scores;
           } catch { refreshFailed = true; }
           teacherDeletePending = false;
@@ -380,7 +386,8 @@ lucide.createIcons();
       if (name === 'scores' && USE_SHS_CORE_GRADEBOOK) {
         void window.AcademixShsGradebook?.mount(document.querySelector('#content-scores .panel'), {
           sectionId: CURRENT_SECTION_ID,
-          subjectId: CURRENT_SUBJECT_ID
+          subjectId: CURRENT_SUBJECT_ID,
+          communicationComponentCode: CURRENT_SUBJECT_ASSIGNMENT?.communicationComponentCode || ''
         });
       }
     }
@@ -426,6 +433,7 @@ lucide.createIcons();
     let CURRENT_SUBJECT_RECORD = null;
     let CURRENT_SECTION = CURRENT_SECTION_RECORD ? `${CURRENT_SECTION_RECORD.grade} – ${CURRENT_SECTION_RECORD.name}` : 'Section';
     let CURRENT_SUBJECT_ID = CURRENT_TEACHER_ASSIGNMENT.subjectId;
+    let CURRENT_COMMUNICATION_COMPONENT_CODE = '';
     let CURRENT_SUBJECT = CURRENT_SUBJECT_RECORD?.name || 'Subject';
     let CURRENT_LEVEL = CURRENT_SECTION_RECORD?.level || 'jhs';
     let CURRENT_DIVISION = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL] || {};
@@ -536,12 +544,19 @@ lucide.createIcons();
         CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = (selectedSection.subjectAssignments || []).map(item => ({
           ...item,
           teacherId: CURRENT_TEACHER_ID,
-          subjectId: String(item.subjectId)
+          subjectId: String(item.subjectId),
+          communicationComponentCode: item.communicationComponentCode || null
         }));
 
         const requestedSubjectId = new URLSearchParams(window.location.search).get('subjectId');
+        const requestedComponentCode = new URLSearchParams(window.location.search).get('communicationComponentCode');
         CURRENT_SUBJECT_ASSIGNMENT = requestedSubjectId
-          ? CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.find(item => String(item.subjectId) === requestedSubjectId)
+          ? CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.find(item => String(item.subjectId) === requestedSubjectId
+            && (requestedComponentCode ? item.communicationComponentCode === requestedComponentCode
+              : !item.communicationComponentCode))
+            || (!requestedComponentCode
+              ? CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.find(item => String(item.subjectId) === requestedSubjectId)
+              : null)
           : CURRENT_TEACHER_SUBJECT_ASSIGNMENTS[0] || null;
         if (requestedSubjectId && !CURRENT_SUBJECT_ASSIGNMENT) {
           throw new Error('That subject is not assigned to you in this section.');
@@ -561,12 +576,21 @@ lucide.createIcons();
           teacherId: CURRENT_TEACHER_ID,
           sectionId: CURRENT_SECTION_ID,
           subjectId: CURRENT_SUBJECT_ASSIGNMENT?.subjectId || '',
+          communicationComponentCode: CURRENT_SUBJECT_ASSIGNMENT?.communicationComponentCode || null,
           adviserId: selectedSection.adviserId || null,
           isAdviser: String(selectedSection.adviserId || '') === CURRENT_TEACHER_ID
         };
         CURRENT_SUBJECT_ID = CURRENT_TEACHER_ASSIGNMENT.subjectId;
+        CURRENT_COMMUNICATION_COMPONENT_CODE = CURRENT_SUBJECT_ASSIGNMENT?.communicationComponentCode || '';
         CURRENT_SUBJECT = CURRENT_SUBJECT_ASSIGNMENT?.subjectName
           || (CURRENT_TEACHER_ASSIGNMENT.isAdviser ? 'Advisory section' : 'No subject assigned');
+        if (CURRENT_COMMUNICATION_COMPONENT_CODE) {
+          const componentLabel = CURRENT_SUBJECT_ASSIGNMENT?.communicationComponentName
+            || (CURRENT_COMMUNICATION_COMPONENT_CODE === 'english' ? 'Effective Communication' : 'Mabisang Komunikasyon');
+          const hoursLabel = CURRENT_SUBJECT_ASSIGNMENT?.communicationComponentHours
+            ? ` (${CURRENT_SUBJECT_ASSIGNMENT.communicationComponentHours} instructional hours)` : '';
+          CURRENT_SUBJECT = `${componentLabel}${hoursLabel}`;
+        }
         CURRENT_SUBJECT_RECORD = CURRENT_SUBJECT_ASSIGNMENT
           ? { id: CURRENT_SUBJECT_ID, name: CURRENT_SUBJECT }
           : null;
@@ -576,6 +600,7 @@ lucide.createIcons();
         BACKEND_GRADE_CONTEXT = {
           sectionId: CURRENT_SECTION_ID,
           subjectId: CURRENT_SUBJECT_ID,
+          communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || null,
           teacherId: CURRENT_TEACHER_ID,
           students: STUDENTS
         };
@@ -587,6 +612,7 @@ lucide.createIcons();
         CURRENT_SECTION_RECORD = null;
         CURRENT_SECTION_ID = '';
         CURRENT_SUBJECT_ASSIGNMENT = null;
+        CURRENT_COMMUNICATION_COMPONENT_CODE = '';
         CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = [];
         CURRENT_SUBJECT_ID = '';
         CURRENT_SUBJECT = 'Subject unavailable';
@@ -606,6 +632,7 @@ lucide.createIcons();
       return Number.isSafeInteger(subjectId) && subjectId > 0
         && CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.some(assignment =>
           String(assignment.subjectId) === String(CURRENT_SUBJECT_ID)
+          && (assignment.communicationComponentCode || '') === CURRENT_COMMUNICATION_COMPONENT_CODE
         );
     }
 
@@ -800,10 +827,12 @@ lucide.createIcons();
         if (!CURRENT_BACKEND_SECTION || !CURRENT_SUBJECT_ASSIGNMENT || !hasValidBackendSubjectAssignment()) {
           throw new Error('No subject is assigned to you in this section.');
         }
-        BACKEND_MATERIAL_CONTEXT = { sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID };
+        BACKEND_MATERIAL_CONTEXT = { sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID,
+          communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || null };
         TEACHER_MATERIALS = (await window.EDUGNAY_API.getMaterials({
           sectionId: BACKEND_MATERIAL_CONTEXT.sectionId,
-          subjectId: BACKEND_MATERIAL_CONTEXT.subjectId
+          subjectId: BACKEND_MATERIAL_CONTEXT.subjectId,
+          communicationComponentCode: BACKEND_MATERIAL_CONTEXT.communicationComponentCode
         })).map(material => ({
           ...material,
           fileSize: `${(material.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`
@@ -984,7 +1013,9 @@ lucide.createIcons();
         if (!terms.length) throw new Error('No grading periods are configured for this section’s academic year. Ask your administrator to set them up.');
 
         const [gradingItems, scores, publishedGrades] = await Promise.all([
-          window.EDUGNAY_API.getGradingItems({ sectionId: section.id }),
+          window.EDUGNAY_API.getGradingItems({ sectionId: section.id,
+            subjectId: subjectAssignment.subjectId,
+            communicationComponentCode: subjectAssignment.communicationComponentCode }),
           window.EDUGNAY_API.getStudentScores({}),
           window.EDUGNAY_API.getFinalGrades({ sectionId: section.id, subjectId: subjectAssignment.subjectId })
         ]);
@@ -992,10 +1023,12 @@ lucide.createIcons();
         BACKEND_GRADE_CONTEXT = {
           sectionId: String(section.id),
           subjectId: String(subjectAssignment.subjectId),
+          communicationComponentCode: subjectAssignment.communicationComponentCode || null,
           teacherId,
           students: STUDENTS
         };
-        BACKEND_GRADING_ITEMS = gradingItems.filter(item => item.subjectId === String(subjectAssignment.subjectId));
+        BACKEND_GRADING_ITEMS = gradingItems.filter(item => item.subjectId === String(subjectAssignment.subjectId)
+          && (item.communicationComponentCode || null) === (subjectAssignment.communicationComponentCode || null));
         BACKEND_STUDENT_SCORES = scores;
         BACKEND_PUBLISHED_GRADES = publishedGrades;
         BACKEND_CATEGORIES = categories;
@@ -1100,7 +1133,7 @@ lucide.createIcons();
         BACKEND_ATTENDANCE_HISTORY_ERROR = '';
         if (CURRENT_SUBJECT_ASSIGNMENT) {
           try {
-            const history = await window.EDUGNAY_API.getSectionAttendanceHistory(section.id, CURRENT_SUBJECT_ID);
+            const history = await window.EDUGNAY_API.getSectionAttendanceHistory(section.id, CURRENT_SUBJECT_ID, CURRENT_COMMUNICATION_COMPONENT_CODE);
             (history.sessions || []).forEach(data => BACKEND_ATTENDANCE_BY_DATE.set(data.attendanceDate, data));
           } catch (error) {
             BACKEND_ATTENDANCE_HISTORY_ERROR = error?.message || 'Attendance history could not be loaded.';
@@ -1316,7 +1349,7 @@ lucide.createIcons();
       };
       list.innerHTML = items.length ? items.map(item => {
         const due = window.EDUGNAY_CONFIG.escapeHtml(item.dueLabel || 'No due date');
-        const subject = window.EDUGNAY_CONFIG.escapeHtml(item.subjectName || 'Class assignment');
+        const subject = window.EDUGNAY_CONFIG.escapeHtml(item.communicationComponentName || item.subjectName || 'Class assignment');
         const grading = item.gradingLabel ? ` · ${window.EDUGNAY_CONFIG.escapeHtml(item.gradingLabel)}` : '';
         const submission = Number.isFinite(Number(item.submittedCount)) && Number.isFinite(Number(item.totalCount))
           ? ` · ${Number(item.submittedCount)}/${Number(item.totalCount)} submitted` : '';
@@ -1371,8 +1404,8 @@ lucide.createIcons();
         const date = item.postedAt || item.createdAt;
         const dateLabel = formatTeacherMaterialDate(date);
         const preview = !draft && item.id ? `<a class="row-btn edit" href="${window.EDUGNAY_CONFIG.escapeHtml(window.EDUGNAY_API.materialFileUrl(item.id))}" target="_blank" rel="noopener" data-material-action="preview" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}"><i data-lucide="eye" aria-hidden="true" style="width:11px;height:11px;"></i> Preview</a>` : '';
-        const publish = draft && item.id && item.canEdit !== false ? `<button class="row-btn edit" type="button" data-material-action="publish" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}"><i data-lucide="send" aria-hidden="true" style="width:11px;height:11px;"></i> Publish</button>` : '';
-        const remove = item.id && item.canDelete !== false ? `<button class="row-btn danger" type="button" data-material-action="remove" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}" data-material-title="${window.EDUGNAY_CONFIG.escapeHtml(item.title || 'Learning material')}" aria-label="Permanently delete ${window.EDUGNAY_CONFIG.escapeHtml(item.title || 'learning material')}"><i data-lucide="trash-2" aria-hidden="true" style="width:11px;height:11px;"></i></button>` : '';
+        const publish = draft && item.id && !item.legacyCommunication && item.canEdit !== false ? `<button class="row-btn edit" type="button" data-material-action="publish" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}"><i data-lucide="send" aria-hidden="true" style="width:11px;height:11px;"></i> Publish</button>` : '';
+        const remove = item.id && !item.legacyCommunication && item.canDelete !== false ? `<button class="row-btn danger" type="button" data-material-action="remove" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}" data-material-title="${window.EDUGNAY_CONFIG.escapeHtml(item.title || 'Learning material')}" aria-label="Permanently delete ${window.EDUGNAY_CONFIG.escapeHtml(item.title || 'learning material')}"><i data-lucide="trash-2" aria-hidden="true" style="width:11px;height:11px;"></i></button>` : '';
         const statusColor = draft ? 'var(--orange-dark)' : 'var(--green)';
         return `<article class="material-item"><div class="material-icon" style="background:${meta.bg};"><i data-lucide="${meta.icon}" aria-hidden="true" style="width:18px;height:18px;color:${meta.color};"></i></div><div class="material-info"><div class="material-name">${window.EDUGNAY_CONFIG.escapeHtml(item.title || 'Learning material')}</div><div class="material-meta">${window.EDUGNAY_CONFIG.escapeHtml(meta.label)} · ${window.EDUGNAY_CONFIG.escapeHtml(size)} · Uploaded ${window.EDUGNAY_CONFIG.escapeHtml(dateLabel)} · <span style="color:${statusColor};font-weight:600;">${status}</span></div></div><div class="material-actions">${publish}${preview}${remove}</div></article>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({
@@ -2071,11 +2104,20 @@ lucide.createIcons();
       document.getElementById('assignSubjectInput').value = CURRENT_SUBJECT_ASSIGNMENT ? CURRENT_SUBJECT : '';
       subjectSelect.replaceChildren(...CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.map(assignment => {
         const option = document.createElement('option');
-        option.value = String(assignment.subjectId);
-        option.textContent = assignment.subjectName;
+        option.value = `${assignment.subjectId}|${assignment.communicationComponentCode || ''}`;
+        option.dataset.subjectId = String(assignment.subjectId);
+        option.dataset.communicationComponentCode = assignment.communicationComponentCode || '';
+        const componentLabel = assignment.communicationComponentName
+          || (assignment.communicationComponentCode === 'english' ? 'Effective Communication'
+            : assignment.communicationComponentCode === 'filipino' ? 'Mabisang Komunikasyon' : '');
+        const hoursLabel = assignment.communicationComponentHours
+          ? ` (${assignment.communicationComponentHours} instructional hours)` : '';
+        option.textContent = componentLabel && assignment.communicationComponentCode
+          ? `${componentLabel}${hoursLabel}`
+          : assignment.subjectName;
         return option;
       }));
-      subjectSelect.value = CURRENT_SUBJECT_ID;
+      subjectSelect.value = `${CURRENT_SUBJECT_ID}|${CURRENT_COMMUNICATION_COMPONENT_CODE}`;
       subjectSelect.hidden = CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.length < 2;
       subjectName.hidden = CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.length > 1;
       document.querySelectorAll('[data-requires-subject]').forEach(button => {
@@ -2085,7 +2127,13 @@ lucide.createIcons();
       if (!subjectSelect.dataset.bound) {
         subjectSelect.addEventListener('change', () => {
           const target = new URL(window.location.href);
-          target.searchParams.set('subjectId', subjectSelect.value);
+          const option = subjectSelect.selectedOptions[0];
+          target.searchParams.set('subjectId', option?.dataset.subjectId || '');
+          if (option?.dataset.communicationComponentCode) {
+            target.searchParams.set('communicationComponentCode', option.dataset.communicationComponentCode);
+          } else {
+            target.searchParams.delete('communicationComponentCode');
+          }
           window.location.assign(target.href);
         });
         subjectSelect.dataset.bound = 'true';
@@ -2104,7 +2152,9 @@ lucide.createIcons();
     function transferReviewScope(academicPeriodId) {
       const termId = getBackendTermId(academicPeriodId);
       if (!BACKEND_GRADE_CONTEXT?.sectionId || !BACKEND_GRADE_CONTEXT?.subjectId || !termId) return null;
-      return { sectionId: BACKEND_GRADE_CONTEXT.sectionId, subjectId: BACKEND_GRADE_CONTEXT.subjectId, academicTermId: termId };
+      return { sectionId: BACKEND_GRADE_CONTEXT.sectionId, subjectId: BACKEND_GRADE_CONTEXT.subjectId,
+        communicationComponentCode: BACKEND_GRADE_CONTEXT.communicationComponentCode || null,
+        academicTermId: termId };
     }
 
     function transferReviewKey(scope) {
@@ -2229,7 +2279,9 @@ lucide.createIcons();
         renderTransferReviewNotice(reviewScope);
       }
       const components = BACKEND_GRADING_ITEMS
-        .filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId) && item.academicTermId === String(backendTermId))
+        .filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId)
+          && (item.communicationComponentCode || null) === (BACKEND_GRADE_CONTEXT.communicationComponentCode || null)
+          && item.academicTermId === String(backendTermId))
         .map(item => {
           const category = BACKEND_SUBJECT_GRADING_CONFIG?.applicable
             ? BACKEND_CATEGORIES.find(record => String(record.subjectGradingComponentId) === String(item.subjectGradingComponentId))
@@ -2713,7 +2765,8 @@ lucide.createIcons();
       const data = await window.EDUGNAY_API.getSectionAttendance(
         BACKEND_ATTENDANCE_CONTEXT.sectionId,
         CURRENT_SUBJECT_ID,
-        isToday ? null : dateStr
+        isToday ? null : dateStr,
+        CURRENT_COMMUNICATION_COMPONENT_CODE
       );
       const resolvedDate = isToday ? (data.currentDate || data.attendanceDate || dateStr) : (data.attendanceDate || dateStr);
       data.attendanceDate = resolvedDate;
@@ -2749,18 +2802,18 @@ lucide.createIcons();
     }
 
     async function prepareBackendQrAttendance() {
-      const existing = await window.EDUGNAY_API.getQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID);
+      const existing = await window.EDUGNAY_API.getQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, CURRENT_COMMUNICATION_COMPONENT_CODE);
       if (existing?.session?.status === 'confirmed') {
         throw new Error('Today\'s attendance has already been confirmed.');
       }
-      const data = existing?.session ? existing : await window.EDUGNAY_API.startQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID);
+      const data = existing?.session ? existing : await window.EDUGNAY_API.startQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, CURRENT_COMMUNICATION_COMPONENT_CODE);
       syncBackendQrAttendance(data);
       return data;
     }
 
     async function startBackendQrSession() {
       if (!isBackendAttendanceMode() || qrAttendanceContext?.sessionId) return;
-      const data = await window.EDUGNAY_API.startQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID);
+      const data = await window.EDUGNAY_API.startQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, CURRENT_COMMUNICATION_COMPONENT_CODE);
       syncBackendQrAttendance(data);
     }
 
@@ -3351,6 +3404,7 @@ lucide.createIcons();
       try {
         const savedData = await window.EDUGNAY_API.saveSectionAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, {
           attendanceDate: date,
+          communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || null,
           records
         });
         saved = true;
@@ -3607,10 +3661,12 @@ lucide.createIcons();
         try {
           const [publishedGrades, gradingItems] = await Promise.all([
             window.EDUGNAY_API.getFinalGrades({ sectionId: scope.sectionId, subjectId: scope.subjectId }),
-            window.EDUGNAY_API.getGradingItems({ sectionId: scope.sectionId })
+            window.EDUGNAY_API.getGradingItems({ sectionId: scope.sectionId,
+              subjectId: scope.subjectId, communicationComponentCode: scope.communicationComponentCode })
           ]);
           BACKEND_PUBLISHED_GRADES = publishedGrades;
-          BACKEND_GRADING_ITEMS = gradingItems.filter(item => item.subjectId === String(scope.subjectId));
+          BACKEND_GRADING_ITEMS = gradingItems.filter(item => item.subjectId === String(scope.subjectId)
+            && (item.communicationComponentCode || null) === (scope.communicationComponentCode || null));
           updatePublishedGradesBanner(document.getElementById('academicPeriodSelect').value);
           showAppToast(`Grades published for ${result.publishedCount} students.`);
         } catch (refreshError) {
@@ -3691,12 +3747,14 @@ lucide.createIcons();
           : ' · Not included in Score Recording';
         const actions = [{ label: a.onlineSubmissionEnabled === true ? 'View Status' : 'Update Status', icon: a.onlineSubmissionEnabled === true ? 'eye' : 'check-square', onClick: () => openStatusModal(a.id) }];
         if (a.onlineSubmissionEnabled === true) actions.push({ label: 'View Submissions', icon: 'inbox', onClick: () => openAssignmentSubmissionsModal(a.id) });
-        actions.push(
+        if (!a.legacyCommunication) actions.push(
           { label: 'Edit Assignment', icon: 'pencil', menu: true, onClick: () => { closeAssignmentMenus(); openEditAssignmentModal(a.id); } },
           { label: a.gradingItemId ? 'Delete Assignment & Component' : 'Delete Assignment', icon: 'trash-2', menu: true, danger: true, onClick: () => { closeAssignmentMenus(); openTeacherDeleteModal('assignment', a.id, a.title); } }
         );
         return {
-          id: a.id, title: a.title, subjectName: a.subjectName, dueLabel,
+          id: a.id, title: a.title,
+          subjectName: a.communicationComponentName || a.subjectName,
+          dueLabel,
           submittedCount: submissionUnavailable ? null : submitted,
           totalCount: submissionUnavailable ? null : gradeStudents.length,
           statusLabel: a.publicationStatus === 'draft' ? 'Draft' : a.publicationStatus === 'published' ? 'Published' : '',
@@ -3721,7 +3779,8 @@ lucide.createIcons();
       }
       try {
         const assignments = await window.EDUGNAY_API.getAssignments({
-          sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID
+          sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID,
+          communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || null
         });
         BACKEND_ASSIGNMENTS = assignments;
         BACKEND_SUBMISSION_ERRORS.clear();
@@ -3817,7 +3876,7 @@ lucide.createIcons();
 
       try {
         await window.EDUGNAY_API.uploadMaterial(BACKEND_MATERIAL_CONTEXT.sectionId, BACKEND_MATERIAL_CONTEXT.subjectId,
-          { file, title, status });
+          { file, title, status, communicationComponentCode: BACKEND_MATERIAL_CONTEXT.communicationComponentCode });
         materialUploadInProgress = false;
         closeModal('uploadModal');
         await loadBackendMaterials();
@@ -3902,6 +3961,7 @@ lucide.createIcons();
           const assignment = await window.EDUGNAY_API.createAssignment({
             sectionId: BACKEND_GRADE_CONTEXT.sectionId,
             subjectId: BACKEND_GRADE_CONTEXT.subjectId,
+            communicationComponentCode: BACKEND_GRADE_CONTEXT.communicationComponentCode,
             academicTermId,
             gradingCategoryId: isSubjectConfig ? null : category?.id || null,
             subjectGradingComponentId,
@@ -3917,8 +3977,11 @@ lucide.createIcons();
           let gradeRefreshFailed = false;
           if (includeInScoreRecording) {
             try {
-              const items = await window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId });
-              BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId));
+              const items = await window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId,
+                subjectId: BACKEND_GRADE_CONTEXT.subjectId,
+                communicationComponentCode: BACKEND_GRADE_CONTEXT.communicationComponentCode });
+              BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId)
+                && (item.communicationComponentCode || null) === (BACKEND_GRADE_CONTEXT.communicationComponentCode || null));
             } catch { gradeRefreshFailed = true; }
           }
           resetAssignmentForm();
@@ -3959,7 +4022,7 @@ lucide.createIcons();
         document.getElementById('editAssignmentTitleInput').value = assignment.title || '';
         document.getElementById('editAssignmentTitleInput').readOnly = Boolean(assignment.gradingItemId);
         document.getElementById('editAssignmentInstructionsInput').value = assignment.instructions || assignment.description || '';
-        document.getElementById('editAssignmentSubjectInput').value = assignment.subjectName || 'Class assignment';
+        document.getElementById('editAssignmentSubjectInput').value = assignment.communicationComponentName || assignment.subjectName || 'Class assignment';
         document.getElementById('editAssignmentDueInput').value = assignment.dueDate || String(assignment.dueAt || '').slice(0, 10);
         document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
         openModal('editAssignmentModal');
@@ -3974,7 +4037,7 @@ lucide.createIcons();
       document.getElementById('editAssignmentTitleInput').value = assignment.title || '';
       document.getElementById('editAssignmentTitleInput').readOnly = false;
       document.getElementById('editAssignmentInstructionsInput').value = assignment.instructions || '';
-      document.getElementById('editAssignmentSubjectInput').value = assignment.subjectName || CURRENT_SUBJECT;
+      document.getElementById('editAssignmentSubjectInput').value = assignment.communicationComponentName || assignment.subjectName || CURRENT_SUBJECT;
       document.getElementById('editAssignmentDueInput').value = assignment.dueDate || '';
       document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
       const includeInScoreRecording = Boolean((assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0);
@@ -4383,6 +4446,7 @@ lucide.createIcons();
               const workspace = await window.EDUGNAY_API.getShsGradeWorkspace({
                 sectionId: CURRENT_SECTION_ID,
                 subjectId: CURRENT_SUBJECT_ID,
+                communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || '',
                 academicTermId: ACTIVE_ACADEMIC_PERIOD_ID
               });
               BACKEND_PUBLISHED_GRADES = (workspace.published || []).map(grade => ({

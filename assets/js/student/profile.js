@@ -303,7 +303,7 @@ function renderStudentSubjects() {
     list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Subjects could not be loaded', text: studentClassError });
   } else {
     list.innerHTML = studentSubjects.length ? studentSubjects.map(assignment => {
-      const subjectName = assignment.subjectName;
+      const subjectName = assignment.communicationComponentName || assignment.subjectName;
       const teacherName = assignment.teacherName;
       const isAdviser = String(studentClassSection?.adviserId || assignment.adviserId || '') === String(assignment.teacherId || '');
       return `<div class="subject-row"><div class="subject-info"><div class="subject-name">${escapeProfileHtml(subjectName || 'Subject')}</div><div class="subject-teacher">${escapeProfileHtml(teacherName || 'Teacher not assigned')}</div></div>${isAdviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`;

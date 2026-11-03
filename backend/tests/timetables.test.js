@@ -60,6 +60,40 @@ test('timetable reads scope teacher and student assignments to the signed-in use
   assert.deepEqual(queries.at(-1).values, [2, 3, 42]);
 });
 
+test('timetable responses keep English and Filipino component assignments distinguishable', async () => {
+  const componentRows = [
+    {
+      assignmentId: 101, sectionId: 8, teacherId: 42, sectionName: 'QA-only', sectionStatus: 'active',
+      gradeName: 'Grade 11', subjectName: 'Effective Communication / Mabisang Komunikasyon',
+      subjectCode: 'shs-core-communication', communicationComponentCode: 'english', teacherName: 'English Teacher',
+      scheduledClassId: 201, meetingId: 301, weekday: 1, startTime: '08:00', endTime: '09:00',
+      startDate: '2026-06-01', endDate: '2026-12-31', room: 'Room 1'
+    },
+    {
+      assignmentId: 102, sectionId: 8, teacherId: 43, sectionName: 'QA-only', sectionStatus: 'active',
+      gradeName: 'Grade 11', subjectName: 'Effective Communication / Mabisang Komunikasyon',
+      subjectCode: 'shs-core-communication', communicationComponentCode: 'filipino', teacherName: 'Filipino Teacher',
+      scheduledClassId: 202, meetingId: 302, weekday: 2, startTime: '09:00', endTime: '10:00',
+      startDate: '2026-06-01', endDate: '2026-12-31', room: 'Room 2'
+    }
+  ];
+  database = { async execute(sql) {
+    if (sql.includes('FROM academic_years WHERE id =')) return [[{ id: 3, label: '2026-2027', status: 'active', ...year }]];
+    if (sql.includes('FROM section_teachers a')) return [componentRows];
+    return [[]];
+  } };
+  let body;
+  await controller.list({ user: { role: 'teacher', schoolId: 2, id: 42 }, query: { academicYearId: '3' } },
+    { json(value) { body = value; } }, error => { throw error; });
+
+  assert.deepEqual(body.assignments.map(item => [item.communicationComponentCode, item.communicationComponentName]), [
+    ['english', 'Effective Communication'], ['filipino', 'Mabisang Komunikasyon']
+  ]);
+  assert.deepEqual(body.meetings.map(item => [item.communicationComponentCode, item.communicationComponentName]), [
+    ['english', 'Effective Communication'], ['filipino', 'Mabisang Komunikasyon']
+  ]);
+});
+
 test('school-year choices come from the timetable API for all three roles', async () => {
   const seen = [];
   database = { async execute(sql, values) { seen.push({ sql, values }); return [[{ id: 3, label: '2026-2027', status: 'active' }]]; } };

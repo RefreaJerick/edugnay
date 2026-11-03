@@ -1,5 +1,6 @@
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
+const { COMMUNICATION_COMPONENTS } = require('../config/shsCommunication');
 
 function fail(message, status = 400) {
   const error = new Error(message);
@@ -143,6 +144,7 @@ async function list(req, res, next) {
       `SELECT a.id AS assignmentId, a.section_id AS sectionId, a.teacher_user_id AS teacherId,
         s.name AS sectionName, s.status AS sectionStatus, g.display_name AS gradeName,
         sub.name AS subjectName, sub.subject_code AS subjectCode,
+        a.communication_component_code AS communicationComponentCode,
         teacher.display_name AS teacherName, c.id AS scheduledClassId,
         m.id AS meetingId, m.weekday, TIME_FORMAT(m.start_time, '%H:%i') AS startTime,
         TIME_FORMAT(m.end_time, '%H:%i') AS endTime,
@@ -166,12 +168,16 @@ async function list(req, res, next) {
         assignmentId: row.assignmentId, sectionId: row.sectionId, teacherId: row.teacherId,
         sectionName: row.sectionName, sectionStatus: row.sectionStatus, gradeName: row.gradeName,
         subjectName: row.subjectName, subjectCode: row.subjectCode, teacherName: row.teacherName,
+        communicationComponentCode: row.communicationComponentCode || null,
+        communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
         scheduledClassId: row.scheduledClassId
       });
       if (row.meetingId) meetings.push({
         id: row.meetingId, assignmentId: row.assignmentId, scheduledClassId: row.scheduledClassId,
         sectionId: row.sectionId, teacherId: row.teacherId, sectionName: row.sectionName,
         gradeName: row.gradeName, subjectName: row.subjectName, teacherName: row.teacherName,
+        communicationComponentCode: row.communicationComponentCode || null,
+        communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
         weekday: row.weekday, startTime: row.startTime, endTime: row.endTime,
         startDate: row.startDate, endDate: row.endDate, room: row.room
       });

@@ -5,6 +5,7 @@ const { getDatabase } = require('../config/database');
 const { materialUploadDirectory, materialTypes } = require('../config/uploads');
 const { writeAuditLog } = require('../utils/auditLog');
 const { assertElectiveStudent, assertElectiveTeacher } = require('../utils/shsTeachingAccess');
+const { COMMUNICATION_COMPONENTS, isCommunicationComponentCode } = require('../config/shsCommunication');
 
 function fail(message, status = 400) {
   const error = new Error(message);
@@ -18,27 +19,48 @@ function id(value, label) {
   return number;
 }
 
-async function teacherAssignment(database, user, sectionId, subjectId) {
+function parseCommunicationComponentCode(value) {
+  if (value == null || value === '') return null;
+  const code = String(value).trim().toLowerCase();
+  if (!isCommunicationComponentCode(code)) fail('The communication component is invalid.');
+  return code;
+}
+
+async function teacherAssignment(database, user, sectionId, subjectId, componentCode = null) {
   const [rows] = await database.execute(
-    `SELECT sections.id FROM section_teachers
+    `SELECT sections.id, sections.shs_curriculum_code AS shsCurriculumCode,
+       school_grade_levels.grade_code AS gradeCode, subjects.subject_code AS subjectCode,
+       section_teachers.communication_component_code AS communicationComponentCode
+     FROM section_teachers
      INNER JOIN sections ON sections.id = section_teachers.section_id
        AND sections.school_id = section_teachers.school_id
+     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+       AND school_grade_levels.school_id = sections.school_id
      INNER JOIN subjects ON subjects.id = section_teachers.subject_id
        AND subjects.school_id = section_teachers.school_id AND subjects.is_active = TRUE
      WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
-       AND section_teachers.subject_id = ? AND section_teachers.teacher_user_id = ? LIMIT 1`,
-    [sectionId, user.schoolId, subjectId, user.id]
+       AND section_teachers.subject_id = ? AND section_teachers.teacher_user_id = ?
+       AND section_teachers.communication_component_code <=> ? LIMIT 1`,
+    [sectionId, user.schoolId, subjectId, user.id, componentCode]
   );
-  return Boolean(rows.length);
+  const assignment = rows[0] || null;
+  if (assignment) assignment.legacyCommunication = assignment.subjectCode === 'shs-core-communication'
+    && assignment.shsCurriculumCode === 'strengthened_2026' && assignment.gradeCode === 'grade-11'
+    && !assignment.communicationComponentCode;
+  return assignment;
 }
 
 async function authorizeUpload(req, res, next) {
   try {
     req.materialSectionId = id(req.params.sectionId, 'section ID');
     req.materialSubjectId = id(req.params.subjectId, 'subject ID');
-    if (!await teacherAssignment(getDatabase(), req.user, req.materialSectionId, req.materialSubjectId)) {
+    req.materialCommunicationComponentCode = parseCommunicationComponentCode(req.query?.communicationComponentCode);
+    const assignment = await teacherAssignment(getDatabase(), req.user, req.materialSectionId,
+      req.materialSubjectId, req.materialCommunicationComponentCode);
+    if (!assignment) {
       fail('You are not assigned to this section and subject.', 403);
     }
+    if (assignment.legacyCommunication) fail('Legacy combined communication materials are read-only. Assign an English or Filipino component to upload new materials.', 409);
     next();
   } catch (error) { next(error); }
 }
@@ -55,12 +77,16 @@ async function authorizeElectiveUpload(req, res, next) {
 function materialSelect() {
   return `SELECT materials.id, materials.school_id AS schoolId, materials.section_id AS sectionId,
     materials.subject_id AS subjectId, materials.shs_elective_class_id AS electiveClassId,
+    materials.communication_component_code AS communicationComponentCode,
     materials.academic_term_id AS academicTermId,
     materials.teacher_user_id AS teacherUserId, materials.title,
     materials.original_file_name AS originalFileName, materials.stored_file_name AS storedFileName,
     materials.file_type AS type, materials.mime_type AS mimeType, materials.file_size_bytes AS fileSizeBytes,
     materials.status, materials.posted_at AS postedAt, materials.created_at AS createdAt,
     sections.name AS sectionName, school_grade_levels.display_name AS sectionGrade,
+    sections.shs_curriculum_code AS shsCurriculumCode,
+    school_grade_levels.grade_code AS gradeCode,
+    subjects.subject_code AS subjectCode,
     COALESCE(subjects.name, elective_offering.subject_name) AS subjectName,
     elective_class.class_name AS electiveClassName, elective_year.status AS electiveYearStatus,
     COALESCE(elective_teacher.display_name, teachers.display_name) AS teacherName,
@@ -82,11 +108,20 @@ function materialSelect() {
   LEFT JOIN academic_terms ON academic_terms.id = materials.academic_term_id AND academic_terms.school_id = materials.school_id`;
 }
 
+function isLegacyCommunicationMaterial(row) {
+  return row.subjectCode === 'shs-core-communication'
+    && row.shsCurriculumCode === 'strengthened_2026' && row.gradeCode === 'grade-11'
+    && !row.communicationComponentCode;
+}
+
 function publicMaterial(row) {
-  const { storedFileName, mimeType, sectionName, sectionGrade, ...visible } = row;
+  const { storedFileName, mimeType, sectionName, sectionGrade, shsCurriculumCode, gradeCode, subjectCode, ...visible } = row;
   return { ...visible, id: String(row.id),
     sectionId: row.sectionId == null ? null : String(row.sectionId),
     subjectId: row.subjectId == null ? null : String(row.subjectId),
+    communicationComponentCode: row.communicationComponentCode || null,
+    communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
+    legacyCommunication: isLegacyCommunicationMaterial(row),
     electiveClassId: row.electiveClassId == null ? null : String(row.electiveClassId),
     scopeType: row.electiveClassId == null ? 'section' : 'elective',
     className: row.electiveClassName || row.sectionName || null,
@@ -124,6 +159,7 @@ async function listMaterials(req, res, next) {
         SELECT 1 FROM section_teachers WHERE section_teachers.section_id = materials.section_id
           AND section_teachers.school_id = materials.school_id AND section_teachers.subject_id = materials.subject_id
           AND section_teachers.teacher_user_id = ?
+          AND section_teachers.communication_component_code <=> materials.communication_component_code
       )) OR (materials.shs_elective_class_id IS NOT NULL AND EXISTS (
         SELECT 1 FROM shs_elective_classes ec WHERE ec.id = materials.shs_elective_class_id
           AND ec.school_id = materials.school_id AND ec.teacher_user_id = ?
@@ -151,6 +187,10 @@ async function listMaterials(req, res, next) {
     } else fail('Learning materials are available only to teachers and students.', 403);
     if (req.query.sectionId) { where.push('materials.section_id = ?'); values.push(id(req.query.sectionId, 'section ID')); }
     if (req.query.subjectId) { where.push('materials.subject_id = ?'); values.push(id(req.query.subjectId, 'subject ID')); }
+    if (req.query.communicationComponentCode) {
+      where.push('materials.communication_component_code = ?');
+      values.push(parseCommunicationComponentCode(req.query.communicationComponentCode));
+    }
     if (req.query.electiveClassId) { where.push('materials.shs_elective_class_id = ?'); values.push(id(req.query.electiveClassId, 'elective class ID')); }
     const [rows] = await getDatabase().execute(`${materialSelect()} WHERE ${where.join(' AND ')} ORDER BY materials.created_at DESC`, values);
     res.json({ materials: rows.map(publicMaterial) });
@@ -201,13 +241,16 @@ async function createMaterial(req, res, next) {
     await connection.beginTransaction();
     let sectionId = req.materialSectionId || null;
     let subjectId = req.materialSubjectId || null;
+    let componentCode = req.materialCommunicationComponentCode || null;
     let electiveClassId = null;
     let academicTermId = null;
     if (req.materialElectiveClassId) {
       const electiveClass = await assertElectiveTeacher(connection, req.user, req.materialElectiveClassId, { write: true });
       electiveClassId = electiveClass.id;
     } else {
-      if (!await teacherAssignment(connection, req.user, sectionId, subjectId)) fail('You are not assigned to this section and subject.', 403);
+      const assignment = await teacherAssignment(connection, req.user, sectionId, subjectId, componentCode);
+      if (!assignment) fail('You are not assigned to this section and subject.', 403);
+      if (assignment.legacyCommunication) fail('Legacy combined communication materials are read-only. Assign an English or Filipino component to upload new materials.', 409);
       const [terms] = await connection.execute(
         `SELECT academic_terms.id FROM academic_terms
          INNER JOIN sections ON sections.academic_year_id = academic_terms.academic_year_id
@@ -219,10 +262,10 @@ async function createMaterial(req, res, next) {
     }
     const [result] = await connection.execute(
       `INSERT INTO learning_materials
-       (school_id, section_id, subject_id, shs_elective_class_id, academic_term_id, teacher_user_id, title,
+       (school_id, section_id, subject_id, communication_component_code, shs_elective_class_id, academic_term_id, teacher_user_id, title,
         original_file_name, stored_file_name, file_type, mime_type, file_size_bytes, status, posted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${status === 'published' ? 'NOW()' : 'NULL'})`,
-      [req.user.schoolId, sectionId, subjectId, electiveClassId, academicTermId,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${status === 'published' ? 'NOW()' : 'NULL'})`,
+      [req.user.schoolId, sectionId, subjectId, componentCode, electiveClassId, academicTermId,
         req.user.id, title, originalName, req.file.filename,
         path.extname(req.file.filename).slice(1), materialTypes[path.extname(req.file.filename)], req.file.size, status]
     );
@@ -251,8 +294,9 @@ async function findMaterial(req, database, lock = false) {
   if (process.env.SHS_SELECTION_ENABLED !== 'true') where.push('materials.shs_elective_class_id IS NULL');
   if (req.user.role === 'teacher') {
     where.push(`((materials.shs_elective_class_id IS NULL AND materials.teacher_user_id = ? AND EXISTS (
-      SELECT 1 FROM section_teachers st WHERE st.section_id = materials.section_id
-        AND st.school_id = materials.school_id AND st.subject_id = materials.subject_id AND st.teacher_user_id = ?
+        SELECT 1 FROM section_teachers st WHERE st.section_id = materials.section_id
+          AND st.school_id = materials.school_id AND st.subject_id = materials.subject_id AND st.teacher_user_id = ?
+          AND st.communication_component_code <=> materials.communication_component_code
     )) OR (materials.shs_elective_class_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM shs_elective_classes ec WHERE ec.id = materials.shs_elective_class_id
         AND ec.school_id = materials.school_id AND ec.teacher_user_id = ?
@@ -280,11 +324,13 @@ async function findMaterial(req, database, lock = false) {
   } else fail('You cannot access this material.', 403);
   const [rows] = await database.execute(`${materialSelect()} WHERE ${where.join(' AND ')} LIMIT 1${lock ? ' FOR UPDATE' : ''}`, values);
   if (!rows[0]) fail('This learning material is unavailable.', 404);
+  rows[0].legacyCommunication = isLegacyCommunicationMaterial(rows[0]);
   if (req.user.role === 'teacher') {
     if (rows[0].electiveClassId) {
       try { await assertElectiveTeacher(database, req.user, rows[0].electiveClassId); }
       catch { fail('This learning material is unavailable.', 404); }
-    } else if (!await teacherAssignment(database, req.user, rows[0].sectionId, rows[0].subjectId)) {
+    } else if (!await teacherAssignment(database, req.user, rows[0].sectionId,
+      rows[0].subjectId, rows[0].communicationComponentCode)) {
       fail('This learning material is unavailable.', 404);
     }
   }
@@ -302,6 +348,7 @@ async function updateMaterial(req, res, next) {
     const status = String(req.body.status || '');
     if (!['draft', 'published'].includes(status)) fail('Choose draft or published visibility.');
     if (req.user.role !== 'teacher') fail('Only the uploading teacher can change this material.', 403);
+    if (material.legacyCommunication) fail('Legacy combined communication materials are read-only.', 409);
     if (material.electiveClassId) await assertElectiveTeacher(connection, req.user, material.electiveClassId, { write: true });
     let updatedMaterial = material;
     if (status !== material.status) {
@@ -334,6 +381,7 @@ async function deleteMaterial(req, res, next) {
     transactionStarted = true;
     const material = await findMaterial(req, connection, true);
     if (req.user.role !== 'teacher') fail('Only the uploading teacher can remove this material.', 403);
+    if (material.legacyCommunication) fail('Legacy combined communication materials are read-only.', 409);
     if (material.electiveClassId) await assertElectiveTeacher(connection, req.user, material.electiveClassId, { write: true });
     if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|ppt|pptx|xls|xlsx|jpg|png|mp4)$/.test(material.storedFileName)) {
       fail('The stored file is invalid.', 500);

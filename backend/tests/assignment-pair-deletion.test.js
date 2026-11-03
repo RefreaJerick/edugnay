@@ -12,7 +12,7 @@ const connection = {
   release() {},
   async execute(sql, values = []) {
     queries.push(sql);
-    if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1')) {
+    if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ?')) {
       return [state.visible ? [{
         id: 4, schoolId: 1, sectionId: 8, subjectId: 2,
         academicTermId: 6, gradingCategoryId: 3, gradingItemId: 12,

@@ -97,6 +97,8 @@ const database = {
       }
       return [rows];
     }
+    if (sql.includes('FROM shs_communication_component_grades')) return [[]];
+    if (sql.includes('FROM shs_grade_publication_history history')) return [[]];
     if (sql.includes('SELECT COUNT(*) AS termCount FROM academic_terms')) return [[{ termCount: 3 }]];
     if (sql.includes('FROM published_final_grades AS grades')) return [[{ gradeCount: 1 }]];
     if (sql.includes('FROM section_students') && sql.includes('section_teachers')) return [subjects];

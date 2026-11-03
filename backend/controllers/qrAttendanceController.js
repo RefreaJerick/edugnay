@@ -3,6 +3,7 @@ const { avatarFields } = require('../config/avatars');
 const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 const { createQrPayload, createQrToken, decryptQrToken, encryptQrToken, hashQrToken } = require('../config/qrCredentials');
 const { assertElectiveTeacher, getElectiveRoster } = require('../utils/shsTeachingAccess');
+const { isCommunicationComponentCode } = require('../config/shsCommunication');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
 
@@ -16,6 +17,13 @@ function parseId(value, label) {
   const id = Number.parseInt(value, 10);
   if (!Number.isSafeInteger(id) || id < 1) throw createError(`Invalid ${label}.`);
   return id;
+}
+
+function communicationComponentCode(value) {
+  if (value == null || value === '') return null;
+  const code = String(value).trim().toLowerCase();
+  if (!isCommunicationComponentCode(code)) throw createError('The communication component is invalid.');
+  return code;
 }
 
 function getCurrentDate() {
@@ -71,26 +79,36 @@ function attendanceOutcomeCounts(records) {
   ]));
 }
 
-async function getTeachingSection(database, teacher, sectionId, subjectId) {
+async function getTeachingSection(database, teacher, sectionId, subjectId, componentCode = null) {
   const [sections] = await database.execute(
     `SELECT sections.id, sections.school_id AS schoolId, sections.name,
+      sections.shs_curriculum_code AS shsCurriculumCode,
+      school_grade_levels.grade_code AS gradeCode,
+      subjects.subject_code AS subjectCode,
+      section_teachers.communication_component_code AS communicationComponentCode,
       DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate,
       DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate
     FROM sections INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+    INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+      AND school_grade_levels.school_id = sections.school_id
+    INNER JOIN section_teachers ON section_teachers.section_id = sections.id
+      AND section_teachers.school_id = sections.school_id
+      AND section_teachers.teacher_user_id = ? AND section_teachers.subject_id = ?
+      AND section_teachers.communication_component_code <=> ?
+    INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+      AND subjects.school_id = section_teachers.school_id AND subjects.is_active = TRUE
     WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
       AND academic_years.status = 'active'
-      AND EXISTS (
-        SELECT 1 FROM section_teachers
-        INNER JOIN subjects ON subjects.id = section_teachers.subject_id
-        WHERE section_teachers.section_id = sections.id
-          AND section_teachers.teacher_user_id = ?
-          AND section_teachers.subject_id = ?
-          AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
-      )
     LIMIT 1`,
-    [sectionId, teacher.schoolId, teacher.id, subjectId]
+    [teacher.id, subjectId, componentCode, sectionId, teacher.schoolId]
   );
-  return sections[0] || null;
+  const section = sections[0] || null;
+  if (section) {
+    section.legacyCommunication = section.subjectCode === 'shs-core-communication'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.gradeCode === 'grade-11'
+      && !section.communicationComponentCode;
+  }
+  return section;
 }
 
 function assertQrAttendanceDate(section, attendanceDate) {
@@ -110,7 +128,7 @@ async function getActiveStudentIds(database, schoolId, sectionId) {
   return students.map(student => student.studentId);
 }
 
-async function getQrAttendanceData(database, section, subjectId, attendanceDate) {
+async function getQrAttendanceData(database, section, subjectId, attendanceDate, componentCode = null) {
   const [sessions] = await database.execute(
     `SELECT
       id,
@@ -119,9 +137,10 @@ async function getQrAttendanceData(database, section, subjectId, attendanceDate)
       confirmed_by_user_id AS confirmedByUserId,
       confirmed_at AS confirmedAt
     FROM attendance_sessions
-    WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ? AND method = 'qr'
+    WHERE school_id = ? AND section_id = ? AND subject_id = ?
+      AND communication_component_code <=> ? AND attendance_date = ? AND method = 'qr'
     LIMIT 1`,
-    [section.schoolId, section.id, subjectId, attendanceDate]
+    [section.schoolId, section.id, subjectId, componentCode, attendanceDate]
   );
   const session = sessions[0] || null;
   const [students] = await database.execute(
@@ -167,6 +186,7 @@ async function getQrAttendanceData(database, section, subjectId, attendanceDate)
   return {
     section: { id: section.id, schoolId: section.schoolId, name: section.name },
     subjectId,
+    communicationComponentCode: componentCode,
     attendanceDate,
     session: session && {
       id: session.id,
@@ -185,12 +205,13 @@ async function getCurrentQrAttendance(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const subjectId = parseId(req.params.subjectId, 'subject ID');
+    const componentCode = communicationComponentCode(req.query?.communicationComponentCode);
     const database = getDatabase();
-    const section = await getTeachingSection(database, req.user, sectionId, subjectId);
+    const section = await getTeachingSection(database, req.user, sectionId, subjectId, componentCode);
     if (!section) throw createError('Section not found.', 404);
     const attendanceDate = getCurrentDate();
     assertQrAttendanceDate(section, attendanceDate);
-    res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate));
+    res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate, componentCode));
   } catch (error) {
     next(error);
   }
@@ -201,21 +222,24 @@ async function startQrAttendance(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const subjectId = parseId(req.params.subjectId, 'subject ID');
+    const componentCode = communicationComponentCode(req.query?.communicationComponentCode);
     const attendanceDate = getCurrentDate();
     const database = getDatabase();
     connection = await database.getConnection();
     await connection.beginTransaction();
 
-    const section = await getTeachingSection(connection, req.user, sectionId, subjectId);
+    const section = await getTeachingSection(connection, req.user, sectionId, subjectId, componentCode);
     if (!section) throw createError('Section not found.', 404);
+    if (section.legacyCommunication) throw createError('Legacy combined communication attendance is read-only. Assign an English or Filipino component to record attendance.', 409);
     assertQrAttendanceDate(section, attendanceDate);
 
     const [sessions] = await connection.execute(
       `SELECT id, method, status
       FROM attendance_sessions
-      WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ?
+      WHERE school_id = ? AND section_id = ? AND subject_id = ?
+        AND communication_component_code <=> ? AND attendance_date = ?
       FOR UPDATE`,
-      [section.schoolId, sectionId, subjectId, attendanceDate]
+      [section.schoolId, sectionId, subjectId, componentCode, attendanceDate]
     );
     const existingSession = sessions[0];
     if (existingSession?.status === 'confirmed') {
@@ -227,14 +251,15 @@ async function startQrAttendance(req, res, next) {
     if (!existingSession) {
       await connection.execute(
         `INSERT INTO attendance_sessions (
-          school_id, section_id, subject_id, attendance_date, method, status, created_by_user_id
-        ) VALUES (?, ?, ?, ?, 'qr', 'draft', ?)`,
-        [section.schoolId, sectionId, subjectId, attendanceDate, req.user.id]
+          school_id, section_id, subject_id, communication_component_code,
+          attendance_date, method, status, created_by_user_id
+        ) VALUES (?, ?, ?, ?, ?, 'qr', 'draft', ?)`,
+        [section.schoolId, sectionId, subjectId, componentCode, attendanceDate, req.user.id]
       );
     }
 
     await connection.commit();
-    res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate));
+    res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate, componentCode));
   } catch (error) {
     if (connection) await connection.rollback();
     if (error.code === 'ER_DUP_ENTRY') error = createError('A QR session already exists for this subject today. Reload attendance.', 409);
@@ -251,6 +276,7 @@ async function getActiveQrSession(database, teacher, sessionId, lockSession = fa
       attendance_sessions.school_id AS schoolId,
       attendance_sessions.section_id AS sectionId,
       attendance_sessions.subject_id AS subjectId,
+      attendance_sessions.communication_component_code AS communicationComponentCode,
       sections.name AS sectionName,
       subjects.name AS subjectName
     FROM attendance_sessions
@@ -270,9 +296,17 @@ async function getActiveQrSession(database, teacher, sessionId, lockSession = fa
         INNER JOIN subjects ON subjects.id = section_teachers.subject_id
         WHERE section_teachers.section_id = sections.id
           AND section_teachers.subject_id = attendance_sessions.subject_id
+          AND section_teachers.communication_component_code <=> attendance_sessions.communication_component_code
           AND section_teachers.teacher_user_id = ?
           AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
       )
+      AND NOT (subjects.subject_code = 'shs-core-communication'
+        AND sections.shs_curriculum_code = 'strengthened_2026'
+        AND attendance_sessions.communication_component_code IS NULL
+        AND EXISTS (SELECT 1 FROM school_grade_levels
+          WHERE school_grade_levels.id = sections.grade_level_id
+            AND school_grade_levels.school_id = sections.school_id
+            AND school_grade_levels.grade_code = 'grade-11'))
       AND attendance_sessions.attendance_date BETWEEN academic_years.start_date AND academic_years.end_date
     LIMIT 1${lockSession ? ' FOR UPDATE' : ''}`,
     [sessionId, getCurrentDate(), teacher.schoolId, teacher.id]
@@ -401,7 +435,8 @@ async function confirmQrAttendance(req, res, next) {
       [req.user.id, sessionId]
     );
     for (const record of records) {
-      if (record.status === 'absent') await notifyConsecutiveAbsences(connection, session.schoolId, session.sectionId, session.subjectId, record.studentId);
+      if (record.status === 'absent') await notifyConsecutiveAbsences(connection, session.schoolId,
+        session.sectionId, session.subjectId, record.studentId, session.communicationComponentCode);
     }
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
@@ -418,7 +453,7 @@ async function confirmQrAttendance(req, res, next) {
       id: session.sectionId,
       schoolId: session.schoolId,
       name: session.sectionName
-    }, session.subjectId, getCurrentDate()));
+    }, session.subjectId, getCurrentDate(), session.communicationComponentCode));
   } catch (error) {
     if (connection) await connection.rollback();
     next(error);

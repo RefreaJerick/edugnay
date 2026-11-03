@@ -46,10 +46,11 @@ const connection = {
     if (sql.startsWith('INSERT INTO assignments')) {
       assignmentRow = {
         id: 14, schoolId: 1, sectionId: 8, subjectId: 4,
-        academicTermId: values[3], gradingCategoryId: values[4], gradingItemId: null,
-        teacherUserId: 5, title: values[8], description: values[9], dueAt: values[10],
-        maxScore: values[11], onlineSubmissionEnabled: values[12], status: values[13],
-        subjectGradingComponentId: values[5], subjectGradingExamPartId: values[6],
+        communicationComponentCode: values[3], academicTermId: values[4],
+        gradingCategoryId: values[5], gradingItemId: null,
+        teacherUserId: 5, title: values[9], description: values[10], dueAt: values[11],
+        maxScore: values[12], onlineSubmissionEnabled: values[13], status: values[14],
+        subjectGradingComponentId: values[6], subjectGradingExamPartId: values[7],
         sectionName: 'St. John', sectionGrade: 'Grade 8', subjectName: 'English'
       };
       return [{ insertId: 14 }];

@@ -150,6 +150,13 @@
   -webkit-line-clamp: 2;
 }
 
+.grade-subject-row-communication .grade-subject-name {
+  display: block;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset;
+}
+
 .grade-subject-teacher {
   margin-top: 4px;
   overflow: hidden;
@@ -157,6 +164,35 @@
   font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grade-communication-components {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.grade-communication-component {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  color: var(--gray-500);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.grade-communication-component span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.grade-communication-component strong {
+  color: var(--gray-700);
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -352,6 +388,10 @@
   }
 
   .grade-subject-teacher {
+    font-size: 10px;
+  }
+
+  .grade-communication-component {
     font-size: 10px;
   }
 

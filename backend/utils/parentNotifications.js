@@ -32,7 +32,7 @@ async function notifyParents(connection, { schoolId, studentId, code, eventKey, 
   );
 }
 
-async function notifyConsecutiveAbsences(connection, schoolId, sectionId, subjectId, studentId) {
+async function notifyConsecutiveAbsences(connection, schoolId, sectionId, subjectId, studentId, communicationComponentCode = null) {
   const trigger = await getTrigger(connection, schoolId, 'consecutive_absences');
   if (!trigger) return;
   const [[settings]] = await connection.execute(
@@ -48,9 +48,10 @@ async function notifyConsecutiveAbsences(connection, schoolId, sectionId, subjec
     INNER JOIN attendance_records AS records ON records.school_id = sessions.school_id
       AND records.attendance_session_id = sessions.id
     WHERE sessions.school_id = ? AND sessions.section_id = ? AND sessions.subject_id = ?
+      AND sessions.communication_component_code <=> ?
       AND sessions.status = 'confirmed' AND records.student_user_id = ?
     ORDER BY sessions.attendance_date DESC, sessions.id DESC`,
-    [schoolId, sectionId, subjectId, studentId]
+    [schoolId, sectionId, subjectId, communicationComponentCode, studentId]
   );
   const missedDates = consecutiveMissedMeetingDates(history);
   if (missedDates.length !== threshold) return;
@@ -58,7 +59,9 @@ async function notifyConsecutiveAbsences(connection, schoolId, sectionId, subjec
   const [[subject]] = await connection.execute('SELECT name FROM subjects WHERE id = ? AND school_id = ?', [subjectId, schoolId]);
   await notifyParents(connection, {
     schoolId, studentId, code: 'consecutive_absences',
-    eventKey: `absence:${sectionId}:${subjectId}:${studentId}:${missedDates[threshold - 1].sessionId}`,
+    eventKey: communicationComponentCode
+      ? `absence:${sectionId}:${subjectId}:${communicationComponentCode}:${studentId}:${missedDates[threshold - 1].sessionId}`
+      : `absence:${sectionId}:${subjectId}:${studentId}:${missedDates[threshold - 1].sessionId}`,
     title: 'Consecutive missed subject meeting dates',
     message: `${student.name} missed ${threshold} consecutive recorded meeting dates in ${subject.name}.`,
     targetPath: '/views/parent/edugnay-parent-attendance.html'

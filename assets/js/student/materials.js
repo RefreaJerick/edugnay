@@ -13,12 +13,13 @@ lucide.createIcons();
       Object.keys(MATERIALS_BY_SUBJECT).forEach(key => delete MATERIALS_BY_SUBJECT[key]);
       MATERIAL_RECORDS.forEach(material => {
         const isElective = material.scopeType === 'elective' || material.electiveClassId != null;
-        const subjectKey = isElective ? `elective:${material.electiveClassId}` : `subject:${material.subjectId}`;
+        const subjectKey = isElective ? `elective:${material.electiveClassId}`
+          : `subject:${material.subjectId}:${material.communicationComponentCode || ''}`;
         if (!MATERIALS_BY_SUBJECT[subjectKey]) {
           MATERIALS_BY_SUBJECT[subjectKey] = {
             label: isElective
               ? `${material.subjectName || 'Elective'} · ${material.className || 'Elective class'}`
-              : material.subjectName || 'Subject',
+              : material.communicationComponentName || material.subjectName || 'Subject',
             teacher: material.teacherName || 'Subject teacher',
             elective: isElective,
             items: []
@@ -127,6 +128,7 @@ lucide.createIcons();
     <div class="week-group-label">${window.EDUGNAY_CONFIG.escapeHtml(period)}</div>
     ${grouped[period].map(m => {
         const meta = TYPE_META[m.type] || TYPE_META.pdf;
+        const communicationLabel = m.communicationComponentName || '';
         return `
         <div class="material-row">
           <div class="material-icon" style="background:${meta.bg};">
@@ -138,6 +140,7 @@ lucide.createIcons();
               <span class="badge badge-blue">${meta.label}</span>
               <span class="material-meta-dot"></span>
               <span>Posted ${window.EDUGNAY_CONFIG.escapeHtml(formatMaterialDate(m.postedAt))}</span>
+              ${communicationLabel ? `<span class="material-meta-dot"></span><span>${window.EDUGNAY_CONFIG.escapeHtml(communicationLabel)}</span>` : ''}
             </div>
           </div>
           <div class="material-actions">

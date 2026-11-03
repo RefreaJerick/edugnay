@@ -9,6 +9,7 @@ const {
 } = require('../config/depedK10Grading');
 const { loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
 const { getTrigger, notifyParents } = require('../utils/parentNotifications');
+const { isCommunicationComponentCode } = require('../config/shsCommunication');
 
 function createError(message, status = 400) { const error = new Error(message); error.status = status; return error; }
 function parseId(value, label) { const id = Number.parseInt(value, 10); if (!Number.isSafeInteger(id) || id < 1) throw createError(`Invalid ${label}.`); return id; }
@@ -289,11 +290,48 @@ async function listGradingItems(req, res, next) {
       where.push(`EXISTS (SELECT 1 FROM section_teachers
         WHERE section_teachers.section_id = grading_items.section_id
           AND section_teachers.subject_id = grading_items.subject_id
+          AND section_teachers.communication_component_code <=> grading_items.communication_component_code
           AND section_teachers.teacher_user_id = ?)`);
       values.push(req.user.id);
     } else if (req.user.role !== 'school_admin') throw createError('You do not have access to grading items.', 403);
     if (req.query.sectionId) { where.push('grading_items.section_id = ?'); values.push(parseId(req.query.sectionId, 'section ID')); }
-    const [items] = await getDatabase().execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, grading_items.recorded_at AS recordedAt, subjects.name AS subjectName, academic_terms.name AS academicTermName, grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName, subject_grading_exam_parts.code AS subjectGradingExamPartCode, subject_grading_exam_parts.name AS subjectGradingExamPartName, journal_prompts.id AS journalPromptId, school_settings.journal_subject_id AS currentJournalSubjectId FROM grading_items INNER JOIN sections ON sections.id=grading_items.section_id INNER JOIN subjects ON subjects.id=grading_items.subject_id AND subjects.is_active = TRUE INNER JOIN academic_terms ON academic_terms.id=grading_items.academic_term_id LEFT JOIN grading_categories ON grading_categories.id=grading_items.grading_category_id LEFT JOIN subject_grading_components ON subject_grading_components.id=grading_items.subject_grading_component_id AND subject_grading_components.school_id=grading_items.school_id LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id=grading_items.subject_grading_exam_part_id AND subject_grading_exam_parts.school_id=grading_items.school_id LEFT JOIN journal_prompts ON journal_prompts.grading_item_id=grading_items.id AND journal_prompts.school_id=grading_items.school_id LEFT JOIN school_settings ON school_settings.school_id=grading_items.school_id WHERE ${where.join(' AND ')} ORDER BY grading_items.recorded_at DESC`, values);
+    if (req.query.subjectId) { where.push('grading_items.subject_id = ?'); values.push(parseId(req.query.subjectId, 'subject ID')); }
+    if (req.query.communicationComponentCode) {
+      const code = String(req.query.communicationComponentCode).trim().toLowerCase();
+      if (!isCommunicationComponentCode(code)) throw createError('The communication component is invalid.');
+      where.push('grading_items.communication_component_code = ?'); values.push(code);
+    }
+    const [items] = await getDatabase().execute(
+      `SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId,
+        grading_items.communication_component_code AS communicationComponentCode,
+        grading_items.academic_term_id AS academicTermId,
+        grading_items.grading_category_id AS gradingCategoryId,
+        grading_items.subject_grading_component_id AS subjectGradingComponentId,
+        grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId,
+        grading_items.teacher_user_id AS teacherUserId, grading_items.title,
+        grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades,
+        grading_items.recorded_at AS recordedAt, subjects.name AS subjectName,
+        academic_terms.name AS academicTermName, grading_categories.code AS gradingCategoryCode,
+        grading_categories.name AS gradingCategoryName,
+        subject_grading_components.code AS subjectGradingComponentCode,
+        subject_grading_components.name AS subjectGradingComponentName,
+        subject_grading_exam_parts.code AS subjectGradingExamPartCode,
+        subject_grading_exam_parts.name AS subjectGradingExamPartName,
+        journal_prompts.id AS journalPromptId,
+        school_settings.journal_subject_id AS currentJournalSubjectId
+       FROM grading_items
+       INNER JOIN sections ON sections.id = grading_items.section_id
+       INNER JOIN subjects ON subjects.id = grading_items.subject_id AND subjects.is_active = TRUE
+       INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id
+       LEFT JOIN grading_categories ON grading_categories.id = grading_items.grading_category_id
+       LEFT JOIN subject_grading_components ON subject_grading_components.id = grading_items.subject_grading_component_id
+         AND subject_grading_components.school_id = grading_items.school_id
+       LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id = grading_items.subject_grading_exam_part_id
+         AND subject_grading_exam_parts.school_id = grading_items.school_id
+       LEFT JOIN journal_prompts ON journal_prompts.grading_item_id = grading_items.id
+         AND journal_prompts.school_id = grading_items.school_id
+       LEFT JOIN school_settings ON school_settings.school_id = grading_items.school_id
+       WHERE ${where.join(' AND ')} ORDER BY grading_items.recorded_at DESC`, values);
     res.json({ gradingItems: items.map(item => ({ ...item, maxScore: Number(item.maxScore), usedInPublishedGrades: Boolean(item.usedInPublishedGrades), subjectGradingComponentId: item.subjectGradingComponentId == null ? null : Number(item.subjectGradingComponentId), subjectGradingExamPartId: item.subjectGradingExamPartId == null ? null : Number(item.subjectGradingExamPartId) })) });
   } catch (error) { next(error); }
 }
@@ -637,7 +675,8 @@ async function getFinalGradesOverview(req, res, next) {
 
       const [subjectRows] = await database.execute(
         `SELECT DISTINCT section_teachers.section_id AS sectionId,
-          subjects.id AS subjectId, subjects.name AS subjectName
+          subjects.id AS subjectId, subjects.name AS subjectName,
+          subjects.subject_code AS subjectCode
         FROM section_students
         INNER JOIN sections ON sections.id = section_students.section_id
           AND sections.school_id = ?
@@ -652,7 +691,8 @@ async function getFinalGradesOverview(req, res, next) {
       subjectRows.forEach(subject => {
         sectionMap.get(String(subject.sectionId))?.subjects.push({
           subjectId: String(subject.subjectId),
-          subjectName: subject.subjectName
+          subjectName: subject.subjectName,
+          subjectCode: subject.subjectCode || null
         });
       });
     }
@@ -662,6 +702,7 @@ async function getFinalGradesOverview(req, res, next) {
         sections.name AS sectionName, published_final_grades.subject_id AS subjectId,
         sections.school_level_id AS schoolLevelId,
         subjects.name AS subjectName, published_final_grades.academic_term_id AS academicTermId,
+        subjects.subject_code AS subjectCode,
         academic_terms.name AS academicTermName,
         academic_terms.sequence_number AS academicTermSequenceNumber,
         school_levels.level_code AS schoolLevelCode,
@@ -671,6 +712,7 @@ async function getFinalGradesOverview(req, res, next) {
         academic_years.id AS academicYearId, academic_years.label AS academicYearLabel,
         academic_years.status AS academicYearStatus,
         published_final_grades.final_grade AS finalGrade,
+        published_final_grades.communication_grade_source AS communicationGradeSource,
         published_final_grades.published_at AS publishedAt
       FROM published_final_grades
       INNER JOIN sections ON sections.id = published_final_grades.section_id
@@ -693,6 +735,54 @@ async function getFinalGradesOverview(req, res, next) {
         subjects.name, published_final_grades.published_at DESC`,
       [schoolId, studentId]
     );
+
+    const [communicationComponentRows] = await database.execute(
+      `SELECT section_id AS sectionId, subject_id AS subjectId,
+        academic_term_id AS academicTermId,
+        communication_component_code AS communicationComponentCode,
+        final_grade AS finalGrade, published_at AS publishedAt
+       FROM shs_communication_component_grades
+       WHERE school_id = ? AND student_user_id = ?
+       ORDER BY published_at DESC`,
+      [schoolId, studentId]
+    );
+    const communicationComponentsByKey = new Map();
+    communicationComponentRows.forEach(component => {
+      const key = `${component.sectionId}:${component.subjectId}:${component.academicTermId}`;
+      if (!communicationComponentsByKey.has(key)) communicationComponentsByKey.set(key, {});
+      communicationComponentsByKey.get(key)[component.communicationComponentCode] = {
+        finalGrade: Number(component.finalGrade),
+        publishedAt: component.publishedAt
+      };
+    });
+    const [legacyCommunicationRows] = await database.execute(
+      `SELECT history.section_id AS sectionId, history.subject_id AS subjectId,
+        history.academic_term_id AS academicTermId, history.final_grade AS finalGrade,
+        history.published_at AS publishedAt
+       FROM shs_grade_publication_history history
+       JOIN subjects ON subjects.id = history.subject_id AND subjects.school_id = history.school_id
+       WHERE history.school_id = ? AND history.student_user_id = ?
+         AND history.communication_component_code = 'legacy_combined'
+         AND subjects.subject_code = 'shs-core-communication'
+       ORDER BY history.publication_version DESC, history.published_at DESC`,
+      [schoolId, studentId]
+    );
+    const legacyCommunicationByKey = new Map();
+    legacyCommunicationRows.forEach(legacy => {
+      const key = `${legacy.sectionId}:${legacy.subjectId}:${legacy.academicTermId}`;
+      if (!legacyCommunicationByKey.has(key)) legacyCommunicationByKey.set(key, {
+        finalGrade: Number(legacy.finalGrade), publishedAt: legacy.publishedAt
+      });
+    });
+    gradeRows.forEach(grade => {
+      if (grade.subjectCode !== 'shs-core-communication') return;
+      const key = `${grade.sectionId}:${grade.subjectId}:${grade.academicTermId}`;
+      grade.communicationComponents = communicationComponentsByKey.get(key) || {};
+      grade.legacyCombinedGrade = legacyCommunicationByKey.get(key)
+        || (grade.communicationGradeSource === 'legacy_combined'
+          ? { finalGrade: Number(grade.finalGrade), publishedAt: grade.publishedAt }
+          : null);
+    });
 
     const electiveGradeRows = await loadPublishedElectiveGrades(database, user, { studentId });
     const allGradeRows = gradeRows.concat(electiveGradeRows);
@@ -765,7 +855,15 @@ async function getFinalGradesOverview(req, res, next) {
               ? k10PassingThresholds.get(getOverviewRuleScopeKey(grade))
               : grade.passingGradeThreshold == null ? null : Number(grade.passingGradeThreshold)
           };
-        })
+        }),
+        communicationComponentGrades: communicationComponentRows.map(component => ({
+          sectionId: String(component.sectionId),
+          subjectId: String(component.subjectId),
+          academicTermId: String(component.academicTermId),
+          communicationComponentCode: component.communicationComponentCode,
+          finalGrade: Number(component.finalGrade),
+          publishedAt: component.publishedAt
+        }))
       }
     });
   } catch (error) {

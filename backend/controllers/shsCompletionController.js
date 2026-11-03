@@ -87,24 +87,27 @@ async function loadCoreSubjects(db, schoolId, section, studentId, terms) {
   if (!section) return [];
   const [subjects] = await db.execute(
     `SELECT sub.id AS subjectId, sub.name AS subjectName,
-      sub.instructional_hours AS instructionalHours
+      sub.subject_code AS subjectCode, sub.instructional_hours AS instructionalHours
      FROM section_teachers st
      JOIN subjects sub ON sub.id = st.subject_id AND sub.school_id = st.school_id
        AND sub.is_active = TRUE
      WHERE st.school_id = ? AND st.section_id = ? AND sub.shs_subject_type = 'core'
-     GROUP BY sub.id, sub.name, sub.instructional_hours ORDER BY sub.name`,
+     GROUP BY sub.id, sub.name, sub.subject_code, sub.instructional_hours ORDER BY sub.name`,
     [schoolId, section.sectionId]
   );
   const result = [];
   for (const subject of subjects) {
+    const communicationGradeFilter = subject.subjectCode === 'shs-core-communication'
+      ? "AND p.communication_grade_source = 'component_average'" : '';
     const [grades] = await db.execute(
       `SELECT p.academic_term_id AS academicTermId, p.final_grade AS finalGrade,
-        p.publication_version AS publicationVersion, p.published_at AS publishedAt
+        p.publication_version AS publicationVersion, p.published_at AS publishedAt,
+        p.communication_grade_source AS communicationGradeSource
        FROM published_final_grades p
        JOIN academic_terms term ON term.id = p.academic_term_id AND term.school_id = p.school_id
          AND term.academic_year_id = ?
        WHERE p.school_id = ? AND p.section_id = ? AND p.subject_id = ?
-         AND p.shs_elective_class_id IS NULL AND p.student_user_id = ?`,
+         AND p.shs_elective_class_id IS NULL AND p.student_user_id = ? ${communicationGradeFilter}`,
       [section.academicYearId, schoolId, section.sectionId, subject.subjectId, studentId]
     );
     result.push({ ...subject, instructionalHours: Number(subject.instructionalHours || 0),

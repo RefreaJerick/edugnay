@@ -98,15 +98,25 @@ lucide.createIcons();
 
       list.innerHTML = subjects.map(subject => {
         const recorded = subject.finalGrade !== null && subject.finalGrade !== undefined && Number.isFinite(Number(subject.finalGrade));
+        const communicationComponents = subject.communicationComponentGrades || {};
+        const isCommunicationSubject = subject.subjectCode === 'shs-core-communication';
+        const componentRows = isCommunicationSubject ? [
+          ['Effective Communication', communicationComponents.english?.finalGrade],
+          ['Mabisang Komunikasyon', communicationComponents.filipino?.finalGrade]
+        ] : [];
         const subtitle = recorded
           ? formatPublishedInfo(subject)
           : subject.electiveClassId && subject.sectionName
             ? subject.sectionName + ' · Not published'
             : 'Not published';
-        return '<article class="grade-subject-row">' +
+        return '<article class="grade-subject-row' + (isCommunicationSubject ? ' grade-subject-row-communication' : '') + '">' +
           '<div class="grade-subject-copy">' +
             '<div class="grade-subject-name">' + escapeHtml(subject.subjectName || 'Subject') + '</div>' +
             '<div class="grade-subject-teacher">' + escapeHtml(subtitle) + '</div>' +
+            (componentRows.length ? '<div class="grade-communication-components">' + componentRows.map(([name, grade]) =>
+              '<div class="grade-communication-component"><span>' + escapeHtml(name) + '</span><strong>' +
+              (grade !== undefined ? escapeHtml(Number(grade).toFixed(1)) : 'Not published') + '</strong></div>'
+            ).join('') + '</div>' : '') +
           '</div>' +
           '<div class="grade-subject-score ' + window.EDUGNAY_CONFIG.gradeScoreClass(subject) + '">' +
             '<div class="grade-score-value">' + (recorded ? Number(subject.finalGrade).toFixed(1) : '—') + '</div>' +

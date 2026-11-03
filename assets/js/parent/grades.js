@@ -162,6 +162,12 @@ lucide.createIcons();
       list.innerHTML = subjects.map(subject => {
         const recorded = subject.finalGrade !== null && subject.finalGrade !== undefined
           && Number.isFinite(Number(subject.finalGrade));
+        const communicationComponents = subject.communicationComponentGrades || {};
+        const isCommunicationSubject = subject.subjectCode === 'shs-core-communication';
+        const componentRows = isCommunicationSubject ? [
+          ['Effective Communication', communicationComponents.english?.finalGrade],
+          ['Mabisang Komunikasyon', communicationComponents.filipino?.finalGrade]
+        ] : [];
         const gradeValue = recorded
           ? Number(subject.finalGrade).toLocaleString('en-PH', { maximumFractionDigits: 2 })
           : '—';
@@ -169,10 +175,15 @@ lucide.createIcons();
         const subtitle = subject.electiveClassId && subject.sectionName
           ? `${subject.sectionName} · ${gradeStatus}`
           : gradeStatus;
-        return `<article class="grade-subject-row">
+        return `<article class="grade-subject-row${isCommunicationSubject ? ' grade-subject-row-communication' : ''}">
           <div class="grade-subject-copy">
             <div class="grade-subject-name">${window.EDUGNAY_CONFIG.escapeHtml(subject.subjectName || 'Subject')}</div>
             <div class="grade-subject-teacher">${window.EDUGNAY_CONFIG.escapeHtml(subtitle || '')}</div>
+            ${componentRows.length ? `<div class="grade-communication-components">${componentRows.map(([name, grade]) =>
+              `<div class="grade-communication-component"><span>${window.EDUGNAY_CONFIG.escapeHtml(name)}</span><strong>${grade !== undefined
+                ? window.EDUGNAY_CONFIG.escapeHtml(Number(grade).toLocaleString('en-PH', { maximumFractionDigits: 1 }))
+                : 'Not published'}</strong></div>`
+            ).join('')}</div>` : ''}
           </div>
           <div class="grade-subject-score ${window.EDUGNAY_CONFIG.gradeScoreClass(subject)}">
             <div class="grade-score-value">${gradeValue}</div>

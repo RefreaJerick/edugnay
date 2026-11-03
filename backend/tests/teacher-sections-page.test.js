@@ -615,7 +615,7 @@ test('published section status follows saved grades for the selected period', ()
 test('direct section access stops before subject APIs when no assignment exists', () => {
   assert.match(sectionsSource, /This section has no subject assigned to your account\./);
   const guard = sectionsSource.indexOf("if (!hasValidBackendSubjectAssignment())");
-  const attendanceRequest = sectionsSource.indexOf('getSectionAttendanceHistory(section.id, CURRENT_SUBJECT_ID)');
+  const attendanceRequest = sectionsSource.indexOf('getSectionAttendanceHistory(section.id, CURRENT_SUBJECT_ID,');
   assert.ok(guard >= 0 && attendanceRequest > guard);
 });
 
@@ -747,20 +747,21 @@ test('assignment modal follows the selected subject and saves its ID', () => {
   const context = {
     document: {
       getElementById: element,
-      createElement: () => ({ value: '', textContent: '' }),
+    createElement: () => ({ value: '', textContent: '', dataset: {} }),
       querySelectorAll: () => []
     },
     URL,
     window,
     CURRENT_SUBJECT: 'English',
     CURRENT_SUBJECT_ID: '17',
+    CURRENT_COMMUNICATION_COMPONENT_CODE: '',
     CURRENT_SUBJECT_ASSIGNMENT: { subjectId: '17', subjectName: 'English' },
     CURRENT_TEACHER_SUBJECT_ASSIGNMENTS: [{ subjectId: '17', subjectName: 'English' }],
     CURRENT_SECTION: 'Grade 7 - St. Matthew'
   };
   vm.runInNewContext(`${updateSource}; updateSectionSubjectControl();`, context);
   assert.equal(element('assignSubjectInput').value, 'English');
-  assert.equal(element('sectionSubjectSelect').value, '17');
+  assert.equal(element('sectionSubjectSelect').value, '17|');
   assert.equal(element('sectionSubjectSelect').hidden, true);
 
   context.CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = [
@@ -772,8 +773,21 @@ test('assignment modal follows the selected subject and saves its ID', () => {
   vm.runInNewContext('updateSectionSubjectControl();', context);
   assert.equal(element('sectionSubjectSelect').hidden, false);
   assert.deepEqual(element('sectionSubjectSelect').children.map(option => option.textContent), ['English', 'Araling Panlipunan']);
+  element('sectionSubjectSelect').selectedOptions = [element('sectionSubjectSelect').children[1]];
   element('sectionSubjectSelect').listeners.change();
   assert.equal(new URL(window.location.href).searchParams.get('subjectId'), '18');
+
+  context.CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = [{ subjectId: '17', subjectName: 'Effective Communication / Mabisang Komunikasyon',
+    communicationComponentCode: 'english', communicationComponentName: 'Effective Communication', communicationComponentHours: 80 }];
+  context.CURRENT_SUBJECT_ID = '17';
+  context.CURRENT_COMMUNICATION_COMPONENT_CODE = 'english';
+  vm.runInNewContext('updateSectionSubjectControl();', context);
+  assert.equal(element('sectionSubjectSelect').children[0].textContent,
+    'Effective Communication (80 instructional hours)');
+  assert.doesNotMatch(element('sectionSubjectSelect').children[0].textContent, /Mabisang Komunikasyon/);
+  element('sectionSubjectSelect').selectedOptions = [element('sectionSubjectSelect').children[0]];
+  element('sectionSubjectSelect').listeners.change();
+  assert.equal(new URL(window.location.href).searchParams.get('communicationComponentCode'), 'english');
 
   context.CURRENT_SUBJECT_ASSIGNMENT = null;
   context.CURRENT_SUBJECT_ID = '';

@@ -300,11 +300,15 @@
     const items = data.items || [];
     const students = data.students || [];
     const writable = Boolean(policy && term?.status === 'active' && data.scope.yearStatus === 'active'
+      && !data.scope.legacyCommunication
       && (data.scope.kind !== 'elective' || (data.scope.classActive && data.scope.offeringActive && data.scope.teacherStatus === 'active')));
     const title = host.querySelector('#scorePanelTitle');
     const subject = host.querySelector('#scoreSectionName');
     const weights = host.querySelector('#scorePanelWeights');
-    title.textContent = 'Score Recording: ' + (data.scope.subjectName || data.scope.className || 'Class');
+    const subjectTitle = data.scope.communicationComponentName
+      ? data.scope.communicationComponentName
+      : data.scope.subjectName || data.scope.className || 'Class';
+    title.textContent = 'Score Recording: ' + subjectTitle;
     subject.textContent = [data.scope.className, data.scope.yearLabel]
       .filter(Boolean).join(' · ');
     weights.textContent = policy ? policy.components.map(component => component.name + ' ' + Number(component.weight) + '%').join(' · ') : 'Grading rule unavailable';
@@ -344,7 +348,9 @@
     setVisible(publishedBanner, data.published.length > 0);
     if (data.published.length) {
       document.getElementById('publishedPeriodName').textContent = term?.name || 'Grading period';
-      document.getElementById('publishedPeriodStatus').textContent = 'Published grades for this class and grading period.';
+      document.getElementById('publishedPeriodStatus').textContent = data.scope.communicationComponentName
+          ? `Published ${data.scope.communicationComponentName} component grades for this grading period.`
+          : 'Published grades for this class and grading period.';
       const republish = document.getElementById('republishGradesButton');
       setVisible(republish, writable);
       republish.onclick = () => openPublishPreview(data, scope, writable, reload);

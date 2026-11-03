@@ -39,8 +39,8 @@ const database = {
     if (sql.includes('FROM section_teachers') && !sql.includes('FROM learning_materials AS materials')) return [assigned ? [{ id: 8 }] : []];
     if (sql.includes('FROM academic_terms')) return [[]];
     if (sql.includes('INSERT INTO learning_materials')) {
-      material.title = values[6];
-      material.status = values[12];
+      material.title = values[7];
+      material.status = values[13];
       return [{ insertId: 42 }];
     }
     if (sql.startsWith('INSERT INTO audit_logs')) {
