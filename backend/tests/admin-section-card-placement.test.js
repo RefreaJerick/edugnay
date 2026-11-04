@@ -215,6 +215,72 @@ test('Grades 11 and 12 show separately from compact pathways and retain full pla
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.section-card \.card-head\s*\{\s*padding-inline:\s*15px;/);
 });
 
+test('mobile section-card footer actions stay on one row', () => {
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.section-card \.card-foot\s*\{[^}]*flex-direction:\s*row;[^}]*flex-wrap:\s*nowrap;/s);
+  assert.match(css, /\.section-card \.card-btn\s*\{[^}]*width:\s*auto;[^}]*flex:\s*1 1 0;/s);
+  assert.match(css, /\.section-card \.section-card-menu,\s*\.section-card \.section-menu-trigger\s*\{[^}]*width:\s*35px;[^}]*flex:\s*0 0 35px;/s);
+  assert.match(css, /\.section-card \.section-action-menu\s*\{[^}]*width:\s*min\(160px, calc\(100vw - 30px\)\);/s);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.card-foot\s*\{\s*flex-direction:\s*column;/s);
+});
+
+test('section students modal stacks readable student cards on phones', () => {
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/management.js'), 'utf8');
+  assert.match(html, /<div class="modal-backdrop" id="sectionStudentsModalBackdrop">[\s\S]*?<thead>[\s\S]*?<th>#<\/th><th>Student Name<\/th><th>School Email<\/th><th>Action<\/th>[\s\S]*?<tbody id="sectionStudentsTableBody"><\/tbody>/);
+  assert.match(script, /<td>\$\{index \+ 1\}<\/td>[\s\S]*?<td><strong>\$\{student\.displayName\}<\/strong><\/td>[\s\S]*?<td>\$\{student\.schoolEmail \|\| ''\}<\/td>[\s\S]*?class="row-btn remove"/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?#sectionStudentsModalBackdrop \.table-wrap\s*\{[^}]*overflow:\s*visible;/s);
+  assert.match(css, /#sectionStudentsModalBackdrop thead\s*\{[^}]*clip-path:\s*inset\(50%\);/s);
+  assert.match(css, /#sectionStudentsModalBackdrop tbody\s*\{[^}]*display:\s*grid;/s);
+  assert.match(css, /#sectionStudentsModalBackdrop tbody tr:not\(\.panel-empty-row\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/s);
+  assert.match(css, /#sectionStudentsModalBackdrop tbody tr:not\(\.panel-empty-row\) td:first-child\s*\{[^}]*display:\s*none;/s);
+  assert.match(css, /#sectionStudentsModalBackdrop tbody tr:not\(\.panel-empty-row\) td:nth-child\(3\)\s*\{[^}]*overflow-wrap:\s*anywhere;/s);
+  assert.match(css, /#sectionStudentsModalBackdrop tbody tr:not\(\.panel-empty-row\) td:nth-child\(4\)\s*\{[^}]*grid-column:\s*2;[\s\S]*?white-space:\s*nowrap;/s);
+  assert.match(css, /#sectionStudentsModalBackdrop tbody tr\.panel-empty-row\s*\{[^}]*display:\s*block;/s);
+});
+
+test('Assign Students list stacks readable student cards on phones', () => {
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/management.js'), 'utf8');
+  assert.match(html, /<table id="enrolledTable">[\s\S]*?<th>Student<\/th>[\s\S]*?<th>Section<\/th>[\s\S]*?<th>Grade<\/th>[\s\S]*?<th>Actions<\/th>/);
+  assert.match(script, /<td><div class="user-cell">[\s\S]*?<div class="user-name">\$\{student\.displayName\}<\/div>[\s\S]*?<div class="user-email">\$\{student\.schoolEmail\}<\/div>[\s\S]*?<\/td>[\s\S]*?<span class="enrolled-section-name">\$\{section\.name\}<\/span>[\s\S]*?<span class="badge gb-[^\"]+">\$\{section\.grade\}<\/span>[\s\S]*?class="row-btn move"[\s\S]*?class="row-btn remove"/);
+  assert.match(script, /class="row-btn assign"[\s\S]*?\+ Assign/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?#enrolledTable thead\s*\{[^}]*clip-path:\s*inset\(50%\);/s);
+  assert.match(css, /#panel-students \.table-wrap\s*\{[^}]*overflow-x:\s*visible;/s);
+  assert.match(css, /#enrolledTable tbody\s*\{[^}]*display:\s*grid;/s);
+  assert.match(css, /#enrolledTable tbody tr:not\(\.panel-empty-row\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/s);
+  assert.match(css, /#enrolledTable tbody tr:not\(\.panel-empty-row\) > td:first-child\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*grid-row:\s*1;/s);
+  assert.match(css, /#enrolledTable tbody tr:not\(\.panel-empty-row\) > td:nth-child\(2\)\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*2;/s);
+  assert.match(css, /#enrolledTable tbody tr:not\(\.panel-empty-row\) > td:nth-child\(3\)\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*2;/s);
+  assert.match(css, /#enrolledTable \.user-email[\s\S]*?overflow-wrap:\s*anywhere;/);
+  assert.match(css, /#enrolledTable tbody tr\.panel-empty-row\s*\{[^}]*display:\s*block;/s);
+  assert.match(css, /#enrolledTable tbody tr\.panel-empty-row\[hidden\]\s*\{\s*display:\s*none;/s);
+});
+
+test('mobile teacher assignment cards use the progress row instead of a status pill', () => {
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/management.js'), 'utf8');
+  assert.match(script, /coverage-bar-wrap[\s\S]*?coverage-label \$\{full \? 'label-full' : 'label-partial'\}[\s\S]*?\$\{assignedCount\}\/\$\{totalSlots\} Assigned/);
+  assert.match(script, /badge badge-green[\s\S]*?Complete[\s\S]*?badge badge-orange[\s\S]*?Incomplete/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.section-meta\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/s);
+  assert.match(css, /\.section-block \.section-meta \.meta-item strong\s*\{[^}]*overflow-wrap:\s*anywhere;/s);
+  assert.match(css, /\.section-block \.section-meta > \.badge\s*\{\s*display:\s*none;/s);
+  assert.match(css, /\.coverage-bar-wrap\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*flex-wrap:\s*nowrap;/s);
+  assert.match(css, /\.coverage-label\s*\{\s*white-space:\s*nowrap;/s);
+});
+
+test('teacher assignment metadata gets a full row below the title and chevron on small screens', () => {
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  const responsiveStyles = css.slice(css.indexOf('Management surface refresh'));
+  const tabletStyles = responsiveStyles
+    .split('@media (max-width: 760px) {')[1]
+    .split('\n}\n\n@media (max-width: 520px) {')[0];
+  assert.match(tabletStyles, /\.section-head-left\s*\{[^}]*order:\s*1;[^}]*flex:\s*1 1 auto;[^}]*min-width:\s*0;/s);
+  assert.match(tabletStyles, /\.section-head \.collapse-arrow\s*\{\s*order:\s*2;/s);
+  assert.match(tabletStyles, /\.section-meta\s*\{[^}]*order:\s*3;[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*flex:\s*0 0 100%;/s);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.section-meta\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/s);
+});
+
 test('compact labels stay in read-only Class Management displays and full names remain available', () => {
   assert.ok(html.includes('title="${window.EDUGNAY_CONFIG.escapeHtml(managementSectionPlacement(section))}">${window.EDUGNAY_CONFIG.escapeHtml(managementSectionCompactPlacement(section))}'));
   assert.ok(html.includes('title="${window.EDUGNAY_CONFIG.escapeHtml(managementSectionBadgeLabel(section))}">${window.EDUGNAY_CONFIG.escapeHtml(managementSectionCompactBadgeLabel(section))}'));

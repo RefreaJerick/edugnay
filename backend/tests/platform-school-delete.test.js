@@ -123,3 +123,23 @@ test('platform-only route and review modal expose a separate permanent-delete co
   assert.match(page, /This action cannot be undone\./);
   new vm.Script(page.match(/<script>([\s\S]*?)<\/script>/)[1]);
 });
+
+test('school accounts keep the desktop table and expose labeled mobile cards with Review', () => {
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-school-accounts.html'), 'utf8');
+  const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js/platform/school-accounts.js'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/platform/school-accounts.css'), 'utf8');
+
+  assert.match(page, /<table class="school-account-table">[\s\S]*?<th scope="col">School<\/th>[\s\S]*?<th scope="col">Action<\/th>/);
+  assert.doesNotMatch(script, /school-account-mobile-label" aria-hidden="true">School<\/span>/);
+  assert.match(script, /school-account-mobile-label" aria-hidden="true">Administrator<\/span>/);
+  assert.match(script, /school-account-mobile-label" aria-hidden="true">School ID<\/span>/);
+  assert.match(script, /school-account-mobile-label" aria-hidden="true">Status<\/span>/);
+  assert.match(script, /data-review-school="\$\{escapeHtml\(school\.id\)\}">Review<\/button>/);
+  assert.match(script, /document\.querySelectorAll\('\[data-review-school\]'\)[\s\S]*?openSchoolAccountModal\(button\.dataset\.reviewSchool, button\)/);
+  assert.match(script, /modal\.classList\.add\('open'\)/);
+  assert.match(styles, /\.school-account-table\s*\{[^}]*min-width:\s*760px/s);
+  assert.match(styles, /@media \(max-width:\s*560px\)[\s\S]*?\.school-account-table-wrap\s*\{\s*overflow:\s*visible/s);
+  assert.match(styles, /\.school-account-table tbody tr:not\(\.panel-empty-row\)\s*\{[^}]*display:\s*grid/s);
+  assert.match(styles, /\.school-account-table tbody tr:not\(\.panel-empty-row\) td\s*\{[^}]*overflow-wrap:\s*anywhere/s);
+  assert.match(styles, /\.school-account-table \.school-account-mobile-label\s*\{[^}]*display:\s*block/s);
+});

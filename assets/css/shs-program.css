@@ -186,7 +186,7 @@
   .shs-toolbar .timetable-field, .shs-toolbar > .timetable-button { flex: 1 1 100%; width: 100%; margin-left: 0; }
   .shs-subject-toolbar { padding: 16px; }
   .shs-offerings { padding: 16px; }
-  .shs-class-list { padding-inline: 0; }
+  .shs-class-list { padding-inline: 16px; }
   .shs-roster-controls { grid-template-columns: 1fr; padding: 16px 16px 0; }
   .shs-roster-pagination { align-items: stretch; flex-direction: column; padding: 0 16px 16px; }
   .shs-roster-pagination > div { justify-content: space-between; }
@@ -205,6 +205,19 @@
   #elective-classes .shs-choice-head { flex-direction: column; gap: 6px; }
   #elective-classes .shs-choice-head > strong { flex: 0 0 auto; width: 100%; }
   #elective-classes .shs-choice-seats.badge { margin-left: 0; }
+  .shs-offering-head > div { flex: 1 1 100%; width: 100%; }
+  .shs-offering-head > .badge {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .shs-class-menu { align-self: start; }
   .shs-class-action-menu { width: min(160px, calc(100vw - 56px)); }
 }

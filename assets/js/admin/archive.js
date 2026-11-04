@@ -13,9 +13,9 @@ let archiveCandidates = [];
     return Number(value || 0).toLocaleString();
   }
 
-  function formatArchivePercent(value) {
+  function formatArchivePercent(value, unavailableLabel = 'Not available') {
     return value === null || value === undefined || !Number.isFinite(Number(value))
-      ? 'Not available'
+      ? unavailableLabel
       : `${Number(value)}%`;
   }
 
@@ -41,7 +41,7 @@ let archiveCandidates = [];
       { tone: 'blue', icon: 'archive', value: formatArchiveCount(summary.archivedYears), label: 'Archived Years', sub: years.length ? `S.Y. ${years[years.length - 1]} to ${years[0]}` : 'No archived years' },
       { tone: 'gold', icon: 'users', value: formatArchiveCount(summary.students), label: 'Archived Students', sub: 'Across archived school years' },
       { tone: 'green', icon: 'door-open', value: formatArchiveCount(summary.sections), label: 'Archived Sections', sub: 'Across archived school years' },
-      { tone: 'gray', icon: 'trending-up', value: formatArchivePercent(summary.averagePassRate), label: 'Avg Pass Rate', sub: 'Based on published final grades' }
+      { tone: 'gray', icon: 'trending-up', value: formatArchivePercent(summary.averagePassRate, '—'), label: 'Avg Pass Rate', sub: 'Based on published final grades' }
     ];
     grid.innerHTML = cards.map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${escapeArchiveHtml(card.value)}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${escapeArchiveHtml(card.sub)}</div></div>`).join('');
   }

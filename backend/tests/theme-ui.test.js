@@ -22,24 +22,47 @@ function createControl() {
   return { control, trigger, events };
 }
 
-function boot(saved, supportsSystem = true, controls = []) {
+function boot(saved, supportsSystem = true, controls = [], options = {}) {
   const listeners = {};
   const storage = new Map(saved === undefined ? [] : [['edugnay_theme_v1', saved]]);
+  const session = new Map();
+  if (options.profileSnapshot) session.set('edugnay_profile_display_v1', JSON.stringify(options.profileSnapshot));
+  if (options.schoolAccent) session.set('edugnay_school_accent_v1', JSON.stringify(options.schoolAccent));
+  const rootClasses = new Set();
+  let nextTimerId = 0;
   const media = { matches: false, addEventListener(name, handler) { listeners.media = handler; } };
+  const root = {
+    dataset: {},
+    classList: {
+      add(value) { rootClasses.add(value); },
+      remove(value) { rootClasses.delete(value); },
+      contains(value) { return rootClasses.has(value); }
+    }
+  };
   const document = {
-    documentElement: { dataset: {} },
+    documentElement: root,
     querySelectorAll(selector) { return selector === '[data-theme-control]' ? controls.map(item => item.control) : []; },
-    addEventListener(name, handler) { listeners[name] = handler; }
+    addEventListener(name, handler) { listeners[name] = handler; },
+    dispatchEvent(event) { listeners[event.type]?.(event); }
   };
   const iconRenders = [];
   const window = {
     localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
+    sessionStorage: {
+      getItem: key => session.get(key) ?? null,
+      setItem: (key, value) => session.set(key, value),
+      removeItem: key => session.delete(key)
+    },
+    location: { pathname: options.pathname || '/' },
+    setTimeout(callback) { nextTimerId += 1; listeners[`timer-${nextTimerId}`] = callback; return nextTimerId; },
+    clearTimeout(id) { delete listeners[`timer-${id}`]; },
+    EDUGNAY_SCHOOL_READY: options.schoolReady,
     matchMedia: supportsSystem ? () => media : undefined,
     lucide: { createIcons(options) { iconRenders.push(options.root); } },
     addEventListener(name, handler) { listeners[name] = handler; }
   };
-  vm.runInNewContext(script, { window, document, Set });
-  return { window, document, media, listeners, storage, iconRenders };
+  vm.runInNewContext(script, { window, document, Set, Event: class { constructor(type) { this.type = type; } } });
+  return { window, document, media, listeners, storage, session, rootClasses, iconRenders };
 }
 
 test('theme is applied before DOM readiness and invalid preferences stay Light', () => {
@@ -112,6 +135,168 @@ test('printing uses Light without changing the saved choice', () => {
   assert.equal(state.storage.get('edugnay_theme_v1'), 'dark');
   state.listeners.afterprint();
   assert.equal(state.document.documentElement.dataset.theme, 'dark');
+});
+
+test('school accent palette follows school context without changing personal theme preference', () => {
+  const state = boot('dark', true, [], {
+    pathname: '/views/admin/edugnay-admin-dashboard.html',
+    profileSnapshot: { version: 1, role: 'school_admin', userId: '7', schoolId: '12' }
+  });
+  assert.equal(state.rootClasses.has('school-accent-pending'), true);
+  state.listeners['edugnay:school-context-updated']({ detail: { id: 12, accentPalette: 'deep-teal' } });
+  assert.equal(state.document.documentElement.dataset.schoolAccent, 'deep-teal');
+  assert.equal(state.rootClasses.has('school-accent-pending'), false);
+  assert.deepEqual(JSON.parse(state.session.get('edugnay_school_accent_v1')), {
+    version: 1, schoolId: '12', palette: 'deep-teal'
+  });
+  state.window.ACADEMIX_THEME.setSchoolAccent('plum');
+  assert.equal(state.document.documentElement.dataset.schoolAccent, 'plum');
+  assert.equal(state.document.documentElement.dataset.theme, 'dark');
+  assert.equal(state.storage.get('edugnay_theme_v1'), 'dark');
+  state.window.ACADEMIX_THEME.setSchoolAccent('not-a-palette');
+  assert.equal(state.document.documentElement.dataset.schoolAccent, 'default-blue');
+  state.window.ACADEMIX_THEME.setSchoolAccent(null);
+  assert.equal(state.document.documentElement.dataset.schoolAccent, undefined);
+});
+
+test('school accent is applied before paint only for the cached school and page role', () => {
+  const profileSnapshot = { version: 1, role: 'teacher', userId: '8', schoolId: '12' };
+  const schoolAccent = { version: 1, schoolId: '12', palette: 'burgundy' };
+  const matching = boot(undefined, true, [], {
+    pathname: '/views/teacher/edugnay-teacher-dashboard.html', profileSnapshot, schoolAccent
+  });
+  assert.equal(matching.document.documentElement.dataset.schoolAccent, 'burgundy');
+  assert.equal(matching.rootClasses.has('school-accent-pending'), false);
+
+  for (const mismatched of [
+    { pathname: '/views/teacher/edugnay-teacher-dashboard.html', profileSnapshot, schoolAccent: { ...schoolAccent, schoolId: '13' } },
+    { pathname: '/views/student/edugnay-student-dashboard.html', profileSnapshot, schoolAccent }
+  ]) {
+    const state = boot(undefined, true, [], mismatched);
+    assert.equal(state.document.documentElement.dataset.schoolAccent, undefined);
+    assert.equal(state.rootClasses.has('school-accent-pending'), true);
+  }
+});
+
+test('school context refresh replaces the cached accent for that school', () => {
+  const state = boot(undefined, true, [], {
+    pathname: '/views/admin/edugnay-admin-dashboard.html',
+    profileSnapshot: { version: 1, role: 'school_admin', userId: '7', schoolId: '12' },
+    schoolAccent: { version: 1, schoolId: '12', palette: 'default-blue' }
+  });
+  assert.equal(state.document.documentElement.dataset.schoolAccent, 'default-blue');
+  state.listeners['edugnay:school-context-updated']({ detail: { id: 12, accentPalette: 'plum' } });
+  assert.equal(state.document.documentElement.dataset.schoolAccent, 'plum');
+  assert.deepEqual(JSON.parse(state.session.get('edugnay_school_accent_v1')), {
+    version: 1, schoolId: '12', palette: 'plum'
+  });
+});
+
+test('public and platform pages ignore school context and do not hide their shell', () => {
+  for (const pathname of ['/', '/views/platform/edugnay-platform-dashboard.html']) {
+    const state = boot(undefined, true, [], { pathname });
+    state.listeners['edugnay:school-context-updated']({ detail: { id: 12, accentPalette: 'plum' } });
+    assert.equal(state.document.documentElement.dataset.schoolAccent, undefined);
+    assert.equal(state.rootClasses.has('school-accent-pending'), false);
+  }
+});
+
+test('an unavailable school context releases the hidden shell on page failure or timeout', () => {
+  const options = {
+    pathname: '/views/student/edugnay-student-dashboard.html',
+    profileSnapshot: { version: 1, role: 'student', userId: '9', schoolId: '12' }
+  };
+  const failed = boot(undefined, true, [], options);
+  failed.listeners['edugnay:page-loading-failed']();
+  assert.equal(failed.rootClasses.has('school-accent-pending'), false);
+
+  const timedOut = boot(undefined, true, [], options);
+  timedOut.listeners['timer-1']();
+  assert.equal(timedOut.rootClasses.has('school-accent-pending'), false);
+});
+
+test('school settings offers all approved accents and previews a real action, link, and selected item', () => {
+  const settings = read('assets/js/admin/schools.js');
+  const theme = read('assets/css/theme.css');
+  const pageLoading = read('assets/js/page-loading.js');
+  for (const palette of ['default-blue', 'deep-teal', 'forest-green', 'plum', 'burgundy']) {
+    assert.match(settings, new RegExp(`value: '${palette}'`));
+    assert.match(theme, new RegExp(`data-school-accent="${palette}"`));
+  }
+  assert.match(settings, /name="accentPalette"/);
+  assert.match(settings, /class="top-btn primary" type="button">Primary button/);
+  assert.match(settings, /class="school-accent-preview-link"/);
+  assert.match(settings, /class="nav-item active" href="#schoolAccentPreview" aria-current="page"/);
+  assert.match(settings, /class="school-accent-reset" type="button">Restore default/);
+  assert.match(settings, /defaultPalette\.dispatchEvent\(new Event\('change'/);
+  assert.match(settings, /settings\.accentPalette = values\.accentPalette \|\| 'default-blue'/);
+  assert.match(theme, /\.timetable-button:not\(\.secondary\)/);
+  assert.match(theme, /\.assignment-submit-action/);
+  assert.match(theme, /outline: 2px solid var\(--theme-accent-text\)/);
+  assert.match(theme, /html\.school-accent-pending body :is\(\.sidebar/);
+  assert.match(pageLoading, /school-accent-pending/);
+  assert.match(pageLoading, /edugnay:school-accent-ready/);
+  assert.match(pageLoading, /readyRequested/);
+  assert.match(pageLoading, /edugnay:page-loading-failed/);
+});
+
+test('school accent keeps the Narrative Reports pipeline on its solid page surface', () => {
+  const theme = read('assets/css/theme.css');
+  const reportsStyles = read('assets/css/adviser/narrative-reports.css');
+  const gradientRule = theme.match(/html\[data-school-accent\] body \.grading-banner\s*\{([^}]*)\}/);
+  const pipelineSurfaceRule = [...reportsStyles.matchAll(/\.pipeline-banner\s*\{([^}]*)\}/g)]
+    .map(match => match[1])
+    .filter(rule => /background:\s*var\(--surface-blue\)/.test(rule))
+    .at(-1);
+
+  assert.ok(gradientRule);
+  assert.match(gradientRule[1], /background:\s*linear-gradient/);
+  assert.doesNotMatch(gradientRule[1], /\.pipeline-banner|\.profile-header-card/);
+  assert.ok(pipelineSurfaceRule);
+});
+
+test('school accent gives the Teacher Classes section header a solid palette shade', () => {
+  const theme = read('assets/css/theme.css');
+  const gradientRule = theme.match(/html\[data-school-accent\] body \.grading-banner\s*\{([^}]*)\}/);
+
+  assert.ok(gradientRule);
+  assert.match(gradientRule[1], /background:\s*linear-gradient/);
+  assert.doesNotMatch(gradientRule[1], /\.section-header|\.profile-header-card/);
+  assert.match(theme, /html\[data-school-accent\] body \.section-header \{ background: var\(--school-accent-sidebar\); \}/);
+});
+
+test('school accent keeps shared profile header cards on a solid palette shade', () => {
+  const theme = read('assets/css/theme.css');
+  const gradientRule = theme.match(/html\[data-school-accent\] body \.grading-banner\s*\{\s*background: linear-gradient/);
+
+  assert.ok(gradientRule);
+  assert.doesNotMatch(gradientRule[0], /profile-header-card/);
+  assert.match(theme, /html\[data-school-accent\] body \.profile-header-card \{ background: var\(--school-accent-sidebar\); \}/);
+});
+
+test('school portal overview banners use a solid palette shade', () => {
+  const theme = read('assets/css/theme.css');
+  const sharedGradientRule = theme.match(/html\[data-school-accent\] body \.grading-banner\s*\{([^}]*)\}/);
+
+  assert.ok(sharedGradientRule);
+  assert.match(sharedGradientRule[1], /background:\s*linear-gradient/);
+  assert.doesNotMatch(sharedGradientRule[1], /\.portal-overview|\.profile-header-card/);
+  assert.match(theme, /html\[data-school-accent\] body \.portal-overview \{ background: var\(--school-accent-sidebar\); \}/);
+});
+
+test('school accent keeps the Journal Settings header on the neutral surface', () => {
+  const theme = read('assets/css/theme.css');
+  const journals = read('assets/css/teacher/journals.css');
+  const pendingRule = theme.match(/html\.school-accent-pending body :is\(([^)]*)\)/);
+  const neutralHeaderRule = [...journals.matchAll(/\.settings-drawer-head\s*\{([^}]*)\}/g)]
+    .map(match => match[1])
+    .find(rule => /background:\s*var\(--theme-surface\)/.test(rule));
+
+  assert.doesNotMatch(theme, /html\[data-school-accent\] body \.settings-drawer-head\s*\{[^}]*background:/);
+  assert.ok(neutralHeaderRule);
+  assert.match(neutralHeaderRule, /border-bottom:\s*1px solid var\(--gray-200\);/);
+  assert.ok(pendingRule);
+  assert.match(pendingRule[1], /.settings-drawer-head/);
 });
 
 test('every page has one static toggle and pre-paint theme loading', () => {
@@ -208,8 +393,9 @@ test('dark summary cards share the panel surface and blue icons while light tint
   assert.match(users, /\.rs-card\.selected\s*\{[^}]*background: var\(--blue-xpale\)/);
 });
 
-test('non-dashboard summary cards share the desktop value and icon arrangement', () => {
+test('summary cards share the responsive value and icon arrangement', () => {
   const shared = read('assets/css/styles.css');
+  const archiveScript = read('assets/js/admin/archive.js');
   const adminManagement = read('views/admin/edugnay-admin-management.html');
   const adminReports = read('views/admin/edugnay-admin-reports.html');
   const adminArchive = read('views/admin/edugnay-admin-archive.html');
@@ -219,8 +405,10 @@ test('non-dashboard summary cards share the desktop value and icon arrangement',
   const parentAttendance = read('views/parent/edugnay-parent-attendance.html');
   const adminDashboard = read('views/admin/edugnay-admin-dashboard.html');
   const teacherDashboard = read('views/teacher/edugnay-teacher-dashboard.html');
+  const platformDashboard = read('views/platform/edugnay-platform-dashboard.html');
+  const platformDashboardCss = read('assets/css/platform/dashboard.css');
 
-  assert.match(shared, /@media \(min-width: 1181px\)\s*\{/);
+  assert.match(shared, /@media \(min-width: 521px\)\s*\{/);
   assert.match(shared, /\.summary-card-layout > \.stat-card,[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 38px;/);
   assert.match(shared, /\.summary-card-layout > \.stat-card \.stat-card-num,[\s\S]*?grid-column: 1;/);
   assert.match(shared, /\.summary-card-layout > \.stat-card \.stat-card-top,[\s\S]*?grid-column: 2;/);
@@ -240,6 +428,11 @@ test('non-dashboard summary cards share the desktop value and icon arrangement',
     assert.match(page, new RegExp(`class="[^"]*summary-card-layout[^"]*" id="${id}"`));
   }
   assert.match(adminUsers, /class="role-summary summary-card-layout"/);
-  assert.doesNotMatch(adminDashboard, /summary-card-layout/);
-  assert.doesNotMatch(teacherDashboard, /summary-card-layout/);
+  assert.match(adminDashboard, /class="stat-grid summary-card-layout" id="admin-summary-cards"/);
+  assert.match(teacherDashboard, /class="stat-grid teacher-summary-grid summary-card-layout" id="teacher-summary-cards"/);
+  assert.match(platformDashboard, /class="stat-grid summary-card-layout" id="platform-summary-cards"/);
+  assert.match(platformDashboardCss, /\.platform-dashboard \.stat-card\s*\{\s*min-height: auto;/);
+  assert.match(archiveScript, /function formatArchivePercent\(value, unavailableLabel = 'Not available'\)/);
+  assert.match(archiveScript, /value: formatArchivePercent\(summary\.averagePassRate, '—'\)/);
+  assert.match(archiveScript, /formatArchivePercent\(rate\)/);
 });

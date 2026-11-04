@@ -4,6 +4,7 @@
   let timer = null;
   let body = null;
   let failureMessage = '';
+  let readyRequested = false;
 
   function clearTimer() {
     if (timer) window.clearTimeout(timer);
@@ -63,6 +64,11 @@
 
   function ready() {
     if (state === 'ready') return;
+    if (document.documentElement.classList.contains('school-accent-pending')) {
+      readyRequested = true;
+      return;
+    }
+    readyRequested = false;
     state = 'ready';
     clearTimer();
     if (body) body.dataset.pageLoadingComplete = 'true';
@@ -76,8 +82,12 @@
     failureMessage = String(message || '');
     clearTimer();
     showFailure();
+    document.dispatchEvent(new Event('edugnay:page-loading-failed'));
   }
 
   window.EDUGNAY_PAGE_LOADING = { ready, fail, isLoading: () => state === 'loading' };
+  document.addEventListener('edugnay:school-accent-ready', () => {
+    if (readyRequested && state !== 'failed') ready();
+  });
   document.addEventListener('DOMContentLoaded', initialize, { once: true });
 })();

@@ -9,6 +9,7 @@ const commonSource = pageFs.readFileSync(path.join(__dirname, '../../assets/js/s
 const dashboardSource = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
 const sectionsSource = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
 const sectionsStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/teacher/sections.css'), 'utf8');
+const sectionsScript = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sections.js'), 'utf8');
 const modalStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
 const sharedStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
 const sfSource = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
@@ -19,6 +20,27 @@ function extractSourceBetween(source, startMarker, endMarker) {
   const end = source.indexOf(endMarker, start);
   return end > start ? source.slice(start, end).trim() : '';
 }
+
+test('teacher student roster uses identity cards on phones and keeps table data accessible', () => {
+  assert.match(sectionsScript, /data-column="\$\{columnKey\}"/);
+  assert.match(sectionsScript, /student-roster-mobile-email" aria-hidden="true"/);
+  assert.match(sectionsStyles, /@media \(max-width: 560px\)[\s\S]*?#studentTable thead[\s\S]*?clip-path: inset\(50%\)/);
+  assert.match(sectionsStyles, /#studentTable tbody tr\[data-student-id\] td:not\(\[data-column="student"\]\)[\s\S]*?clip-path: inset\(50%\)/);
+  assert.match(sectionsStyles, /#studentTable \.student-roster-mobile-email[\s\S]*?overflow-wrap: anywhere/);
+  assert.match(sectionsStyles, /#studentTable tbody tr\.panel-empty-row td[\s\S]*?display: block/);
+});
+
+test('Score Recording keeps its student column aligned and above scrolling headers on phones', () => {
+  const phoneStickyColumn = sectionsStyles.match(/@media \(max-width: 560px\) \{\s*#scoreTable thead th\.sticky-col,\s*#scoreTable tbody th\.sticky-col \{[^}]*\}/);
+  assert.ok(phoneStickyColumn);
+  assert.match(phoneStickyColumn[0], /position: sticky/);
+  assert.match(phoneStickyColumn[0], /left: 0/);
+  assert.match(phoneStickyColumn[0], /width: 180px/);
+  assert.match(phoneStickyColumn[0], /min-width: 180px/);
+  assert.match(phoneStickyColumn[0], /max-width: 180px/);
+  assert.match(sectionsStyles, /#scoreTable thead th\.sticky-col \{\s*z-index: 4;\s*background: var\(--gray-50\);/);
+  assert.match(sectionsStyles, /#scoreTable tbody th\.sticky-col \{\s*z-index: 3;\s*background: var\(--theme-surface\);/);
+});
 
 test('regular attendance passes saved records to the shared row renderer', () => {
   const renderer = extractSourceBetween(sectionsSource,

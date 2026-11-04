@@ -24,7 +24,7 @@ test('school context returns only the authenticated school and its current perio
   const calls = [];
   database = { async execute(sql, params) {
     calls.push(params);
-    if (sql.includes('FROM schools')) return [[{ id: 7, name: 'Test School', shortName: 'TS', schoolType: 'jhs', schoolYear: '2026-2027', schoolEmailDomain: 'ts.academix.test', gradesEnabled: 1, logoPath: null }]];
+    if (sql.includes('FROM schools')) return [[{ id: 7, name: 'Test School', shortName: 'TS', schoolType: 'jhs', schoolYear: '2026-2027', schoolEmailDomain: 'ts.academix.test', accentPalette: 'deep-teal', gradesEnabled: 1, logoPath: null }]];
     if (sql.includes('FROM school_levels')) return [[{ id: 3, levelCode: 'jhs', displayName: 'Junior High School', gradingPeriodType: 'quarterly', isEnabled: 1 }]];
     return [[{ id: 11, schoolLevel: 'jhs', name: 'Quarter 1', sequence: 1, status: 'active' }]];
   } };
@@ -34,6 +34,7 @@ test('school context returns only the authenticated school and its current perio
   assert.equal(failure, undefined);
   assert.equal(res.data.school.id, 7);
   assert.equal(res.data.school.schoolEmailDomain, 'ts.academix.test');
+  assert.equal(res.data.school.accentPalette, 'deep-teal');
   assert.equal(res.data.school.divisions.jhs.academicPeriods[0].name, 'Quarter 1');
   assert.deepEqual(calls, [[7], [7], [7, '2026-2027']]);
 });

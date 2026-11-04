@@ -135,7 +135,8 @@ async function getSchoolRecord(database, schoolId) {
       schools.phone, schools.email, schools.website, schools.school_email_domain AS schoolEmailDomain, schools.logo_path AS logoPath,
       schools.registration_status AS registrationStatus, schools.submitted_at AS submittedAt,
       schools.approved_at AS approvedAt, schools.rejected_at AS rejectedAt, schools.rejection_reason AS rejectionReason,
-      school_settings.notification_email AS notificationEmail, school_settings.current_school_year_label AS currentSchoolYearLabel
+      school_settings.notification_email AS notificationEmail, school_settings.current_school_year_label AS currentSchoolYearLabel,
+      school_settings.accent_palette AS accentPalette
     FROM schools LEFT JOIN school_settings ON school_settings.school_id = schools.id WHERE schools.id = ? LIMIT 1`,
     [schoolId]
   );
@@ -1096,9 +1097,13 @@ async function updateSchoolSettings(req, res, next) {
   try {
     const schoolId = requireSchoolAdminSchool(req);
     const body = req.body || {};
-    const allowed = ['name', 'shortName', 'depedSchoolId', 'regionName', 'divisionName', 'districtName', 'addressLine', 'phone', 'email', 'website', 'notificationEmail', 'currentSchoolYearLabel'];
+    const allowed = ['name', 'shortName', 'depedSchoolId', 'regionName', 'divisionName', 'districtName', 'addressLine', 'phone', 'email', 'website', 'notificationEmail', 'currentSchoolYearLabel', 'accentPalette'];
     const unknown = Object.keys(body).find(field => !allowed.includes(field));
     if (unknown || !Object.keys(body).length) throw createError('Provide valid school settings.');
+    const accentPalettes = new Set(['default-blue', 'deep-teal', 'forest-green', 'plum', 'burgundy']);
+    if (Object.hasOwn(body, 'accentPalette') && !accentPalettes.has(body.accentPalette)) {
+      throw createError('Choose one of the available school accent colors.');
+    }
     const database = getDatabase();
     connection = await database.getConnection();
     const school = await getSchoolRecord(connection, schoolId);
@@ -1114,15 +1119,16 @@ async function updateSchoolSettings(req, res, next) {
       email: Object.hasOwn(body, 'email') ? email(body.email, true) : school.email,
       website: Object.hasOwn(body, 'website') ? text(body.website, 255) : school.website,
       notificationEmail: Object.hasOwn(body, 'notificationEmail') ? email(body.notificationEmail) : school.notificationEmail,
-      currentSchoolYearLabel: Object.hasOwn(body, 'currentSchoolYearLabel') ? text(body.currentSchoolYearLabel, 30) : school.currentSchoolYearLabel
+      currentSchoolYearLabel: Object.hasOwn(body, 'currentSchoolYearLabel') ? text(body.currentSchoolYearLabel, 30) : school.currentSchoolYearLabel,
+      accentPalette: Object.hasOwn(body, 'accentPalette') ? body.accentPalette : school.accentPalette || 'default-blue'
     };
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         await connection.beginTransaction();
         transactionStarted = true;
         await connection.execute(`UPDATE schools SET name=?, short_name=?, deped_school_id=?, region_name=?, division_name=?, district_name=?, address_line=?, phone=?, email=?, website=? WHERE id=?`, [values.name, values.shortName, values.depedSchoolId, values.regionName, values.divisionName, values.districtName, values.addressLine, values.phone, values.email, values.website, schoolId]);
-        await connection.execute(`UPDATE school_settings SET notification_email=?, current_school_year_label=? WHERE school_id=?`, [values.notificationEmail, values.currentSchoolYearLabel, schoolId]);
-        await writeAuditLog(connection, req, 'school_settings_updated', 'school', schoolId, { summary: 'School identity and contact details' });
+        await connection.execute(`UPDATE school_settings SET notification_email=?, current_school_year_label=?, accent_palette=? WHERE school_id=?`, [values.notificationEmail, values.currentSchoolYearLabel, values.accentPalette, schoolId]);
+        await writeAuditLog(connection, req, 'school_settings_updated', 'school', schoolId, { summary: 'School identity, branding, and contact details' });
         await connection.commit();
         transactionStarted = false;
         break;

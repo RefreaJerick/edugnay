@@ -159,6 +159,7 @@ test('SHS offering cards have responsive layout, clear actions, and Available cl
   assert.match(styles, /\.shs-class-list\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/s);
   assert.match(styles, /@media\s*\(max-width:\s*1180px\)[\s\S]*?\.shs-class-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styles, /@media\s*\(max-width:\s*760px\)[\s\S]*?\.shs-class-list\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  assert.match(styles, /@media\s*\(max-width:\s*680px\)[\s\S]*?\.shs-class-list\s*\{[^}]*padding-inline:\s*16px;/s);
   assert.match(styles, /\.shs-class\s*\{[^}]*border:\s*1px solid var\(--gray-200\)[^}]*background:\s*var\(--theme-surface\)/s);
   assert.match(styles, /\.shs-class\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+35px[^}]*column-gap:\s*12px/s);
   assert.match(styles, /\.shs-class-menu\s*\{[^}]*justify-self:\s*end[^}]*align-self:\s*start/s);
@@ -168,6 +169,8 @@ test('SHS offering cards have responsive layout, clear actions, and Available cl
   assert.match(styles, /\.shs-class-status-schedule\s*>\s*svg\s*\{[^}]*color:\s*var\(--theme-accent-text\)/s);
   assert.match(styles, /\.shs-class-status-warning\s*>\s*svg\s*\{[^}]*color:\s*var\(--theme-warning-strong\)/s);
   assert.match(styles, /\.shs-offering-head\s*>\s*div\s*>\s*span/);
+  assert.match(styles, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.shs-offering-head\s*>\s*div\s*\{[^}]*flex:\s*1 1 100%;[^}]*width:\s*100%;/);
+  assert.match(styles, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.shs-offering-head\s*>\s*\.badge\s*\{[^}]*clip-path:\s*inset\(50%\);[^}]*white-space:\s*nowrap;/);
   assert.match(styles, /\.shs-class-copy\s*>\s*span/);
   assert.match(styles, /\.shs-class-menu-trigger\s*\{[^}]*width:\s*35px[^}]*min-height:\s*34px/s);
   assert.match(styles, /\.shs-class-action-menu\s*\{[^}]*display:\s*none[^}]*width:\s*160px/s);

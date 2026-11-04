@@ -958,6 +958,10 @@ body.sf-validation-modal-open {
   outline: 2px solid var(--blue-mid);
 }
 
+html[data-theme="dark"] .sf-workbook-cell--dark-readable {
+  color: var(--gray-700) !important;
+}
+
 .sf-preview-limit {
   position: sticky;
   bottom: 0;
@@ -995,11 +999,19 @@ body.sf-validation-modal-open {
   }
 
   .sf-filters {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sf-library-search {
+    grid-column: 1 / -1;
   }
 
   .sf-template-list {
+    display: grid;
+    align-content: start;
+    gap: 10px;
     max-height: min(50vh, 400px);
+    padding: 12px 14px 0;
   }
 
   .sf-template-columns {
@@ -1010,6 +1022,13 @@ body.sf-validation-modal-open {
     grid-template-columns: 36px minmax(0, 1fr);
     align-items: start;
     row-gap: 8px;
+  }
+
+  .sf-template-list > .sf-template-row {
+    padding: 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--panel-radius);
+    background: var(--theme-surface);
   }
 
   .sf-template-code,
@@ -1031,7 +1050,7 @@ body.sf-validation-modal-open {
   }
 
   .sf-template-actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .sf-preview-head {

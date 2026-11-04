@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   overflow: hidden;
 }
@@ -147,6 +147,7 @@
   flex: 0 0 88px;
   border-radius: 50%;
   background: var(--avatar-bg, var(--blue-mid));
+  font-size: 24px;
 }
 .profile-avatar-wrap .profile-avatar.is-saving { opacity: .6; }
 .profile-avatar-wrap .avatar-save-status:not([hidden]) {
@@ -174,7 +175,7 @@
   justify-content: center;
   border-radius: 50%;
   background: var(--blue-mid);
-  border: 3px solid var(--navy);
+  border: 3px solid var(--white);
   cursor: pointer;
   color: var(--white);
 }
@@ -222,6 +223,7 @@
     height: 72px;
     min-width: 72px;
     flex-basis: 72px;
+    font-size: 22px;
   }
   .profile-avatar-wrap .profile-avatar-edit { width: 26px; height: 26px; }
   .profile-avatar-wrap.is-saving { margin-bottom: 28px; }

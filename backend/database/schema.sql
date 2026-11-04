@@ -433,6 +433,7 @@ CREATE TABLE IF NOT EXISTS school_settings (
   notification_email VARCHAR(255) NULL,
   current_school_year_label VARCHAR(30) NULL,
   journal_subject_id BIGINT UNSIGNED NULL,
+  accent_palette VARCHAR(24) NOT NULL DEFAULT 'default-blue',
   narrative_report_week_start_day TINYINT UNSIGNED NOT NULL DEFAULT 1,
   narrative_report_week_end_day TINYINT UNSIGNED NOT NULL DEFAULT 6,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

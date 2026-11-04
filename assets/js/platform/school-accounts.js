@@ -131,9 +131,9 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
         const type = school.typeLabel || school.schoolType || 'School';
         return `<tr>
           <td><div class="school-account-identity">${schoolLogoMarkup(school, 'school-account-logo')}<div><div class="school-account-name">${escapeHtml(school.name)}</div><div class="school-account-meta">${escapeHtml(type)}</div></div></div></td>
-          <td><div class="school-account-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorSchoolEmail || 'No administrator email')}</div></td>
-          <td><div class="school-account-id">${escapeHtml(school.schoolId || 'Not set')}</div></td>
-          <td><span class="school-account-status ${status}"><i data-lucide="${schoolStatusIcon(status)}" style="width:13px;height:13px;"></i>${schoolStatusLabel(status)}</span></td>
+          <td><span class="school-account-mobile-label" aria-hidden="true">Administrator</span><div class="school-account-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorSchoolEmail || 'No administrator email')}</div></td>
+          <td><span class="school-account-mobile-label" aria-hidden="true">School ID</span><div class="school-account-id">${escapeHtml(school.schoolId || 'Not set')}</div></td>
+          <td><span class="school-account-mobile-label" aria-hidden="true">Status</span><span class="school-account-status ${status}"><i data-lucide="${schoolStatusIcon(status)}" style="width:13px;height:13px;"></i>${schoolStatusLabel(status)}</span></td>
           <td><button class="row-btn edit" type="button" data-review-school="${escapeHtml(school.id)}">Review</button></td>
         </tr>`;
       }).join('') : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({

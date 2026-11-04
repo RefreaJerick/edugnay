@@ -1,4 +1,11 @@
 const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
+const SCHOOL_ACCENT_PALETTES = [
+  { value: 'default-blue', label: 'Default Blue' },
+  { value: 'deep-teal', label: 'Deep Teal' },
+  { value: 'forest-green', label: 'Forest Green' },
+  { value: 'plum', label: 'Plum' },
+  { value: 'burgundy', label: 'Burgundy' }
+];
     const state = {
       school: null,
       division: 'jhs',
@@ -132,6 +139,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
         notificationEmail: apiSchool.notificationEmail || null,
         schoolYear: apiSchool.currentSchoolYearLabel || school.schoolYear || null,
         platformStatus: apiSchool.registrationStatus || school.platformStatus,
+        accentPalette: apiSchool.accentPalette || 'default-blue',
         logoUrl: apiSchool.logoUrl || null
       };
     }
@@ -284,6 +292,8 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
     function renderProfilePane() {
       const school = activeSchool();
       setSettingsHeading(school?.name || 'New school profile', school?.typeLabel || 'Configure school details and branding.');
+      const accentPalette = SCHOOL_ACCENT_PALETTES.some(item => item.value === school?.accentPalette)
+        ? school.accentPalette : 'default-blue';
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-profile-pane active">
           <form id="schoolProfileForm">
@@ -340,6 +350,25 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
                   <small class="school-logo-preview-hint">The school logo is used across the school profile and portal shell.</small>
                 </div>
               </div>
+              <fieldset class="school-field school-profile-accent-field">
+                <legend>Portal accent color</legend>
+                <div class="school-accent-options" role="radiogroup" aria-label="Portal accent color">
+                  ${SCHOOL_ACCENT_PALETTES.map(item => `<label class="school-accent-option" data-school-accent="${item.value}"><input type="radio" name="accentPalette" value="${item.value}" ${accentPalette === item.value ? 'checked' : ''}><span class="school-accent-swatch" aria-hidden="true"></span><span>${item.label}</span></label>`).join('')}
+                </div>
+                <button class="school-accent-reset" type="button">Restore default</button>
+                <small>The selected color updates this preview. Save the school profile to apply it across the portal.</small>
+                <div class="school-accent-preview" id="schoolAccentPreview" data-school-accent="${accentPalette}" role="group" aria-label="Portal color preview">
+                  <nav class="school-accent-preview-nav" aria-label="Selected navigation preview"><a class="nav-item" href="#schoolAccentPreview"><span class="nav-icon"><i data-lucide="layout-dashboard" aria-hidden="true"></i></span><span class="nav-label">Dashboard</span></a><a class="nav-item active" href="#schoolAccentPreview" aria-current="page"><span class="nav-icon"><i data-lucide="users" aria-hidden="true"></i></span><span class="nav-label">Manage users</span></a></nav>
+                  <div class="school-accent-preview-main">
+                    <div class="school-accent-preview-banner">Your school portal<small>Welcome back</small></div>
+                    <div class="school-accent-preview-details">
+                      <span class="school-accent-preview-day">TODAY<strong>4</strong></span>
+                      <span class="school-accent-preview-note"><i data-lucide="info" aria-hidden="true"></i> School updates appear here</span>
+                    </div>
+                    <div class="school-accent-preview-actions"><button class="top-btn primary" type="button">Primary button</button><a class="school-accent-preview-link" href="#schoolAccentPreview">Example link</a></div>
+                  </div>
+                </div>
+              </fieldset>
             </div>
             <div class="school-form-footer">
               <button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save school profile</button>
@@ -349,6 +378,16 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
       const form = document.getElementById('schoolProfileForm');
       form.addEventListener('submit', saveProfile);
       document.getElementById('profileLogo').addEventListener('change', readLogo);
+      const accentPreview = document.getElementById('schoolAccentPreview');
+      form.querySelectorAll('input[name="accentPalette"]').forEach(input => input.addEventListener('change', () => {
+        if (input.checked) accentPreview.dataset.schoolAccent = input.value;
+      }));
+      form.querySelector('.school-accent-reset').addEventListener('click', () => {
+        const defaultPalette = form.querySelector('input[name="accentPalette"][value="default-blue"]');
+        defaultPalette.checked = true;
+        defaultPalette.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      accentPreview.querySelectorAll('a').forEach(link => link.addEventListener('click', event => event.preventDefault()));
       if (window.lucide) lucide.createIcons();
     }
 
@@ -2350,6 +2389,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
           phone: values.phone.trim() || null,
           website: values.website.trim() || null
         };
+        settings.accentPalette = values.accentPalette || 'default-blue';
         if (values.email.trim()) settings.email = values.email.trim();
 
         const button = event.submitter;

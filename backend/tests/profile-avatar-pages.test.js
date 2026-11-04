@@ -24,7 +24,11 @@ test('all profile pages use the shared saved-photo controls', () => {
   const fallbackAvatarRule = styles.match(/\.profile-avatar\s*\{([^}]+)\}/)?.[1] || '';
   const avatarRule = styles.match(/\.profile-avatar-wrap \.profile-avatar\.person-avatar\s*\{([^}]+)\}/)?.[1] || '';
   assert.doesNotMatch(fallbackAvatarRule, /border\s*:/);
+  assert.match(fallbackAvatarRule, /font-size:\s*24px/);
   assert.doesNotMatch(avatarRule, /border\s*:/);
+  assert.match(avatarRule, /font-size:\s*24px/);
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.profile-avatar-wrap \.profile-avatar\.person-avatar\s*\{[^}]*font-size:\s*22px;/);
+  assert.match(styles, /\.profile-avatar-wrap \.profile-avatar-edit\s*\{[^}]*border:\s*3px solid var\(--white\);/);
 });
 
 test('profile photo actions show saved state and preserve it on failures', async () => {

@@ -312,11 +312,44 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /renderEmptyState\('calendar-days', 'No report week available'/);
   assert.match(script, /renderEmptyState\('door-open', 'No advisory section assigned'/);
   assert.match(script, /if \(!state\.evidence\) return;/);
-  assert.match(script, /setMessage\('reports-message', error\.message \|\| 'Weekly reports could not be loaded\.', true\)/);
+  assert.match(script, /setMessage\('reports-message', error\.message \|\| 'Narrative Reports could not be loaded\.', true\)/);
   assert.match(styles, /@media \(max-width: 1232px\)/);
   assert.match(styles, /@media \(max-width: 520px\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/confirm.*requireSchoolUser.*requireRoles\('teacher'\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/release.*requireSchoolUser.*requireRoles\('teacher'\)/);
+});
+
+test('teacher Narrative Reports removes the intro and keeps its page title', () => {
+  const root = path.join(__dirname, '../..');
+  const teacherPage = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const parentPage = pageFs.readFileSync(path.join(root, 'views/parent/edugnay-parent-reports.html'), 'utf8');
+
+  assert.doesNotMatch(teacherPage, /class="portal-overview"/);
+  assert.match(teacherPage, /data-page-title="Narrative Reports"/);
+  assert.match(teacherPage, /data-page-title-target>Narrative Reports/);
+  assert.match(teacherPage, /Weekly Report Generation Pipeline/);
+  assert.match(parentPage, /class="portal-overview"/);
+});
+
+test('teacher Narrative Reports mobile controls fit their available width', () => {
+  const root = path.join(__dirname, '../..');
+  const page = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const mobileStyles = styles.slice(styles.lastIndexOf('/* Narrative Reports mobile control layout */'));
+
+  assert.match(page, /class="filter-row"[\s\S]*?id="report-search"[\s\S]*?id="report-status"/);
+  assert.match(page, /class="generation-control"[\s\S]*?id="open-generation"/);
+  assert.match(page, /id="confirm-review"/);
+  assert.match(mobileStyles, /@media \(max-width: 760px\)/);
+  assert.match(mobileStyles, /\.filter-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*width:\s*100%;/s);
+  assert.match(mobileStyles, /\.filter-row \.search-wrap,[\s\S]*?\.filter-row \.select-filter\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/s);
+  assert.match(mobileStyles, /\.generation-control\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*none;/s);
+  assert.match(mobileStyles, /\.panel-head-right \.generation-control > \.top-btn\s*\{[^}]*width:\s*100%;/s);
+  assert.match(mobileStyles, /@media \(max-width: 520px\)[\s\S]*?#review-modal \.review-modal-foot-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > #confirm-review\s*\{\s*grid-row:\s*1;\s*grid-column:\s*1\s*\/\s*-1;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > \[data-close-modal\]\s*\{\s*grid-row:\s*2;\s*grid-column:\s*1;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > #save-review\s*\{\s*grid-row:\s*2;\s*grid-column:\s*2;/);
+  assert.match(mobileStyles, /@media \(max-width: 360px\)\s*\{\s*#review-modal \.review-modal-foot-actions\s*\{\s*grid-template-columns:\s*1fr;\s*\}[\s\S]*?#review-modal \.review-modal-foot-actions > \[data-close-modal\]\s*\{\s*grid-row:\s*2;\s*grid-column:\s*1;\s*\}[\s\S]*?#review-modal \.review-modal-foot-actions > #save-review\s*\{\s*grid-row:\s*3;\s*grid-column:\s*1;/);
 });
 
 test('adviser report actions use success toasts and show regeneration progress', () => {

@@ -1178,16 +1178,18 @@ lucide.createIcons();
       }
       tbody.innerHTML = students.length ? students.map((student, index) => {
         const cells = columns.map(column => {
-          if (column.key === 'number') return `<td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>`;
+          const columnKey = window.EDUGNAY_CONFIG.escapeHtml(column.key || '');
+          if (column.key === 'number') return `<td data-column="${columnKey}" style="color:var(--gray-400);font-size:12px;">${index + 1}</td>`;
           if (column.key === 'student') {
             const name = window.EDUGNAY_CONFIG.escapeHtml(student.displayName || 'Student');
             const nameContent = details && student.id
               ? `<button class="student-name-button" type="button" data-student-details="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" aria-haspopup="dialog" aria-label="View details for ${name}">${name}</button>`
               : name;
-            return `<td><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student', size: 'sm' })}<div><div class="student-name">${nameContent}</div></div></div></td>`;
+            const mobileEmail = window.EDUGNAY_CONFIG.escapeHtml(student.schoolEmail || '');
+            return `<td data-column="${columnKey}"><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student', size: 'sm' })}<div class="student-roster-info"><div class="student-name">${nameContent}</div><div class="student-roster-mobile-email" aria-hidden="true">${mobileEmail}</div></div></div></td>`;
           }
           const rendered = typeof column.render === 'function' ? column.render(student) : student[column.key];
-          return `<td>${rendered == null ? '' : typeof column.render === 'function' ? rendered : window.EDUGNAY_CONFIG.escapeHtml(rendered)}</td>`;
+          return `<td data-column="${columnKey}">${rendered == null ? '' : typeof column.render === 'function' ? rendered : window.EDUGNAY_CONFIG.escapeHtml(rendered)}</td>`;
         }).join('');
         return `<tr data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(student.id || '')}" data-student-name="${window.EDUGNAY_CONFIG.escapeHtml(String(student.displayName || '').toLocaleLowerCase())}">${cells}</tr>`;
       }).join('') : `<tr class="panel-empty-row"><td colspan="${Math.max(1, columns.length)}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({

@@ -171,7 +171,7 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
 
     function clearPortalCachesForSignIn() {
       const prefixes = ['edugnay_teacher_sidebar_v1:', 'edugnay_student_sidebar_v1:', 'edugnay_parent_sidebar_v1:',
-        'edugnay_profile_display_v1', 'edugnay_student_profile_display_v1'];
+        'edugnay_profile_display_v1', 'edugnay_student_profile_display_v1', 'edugnay_school_accent_v1'];
       try {
         for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
           const key = sessionStorage.key(index);

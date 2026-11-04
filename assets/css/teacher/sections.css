@@ -486,6 +486,33 @@ tbody tr:hover td.sticky-col {
   background: var(--gray-50);
 }
 
+@media (max-width: 560px) {
+  #scoreTable thead th.sticky-col,
+  #scoreTable tbody th.sticky-col {
+    position: sticky;
+    left: 0;
+    box-sizing: border-box;
+    width: 180px;
+    min-width: 180px;
+    max-width: 180px;
+  }
+
+  #scoreTable thead th.sticky-col {
+    z-index: 4;
+    background: var(--gray-50);
+  }
+
+  #scoreTable tbody th.sticky-col {
+    z-index: 3;
+    background: var(--theme-surface);
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.04);
+  }
+
+  #scoreTable tbody tr:hover th.sticky-col {
+    background: var(--gray-50);
+  }
+}
+
 .student-cell {
   display: flex;
   align-items: center;
@@ -3322,6 +3349,97 @@ tbody tr:hover td.sticky-col {
 
 #studentTable tbody tr[data-student-id] {
   cursor: pointer;
+}
+
+.student-roster-mobile-email {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  #content-students .table-wrap {
+    overflow-x: hidden;
+  }
+
+  #studentTable {
+    display: block;
+    width: 100%;
+  }
+
+  #studentTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  #studentTable tbody {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  #studentTable tbody tr[data-student-id] {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: var(--theme-surface);
+  }
+
+  #studentTable tbody tr[data-student-id] td:not([data-column="student"]) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  #studentTable tbody tr[data-student-id] td[data-column="student"] {
+    display: block;
+    padding: 12px;
+    border: 0;
+    background: transparent;
+  }
+
+  #studentTable .student-cell {
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  #studentTable .student-roster-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #studentTable .student-name,
+  #studentTable .student-name-button {
+    overflow-wrap: anywhere;
+  }
+
+  #studentTable .student-roster-mobile-email {
+    display: block;
+    margin-top: 3px;
+    color: var(--gray-400);
+    font-size: 11px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  #studentTable tbody tr.panel-empty-row {
+    display: block;
+  }
+
+  #studentTable tbody tr.panel-empty-row td {
+    display: block;
+    width: 100%;
+    padding: 0;
+  }
 }
 
 .teacher-student-details-modal {

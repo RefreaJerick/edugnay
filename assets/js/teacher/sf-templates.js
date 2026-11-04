@@ -392,6 +392,32 @@ function cellStyle(cell, scale) {
   return values.join(';');
 }
 
+function isDarkThemeReadableCell(cell) {
+  const style = cell.style || {};
+  const parseColor = color => {
+    const match = /^#([0-9a-f]{6})$/i.exec(String(color || ''));
+    return match ? [0, 2, 4].map(offset => parseInt(match[1].slice(offset, offset + 2), 16)) : null;
+  };
+  const font = parseColor(style.fontColor);
+  if (!font) return false;
+
+  const maxFont = Math.max(...font);
+  const minFont = Math.min(...font);
+  if (maxFont > 80 || maxFont - minFont > 16) return false;
+  if (!style.backgroundColor) return true;
+
+  const background = parseColor(style.backgroundColor);
+  if (!background) return false;
+  const linear = channel => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = background.reduce((sum, channel, index) => {
+    return sum + linear(channel) * [0.2126, 0.7152, 0.0722][index];
+  }, 0);
+  return luminance <= 0.18;
+}
+
 function columnLabel(number) {
   let label = '';
   let value = number;
@@ -412,7 +438,7 @@ function workbookTable(preview, editing, scale) {
     <tr style="height:${Math.max(15, Math.round(row.height * scale))}px">
       <th class="sf-row-number">${row.number}</th>
       ${row.cells.map(cell => `
-        <td class="sf-workbook-cell ${cell.editable ? 'editable' : ''} ${cell.edited ? 'edited' : ''}"
+        <td class="sf-workbook-cell ${isDarkThemeReadableCell(cell) ? 'sf-workbook-cell--dark-readable' : ''} ${cell.editable ? 'editable' : ''} ${cell.edited ? 'edited' : ''}"
           rowspan="${cell.rowSpan}" colspan="${cell.columnSpan}"
           style="${cellStyle(cell, scale)}" title="${escapeHtml(cell.formula ? `=${cell.formula}` : cell.address)}"
           ${editing && cell.editable ? `contenteditable="true" data-cell-address="${escapeHtml(cell.address)}"` : ''}>${escapeHtml(cell.text)}</td>

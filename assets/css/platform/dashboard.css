@@ -311,7 +311,7 @@
   }
 
   .platform-dashboard .stat-card {
-    min-height: 132px;
+    min-height: auto;
     padding: 13px;
   }
 }
@@ -417,6 +417,12 @@
   .platform-dashboard .school-admin {
     grid-column: 1 / -1;
     margin-top: -3px;
+    padding-left: 49px;
+  }
+
+  .platform-dashboard .school-directory-row > div:last-child {
+    grid-column: 1 / -1;
+    padding-left: 49px;
   }
 
   .platform-dashboard .school-row-action {

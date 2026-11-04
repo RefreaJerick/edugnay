@@ -1,6 +1,7 @@
 /* Shared shell behavior for every portal role. */
 
 const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
+const EDUGNAY_SCHOOL_ACCENT_CACHE_KEY = 'edugnay_school_accent_v1';
 const EDUGNAY_TEACHER_NAV_CACHE_PREFIX = 'edugnay_teacher_sidebar_v1:';
 const EDUGNAY_STUDENT_NAV_CACHE_PREFIX = 'edugnay_student_sidebar_v1:';
 const EDUGNAY_PARENT_NAV_CACHE_PREFIX = 'edugnay_parent_sidebar_v1:';
@@ -64,6 +65,7 @@ function clearProfileDisplaySnapshot() {
   try {
     sessionStorage.removeItem(EDUGNAY_PROFILE_DISPLAY_KEY);
     sessionStorage.removeItem(EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY);
+    sessionStorage.removeItem(EDUGNAY_SCHOOL_ACCENT_CACHE_KEY);
   } catch {}
   cachedProfileDisplaySnapshot = null;
 }
@@ -4691,6 +4693,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearStudentSidebarCache();
         clearParentSidebarCache();
         clearProfileDisplaySnapshot();
+        window.ACADEMIX_THEME?.setSchoolAccent(null);
       }
       if (error.status === 401 || !document.documentElement.classList.contains('profile-chip-restored')) {
         setCurrentUserShellStatus('Account unavailable', 'Connection issue');

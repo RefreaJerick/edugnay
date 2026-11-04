@@ -67,6 +67,7 @@ test('Profile & Branding aligns school levels and branding with the responsive f
   assert.match(settingsStyles, /@media \(max-width: 1060px\)[\s\S]*?\.school-profile-form-grid > \.school-profile-third-field\s*\{\s*grid-column:\s*span 2;/);
   assert.match(settingsStyles, /@media \(max-width: 1060px\)[\s\S]*?\.school-profile-form-grid > \.school-profile-phone-field,\s*\.school-profile-form-grid > \.school-profile-branding-field\s*\{\s*grid-column:\s*1 \/ -1;/);
   assert.match(settingsStyles, /@media \(max-width: 560px\)[\s\S]*?\.school-form-grid,\s*\.grade-grid,\s*\.track-options,\s*\.school-attendance-code-grid\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(settingsStyles, /@media \(max-width: 560px\)[\s\S]*?\.school-profile-levels-field \.school-level-options\s*\{\s*flex-direction:\s*column;\s*\}[\s\S]*?\.school-profile-levels-field \.school-level-option\s*\{\s*flex:\s*0 0 auto;/);
   assert.match(settingsStyles, /@media \(max-width: 560px\)[\s\S]*?\.school-profile-pane \.school-logo-preview\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/);
   assert.match(settingsStyles, /@media \(max-width: 560px\)[\s\S]*?\.school-profile-form-grid > \.school-profile-third-field,\s*\.school-profile-form-grid > \.school-profile-phone-field,\s*\.school-profile-form-grid > \.school-profile-branding-field\s*\{\s*grid-column:\s*1 \/ -1;/);
   assert.match(settingsStyles, /\.school-profile-pane \.school-logo-preview > \.school-logo-upload\s*\{[^}]*grid-row:\s*2;[^}]*width:\s*100%;/s);

@@ -73,6 +73,7 @@ function createHarness(account, storedSnapshot = null, storedKey = key) {
 
   vm.runInContext(`const EDUGNAY_PROFILE_DISPLAY_KEY = '${key}';
     const EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY = '${legacyKey}';
+    const EDUGNAY_SCHOOL_ACCENT_CACHE_KEY = 'edugnay_school_accent_v1';
     const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
     const EDUGNAY_API_BASE_URL = 'http://localhost:3000/api';
     ${source.slice(displayStart, displayEnd)}
@@ -165,6 +166,7 @@ test('missing or mismatched snapshots are rejected; fresh identity replaces old 
     { ...account, schoolId: '99' }
   ]) {
     const harness = createHarness(account, snapshotFor(stale));
+    harness.storage.set('edugnay_school_accent_v1', JSON.stringify({ version: 1, schoolId: stale.schoolId, palette: 'plum' }));
     vm.runInContext('restoreProfileChip()', harness.context);
     assert.equal(harness.name.textContent, stale.name, 'the cached display may render while identity is being checked');
     harness.context.saveFrontendSession({
@@ -175,6 +177,7 @@ test('missing or mismatched snapshots are rejected; fresh identity replaces old 
     assert.equal(harness.name.textContent, 'Verified Maya Santos', 'fresh identity replaces stale display data');
     assert.equal(JSON.parse(harness.storage.get(key)).userId, account.userId);
     assert.equal(JSON.parse(harness.storage.get(key)).schoolId, account.schoolId);
+    assert.equal(harness.storage.has('edugnay_school_accent_v1'), false);
   }
 
   const invalid = createHarness(roles[0], { ...snapshotFor(roles[0]), version: 2 });
@@ -185,6 +188,7 @@ test('missing or mismatched snapshots are rejected; fresh identity replaces old 
 test('sign-in, sign-out and expired sessions clear the shared display snapshot', async () => {
   const account = roles[0];
   const harness = createHarness(account, snapshotFor(account));
+  harness.storage.set('edugnay_school_accent_v1', JSON.stringify({ version: 1, schoolId: account.schoolId, palette: 'deep-teal' }));
   const clearStart = source.indexOf('async function confirmLogout() {');
   const clearEnd = source.indexOf('function applyActiveSchoolToShell()', clearStart);
   assert.ok(clearStart >= 0 && clearEnd > clearStart);
@@ -196,20 +200,24 @@ test('sign-in, sign-out and expired sessions clear the shared display snapshot',
   vm.runInContext(source.slice(clearStart, clearEnd), harness.context);
   await harness.context.confirmLogout();
   assert.equal(harness.storage.has(key), false);
+  assert.equal(harness.storage.has('edugnay_school_accent_v1'), false);
 
   const login = pageFs.readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.match(login, /edugnay_profile_display_v1/);
   assert.match(login, /edugnay_student_profile_display_v1/);
+  assert.match(login, /edugnay_school_accent_v1/);
   const loginCleanupStart = login.indexOf('function clearPortalCachesForSignIn() {');
   const loginCleanupEnd = login.indexOf('\n    async function checkEmail(', loginCleanupStart);
   assert.ok(loginCleanupStart >= 0 && loginCleanupEnd > loginCleanupStart);
   assert.doesNotThrow(() => new vm.Script(login.slice(loginCleanupStart, loginCleanupEnd)));
 
   const expired = createHarness(account, snapshotFor(account));
+  expired.storage.set('edugnay_school_accent_v1', JSON.stringify({ version: 1, schoolId: account.schoolId, palette: 'deep-teal' }));
   vm.runInContext('restoreProfileChip()', expired.context);
   const unauthorized = Object.assign(new Error('expired'), { status: 401 });
   await runShellInit(expired, async () => { throw unauthorized; });
   assert.equal(expired.storage.has(key), false);
+  assert.equal(expired.storage.has('edugnay_school_accent_v1'), false);
   assert.equal(expired.name.textContent, 'Account unavailable');
 });
 
