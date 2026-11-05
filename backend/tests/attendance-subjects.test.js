@@ -2,8 +2,11 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const databaseModule = require('../config/database');
+const { hashQrToken } = require('../config/qrCredentials');
 const calls = [];
 let attendanceEnabled = 0;
+let draftSession = false;
+let confirmedQrSession = false;
 const section = {
   id: 8, schoolId: 1, name: 'St. Matthew',
   academicYearStartDate: '2025-01-01', academicYearEndDate: '2027-12-31'
@@ -18,6 +21,12 @@ const database = {
     }
     if (sql.includes('SELECT name AS subjectName FROM subjects')) return [[{ subjectName: 'Mathematics' }]];
     if (sql.includes('FROM student_qr_credentials WHERE school_id = ?')) return [[]];
+    if (sql.includes('FROM student_qr_credentials c JOIN users')) {
+      return [values[0] === hashQrToken('valid-test-token') ? [{
+        id: 9, studentId: 4, credentialStatus: 'active', schoolId: 1,
+        displayName: 'Student', initials: 'ST'
+      }] : []];
+    }
     if (sql.includes('FROM sections') && sql.includes('section_teachers')) {
       return [values[0] === 3 && [1, 2].includes(values[1]) && values[2] == null
         && values[3] === 8 && values[4] === 1 ? [{ ...section, subjectCode: 'math' }] : []];
@@ -38,10 +47,18 @@ const database = {
       return [[{ id: 21, status: 'draft', createdByUserId: 3 }]];
     }
     if (sql.includes('FROM attendance_sessions') && sql.includes('LEFT JOIN attendance_records')) return [[]];
-    if (sql.includes('FROM attendance_sessions') && sql.includes('FOR UPDATE')) return [[]];
-    if (sql.includes('FROM attendance_sessions') && sql.includes('LIMIT 1')) {
-      return [[{ id: values[2] === 1 ? 10 : 11, status: 'confirmed', method: 'manual' }]];
+    if (sql.includes('FROM attendance_sessions') && sql.includes('FOR UPDATE')) {
+      return [draftSession ? [{ id: 21, status: 'draft', method: 'qr' }] :
+        confirmedQrSession ? [{ id: 21, status: 'confirmed', method: 'qr' }] : []];
     }
+    if (sql.includes('SELECT id FROM attendance_sessions')) return [[{ id: 21 }]];
+    if (sql.includes('FROM attendance_sessions') && sql.includes('LIMIT 1')) {
+      return [[draftSession ? { id: 21, status: 'draft', method: 'qr' } :
+        { id: values[2] === 1 ? 10 : 11, status: 'confirmed', method: confirmedQrSession ? 'qr' : 'manual' }]];
+    }
+    if (sql.includes('SELECT id FROM qr_scan_events')) return [[]];
+    if (sql.includes('INSERT INTO qr_scan_events')) return [{ affectedRows: 1 }];
+    if (sql.includes('SELECT 1 FROM section_students')) return [[{ 1: 1 }]];
     if (sql.includes('FROM section_students') && sql.includes('INNER JOIN users AS students')) {
       const status = values[0] === 10 ? 'absent' : values[0] === 11 ? 'present' : null;
       return [[{ studentId: 4, displayName: 'Student', initials: 'ST', lrn: '123', attendanceStatus: status, remarks: null }]];
@@ -50,8 +67,14 @@ const database = {
       return [[{ studentId: 4, displayName: 'Student', initials: 'ST', lrn: '123', isScanned: 0 }]];
     }
     if (sql.includes('FROM section_students') && sql.includes('ORDER BY student_user_id')) return [[{ studentId: 4 }]];
+    if (sql.includes('FROM qr_scan_events')) return [[{ studentId: 4 }]];
     if (sql.includes('INSERT INTO attendance_sessions')) return [{ insertId: 21 }];
-    if (sql.includes('INSERT INTO attendance_records') || sql.includes('UPDATE attendance_sessions') || sql.includes('INSERT INTO audit_logs')) return [{ affectedRows: 1 }];
+    if (sql.includes('UPDATE attendance_sessions')) {
+      draftSession = false;
+      confirmedQrSession = true;
+      return [{ affectedRows: 1 }];
+    }
+    if (sql.includes('INSERT INTO attendance_records') || sql.includes('INSERT INTO audit_logs')) return [{ affectedRows: 1 }];
     if (sql.includes('FROM student_parent_links') && sql.includes('INNER JOIN users AS students')) {
       return [[{ studentId: 4, displayName: 'Student', initials: 'ST', gradeLevel: 'Grade 7', sectionName: 'St. Matthew' }]];
     }
@@ -152,14 +175,58 @@ test('a school administrator cannot read a student QR from another school', asyn
 test('QR sessions save the chosen subject and do not touch other subjects', async () => {
   calls.length = 0;
   const result = await call(qr.startQrAttendance, {
-    user: teacher, params: { sectionId: '8', subjectId: '1' }
+    user: teacher, params: { sectionId: '8', subjectId: '1' },
+    body: { qrToken: 'valid-test-token' }
   });
   assert.equal(result.error, null);
   assert.equal(result.data.subjectId, 1);
+  assert.equal(result.data.scanResult.scanned, true);
   const insert = calls.find(call => call.sql.includes('INSERT INTO attendance_sessions'));
   assert.deepEqual(insert.values.slice(0, 3), [1, 8, 1]);
   assert.ok(calls.some(call => call.sql.includes('FOR UPDATE') && call.values[2] === 1));
   assert.ok(!calls.some(call => call.sql.includes('FROM school_portal_features')));
+});
+
+test('an invalid first scan leaves no draft session', async () => {
+  calls.length = 0;
+  const result = await call(qr.startQrAttendance, {
+    user: teacher, params: { sectionId: '8', subjectId: '1' },
+    body: { qrToken: 'invalid-test-token' }
+  });
+  assert.equal(result.error?.status, 422);
+  assert.equal(calls.some(call => call.sql.includes('INSERT INTO attendance_sessions')), false);
+});
+
+test('a QR draft can be saved manually and its scanned student appears present', async () => {
+  draftSession = true;
+  calls.length = 0;
+  const read = await call(attendance.getSectionAttendance, {
+    user: teacher, params: { sectionId: '8', subjectId: '1' }, query: { date: '2026-09-27' }
+  });
+  assert.equal(read.error, null);
+  assert.equal(read.data.students[0].attendanceStatus, 'present');
+  const saved = await call(attendance.saveSectionAttendance, {
+    user: teacher, params: { sectionId: '8', subjectId: '1' },
+    body: { attendanceDate: '2026-09-27', records: [{ studentId: 4, status: 'late' }] }
+  });
+  draftSession = false;
+  assert.equal(saved.error, null);
+  assert.equal(saved.data.session.status, 'confirmed');
+  assert.ok(calls.some(call => call.sql.includes('INSERT INTO attendance_records') && call.values[3] === 'late'));
+  confirmedQrSession = false;
+});
+
+test('manual correction remains allowed after QR confirmation', async () => {
+  confirmedQrSession = true;
+  calls.length = 0;
+  const result = await call(attendance.saveSectionAttendance, {
+    user: teacher, params: { sectionId: '8', subjectId: '1' },
+    body: { attendanceDate: '2026-09-27', records: [{ studentId: 4, status: 'late' }] }
+  });
+  confirmedQrSession = false;
+  assert.equal(result.error, null);
+  assert.ok(calls.some(call => call.sql.includes('UPDATE attendance_sessions')));
+  assert.ok(calls.some(call => call.sql.includes('INSERT INTO attendance_records') && call.values[3] === 'late'));
 });
 
 test('manual save writes a subject-specific session and student status', async () => {

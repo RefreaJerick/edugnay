@@ -109,11 +109,6 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
     let reportRequestVersion = 0;
     async function updateChildContext() {
       const child = getCurrentChild();
-      const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
-      if (dashboardPeriod && child?.schoolLevel) {
-        dashboardPeriod.dataset.schoolLevel = child.schoolLevel;
-        window.refreshEdUgnayShellContext?.();
-      }
       const hero = document.querySelector('.report-hero');
       const reportContent = document.getElementById('report-hero-content');
       const reportTitle = document.getElementById('report-status-title');
@@ -308,8 +303,8 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
 
       if (tasks.length === 0) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'clipboard-check', title: 'No assignments due',
-          text: 'No published assignments are due on this day.'
+          icon: 'clipboard-check', title: 'No active assignments',
+          text: 'No published assignments are active on this day.'
         });
         lucide.createIcons();
         return;

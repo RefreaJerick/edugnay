@@ -7,6 +7,7 @@ router.use(requireAuth, requireSchoolUser, requireSchoolAdmin);
 router.get('/', controller.list);
 router.post('/offerings', controller.activate);
 router.patch('/offerings/:offeringId', controller.setOfferingActive);
+router.delete('/offerings/:offeringId', controller.deleteOffering);
 router.post('/classes', controller.createClass);
 router.patch('/classes/:classId', controller.updateClass);
 router.delete('/classes/:classId', controller.deleteClass);

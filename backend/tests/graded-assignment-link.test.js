@@ -14,6 +14,8 @@ let termStatus;
 let auditEntries;
 let assignmentRow;
 let failAuditInsert;
+let assignmentInsert;
+let assignmentUpdate;
 
 const connection = {
   async beginTransaction() { queries.push('BEGIN'); },
@@ -44,6 +46,7 @@ const connection = {
     if (sql.includes('FROM section_teachers') && sql.includes('FOR UPDATE')) return [[{ 1: 1 }]];
     if (sql.includes('FROM grading_period_reopen_requests')) return [[]];
     if (sql.startsWith('INSERT INTO assignments')) {
+      assignmentInsert = { sql, values };
       assignmentRow = {
         id: 14, schoolId: 1, sectionId: 8, subjectId: 4,
         communicationComponentCode: values[3], academicTermId: values[4],
@@ -63,12 +66,13 @@ const connection = {
       if (assignmentRow) assignmentRow.gradingItemId = values[0];
       return [{ affectedRows: 1 }];
     }
-    if (sql.startsWith('UPDATE assignments SET academic_term_id=')) {
+    if (sql.startsWith('UPDATE assignments SET published_at = CASE')) {
+      assignmentUpdate = { sql, values };
       Object.assign(assignmentRow, {
-        academicTermId: values[0], gradingCategoryId: values[1],
-        subjectGradingComponentId: values[2], subjectGradingExamPartId: values[3],
-        title: values[4], description: values[5], dueAt: values[6], maxScore: values[7],
-        onlineSubmissionEnabled: values[8], status: values[9]
+        academicTermId: values[1], gradingCategoryId: values[2],
+        subjectGradingComponentId: values[3], subjectGradingExamPartId: values[4],
+        title: values[5], description: values[6], dueAt: values[7], maxScore: values[8],
+        onlineSubmissionEnabled: values[9], status: values[10]
       });
       return [{ affectedRows: 1 }];
     }
@@ -94,13 +98,15 @@ async function create(options = {}) {
   termStatus = options.termStatus || 'active';
   auditEntries = [];
   assignmentRow = null;
+  assignmentInsert = null;
+  assignmentUpdate = null;
   failAuditInsert = Boolean(options.failAuditInsert);
   const result = { status: null, body: null, error: null };
   await createAssignment({
     user: { id: 5, schoolId: 1, role: 'teacher' },
     body: {
       sectionId: 8, subjectId: 4, academicTermId: 6,
-      gradingCategoryId: 3, title: 'Project', maxScore: 50
+      gradingCategoryId: 3, title: 'Project', maxScore: 50, status: options.status
     }
   }, {
     status(code) { result.status = code; return this; },
@@ -114,6 +120,9 @@ test('graded assignment and score component commit with a direct link', async ()
   assert.ifError(result.error);
   assert.equal(result.status, 201);
   assert.equal(result.body.assignment.gradingItemId, 18);
+  assert.match(assignmentInsert.sql, /status, published_at\)[\s\S]*CASE WHEN \? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END/);
+  assert.equal(assignmentInsert.values[14], 'published');
+  assert.equal(assignmentInsert.values[15], 'published');
   assert.ok(queries.findIndex(sql => sql.startsWith('INSERT INTO assignments'))
     < queries.findIndex(sql => sql.startsWith('INSERT INTO grading_items')));
   assert.ok(queries.some(sql => sql.startsWith('UPDATE assignments SET grading_item_id')));
@@ -125,6 +134,14 @@ test('graded assignment and score component commit with a direct link', async ()
   assert.equal(auditEntries[0].details.gradingItemId, 18);
   assert.ok(queries.findIndex(sql => sql.startsWith('INSERT INTO audit_logs')) < queries.indexOf('COMMIT'));
   assert.equal(queries.at(-1), 'COMMIT');
+});
+
+test('a draft assignment is created without a publish timestamp', async () => {
+  const result = await create({ status: 'draft' });
+  assert.ifError(result.error);
+  assert.equal(assignmentInsert.values[14], 'draft');
+  assert.equal(assignmentInsert.values[15], 'draft');
+  assert.match(assignmentInsert.sql, /CASE WHEN \? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END/);
 });
 
 test('assignment content edit and status change are recorded together', async () => {
@@ -147,6 +164,8 @@ test('assignment content edit and status change are recorded together', async ()
 
   assert.ifError(result.error);
   assert.equal(result.body.assignment.status, 'published');
+  assert.match(assignmentUpdate.sql, /WHEN status <> 'published' AND \? = 'published' THEN CURRENT_TIMESTAMP/);
+  assert.equal(assignmentUpdate.values[0], 'published');
   assert.equal(auditEntries.length, 1);
   assert.equal(auditEntries[0].actionType, 'assignment_updated');
   assert.equal(auditEntries[0].details.fromStatus, 'draft');
@@ -161,7 +180,8 @@ test('every assignment status transition is saved in its audit entry', async () 
   const transitions = [
     { from: 'draft', to: 'published' },
     { from: 'published', to: 'closed' },
-    { from: 'closed', to: 'draft' }
+    { from: 'closed', to: 'draft' },
+    { from: 'closed', to: 'published' }
   ];
   for (const transition of transitions) {
     queries = [];
@@ -186,6 +206,8 @@ test('every assignment status transition is saved in its audit entry', async () 
     assert.equal(auditEntries[0].details.toStatus, transition.to);
     assert.equal(auditEntries[0].details.statusChanged, true);
     assert.equal(auditEntries[0].details.detailsChanged, false);
+    assert.match(assignmentUpdate.sql, /WHEN status <> 'published' AND \? = 'published' THEN CURRENT_TIMESTAMP/);
+    assert.equal(assignmentUpdate.values[0], transition.to);
   }
 });
 
@@ -207,6 +229,8 @@ test('an unchanged assignment update does not create an audit entry', async () =
   }, { json() {} }, caught => { error = caught; });
   assert.ifError(error);
   assert.equal(auditEntries.length, 0);
+  assert.match(assignmentUpdate.sql, /WHEN status <> 'published' AND \? = 'published' THEN CURRENT_TIMESTAMP/);
+  assert.equal(assignmentUpdate.values[0], 'published');
 });
 
 test('grade item failure rolls back the assignment too', async () => {

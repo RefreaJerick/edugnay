@@ -4,7 +4,8 @@
   const escape = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
   const state = { sections: [], evidence: null, reports: [], settings: null, weekRequestId: 0,
     generationEnabled: false, generationSwitchEnabled: false, aiEvidenceApproved: false, reportsEnabled: false,
-    releaseEnabled: false, selectedReportId: null, busy: false, regenerateConfirmOpen: false, modalReturnFocus: new Map() };
+    releaseEnabled: false, selectedReportId: null, busy: false, regenerateConfirmOpen: false,
+    deleteConfirmOpen: false, modalReturnFocus: new Map() };
 
   function addDays(date, count) {
     const value = new Date(`${date}T00:00:00.000Z`);
@@ -93,7 +94,12 @@
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
     if (!document.querySelector('.modal-backdrop.open')) document.body.classList.remove('report-modal-open');
-    if (id === 'review-modal') state.selectedReportId = null;
+    if (id === 'review-modal') {
+      state.selectedReportId = null;
+      state.deleteConfirmOpen = false;
+      $('review-delete-confirmation').hidden = true;
+      $('delete-review').setAttribute('aria-expanded', 'false');
+    }
     const returnFocus = state.modalReturnFocus.get(id);
     state.modalReturnFocus.delete(id);
     if (returnFocus?.isConnected && !returnFocus.disabled) returnFocus.focus();
@@ -416,6 +422,51 @@
     $('regenerate-report').focus();
   }
 
+  function setDeleteConfirmation(open) {
+    state.deleteConfirmOpen = open;
+    $('review-delete-confirmation').hidden = !open;
+    $('review-release-note').hidden = open;
+    $('delete-review').setAttribute('aria-expanded', String(open));
+    setMessage('review-delete-error', '');
+  }
+
+  function openDeleteConfirmation() {
+    const report = state.reports.find(item => item.id === state.selectedReportId);
+    if (!report || report.status !== 'draft' || report.releasedAt || report.pendingCorrection || state.busy) return;
+    const student = state.evidence?.students.find(item => item.id === report.studentId);
+    if (!student) return;
+    setRegenerateConfirmation(false);
+    $('review-delete-detail').textContent = `Permanently delete ${student.displayName}'s draft for ${formatDate(report.reportWeekStartDate)}–${formatDate(report.reportWeekEndDate)}? You can generate a new draft from that week's available records.`;
+    setDeleteConfirmation(true);
+    $('cancel-delete-draft').focus();
+  }
+
+  function cancelDeleteConfirmation() {
+    setDeleteConfirmation(false);
+    $('delete-review').focus();
+  }
+
+  async function deleteReview() {
+    const report = state.reports.find(item => item.id === state.selectedReportId);
+    if (!state.deleteConfirmOpen || state.busy || !report) return;
+    state.busy = true;
+    $('confirm-delete-draft').disabled = true;
+    $('cancel-delete-draft').disabled = true;
+    try {
+      const query = `sectionId=${encodeURIComponent(state.evidence.section.id)}&startDate=${encodeURIComponent(state.evidence.reportWeek.startDate)}`;
+      await api.request(`/reports/weekly-drafts/${encodeURIComponent(report.id)}?${query}`, { method: 'DELETE' });
+      closeModal('review-modal', true);
+      await loadWeek();
+      showAppToast('Draft deleted. You can generate it again for this week.');
+    } catch (error) {
+      setMessage('review-delete-error', error.message || 'The draft could not be deleted.', true);
+    } finally {
+      state.busy = false;
+      $('confirm-delete-draft').disabled = false;
+      $('cancel-delete-draft').disabled = false;
+    }
+  }
+
   function showReview(reportId) {
     const report = state.reports.find(item => item.id === reportId);
     const student = state.evidence?.students.find(item => item.id === report?.studentId);
@@ -479,6 +530,8 @@
     $('save-review').hidden = !editable;
     $('confirm-review').hidden = !editable;
     setRegenerateConfirmation(false);
+    setDeleteConfirmation(false);
+    $('delete-review').hidden = !editable || Boolean(report.releasedAt) || Boolean(report.pendingCorrection);
     const historySection = $('report-history-section');
     const historyContent = $('report-history-content');
     const historyToggle = $('report-history');
@@ -711,7 +764,34 @@
     } catch (error) { setMessage('reports-message', error.message || 'Narrative Reports could not be loaded.', true); }
   }
 
+  function initPipelineDisclosure() {
+    const toggle = $('pipeline-toggle');
+    const flow = $('pipeline-flow');
+    if (!toggle || !flow) return;
+
+    const mobileQuery = window.matchMedia('(max-width: 760px)');
+    const setExpanded = expanded => {
+      flow.hidden = !expanded;
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'Show'} report preparation steps`);
+    };
+    const syncViewport = () => {
+      const isMobile = mobileQuery.matches;
+      toggle.hidden = !isMobile;
+      setExpanded(!isMobile);
+    };
+
+    toggle.addEventListener('click', () => {
+      if (!mobileQuery.matches) return;
+      setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+    });
+    if (typeof mobileQuery.addEventListener === 'function') mobileQuery.addEventListener('change', syncViewport);
+    else mobileQuery.addListener(syncViewport);
+    syncViewport();
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
+    initPipelineDisclosure();
     $('report-section').addEventListener('change', () => { populateWeeks(); loadWeek(); });
     $('report-week').addEventListener('change', loadWeek);
     $('report-search').addEventListener('input', renderCards);
@@ -725,6 +805,9 @@
     $('add-action').addEventListener('click', () => appendAction());
     $('save-review').addEventListener('click', () => saveReview(false));
     $('confirm-review').addEventListener('click', () => saveReview(true));
+    $('delete-review').addEventListener('click', openDeleteConfirmation);
+    $('cancel-delete-draft').addEventListener('click', cancelDeleteConfirmation);
+    $('confirm-delete-draft').addEventListener('click', deleteReview);
     $('regenerate-report').addEventListener('click', openRegenerateConfirmation);
     $('keep-current-draft').addEventListener('click', cancelRegenerateConfirmation);
     $('confirm-regenerate').addEventListener('click', regenerate);
@@ -740,7 +823,8 @@
     document.querySelectorAll('.modal-backdrop').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal && !state.busy) closeModal(modal.id); }));
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && !state.busy) {
-        if (state.regenerateConfirmOpen) cancelRegenerateConfirmation();
+        if (state.deleteConfirmOpen) cancelDeleteConfirmation();
+        else if (state.regenerateConfirmOpen) cancelRegenerateConfirmation();
         else document.querySelectorAll('.modal-backdrop.open').forEach(modal => closeModal(modal.id));
       }
       if (event.key !== 'Tab') return;

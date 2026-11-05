@@ -30,7 +30,6 @@ lucide.createIcons();
     let TEACHER_ADVISORY_SECTIONS = [];
     let TEACHER_PENDING_REPORTS = 0;
     let TEACHER_PENDING_REPORTS_ERROR = '';
-    const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
 
     function getTeacherAssignmentName(assignment) {
       return assignment.communicationComponentName || assignment.subjectName || 'Assigned subject';
@@ -785,10 +784,6 @@ lucide.createIcons();
       TEACHER_MATERIAL_SECTIONS = TEACHER_SECTIONS.filter(section => section.subjectAssignments.length > 0);
       TEACHER_SECTIONS_ERROR = '';
 
-      if (dashboardPeriod && sections[0]?.level) {
-        dashboardPeriod.dataset.schoolLevel = sections[0].level;
-        window.refreshEdUgnayShellContext?.();
-      }
     }
 
     function renderWeekCalendar() {

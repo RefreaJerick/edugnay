@@ -607,10 +607,12 @@ test('a failed SHS assignment grade link rolls back the assignment', async () =>
     .replace(/\n\nasync function removeUploadedFile$/, '');
   assert.ok(source);
   const calls = [];
+  let insertQuery;
   const connection = {
     async beginTransaction() { calls.push('begin'); },
-    async execute(sql) {
+    async execute(sql, values = []) {
       if (sql.includes('FROM academic_terms')) return [[{ id: 1 }]];
+      if (sql.startsWith('INSERT INTO assignments')) insertQuery = { sql, values };
       calls.push('insert'); return [{ insertId: 19 }];
     },
     async commit() { calls.push('commit'); },
@@ -633,5 +635,8 @@ test('a failed SHS assignment grade link rolls back the assignment', async () =>
     title: 'Task', description: '', dueAt: '2026-11-01T23:59:00', grade: { academicTermId: 1 }
   } }, {}, error => { failure = error; });
   assert.equal(failure.message, 'Grading period unavailable');
+  assert.match(insertQuery.sql, /status, published_at\)[\s\S]*CASE WHEN \? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END/);
+  assert.equal(insertQuery.values.at(-2), 'published');
+  assert.equal(insertQuery.values.at(-1), 'published');
   assert.deepEqual(calls, ['begin', 'insert', 'rollback', 'release']);
 });

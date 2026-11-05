@@ -209,7 +209,7 @@ test('both term screens use the shared picker while school-year and extension da
   assert.match(schools, /initAcademicRangePickers\?\.\(termsForm,[\s\S]*?startSelector: '\[data-term-period-start\]'[\s\S]*?endSelector: '\[data-term-period-end\]'/);
   assert.match(onboarding, /<label>Date range<\/label>[\s\S]*?academic-range-native-pair/);
   assert.match(schools, /<label>Date range<\/label>[\s\S]*?academic-range-native-pair/);
-  assert.match(schools, /period\.status === 'upcoming' \? '' : 'disabled'/);
+  assert.match(schools, /period\.status === 'upcoming' && !yearReadOnly \? '' : 'disabled'/);
   assert.match(onboarding, /id="schoolYearStartDate"[^>]*type="date"/);
   assert.match(schools, /id="termSchoolYearStart" type="date"/);
   assert.match(schools, /id="extendedEndDate" type="date"/);

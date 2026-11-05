@@ -1123,17 +1123,23 @@
       const btn = document.getElementById('deactivateConfirmBtn');
 
       if (isActive) {
+        btn.classList.remove('btn-save', 'success');
+        btn.classList.add('btn-danger');
+        btn.style.removeProperty('background');
+        btn.style.removeProperty('border-color');
         headingIcon.classList.add('danger');
+        headingIcon.classList.remove('success');
         ctx.style.background = '#fef2f2';
         ctx.style.borderColor = '#fecaca';
         icon.style.color = '#dc2626';
         icon.setAttribute('data-lucide', 'user-x');
         label.style.color = '#dc2626';
-        btn.style.background = '#dc2626';
-        btn.style.borderColor = '#dc2626';
         btn.textContent = 'Yes, Deactivate';
       } else {
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-save', 'success');
         headingIcon.classList.remove('danger');
+        headingIcon.classList.add('success');
         ctx.style.background = '#f0fdf4';
         ctx.style.borderColor = '#86efac';
         icon.style.color = '#16a34a';

@@ -18,6 +18,7 @@ router.get('/weekly-drafts', requireSchoolUser, requireRoles('teacher'), narrati
 router.get('/weekly-drafts/pending-count', requireSchoolUser, requireRoles('teacher'), narrativeReportDraftController.getPendingDraftCount);
 router.post('/weekly-drafts/generate', requireSchoolUser, requireRoles('teacher'), narrativeReportDraftController.generateWeeklyDrafts);
 router.patch('/weekly-drafts/:reportId', requireSchoolUser, requireRoles('teacher'), narrativeReportReviewController.saveReview);
+router.delete('/weekly-drafts/:reportId', requireSchoolUser, requireRoles('teacher'), narrativeReportReviewController.deleteDraft);
 router.post('/weekly-drafts/:reportId/confirm', requireSchoolUser, requireRoles('teacher'), narrativeReportReviewController.confirmReview);
 router.post('/weekly-drafts/:reportId/reopen', requireSchoolUser, requireRoles('teacher'), narrativeReportReviewController.reopenReview);
 router.post('/weekly-drafts/:reportId/release', requireSchoolUser, requireRoles('teacher'), narrativeReportReviewController.releaseReview);

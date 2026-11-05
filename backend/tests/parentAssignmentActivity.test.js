@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const databaseModule = require('../config/database');
@@ -8,10 +10,13 @@ let enrolledStudent = true;
 let assignmentOnline = false;
 let existingFilePath = null;
 let activityRows = [];
+let electiveActivityRows = [];
 let childAssignmentRows = [];
 let historyRows = [];
 let savedStatus = null;
 let activityQueryCount = 0;
+let activityQuery = null;
+let electiveActivityQuery = null;
 let childAssignmentQuery = null;
 let historyQuery = null;
 
@@ -39,8 +44,13 @@ const assignment = {
 
 async function executeQuery(sql, values = []) {
   if (sql.includes('SELECT users.id FROM users')) return [linkedChild ? [{ id: 42 }] : []];
-  if (sql.includes('FROM assignments') && sql.includes('DATE(assignments.due_at) = ?')) {
+  if (sql.includes('FROM assignments a') && sql.includes('DATE(a.published_at) <= ?')) {
+    electiveActivityQuery = { sql, values };
+    return [electiveActivityRows];
+  }
+  if (sql.includes('FROM assignments') && sql.includes('DATE(assignments.published_at) <= ?')) {
     activityQueryCount += 1;
+    activityQuery = { sql, values };
     return [activityRows];
   }
   if (sql.includes('FROM assignment_submissions') && sql.includes('section_students.withdrawn_at IS NOT NULL')) {
@@ -224,6 +234,7 @@ test('parent assignment activity returns safe per-child submission states', asyn
     { assignmentId: 4, subjectId: 7, subjectName: 'Science', title: 'Overdue work', dueDate: yesterday, onlineSubmissionEnabled: 0, savedStatus: null, filePath: null, submittedAt: null }
   ];
   activityQueryCount = 0;
+  activityQuery = null;
 
   const result = await callActivity('42', today);
 
@@ -231,6 +242,74 @@ test('parent assignment activity returns safe per-child submission states', asyn
   assert.deepEqual(result.body.assignments.map(item => item.submissionStatus), ['submitted', 'pending', 'submitted', 'not_submitted']);
   assert.equal(Object.hasOwn(result.body.assignments[0], 'filePath'), false);
   assert.equal(activityQueryCount, 1);
+  assert.match(activityQuery.sql, /DATE\(assignments\.published_at\) <= \?/);
+  assert.match(activityQuery.sql, /DATE\(assignments\.due_at\) >= \?/);
+  assert.match(activityQuery.sql, /assignments\.status = 'published' AND assignments\.due_at IS NOT NULL/);
+  assert.match(activityQuery.sql, /academic_years\.status = 'active'/);
+  assert.match(activityQuery.sql, /section_students\.withdrawn_at IS NULL/);
+  assert.match(activityQuery.sql, /student_parent_links\.parent_user_id = \?/);
+  assert.deepEqual(activityQuery.values, [42, 42, 1, 1, today, today, 20]);
+});
+
+test('parent activity binds each selected day to both inclusive range limits', async () => {
+  linkedChild = true;
+  activityRows = [];
+  const published = '2026-11-02';
+  const due = '2026-11-06';
+  const selectedDays = [
+    '2026-11-01', // before publication
+    published,
+    '2026-11-04', // between the dates
+    due,
+    '2026-11-07' // after the due date
+  ];
+
+  for (const selectedDay of selectedDays) {
+    const result = await callActivity('42', selectedDay);
+    assert.equal(result.error, null);
+    assert.deepEqual(activityQuery.values.slice(4, 6), [selectedDay, selectedDay]);
+    assert.match(activityQuery.sql, /DATE\(assignments\.published_at\) <= \?/);
+    assert.match(activityQuery.sql, /DATE\(assignments\.due_at\) >= \?/);
+  }
+});
+
+test('parent SHS activity uses the same inclusive publish-to-due date range', async () => {
+  const previousFlag = process.env.SHS_SELECTION_ENABLED;
+  process.env.SHS_SELECTION_ENABLED = 'true';
+  linkedChild = true;
+  electiveActivityRows = [{ assignmentId: 90, electiveClassId: 7, subjectName: 'Work Immersion', title: 'Daily log',
+    dueDate: getSchoolDate(), onlineSubmissionEnabled: 0, savedStatus: null, filePath: null, submittedAt: null }];
+  electiveActivityQuery = null;
+  try {
+    const selectedDay = getSchoolDate();
+    const result = await callActivity('42', selectedDay);
+    assert.equal(result.error, null);
+    assert.equal(result.body.assignments.some(item => item.scopeType === 'elective'), true);
+    assert.match(electiveActivityQuery.sql, /DATE\(a\.published_at\) <= \?/);
+    assert.match(electiveActivityQuery.sql, /DATE\(a\.due_at\) >= \?/);
+    assert.match(electiveActivityQuery.sql, /a\.status = 'published' AND a\.due_at IS NOT NULL/);
+    assert.match(electiveActivityQuery.sql, /y\.status = 'active'/);
+    assert.match(electiveActivityQuery.sql, /term\.academic_year_id = o\.academic_year_id/);
+    assert.match(electiveActivityQuery.sql, /shs_elective_class_students/);
+    assert.match(electiveActivityQuery.sql, /student_parent_links/);
+    assert.deepEqual(electiveActivityQuery.values, [42, 42, 1, selectedDay, selectedDay, 20]);
+  } finally {
+    if (previousFlag === undefined) delete process.env.SHS_SELECTION_ENABLED;
+    else process.env.SHS_SELECTION_ENABLED = previousFlag;
+    electiveActivityRows = [];
+  }
+});
+
+test('migration backfills existing published assignments from their creation time', () => {
+  const migration = fs.readFileSync(path.join(__dirname, '../database/migrations/065_add_assignment_published_at.sql'), 'utf8');
+  assert.match(migration, /ADD COLUMN published_at DATETIME NULL AFTER due_at/);
+  assert.match(migration, /SET published_at = created_at\s+WHERE status = 'published'/);
+});
+
+test('parent dashboard empty state describes assignments active on the selected day', () => {
+  const dashboard = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/dashboard.js'), 'utf8');
+  assert.match(dashboard, /title: 'No active assignments'/);
+  assert.match(dashboard, /text: 'No published assignments are active on this day\.'/);
 });
 
 test('parent cannot request assignment activity for an unlinked child', async () => {

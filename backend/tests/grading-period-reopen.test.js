@@ -1,7 +1,9 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const path = require('node:path');
 
 const databaseModule = require('../config/database');
+const pageFs = require('./helpers/page-fs');
 let queryHandler = async () => [[]];
 const queries = [];
 
@@ -27,6 +29,17 @@ const database = {
 databaseModule.getDatabase = () => database;
 const reopen = require('../controllers/gradingPeriodReopenController');
 const grades = require('../controllers/gradesController');
+
+test('System Config keeps reopen counts in navigation and notifications, not the panel heading', () => {
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-system-config.html'), 'utf8');
+  const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/system-config.js'), 'utf8');
+  assert.doesNotMatch(page, /id="reopenPanelCount"/);
+  assert.doesNotMatch(script, /reopenPanelCount|countEl/);
+  assert.match(page, /id="reopenNavBadge"/);
+  assert.match(page, /id="tbNotifDot"/);
+  assert.match(script, /if \(navBadge\) \{ navBadge\.style\.display = pending\.length \? '' : 'none'; navBadge\.textContent = pending\.length; \}/);
+  assert.match(script, /if \(dot\) dot\.style\.display = pending\.length \? '' : 'none';/);
+});
 
 function mockScope(overrides = {}) {
   return {

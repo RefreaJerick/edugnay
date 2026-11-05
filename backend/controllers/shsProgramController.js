@@ -209,7 +209,7 @@ async function activate(req, res, next) {
     if (entries.some(entry => !isCatalogAvailableForNewUse(entry)))
       fail('One or more subjects are waiting for DepEd source verification and cannot be added yet.', 409);
     const { year, grade } = await context(connection, schoolId, yearId, gradeId);
-    if (year.status === 'archived') fail('Archived school years are read-only.', 409);
+    if (['closed', 'archived'].includes(year.status)) fail('Closed or archived school years are read-only.', 409);
     const gradeNumber = Number(grade.gradeCode.replace('grade-', ''));
     if (entries.some(entry => !isCatalogGradeEligible(entry, gradeNumber))) fail('A subject is not approved for the selected grade.');
     const [tracks] = await connection.execute(
@@ -222,7 +222,7 @@ async function activate(req, res, next) {
     await connection.beginTransaction(); started = true;
     await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [yearId, schoolId]);
     const locked = await context(connection, schoolId, yearId, gradeId);
-    if (locked.year.status === 'archived') fail('Archived school years are read-only.', 409);
+    if (['closed', 'archived'].includes(locked.year.status)) fail('Closed or archived school years are read-only.', 409);
     const added = [];
     for (const entry of entries) {
       const [result] = await connection.execute(
@@ -268,6 +268,53 @@ async function setOfferingActive(req, res, next) {
     });
     await connection.commit(); started = false; res.json({ id: offeringId, isActive: active });
   } catch (error) { if (started) await connection.rollback(); next(error); } finally { connection.release(); }
+}
+
+async function deleteOffering(req, res, next) {
+  const connection = await getDatabase().getConnection(); let started = false;
+  try {
+    const schoolId = req.user.schoolId;
+    const offeringId = id(req.params.offeringId, 'offering ID');
+    const current = await offering(connection, schoolId, offeringId);
+    if (current.yearStatus === 'archived') fail('Archived school years are read-only.', 409);
+
+    await connection.beginTransaction(); started = true;
+    await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE',
+      [current.academic_year_id, schoolId]);
+    const [lockedOffering] = await connection.execute(
+      'SELECT id FROM shs_offerings WHERE id = ? AND school_id = ? FOR UPDATE', [offeringId, schoolId]
+    );
+    if (!lockedOffering.length) fail('Offering not found.', 404);
+    const locked = await offering(connection, schoolId, offeringId);
+    if (locked.yearStatus === 'archived') fail('Archived school years are read-only.', 409);
+
+    const [references] = await connection.execute(
+      `SELECT
+        (SELECT COUNT(*) FROM shs_elective_classes WHERE school_id = ? AND offering_id = ?) AS classCount,
+        (SELECT COUNT(*) FROM shs_grading_profiles WHERE school_id = ? AND offering_id = ?) AS gradingProfileCount`,
+      [schoolId, offeringId, schoolId, offeringId]
+    );
+    if (Number(references[0]?.classCount) > 0 || Number(references[0]?.gradingProfileCount) > 0)
+      fail('This subject has classes or saved grading settings. Delete its classes and clear its saved grading settings first.', 409);
+
+    await writeAuditLog(connection, req, 'shs_offering_deleted', 'shs_offering', offeringId, {
+      summary: locked.subject_name, subjectName: locked.subject_name, gradeCode: locked.gradeCode,
+      trackCode: locked.track_code, schoolYearLabel: locked.schoolYearLabel
+    });
+    const [result] = await connection.execute(
+      'DELETE FROM shs_offerings WHERE id = ? AND school_id = ?', [offeringId, schoolId]
+    );
+    if (!result.affectedRows) fail('Offering not found.', 404);
+    await connection.commit(); started = false;
+    res.status(204).end();
+  } catch (error) {
+    if (started) await connection.rollback();
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      error.status = 409;
+      error.message = 'This subject has linked classes or saved settings and cannot be deleted.';
+    }
+    next(error);
+  } finally { connection.release(); }
 }
 
 async function createClass(req, res, next) {
@@ -447,4 +494,4 @@ async function deleteClass(req, res, next) {
   } finally { connection.release(); }
 }
 
-module.exports = { list, mismatchedImmersionMemberships, activate, setOfferingActive, createClass, updateClass, deleteClass };
+module.exports = { list, mismatchedImmersionMemberships, activate, setOfferingActive, deleteOffering, createClass, updateClass, deleteClass };

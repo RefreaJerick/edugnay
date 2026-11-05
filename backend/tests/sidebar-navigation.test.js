@@ -579,7 +579,7 @@ test('student navigation pre-paints cached access on every portal page', () => {
   assert.match(loginPage, /edugnay_student_sidebar_v1:/);
 });
 
-test('student sidebar uses a cached snapshot only for pre-paint, then refreshes it from live access', async () => {
+test('student sidebar pre-paints cached Journal access, then refreshes it from live access', async () => {
   const cachedSnapshot = {
     version: 1,
     role: 'student',
@@ -596,14 +596,14 @@ test('student sidebar uses a cached snapshot only for pre-paint, then refreshes 
   });
 
   assert.equal(harness.rootClasses.has('student-nav-hide-grades'), true, 'cached grade visibility applies before page initialization');
-  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), true, 'Journal stays hidden until current eligibility is verified');
+  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), false, 'last verified Journal access applies before page initialization');
   assert.equal(harness.rootClasses.has('student-nav-hide-electives'), true, 'older snapshots without elective access hide the link until checked');
   harness.context.navigate('journal');
   assert.equal(harness.location.href, `http://localhost${harness.location.pathname}`, 'cached visibility does not grant Journal access');
 
   const initialization = harness.listeners.get('DOMContentLoaded')();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), true, 'Journal stays hidden while fresh portal permissions are pending');
+  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), false, 'cached Journal access stays visible while fresh permissions are pending');
   harness.releasePortal({
     features: { gradesEnabled: true, journalsEnabled: false },
     journalSubjectId: 3,
@@ -621,6 +621,50 @@ test('student sidebar uses a cached snapshot only for pre-paint, then refreshes 
   assert.equal(harness.accessItems.journals.hidden, true);
   assert.equal(harness.location.redirect, './edugnay-student-dashboard.html', 'fresh access still guards the Journal page');
   assert.deepEqual(harness.getCachedSnapshot().access, { grades: true, journals: false, electives: true });
+});
+
+test('student Journal link stays hidden without cached access and follows fresh permission changes', async () => {
+  const deniedSnapshot = {
+    version: 1,
+    role: 'student',
+    schoolId: '10',
+    studentId: '70',
+    access: { grades: true, journals: false, electives: false }
+  };
+  const denied = createStudentShellHarness({
+    cachedSnapshot: deniedSnapshot,
+    journalsEnabled: true,
+    deferPortal: true
+  });
+
+  assert.equal(denied.rootClasses.has('student-nav-hide-journals'), true, 'cached denial keeps Journal hidden on first paint');
+  const deniedInitialization = denied.listeners.get('DOMContentLoaded')();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(denied.rootClasses.has('student-nav-hide-journals'), true, 'cached denial remains in place while fresh permissions are pending');
+  denied.releasePortal({
+    features: { gradesEnabled: true, journalsEnabled: true },
+    journalSubjectId: 3,
+    journalSubjectName: 'English',
+    journalSubjectEligible: true,
+    electivesEligible: false
+  });
+  await deniedInitialization;
+  assert.equal(denied.rootClasses.has('student-nav-hide-journals'), false, 'fresh permission reveals Journal after a cached denial');
+
+  const missing = createStudentShellHarness({ journalsEnabled: true, deferPortal: true });
+  assert.equal(missing.rootClasses.has('student-nav-hide-journals'), true, 'missing snapshot keeps Journal hidden until verified');
+  const missingInitialization = missing.listeners.get('DOMContentLoaded')();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(missing.rootClasses.has('student-nav-hide-journals'), true, 'unverified Journal stays hidden while loading');
+  missing.releasePortal({
+    features: { gradesEnabled: true, journalsEnabled: true },
+    journalSubjectId: 3,
+    journalSubjectName: 'English',
+    journalSubjectEligible: true,
+    electivesEligible: false
+  });
+  await missingInitialization;
+  assert.equal(missing.rootClasses.has('student-nav-hide-journals'), false, 'fresh permission reveals Journal without a prior snapshot');
 });
 
 test('student elective navigation refreshes from portal features and fails closed', async () => {

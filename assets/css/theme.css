@@ -427,7 +427,7 @@ html[data-school-accent] body :is(.academic-range-days button.is-endpoint, .acad
 html[data-school-accent] body :is(.report-hero .report-hero-link:hover, .rc-read-link:hover) {
   color: var(--theme-accent-text) !important;
 }
-html[data-school-accent] body :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+html[data-school-accent] body :is(a, [tabindex]):focus-visible:not(button):not(input):not(select):not(textarea) {
   outline: 2px solid var(--theme-accent-text);
   outline-offset: 2px;
 }

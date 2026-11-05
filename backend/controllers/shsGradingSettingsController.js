@@ -198,7 +198,7 @@ async function change(req, res, next, restore = false) {
     if (Boolean(subjectId) === Boolean(offeringId)) fail('Choose one SHS subject or offering.');
     await connection.beginTransaction(); started = true;
     const year = await yearFor(connection, schoolId, yearId, true);
-    if (year.status === 'archived') fail('Archived school years are read-only.', 409);
+    if (['closed', 'archived'].includes(year.status)) fail('Closed or archived school years are read-only.', 409);
     const subjects = await subjectsFor(connection, schoolId, yearId, year.label);
     const item = subjects.find(row => subjectId ? Number(row.subjectId) === subjectId : Number(row.offeringId) === offeringId);
     if (!item || !item.defaultWeights || !item.isActive) fail('Active Strengthened SHS subject not found.', 404);

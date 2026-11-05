@@ -181,6 +181,13 @@ async function getAttendanceData(database, section, subjectId, attendanceDate, c
     [section.schoolId, section.id, subjectId, componentCode, attendanceDate]
   );
   const session = sessions[0] || null;
+  const [scans] = session?.status === 'draft'
+    ? await database.execute(
+      `SELECT scanned_student_user_id AS studentId FROM qr_scan_events
+       WHERE school_id = ? AND attendance_session_id = ? AND scan_result = 'accepted'`,
+      [section.schoolId, session.id]
+    ) : [[]];
+  const scannedIds = new Set(scans.map(scan => Number(scan.studentId)));
   const [students] = await database.execute(
     `SELECT
       students.id AS studentId,
@@ -224,7 +231,7 @@ async function getAttendanceData(database, section, subjectId, attendanceDate, c
       initials: student.initials,
       ...avatarFields({ ...student, id: student.studentId }),
       lrn: student.lrn,
-      attendanceStatus: student.attendanceStatus,
+      attendanceStatus: student.attendanceStatus || (scannedIds.has(Number(student.studentId)) ? 'present' : null),
       remarks: student.remarks
     }))
   };
@@ -354,9 +361,6 @@ async function saveSectionAttendance(req, res, next) {
       [section.schoolId, sectionId, subjectId, attendanceDate, componentCode]
     );
     const existingSession = sessions[0];
-    if (existingSession?.method === 'qr' && existingSession.status === 'draft') {
-      throw createError('Review and confirm the QR attendance session before saving manual attendance.', 409);
-    }
     let sessionId = existingSession?.id;
 
     if (!sessionId) {
@@ -438,11 +442,19 @@ async function getElectiveAttendance(req, res, next) {
        FROM attendance_records WHERE attendance_records.attendance_session_id = ? AND attendance_records.school_id = ?`,
       [session?.id || 0, electiveClass.schoolId]);
     const byStudent = new Map(records.map(record => [String(record.studentId), record]));
+    const [scans] = session?.status === 'draft'
+      ? await database.execute(
+        `SELECT scanned_student_user_id AS studentId FROM qr_scan_events
+         WHERE school_id = ? AND attendance_session_id = ? AND scan_result = 'accepted'`,
+        [electiveClass.schoolId, session.id]
+      ) : [[]];
+    const scannedIds = new Set(scans.map(scan => String(scan.studentId)));
     res.json({ electiveClass, attendanceDate, currentDate: getCurrentDate(), canEdit,
       session: session && { id: session.id, method: session.method, status: session.status,
         createdByUserId: session.createdByUserId, confirmedByUserId: session.confirmedByUserId, confirmedAt: session.confirmedAt },
       students: members.map(student => ({ ...student, id: student.studentId,
-        attendanceStatus: byStudent.get(String(student.studentId))?.attendanceStatus || null,
+        attendanceStatus: byStudent.get(String(student.studentId))?.attendanceStatus ||
+          (scannedIds.has(String(student.studentId)) ? 'present' : null),
         remarks: byStudent.get(String(student.studentId))?.remarks || null })) });
   } catch (error) { next(error); }
 }
@@ -502,9 +514,6 @@ async function saveElectiveAttendance(req, res, next) {
       `SELECT id, method, status FROM attendance_sessions
        WHERE school_id = ? AND shs_elective_class_id = ? AND attendance_date = ? FOR UPDATE`,
       [item.schoolId, classId, attendanceDate]);
-    if (sessions[0]?.method === 'qr' && sessions[0].status === 'draft') {
-      throw createError('Review and confirm the QR attendance session before saving manual attendance.', 409);
-    }
     let sessionId = sessions[0]?.id;
     if (!sessionId) {
       const [result] = await connection.execute(

@@ -247,8 +247,9 @@ lucide.createIcons();
           if (greeting) greeting.textContent = `Welcome back, ${session.firstName || 'Student'}!`;
           journalLoad = loadStudentJournalCard();
           const sections = await window.EDUGNAY_API.getSections();
-          if (dashboardPeriod && sections[0]?.level) {
-            dashboardPeriod.dataset.schoolLevel = sections[0].level;
+          const currentSection = sections.find(section => section.academicYearStatus === 'active');
+          if (dashboardPeriod) {
+            dashboardPeriod.dataset.schoolLevel = currentSection?.level || '';
             window.refreshEdUgnayShellContext?.();
           }
         } catch (error) {

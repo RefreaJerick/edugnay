@@ -138,8 +138,8 @@ function studentEnrollmentAuditDetails(student, section) {
 }
 
 function assertSectionYearWritable(section) {
-  if (section.academicYearStatus === 'archived') {
-    throw createError('Records from an archived school year are read-only.', 409);
+  if (section.academicYearStatus === 'archived' || section.academicYearStatus === 'closed') {
+    throw createError('Records from a closed or archived school year are read-only.', 409);
   }
 }
 
@@ -715,7 +715,9 @@ async function listSectionTeachers(req, res, next) {
     if (!section) throw createError('Section not found.', 404);
     const [teachers] = await getDatabase().execute('SELECT section_teachers.id AS assignmentId, teachers.id AS teacherId, teachers.display_name AS teacherName, teachers.school_email AS teacherEmail, teachers.initials, teachers.avatar_filename AS avatarFilename, teachers.avatar_version AS avatarVersion, subjects.id AS subjectId, subjects.subject_code AS subjectCode, subjects.name AS subjectName, section_teachers.communication_component_code AS communicationComponentCode FROM section_teachers INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.section_id = ? ORDER BY teachers.last_name, subjects.name, section_teachers.communication_component_code', [sectionId]);
     res.json({ section: formatSection(section), teachers: teachers.map(({ avatarFilename, avatarVersion, ...teacher }) => ({
-      ...teacher, ...avatarFields({ id: teacher.teacherId, avatarFilename, avatarVersion })
+      ...teacher,
+      communicationComponentName: COMMUNICATION_COMPONENTS[teacher.communicationComponentCode] || null,
+      ...avatarFields({ id: teacher.teacherId, avatarFilename, avatarVersion })
     })) });
   } catch (error) { next(error); }
 }

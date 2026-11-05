@@ -266,6 +266,7 @@ test('parent page features the latest report and shows every past report without
       location.search = new URL(location.href).search;
     } },
     EDUGNAY_SCHOOL_READY: Promise.resolve(),
+    EDUGNAY_PAGE_LOADING: { ready() {} },
     EDUGNAY_API: {
       async getParentChildren() { return [
         { studentId: '4', displayName: 'Lee Learner' },
@@ -297,6 +298,7 @@ test('parent page features the latest report and shows every past report without
   const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/parent/reports.css'), 'utf8');
   assert.match(styles, /\.latest-report-hero \.lr-head \.report-correction-notice\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin:\s*0;/s);
   assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.latest-report-hero \.lr-head \{\s*display:\s*block;\s*\}[\s\S]*?\.latest-report-hero \.lr-head \.report-correction-notice \{\s*margin:\s*10px 0 0 48px;/);
+  assert.match(styles, /#parent-report-modal-actions > \.report-correction-notice\s*\{\s*margin-top:\s*6px;\s*\}/);
   vm.runInNewContext(script, { window, document, URL, URLSearchParams, Intl, Date, String, Number, Set, Array });
   await listeners.DOMContentLoaded();
   assert.match(get('latest-report').innerHTML, /Latest approved summary/);

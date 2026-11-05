@@ -12,11 +12,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css?v=2">
-  <link rel="stylesheet" href="../../assets/css/adviser/narrative-reports.css">
+  <link rel="stylesheet" href="../../assets/css/adviser/narrative-reports.css?v=20261105-mobile-pipeline">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
 
   <script src="../../assets/js/api-config.js"></script>
-  <script src="../../assets/js/shell-common.js?v=11"></script>
+  <script src="../../assets/js/shell-common.js?v=12"></script>
   <script src="../../assets/js/teacher/shell.js?v=4"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
@@ -191,12 +191,19 @@
           <p class="pipeline-sub" id="pipeline-context"></p></div>
       </div>
       <span class="badge" id="generation-state">Checking generation availability…</span>
+      <button class="top-btn secondary pipeline-toggle" id="pipeline-toggle" type="button" aria-controls="pipeline-flow" aria-expanded="true" aria-label="Hide report preparation steps" hidden><i data-lucide="chevron-down" aria-hidden="true"></i></button>
     </div>
-    <div class="pipeline-flow" aria-label="Report preparation steps">
-      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="user-check"></i></span><span class="flow-step-label">Attendance</span><span class="flow-step-sub">Confirmed records</span></div>
-      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="clipboard-check"></i></span><span class="flow-step-label">Assignments</span><span class="flow-step-sub">Across subjects</span></div>
-      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="chart-no-axes-column"></i></span><span class="flow-step-label">Academic</span><span class="flow-step-sub">Candidates only</span></div>
-      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="notebook-pen"></i></span><span class="flow-step-label">Journal</span><span class="flow-step-sub">Values Education</span></div>
+    <div class="pipeline-flow" id="pipeline-flow" role="group" aria-label="Report preparation steps">
+      <div class="pipeline-data-group">
+        <span class="pipeline-data-number" aria-hidden="true">1</span>
+        <h3 class="pipeline-data-heading">Collect data</h3>
+        <div class="pipeline-data-sources">
+          <div class="flow-step"><span class="flow-step-icon"><i data-lucide="user-check"></i></span><span class="flow-step-label">Attendance</span><span class="flow-step-sub">Confirmed records</span></div>
+          <div class="flow-step"><span class="flow-step-icon"><i data-lucide="clipboard-check"></i></span><span class="flow-step-label">Assignments</span><span class="flow-step-sub">Across subjects</span></div>
+          <div class="flow-step"><span class="flow-step-icon"><i data-lucide="chart-no-axes-column"></i></span><span class="flow-step-label">Academic</span><span class="flow-step-sub">Candidates only</span></div>
+          <div class="flow-step"><span class="flow-step-icon"><i data-lucide="notebook-pen"></i></span><span class="flow-step-label">Journal</span><span class="flow-step-sub">Values Education</span></div>
+        </div>
+      </div>
       <div class="flow-step ai"><span class="flow-step-icon"><i data-lucide="sparkles"></i></span><span class="flow-step-label">AI draft</span><span class="flow-step-sub">Adviser reviews</span></div>
       <div class="flow-step final"><span class="flow-step-icon"><i data-lucide="send"></i></span><span class="flow-step-label">To parent</span><span class="flow-step-sub">After adviser release</span></div>
     </div>
@@ -280,10 +287,11 @@
       <section class="review-section report-reopen-section" id="report-reopen-section" hidden><label class="review-section-label" for="report-reopen-reason"><i data-lucide="file-pen-line" aria-hidden="true"></i> Reason for correction</label><textarea class="ai-report-text" id="report-reopen-reason" maxlength="500" rows="3" placeholder="Describe what needs to be corrected."></textarea><p class="recommended-actions-help">This reason is visible to school staff only. Parents keep seeing the last released version until you release the correction.</p><div class="report-reopen-actions"><button class="top-btn secondary" id="cancel-reopen" type="button">Cancel</button><button class="top-btn confirm-btn" id="submit-reopen" type="button">Reopen report</button></div></section>
       <p class="reports-message" id="review-message" role="status"></p>
     </div>
-    <div class="review-modal-foot"><span class="review-modal-foot-left" id="review-release-note">Confirming saves the report. Releasing it to parents is a separate step.</span><div class="review-modal-foot-actions"><button class="top-btn secondary" type="button" data-close-modal>Close</button><button class="top-btn secondary" id="reopen-report" type="button" hidden>Reopen report</button><button class="top-btn secondary" id="save-review" type="button">Save draft</button><button class="top-btn confirm-btn" id="confirm-review" type="button">Confirm report</button><button class="top-btn confirm-btn" id="release-report" type="button" hidden>Release to Parents</button></div></div>
+    <div class="review-foot-note"><span id="review-release-note">Confirming saves the report. Releasing it to parents is a separate step.</span><div class="review-delete-confirmation" id="review-delete-confirmation" role="group" aria-labelledby="review-delete-title" hidden><strong id="review-delete-title">Delete this draft?</strong><p id="review-delete-detail"></p><p class="reports-message" id="review-delete-error" role="status" hidden></p><div class="review-delete-actions"><button class="top-btn secondary" id="cancel-delete-draft" type="button">Keep draft</button><button class="top-btn btn-danger" id="confirm-delete-draft" type="button">Yes, delete draft</button></div></div></div>
+    <div class="review-modal-foot"><button class="top-btn btn-danger delete-draft-trigger" id="delete-review" type="button" aria-controls="review-delete-confirmation" aria-expanded="false" hidden><i data-lucide="trash-2" aria-hidden="true"></i> Delete draft</button><div class="review-modal-foot-actions"><button class="top-btn secondary" type="button" data-close-modal>Close</button><button class="top-btn secondary" id="reopen-report" type="button" hidden>Reopen report</button><button class="top-btn secondary" id="save-review" type="button">Save draft</button><button class="top-btn confirm-btn" id="confirm-review" type="button">Confirm report</button><button class="top-btn confirm-btn" id="release-report" type="button" hidden>Release to Parents</button></div></div>
   </div>
 </div>
-<script src="../../assets/js/teacher/narrative-reports.js?v=20261030-data-regions"></script>
+<script src="../../assets/js/teacher/narrative-reports.js?v=20261105-mobile-pipeline"></script>
 <script src="../../assets/js/icons-on-ready.js"></script>
 </body>
 </html>

@@ -167,8 +167,11 @@ test('Academic Terms uses a responsive full-width setup, tracker card, and three
   assert.match(termsRenderer, /term-schedule-list \$\{threeTermSchedule \? 'three-term-schedule' : ''\}/);
   assert.match(termsRenderer, /periods\.map\(period => threeTermSchedule \? `[\s\S]*?term-schedule-card-header[\s\S]*?term-status \$\{period\.status\}[\s\S]*?term-schedule-dates[\s\S]*?data-term-period-start[\s\S]*?data-term-period-end[\s\S]*?` : `<div class="term-schedule-row" data-term-period>/);
   assert.match(termsRenderer, /data-term-period-name[\s\S]*?readonly/);
-  assert.match(termsRenderer, /data-term-period-start[\s\S]*?period\.status === 'upcoming' \? '' : 'disabled'/);
-  assert.match(termsRenderer, /data-term-period-end[\s\S]*?period\.status === 'upcoming' \? '' : 'disabled'/);
+  assert.match(termsRenderer, /data-term-period-start[\s\S]*?period\.status === 'upcoming' && !yearReadOnly \? '' : 'disabled'/);
+  assert.match(termsRenderer, /data-term-period-end[\s\S]*?period\.status === 'upcoming' && !yearReadOnly \? '' : 'disabled'/);
+  assert.match(termsRenderer, /Close school year/);
+  assert.match(termsRenderer, /Activate school year/);
+  assert.match(termsRenderer, /Set up next school year/);
   assert.match(termsRenderer, /termsForm\.addEventListener\('submit', saveAcademicTerms\)/);
 
   assert.match(settingsStyles, /\.school-terms-pane form\s*\{\s*max-width:\s*none;/);

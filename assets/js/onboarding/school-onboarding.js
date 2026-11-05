@@ -522,7 +522,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
     async function submitSchoolOnboarding(event) {
       event.preventDefault();
       if (registrationResubmitMode && !registrationDetailsLoaded) return;
-      const form = event.currentTarget;
+      const form = event.target;
       const values = Object.fromEntries(new FormData(form).entries());
       const temporaryPassword = values.adminPassword;
       const notificationEmail = values.notificationEmail.trim().toLowerCase();

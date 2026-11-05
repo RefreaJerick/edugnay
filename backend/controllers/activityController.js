@@ -15,7 +15,7 @@ const CATEGORIES = {
     'shs_selection_submitted', 'shs_selection_revised', 'shs_selection_admin_recorded',
     'shs_selection_admin_updated', 'shs_selection_recorded', 'shs_selection_returned',
     'shs_selection_recorded_choices_changed', 'shs_selection_choices_cleared', 'shs_selection_request', 'shs_selection_approved',
-    'shs_selection_admin_changed', 'shs_offering_activated', 'shs_offering_updated',
+    'shs_selection_admin_changed', 'shs_offering_activated', 'shs_offering_updated', 'shs_offering_deleted',
     'shs_elective_class_created', 'shs_elective_class_updated', 'shs_elective_class_deleted',
     'shs_grading_rule_saved', 'shs_grading_defaults_restored', 'shs_grading_item_created',
     'shs_score_saved', 'shs_score_corrected', 'shs_grades_published', 'shs_completion_confirmed',
@@ -26,7 +26,7 @@ const CATEGORIES = {
     'school_settings_updated', 'school_logo_updated', 'portal_features_updated', 'academic_structure_updated',
     'narrative_report_week_updated',
     'deped_subject_defaults_applied',
-    'academic_year_created', 'academic_year_updated', 'academic_term_created', 'academic_term_updated',
+    'academic_year_created', 'academic_year_updated', 'academic_year_closed', 'academic_year_activated', 'academic_term_created', 'academic_term_updated',
     'academic_term_activated', 'academic_term_completed', 'academic_term_extended', 'grading_categories_updated',
     'school_registration_submitted', 'school_registration_approved', 'school_registration_rejected', 'school_registration_resubmitted',
     'attendance_settings_updated', 'parent_notification_triggers_updated', 'calendar_notice_created',
@@ -36,6 +36,7 @@ const CATEGORIES = {
   ],
   narrative_reports: [
     'narrative_report_draft_generated', 'narrative_report_draft_regenerated', 'narrative_report_draft_reviewed',
+    'narrative_report_draft_deleted',
     'narrative_report_confirmed_held', 'narrative_report_reopened', 'narrative_report_released_to_parents'
   ],
   reopen_requests: [
@@ -131,6 +132,7 @@ const ACTION_LABELS = {
   shs_selection_admin_changed: ['updated confirmed elective choices', 'clipboard-pen-line', 'blue', 'shs_program'],
   shs_offering_activated: ['added approved SHS subjects', 'book-plus', 'blue', 'shs_program'],
   shs_offering_updated: ['updated an SHS subject offering', 'book-open-check', 'blue', 'shs_program'],
+  shs_offering_deleted: ['deleted an SHS subject offering', 'book-minus', 'red', 'shs_program'],
   shs_elective_class_created: ['created an SHS class', 'school', 'blue', 'shs_program'],
   shs_elective_class_updated: ['updated an SHS class', 'school', 'blue', 'shs_program'],
   shs_elective_class_deleted: ['deleted an SHS class', 'school', 'red', 'shs_program'],
@@ -171,6 +173,8 @@ const ACTION_LABELS = {
   deped_subject_defaults_applied: ['applied DepEd subject defaults', 'book-open-check', 'blue', 'school_configuration'],
   academic_year_created: ['created an academic year', 'calendar-plus', 'blue', 'school_configuration'],
   academic_year_updated: ['updated an academic year', 'calendar-days', 'gold', 'school_configuration'],
+  academic_year_closed: ['closed a school year', 'calendar-check', 'blue', 'school_configuration'],
+  academic_year_activated: ['activated a school year', 'calendar-check', 'green', 'school_configuration'],
   academic_term_created: ['created a grading period', 'calendar-plus', 'blue', 'school_configuration'],
   academic_term_updated: ['updated a grading period', 'calendar-days', 'gold', 'school_configuration'],
   academic_term_activated: ['activated a grading period', 'calendar-check', 'green', 'school_configuration'],
@@ -201,6 +205,7 @@ const ACTION_LABELS = {
   narrative_report_draft_generated: ['generated a report draft', 'file-text', 'purple', 'narrative_reports'],
   narrative_report_draft_regenerated: ['regenerated a report draft', 'refresh-cw', 'purple', 'narrative_reports'],
   narrative_report_draft_reviewed: ['saved changes to a report draft', 'file-pen-line', 'blue', 'narrative_reports'],
+  narrative_report_draft_deleted: ['deleted a report draft', 'trash-2', 'red', 'narrative_reports'],
   narrative_report_confirmed_held: ['confirmed a report', 'circle-check', 'green', 'narrative_reports'],
   narrative_report_reopened: ['reopened a report', 'file-pen-line', 'orange', 'narrative_reports'],
   narrative_report_released_to_parents: ['released a weekly report to parents', 'send', 'green', 'narrative_reports'],
@@ -445,6 +450,9 @@ function shsProgramActivity(row, details, fallbackTitle) {
         : `${paused ? 'paused' : 'activated'} an SHS subject offering`
       : subjectName ? `updated the SHS offering for ${subjectName}` : fallbackTitle;
     context = [grade, track].filter(Boolean).join(' · ');
+  } else if (action === 'shs_offering_deleted') {
+    title = subjectName ? `deleted the SHS offering for ${subjectName}` : fallbackTitle;
+    context = [grade, track].filter(Boolean).join(' Â· ');
   } else if (action === 'shs_elective_class_created' || action === 'shs_elective_class_updated'
     || action === 'shs_elective_class_deleted' || action.startsWith('shs_elective_class_')) {
     const changes = details.changes && typeof details.changes === 'object' && !Array.isArray(details.changes)

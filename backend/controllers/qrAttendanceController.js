@@ -223,6 +223,7 @@ async function startQrAttendance(req, res, next) {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const subjectId = parseId(req.params.subjectId, 'subject ID');
     const componentCode = communicationComponentCode(req.query?.communicationComponentCode);
+    const qrToken = normalizeQrToken(req.body?.qrToken);
     const attendanceDate = getCurrentDate();
     const database = getDatabase();
     connection = await database.getConnection();
@@ -248,18 +249,47 @@ async function startQrAttendance(req, res, next) {
     if (existingSession && existingSession.method !== 'qr') {
       throw createError('Today\'s attendance session was started manually.', 409);
     }
-    if (!existingSession) {
-      await connection.execute(
+    const [credentials] = await connection.execute(
+      `SELECT c.id, c.student_user_id AS studentId, c.credential_status AS credentialStatus,
+        u.school_id AS schoolId, u.display_name AS displayName, u.initials,
+        u.avatar_filename AS avatarFilename, u.avatar_version AS avatarVersion
+       FROM student_qr_credentials c JOIN users u ON u.id = c.student_user_id AND u.school_id = c.school_id
+       WHERE c.token_hash = ? LIMIT 1`, [hashQrToken(qrToken)]);
+    const credential = credentials[0];
+    if (!credential || credential.credentialStatus !== 'active' || Number(credential.schoolId) !== Number(section.schoolId)) {
+      throw createError('This attendance QR is unknown or no longer valid.', 422);
+    }
+    const [enrollments] = await connection.execute(
+      `SELECT 1 FROM section_students WHERE school_id = ? AND section_id = ?
+       AND student_user_id = ? AND withdrawn_at IS NULL LIMIT 1`,
+      [section.schoolId, sectionId, credential.studentId]);
+    if (!enrollments.length) throw createError('This student is not enrolled in the selected section.', 422);
+    let sessionId = existingSession?.id;
+    if (!sessionId) {
+      const [created] = await connection.execute(
         `INSERT INTO attendance_sessions (
           school_id, section_id, subject_id, communication_component_code,
           attendance_date, method, status, created_by_user_id
         ) VALUES (?, ?, ?, ?, ?, 'qr', 'draft', ?)`,
         [section.schoolId, sectionId, subjectId, componentCode, attendanceDate, req.user.id]
       );
+      sessionId = created.insertId;
     }
+    const [accepted] = await connection.execute(
+      `SELECT id FROM qr_scan_events WHERE school_id = ? AND attendance_session_id = ?
+       AND scanned_student_user_id = ? AND scan_result = 'accepted' LIMIT 1 FOR UPDATE`,
+      [section.schoolId, sessionId, credential.studentId]);
+    await connection.execute(
+      `INSERT INTO qr_scan_events (school_id, attendance_session_id, student_qr_credential_id,
+        scanned_student_user_id, scanned_by_user_id, scan_result) VALUES (?, ?, ?, ?, ?, ?)`,
+      [section.schoolId, sessionId, credential.id, credential.studentId, req.user.id,
+        accepted.length ? 'duplicate' : 'accepted']);
 
     await connection.commit();
-    res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate, componentCode));
+    res.status(200).json({ ...await getQrAttendanceData(database, section, subjectId, attendanceDate, componentCode),
+      scanResult: { scanned: !accepted.length, duplicate: Boolean(accepted.length),
+        student: { id: credential.studentId, displayName: credential.displayName, initials: credential.initials,
+          ...avatarFields({ ...credential, id: credential.studentId }) } } });
   } catch (error) {
     if (connection) await connection.rollback();
     if (error.code === 'ER_DUP_ENTRY') error = createError('A QR session already exists for this subject today. Reload attendance.', 409);
@@ -524,6 +554,7 @@ async function startElectiveQrAttendance(req, res, next) {
   let connection;
   try {
     const classId = parseId(req.params.classId, 'elective class ID');
+    const qrToken = normalizeQrToken(req.body?.qrToken);
     const date = getCurrentDate();
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
@@ -536,13 +567,42 @@ async function startElectiveQrAttendance(req, res, next) {
     const existing = sessions[0];
     if (existing?.status === 'confirmed') throw createError('Attendance has already been confirmed for today.', 409);
     if (existing && existing.method !== 'qr') throw createError('Today\'s attendance was recorded manually.', 409);
-    if (!existing) {
-      await connection.execute(
+    const [credentials] = await connection.execute(
+      `SELECT c.id, c.student_user_id AS studentId, c.credential_status AS credentialStatus,
+        u.school_id AS schoolId, u.display_name AS displayName, u.initials,
+        u.avatar_filename AS avatarFilename, u.avatar_version AS avatarVersion
+       FROM student_qr_credentials c JOIN users u ON u.id = c.student_user_id AND u.school_id = c.school_id
+       WHERE c.token_hash = ? LIMIT 1`, [hashQrToken(qrToken)]);
+    const credential = credentials[0];
+    if (!credential || credential.credentialStatus !== 'active' || Number(credential.schoolId) !== Number(electiveClass.schoolId)) {
+      throw createError('This attendance QR is unknown or no longer valid.', 422);
+    }
+    const [members] = await connection.execute(
+      `SELECT 1 FROM shs_elective_class_students WHERE school_id = ? AND elective_class_id = ?
+       AND student_user_id = ? AND withdrawn_at IS NULL LIMIT 1`,
+      [electiveClass.schoolId, classId, credential.studentId]);
+    if (!members.length) throw createError('This student is not an active member of the selected elective class.', 422);
+    let sessionId = existing?.id;
+    if (!sessionId) {
+      const [created] = await connection.execute(
         `INSERT INTO attendance_sessions (school_id, shs_elective_class_id, attendance_date, method, status, created_by_user_id)
          VALUES (?, ?, ?, 'qr', 'draft', ?)`, [electiveClass.schoolId, classId, date, req.user.id]);
+      sessionId = created.insertId;
     }
+    const [accepted] = await connection.execute(
+      `SELECT id FROM qr_scan_events WHERE school_id = ? AND attendance_session_id = ?
+       AND scanned_student_user_id = ? AND scan_result = 'accepted' LIMIT 1 FOR UPDATE`,
+      [electiveClass.schoolId, sessionId, credential.studentId]);
+    await connection.execute(
+      `INSERT INTO qr_scan_events (school_id, attendance_session_id, student_qr_credential_id,
+        scanned_student_user_id, scanned_by_user_id, scan_result) VALUES (?, ?, ?, ?, ?, ?)`,
+      [electiveClass.schoolId, sessionId, credential.id, credential.studentId, req.user.id,
+        accepted.length ? 'duplicate' : 'accepted']);
     await connection.commit();
-    res.json(await getElectiveQrAttendanceData(getDatabase(), electiveClass, date));
+    res.json({ ...await getElectiveQrAttendanceData(getDatabase(), electiveClass, date),
+      scanResult: { scanned: !accepted.length, duplicate: Boolean(accepted.length),
+        student: { id: String(credential.studentId), displayName: credential.displayName,
+          initials: credential.initials, ...avatarFields({ ...credential, id: credential.studentId }) } } });
   } catch (error) {
     if (connection) await connection.rollback();
     if (error.code === 'ER_DUP_ENTRY') error = createError('A QR session already exists for this class today. Reload attendance.', 409);

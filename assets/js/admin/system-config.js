@@ -149,7 +149,6 @@ const NOTIFICATION_TRIGGER_LABELS = [
 
   function renderReopenRequests() {
     const listEl = document.getElementById('reopenRequestList');
-    const countEl = document.getElementById('reopenPanelCount');
     const navBadge = document.getElementById('reopenNavBadge');
     const dot = document.getElementById('tbNotifDot');
     const requests = reopenRequests;
@@ -166,8 +165,6 @@ const NOTIFICATION_TRIGGER_LABELS = [
       reopenListTimer = setTimeout(loadReopenRequests, Math.min(nextExpiration - Date.now() + 50, 2147483647));
     }
 
-    countEl.textContent = pending.length + ' pending';
-    countEl.className = 'badge ' + (pending.length ? 'badge-orange' : 'badge-gray');
     if (navBadge) { navBadge.style.display = pending.length ? '' : 'none'; navBadge.textContent = pending.length; }
     if (dot) dot.style.display = pending.length ? '' : 'none';
 

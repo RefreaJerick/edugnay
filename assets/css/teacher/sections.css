@@ -2965,6 +2965,10 @@ tbody td {
   padding: 13px 20px;
 }
 
+#scoreTable tbody th.sticky-col {
+  padding-inline: 20px;
+}
+
 tbody tr:hover td.sticky-col {
   background: var(--blue-xpale);
 }
@@ -3126,7 +3130,10 @@ tbody tr:hover td.sticky-col {
     padding: 12px 16px;
   }
 
-  .material-info,
+  .material-info {
+    min-width: 0;
+  }
+
   .assignment-card-body {
     min-width: calc(100% - 50px);
   }
@@ -3355,6 +3362,10 @@ tbody tr:hover td.sticky-col {
   display: none;
 }
 
+.student-roster-arrow {
+  display: none;
+}
+
 @media (max-width: 560px) {
   #content-students .table-wrap {
     overflow-x: hidden;
@@ -3410,6 +3421,39 @@ tbody tr:hover td.sticky-col {
   #studentTable .student-cell {
     align-items: flex-start;
     min-width: 0;
+  }
+
+  #studentTable .student-roster-arrow {
+    display: inline-flex;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    box-shadow: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    transition: color .15s ease, transform .15s ease;
+  }
+
+  #studentTable .student-roster-arrow:hover,
+  #studentTable .student-roster-arrow:focus-visible {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--theme-accent-text);
+    transform: translateX(2px);
+  }
+
+  #studentTable .student-roster-arrow:focus-visible {
+    outline: 2px solid var(--theme-accent-text);
+    outline-offset: 2px;
   }
 
   #studentTable .student-roster-info {

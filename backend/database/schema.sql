@@ -850,6 +850,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   title VARCHAR(255) NOT NULL,
   description TEXT NULL,
   due_at DATETIME NULL,
+  published_at DATETIME NULL,
   max_score DECIMAL(8,2) NULL,
   online_submission_enabled TINYINT(1) NOT NULL DEFAULT 0,
   status VARCHAR(30) NOT NULL DEFAULT 'published',

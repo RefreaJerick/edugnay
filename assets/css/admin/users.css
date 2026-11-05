@@ -960,6 +960,11 @@ button.role-opt {
   background: var(--blue-mid);
 }
 
+.modal-heading-icon.success {
+  border-color: var(--green-pale);
+  background: var(--green-pale);
+  color: var(--green-dark);
+}
 
 .btn-danger {
   background: #dc2626;

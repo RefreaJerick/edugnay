@@ -39,11 +39,11 @@ function readStudentSidebarSnapshot() {
   }
 }
 
-function setStudentSidebarPrepaintState(snapshot, confirmed = false) {
+function setStudentSidebarPrepaintState(snapshot) {
   const classList = document.documentElement?.classList;
   if (!classList) return;
   classList.toggle('student-nav-hide-grades', !snapshot?.access?.grades);
-  classList.toggle('student-nav-hide-journals', !confirmed || !snapshot?.access?.journals);
+  classList.toggle('student-nav-hide-journals', !snapshot?.access?.journals);
   classList.toggle('student-nav-hide-electives', snapshot?.access?.electives !== true);
 }
 
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ...identity,
     access: freshAccess
   } : null;
-  setStudentSidebarPrepaintState({ access: freshAccess }, true);
+  setStudentSidebarPrepaintState({ access: freshAccess });
   applyStudentGradesAccess(freshAccess.grades);
   if (freshSnapshot) {
     saveStudentSidebarSnapshot(freshSnapshot);

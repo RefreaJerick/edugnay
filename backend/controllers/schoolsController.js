@@ -1097,7 +1097,7 @@ async function updateSchoolSettings(req, res, next) {
   try {
     const schoolId = requireSchoolAdminSchool(req);
     const body = req.body || {};
-    const allowed = ['name', 'shortName', 'depedSchoolId', 'regionName', 'divisionName', 'districtName', 'addressLine', 'phone', 'email', 'website', 'notificationEmail', 'currentSchoolYearLabel', 'accentPalette'];
+    const allowed = ['name', 'shortName', 'depedSchoolId', 'regionName', 'divisionName', 'districtName', 'addressLine', 'phone', 'email', 'website', 'notificationEmail', 'accentPalette'];
     const unknown = Object.keys(body).find(field => !allowed.includes(field));
     if (unknown || !Object.keys(body).length) throw createError('Provide valid school settings.');
     const accentPalettes = new Set(['default-blue', 'deep-teal', 'forest-green', 'plum', 'burgundy']);
@@ -1119,7 +1119,6 @@ async function updateSchoolSettings(req, res, next) {
       email: Object.hasOwn(body, 'email') ? email(body.email, true) : school.email,
       website: Object.hasOwn(body, 'website') ? text(body.website, 255) : school.website,
       notificationEmail: Object.hasOwn(body, 'notificationEmail') ? email(body.notificationEmail) : school.notificationEmail,
-      currentSchoolYearLabel: Object.hasOwn(body, 'currentSchoolYearLabel') ? text(body.currentSchoolYearLabel, 30) : school.currentSchoolYearLabel,
       accentPalette: Object.hasOwn(body, 'accentPalette') ? body.accentPalette : school.accentPalette || 'default-blue'
     };
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -1127,7 +1126,7 @@ async function updateSchoolSettings(req, res, next) {
         await connection.beginTransaction();
         transactionStarted = true;
         await connection.execute(`UPDATE schools SET name=?, short_name=?, deped_school_id=?, region_name=?, division_name=?, district_name=?, address_line=?, phone=?, email=?, website=? WHERE id=?`, [values.name, values.shortName, values.depedSchoolId, values.regionName, values.divisionName, values.districtName, values.addressLine, values.phone, values.email, values.website, schoolId]);
-        await connection.execute(`UPDATE school_settings SET notification_email=?, current_school_year_label=?, accent_palette=? WHERE school_id=?`, [values.notificationEmail, values.currentSchoolYearLabel, values.accentPalette, schoolId]);
+        await connection.execute(`UPDATE school_settings SET notification_email=?, accent_palette=? WHERE school_id=?`, [values.notificationEmail, values.accentPalette, schoolId]);
         await writeAuditLog(connection, req, 'school_settings_updated', 'school', schoolId, { summary: 'School identity, branding, and contact details' });
         await connection.commit();
         transactionStarted = false;

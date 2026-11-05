@@ -164,3 +164,11 @@ test('component assignments remain distinct in teacher controls while grades sta
   assert.match(gradeStyles, /\.grade-communication-components\s*\{[\s\S]*?display: grid/);
   assert.match(gradeStyles, /\.grade-subject-row-communication \.grade-subject-name\s*\{[^}]*overflow-wrap: anywhere/);
 });
+
+test('student profile displays the assigned communication component name', () => {
+  const profile = read('assets/js/student/profile.js');
+  const sectionController = read('backend/controllers/sectionsController.js');
+
+  assert.match(sectionController, /communicationComponentName: COMMUNICATION_COMPONENTS\[teacher\.communicationComponentCode\] \|\| null/);
+  assert.match(profile, /const subjectName = assignment\.communicationComponentName \|\| assignment\.subjectName/);
+});

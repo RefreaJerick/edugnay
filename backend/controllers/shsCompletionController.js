@@ -291,7 +291,7 @@ async function confirm(req, res, next) {
     await connection.beginTransaction(); started = true;
     await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [yearId, schoolId]);
     const year = await getYear(connection, schoolId, yearId);
-    if (year.status === 'archived') fail('Archived school years are read-only for completion confirmation.', 409);
+    if (['closed', 'archived'].includes(year.status)) fail('Closed or archived school years are read-only for completion confirmation.', 409);
     const learners = await findLearnerGrade12(connection, schoolId, yearId, studentId);
     if (!learners.length) fail('This learner is not enrolled in an active Strengthened SHS Grade 12 section for the selected year.', 404);
     const checklist = await buildLearnerChecklist(connection, schoolId, year, learners[0]);

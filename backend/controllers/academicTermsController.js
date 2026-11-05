@@ -3,7 +3,6 @@ const { writeAuditLog } = require('../utils/auditLog');
 const { copyCustomProfilesForward } = require('./subjectGradingController');
 
 const PERIOD_COUNTS = { quarterly: 4, semestral: 2, trimestral: 3 };
-const YEAR_STATUSES = new Set(['upcoming', 'active', 'closed']);
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -36,9 +35,9 @@ function ensureDateRange(startDate, endDate, label = 'The end date') {
   if (startDate >= endDate) throw createError(`${label} must be after the start date.`);
 }
 
-async function getOwnedYear(schoolId, yearId, connection = getDatabase()) {
+async function getOwnedYear(schoolId, yearId, connection = getDatabase(), lock = false) {
   const [rows] = await connection.execute(
-    "SELECT id, school_id AS schoolId, label, DATE_FORMAT(start_date, '%Y-%m-%d') AS startDate, DATE_FORMAT(end_date, '%Y-%m-%d') AS endDate, status FROM academic_years WHERE id = ? AND school_id = ? LIMIT 1",
+    `SELECT id, school_id AS schoolId, label, DATE_FORMAT(start_date, '%Y-%m-%d') AS startDate, DATE_FORMAT(end_date, '%Y-%m-%d') AS endDate, status FROM academic_years WHERE id = ? AND school_id = ? LIMIT 1${lock ? ' FOR UPDATE' : ''}`,
     [yearId, schoolId]
   );
   return rows[0] || null;
@@ -52,7 +51,7 @@ async function getOwnedLevel(schoolId, levelId, connection = getDatabase()) {
   return rows[0] || null;
 }
 
-async function getOwnedTerm(schoolId, termId, connection = getDatabase()) {
+async function getOwnedTerm(schoolId, termId, connection = getDatabase(), lock = false) {
   const [rows] = await connection.execute(
     `SELECT academic_terms.id, academic_terms.academic_year_id AS academicYearId,
       academic_terms.school_level_id AS schoolLevelId, academic_terms.name,
@@ -66,10 +65,56 @@ async function getOwnedTerm(schoolId, termId, connection = getDatabase()) {
     FROM academic_terms
     INNER JOIN academic_years ON academic_years.id = academic_terms.academic_year_id
     INNER JOIN school_levels ON school_levels.id = academic_terms.school_level_id
-    WHERE academic_terms.id = ? AND academic_years.school_id = ? LIMIT 1`,
+    WHERE academic_terms.id = ? AND academic_years.school_id = ? LIMIT 1${lock ? ' FOR UPDATE' : ''}`,
     [termId, schoolId]
   );
   return rows[0] || null;
+}
+
+async function lockSchool(connection, schoolId) {
+  const [rows] = await connection.execute('SELECT id FROM schools WHERE id = ? FOR UPDATE', [schoolId]);
+  if (!rows.length) throw createError('School was not found.', 404);
+}
+
+async function lockYearSchedule(connection, schoolId, yearId) {
+  const year = await getOwnedYear(schoolId, yearId, connection, true);
+  if (!year) throw createError('Academic year was not found.', 404);
+  const [levels] = await connection.execute(
+    'SELECT id, display_name AS displayName, grading_period_type AS gradingPeriodType FROM school_levels WHERE school_id = ? AND is_enabled = 1 ORDER BY id FOR UPDATE',
+    [schoolId]
+  );
+  const [terms] = await connection.execute(
+    "SELECT id, school_level_id AS schoolLevelId, sequence_number AS sequenceNumber, name, DATE_FORMAT(planned_start_date, '%Y-%m-%d') AS plannedStartDate, DATE_FORMAT(planned_end_date, '%Y-%m-%d') AS plannedEndDate, status FROM academic_terms WHERE academic_year_id = ? AND school_id = ? ORDER BY school_level_id, sequence_number FOR UPDATE",
+    [yearId, schoolId]
+  );
+  if (!levels.length) throw createError('Enable and configure at least one school level first.', 409);
+  const expectedCount = levels.reduce((total, level) => total + (PERIOD_COUNTS[level.gradingPeriodType] || 0), 0);
+  if (!expectedCount || terms.length !== expectedCount) throw createError('Complete the term schedule for every enabled school level first.', 409);
+  for (const level of levels) {
+    const expected = PERIOD_COUNTS[level.gradingPeriodType];
+    const schedule = terms.filter(term => Number(term.schoolLevelId) === Number(level.id));
+    if (!expected || schedule.length !== expected) throw createError(`Complete the ${level.displayName} term schedule first.`, 409);
+    let previousEnd = '';
+    for (let index = 0; index < schedule.length; index += 1) {
+      const term = schedule[index];
+      if (Number(term.sequenceNumber) !== index + 1 || !String(term.name || '').trim()
+        || !term.plannedStartDate || !term.plannedEndDate
+        || term.plannedStartDate < year.startDate || term.plannedEndDate > year.endDate
+        || term.plannedStartDate >= term.plannedEndDate || (previousEnd && term.plannedStartDate <= previousEnd)) {
+        throw createError(`Review the ${level.displayName} term dates and order.`, 409);
+      }
+      previousEnd = term.plannedEndDate;
+    }
+  }
+  return { year, terms };
+}
+
+function schoolCalendarToday() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: process.env.SCHOOL_TIME_ZONE || 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const value = type => parts.find(part => part.type === type)?.value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
 function validateTermPayload(body) {
@@ -105,18 +150,18 @@ async function createAcademicYear(req, res, next) {
     const startDate = date(req.body.startDate, 'Start date');
     const endDate = date(req.body.endDate, 'End date');
     ensureDateRange(startDate, endDate);
-    const status = req.body.status || 'upcoming';
-    if (!YEAR_STATUSES.has(status)) throw createError('Academic-year status is invalid.');
-    if (status === 'active') {
-      const [active] = await database.execute('SELECT id FROM academic_years WHERE school_id = ? AND status = \'active\' LIMIT 1', [req.user.schoolId]);
-      if (active.length) throw createError('Close the current academic year before activating another one.', 409);
-    }
+    if (req.body.status !== undefined && req.body.status !== 'upcoming') throw createError('New academic years must start as upcoming.', 409);
     connection = await database.getConnection();
     await connection.beginTransaction();
     transactionStarted = true;
+    await lockSchool(connection, req.user.schoolId);
+    const [active] = await connection.execute("SELECT id FROM academic_years WHERE school_id = ? AND status = 'active' LIMIT 1 FOR UPDATE", [req.user.schoolId]);
+    if (active.length) throw createError('Close the current academic year before creating another one.', 409);
+    const [upcoming] = await connection.execute("SELECT id FROM academic_years WHERE school_id = ? AND status = 'upcoming' LIMIT 1 FOR UPDATE", [req.user.schoolId]);
+    if (upcoming.length) throw createError('Finish setting up the upcoming school year first.', 409);
     const [result] = await connection.execute(
       'INSERT INTO academic_years (school_id, label, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)',
-      [req.user.schoolId, label, startDate, endDate, status]
+      [req.user.schoolId, label, startDate, endDate, 'upcoming']
     );
     await copyCustomProfilesForward(connection, req.user.schoolId, Number(result.insertId), startDate);
     await writeAuditLog(connection, req, 'academic_year_created', 'academic_year', result.insertId, { summary: label });
@@ -131,34 +176,73 @@ async function updateAcademicYear(req, res, next) {
   let connection;
   let transactionStarted = false;
   try {
-    const database = getDatabase();
     const yearId = parseId(req.params.yearId);
-    const current = yearId && await getOwnedYear(req.user.schoolId, yearId);
+    if (!yearId) throw createError('Academic year was not found.', 404);
+    if (req.body.status !== undefined) throw createError('Use the school-year close or activate action to change its status.', 409);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    await lockSchool(connection, req.user.schoolId);
+    const current = await getOwnedYear(req.user.schoolId, yearId, connection, true);
     if (!current) throw createError('Academic year was not found.', 404);
-    if (current.status === 'archived') throw createError('An archived academic year cannot be changed.', 409);
-    if (current.status === 'closed') throw createError('A closed academic year cannot be changed.', 409);
+    if (current.status === 'archived' || current.status === 'closed') throw createError('A closed or archived academic year cannot be changed.', 409);
     const label = req.body.label === undefined ? current.label : requiredText(req.body.label, 30, 'Academic-year label');
     const startDate = req.body.startDate === undefined ? current.startDate : date(req.body.startDate, 'Start date');
     const endDate = req.body.endDate === undefined ? current.endDate : date(req.body.endDate, 'End date');
     ensureDateRange(startDate, endDate);
-    const status = req.body.status === undefined ? current.status : req.body.status;
-    if (!YEAR_STATUSES.has(status)) throw createError('Academic-year status is invalid.');
-    if (status === 'active' && current.status !== 'active') {
-      const [active] = await database.execute('SELECT id FROM academic_years WHERE school_id = ? AND status = \'active\' AND id <> ? LIMIT 1', [req.user.schoolId, yearId]);
-      if (active.length) throw createError('Close the current academic year before activating another one.', 409);
-    }
-    if (status !== current.status && (status === 'closed' || current.status === 'active')) {
-      const [activeTerms] = await database.execute(
-        'SELECT id FROM academic_terms WHERE academic_year_id = ? AND status = \'active\' LIMIT 1',
-        [yearId]
-      );
-      if (activeTerms.length) throw createError('Complete every active term before changing the academic-year status.', 409);
-    }
-    connection = await database.getConnection();
+    const [started] = await connection.execute("SELECT id FROM academic_terms WHERE academic_year_id = ? AND status <> 'upcoming' LIMIT 1 FOR UPDATE", [yearId]);
+    if (started.length) throw createError('The school-year dates cannot change after a term has started.', 409);
+    const [outside] = await connection.execute("SELECT id FROM academic_terms WHERE academic_year_id = ? AND (planned_start_date < ? OR planned_end_date > ?) LIMIT 1 FOR UPDATE", [yearId, startDate, endDate]);
+    if (outside.length) throw createError('School-year dates must contain all configured terms.', 409);
+    await connection.execute('UPDATE academic_years SET label = ?, start_date = ?, end_date = ? WHERE id = ? AND school_id = ?', [label, startDate, endDate, yearId, req.user.schoolId]);
+    await writeAuditLog(connection, req, 'academic_year_updated', 'academic_year', yearId, { summary: label });
+    await connection.commit();
+    transactionStarted = false;
+    res.json({ academicYear: await getOwnedYear(req.user.schoolId, yearId) });
+  } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
+}
+
+async function closeAcademicYear(req, res, next) {
+  let connection;
+  let transactionStarted = false;
+  try {
+    const yearId = parseId(req.params.yearId);
+    if (!yearId) throw createError('Academic year was not found.', 404);
+    connection = await getDatabase().getConnection();
     await connection.beginTransaction();
     transactionStarted = true;
-    await connection.execute('UPDATE academic_years SET label = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?', [label, startDate, endDate, status, yearId]);
-    await writeAuditLog(connection, req, 'academic_year_updated', 'academic_year', yearId, { summary: label });
+    await lockSchool(connection, req.user.schoolId);
+    const { year, terms } = await lockYearSchedule(connection, req.user.schoolId, yearId);
+    if (year.status !== 'active') throw createError('Only the active school year can be closed.', 409);
+    if (terms.some(term => term.status !== 'closed')) throw createError('Close every grading period before closing the school year.', 409);
+    const finalEndDate = terms.reduce((latest, term) => term.plannedEndDate > latest ? term.plannedEndDate : latest, '');
+    if (schoolCalendarToday() <= finalEndDate) throw createError('The final planned term must end before the school year can close.', 409);
+    await connection.execute("UPDATE academic_years SET status = 'closed' WHERE id = ? AND school_id = ? AND status = 'active'", [yearId, req.user.schoolId]);
+    await writeAuditLog(connection, req, 'academic_year_closed', 'academic_year', yearId, { summary: year.label });
+    await connection.commit();
+    transactionStarted = false;
+    res.json({ academicYear: await getOwnedYear(req.user.schoolId, yearId) });
+  } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
+}
+
+async function activateAcademicYear(req, res, next) {
+  let connection;
+  let transactionStarted = false;
+  try {
+    const yearId = parseId(req.params.yearId);
+    if (!yearId) throw createError('Academic year was not found.', 404);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    await lockSchool(connection, req.user.schoolId);
+    const { year, terms } = await lockYearSchedule(connection, req.user.schoolId, yearId);
+    if (year.status !== 'upcoming') throw createError('Only an upcoming school year can be activated.', 409);
+    if (terms.some(term => term.status !== 'upcoming')) throw createError('Every term must be upcoming before the school year is activated.', 409);
+    const [active] = await connection.execute("SELECT id FROM academic_years WHERE school_id = ? AND status = 'active' FOR UPDATE", [req.user.schoolId]);
+    if (active.length) throw createError('Close the current school year before activating another one.', 409);
+    await connection.execute("UPDATE academic_years SET status = 'active' WHERE id = ? AND school_id = ? AND status = 'upcoming'", [yearId, req.user.schoolId]);
+    await connection.execute('INSERT INTO school_settings (school_id, current_school_year_label) VALUES (?, ?) ON DUPLICATE KEY UPDATE current_school_year_label = VALUES(current_school_year_label)', [req.user.schoolId, year.label]);
+    await writeAuditLog(connection, req, 'academic_year_activated', 'academic_year', yearId, { summary: year.label });
     await connection.commit();
     transactionStarted = false;
     res.json({ academicYear: await getOwnedYear(req.user.schoolId, yearId) });
@@ -216,18 +300,18 @@ async function createAcademicTerm(req, res, next) {
   let connection;
   let transactionStarted = false;
   try {
-    const database = getDatabase();
     const data = validateTermPayload(req.body);
-    const year = await getOwnedYear(req.user.schoolId, data.academicYearId);
-    const level = await getOwnedLevel(req.user.schoolId, data.schoolLevelId);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    await lockSchool(connection, req.user.schoolId);
+    const year = await getOwnedYear(req.user.schoolId, data.academicYearId, connection, true);
+    const level = await getOwnedLevel(req.user.schoolId, data.schoolLevelId, connection);
     if (!year || !level) throw createError('Academic year or school level was not found.', 404);
     if (year.status === 'closed' || year.status === 'archived') throw createError('Grading periods cannot be added to a closed or archived school year.', 409);
     if (!level.isEnabled) throw createError('Enable the school level before configuring its terms.', 409);
     if (data.plannedStartDate < year.startDate || data.plannedEndDate > year.endDate) throw createError('Term dates must be inside the academic year.');
     if (data.sequenceNumber > PERIOD_COUNTS[level.gradingPeriodType]) throw createError(`This school level allows ${PERIOD_COUNTS[level.gradingPeriodType]} term(s).`);
-    connection = await database.getConnection();
-    await connection.beginTransaction();
-    transactionStarted = true;
     const [result] = await connection.execute(
       'INSERT INTO academic_terms (school_id, academic_year_id, school_level_id, name, sequence_number, planned_start_date, planned_end_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [req.user.schoolId, data.academicYearId, data.schoolLevelId, data.name, data.sequenceNumber, data.plannedStartDate, data.plannedEndDate]
@@ -243,20 +327,24 @@ async function updateAcademicTerm(req, res, next) {
   let connection;
   let transactionStarted = false;
   try {
-    const database = getDatabase();
     const termId = parseId(req.params.termId);
-    const current = termId && await getOwnedTerm(req.user.schoolId, termId);
+    if (!termId) throw createError('Academic term was not found.', 404);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    await lockSchool(connection, req.user.schoolId);
+    const currentLookup = await getOwnedTerm(req.user.schoolId, termId, connection);
+    if (!currentLookup) throw createError('Academic term was not found.', 404);
+    await getOwnedYear(req.user.schoolId, currentLookup.academicYearId, connection, true);
+    const current = await getOwnedTerm(req.user.schoolId, termId, connection, true);
     if (!current) throw createError('Academic term was not found.', 404);
-    if (current.academicYearStatus === 'archived') throw createError('An archived school year cannot be changed.', 409);
+    if (current.academicYearStatus === 'archived' || current.academicYearStatus === 'closed') throw createError('A closed or archived school year cannot be changed.', 409);
     if (current.status !== 'upcoming') throw createError('Only an upcoming term can be edited. Use the term actions after activation.', 409);
     const name = req.body.name === undefined ? current.name : requiredText(req.body.name, 80, 'Term name');
     const plannedStartDate = req.body.plannedStartDate === undefined ? current.plannedStartDate : date(req.body.plannedStartDate, 'Planned start date');
     const plannedEndDate = req.body.plannedEndDate === undefined ? current.plannedEndDate : date(req.body.plannedEndDate, 'Planned end date');
     ensureDateRange(plannedStartDate, plannedEndDate);
     if (plannedStartDate < current.academicYearStartDate || plannedEndDate > current.academicYearEndDate) throw createError('Term dates must be inside the academic year.');
-    connection = await database.getConnection();
-    await connection.beginTransaction();
-    transactionStarted = true;
     await connection.execute('UPDATE academic_terms SET name = ?, planned_start_date = ?, planned_end_date = ? WHERE id = ?', [name, plannedStartDate, plannedEndDate, termId]);
     await writeAuditLog(connection, req, 'academic_term_updated', 'academic_term', termId, { summary: `${name} · ${current.academicYearLabel}` });
     await connection.commit();
@@ -271,8 +359,13 @@ async function termAction(req, res, next) {
     const termId = parseId(req.params.termId);
     if (!termId) throw createError('Academic term was not found.', 404);
     await connection.beginTransaction();
-    const term = await getOwnedTerm(req.user.schoolId, termId, connection);
+    await lockSchool(connection, req.user.schoolId);
+    const lookup = await getOwnedTerm(req.user.schoolId, termId, connection);
+    if (!lookup) throw createError('Academic term was not found.', 404);
+    await getOwnedYear(req.user.schoolId, lookup.academicYearId, connection, true);
+    const term = await getOwnedTerm(req.user.schoolId, termId, connection, true);
     if (!term) throw createError('Academic term was not found.', 404);
+    if (term.academicYearStatus !== 'active') throw createError('Only terms in the active school year can change status.', 409);
     const action = req.params.action;
     if (action === 'activate') {
       if (term.status !== 'upcoming' || term.academicYearStatus !== 'active') throw createError('Only an upcoming term in the active academic year can be activated.', 409);
@@ -474,6 +567,8 @@ async function updateGradingCategories(req, res, next) {
 }
 
 module.exports = {
+  activateAcademicYear,
+  closeAcademicYear,
   createAcademicTerm,
   createAcademicYear,
   getAcademicTerm,

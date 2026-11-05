@@ -25,7 +25,7 @@ async function saveWithDeadlocks(deadlocks, accentPalette) {
       }
       if (sql.includes('UPDATE school_settings SET')) {
         settingsUpdateSql = sql;
-        school.accentPalette = params[2];
+        school.accentPalette = params[1];
       }
       return [{}];
     }
@@ -79,6 +79,16 @@ test('school settings rejects unknown accent palette names before writing', asyn
   assert.equal(failure.status, 400);
   assert.match(failure.message, /available school accent colors/);
   assert.deepEqual(calls, [], 'invalid palette values should be rejected before opening a DB connection');
+});
+
+test('school settings cannot change the current academic year label', async () => {
+  let failure;
+  await updateSchoolSettings(
+    { user: { id: 31, role: 'school_admin', schoolId: 12 }, body: { currentSchoolYearLabel: '2027-2028' } },
+    { status() { return this; }, json() { assert.fail('Year label changes require activation.'); } },
+    error => { failure = error; }
+  );
+  assert.equal(failure.status, 400);
 });
 
 test('only a school admin can change school branding settings', async () => {

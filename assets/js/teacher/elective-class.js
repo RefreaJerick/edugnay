@@ -272,7 +272,6 @@
     if (!panel) return;
     const date = attendance.attendanceDate || attendance.currentDate || localToday();
     const editable = attendance.canEdit && canEdit();
-    const qrDraft = attendance.session?.method === 'qr' && attendance.session?.status === 'draft';
     const qrToday = date === (attendance.currentDate || localToday());
     const dateInput = document.getElementById('attDate');
     dateInput.value = date;
@@ -290,7 +289,7 @@
     const saveButton = panel.querySelector('.attendance-entry-actions .top-btn.primary');
     const allPresentButton = panel.querySelector('.attendance-entry-actions button[onclick^="markAll"]');
     const qrButton = document.getElementById('qrAttendanceButton');
-    saveButton.disabled = !editable || qrDraft || !roster.length;
+    saveButton.disabled = !editable || !roster.length;
     saveButton.onclick = saveAttendance;
     if (allPresentButton) {
       allPresentButton.disabled = !editable;
@@ -299,7 +298,7 @@
         updateAttCount();
       };
     }
-    qrButton.disabled = !editable || !qrToday || !roster.length;
+    qrButton.disabled = !editable || !qrToday || !roster.length || attendance.session?.status === 'confirmed';
     qrButton.onclick = () => openQrAttendance();
     const recordsByStudent = Object.fromEntries(roster.map(student => [String(student.id), student]));
     window.TeacherClassViews.renderAttendanceRows({
@@ -307,10 +306,8 @@
       empty: { icon: 'users', title: 'No students enrolled', text: 'Confirmed class placements will appear here.' }
     });
     const warning = document.getElementById('attLockBanner');
-    warning.hidden = !qrDraft;
-    warning.style.display = qrDraft ? '' : 'none';
-    warning.querySelector('.publish-info-title').textContent = 'QR attendance in progress';
-    warning.querySelector('.publish-info-sub').textContent = 'Confirm the QR session before saving manual attendance.';
+    warning.hidden = true;
+    warning.style.display = 'none';
     window.lucide?.createIcons();
 
   }
@@ -342,7 +339,17 @@
     if (!attendance) return toast('Attendance could not be loaded for today.', 'error');
     try {
       qrSession = await window.EDUGNAY_API.getShsElectiveQrAttendance(electiveClass.electiveClassId);
-      if (!qrSession.session) qrSession = await window.EDUGNAY_API.startShsElectiveQrAttendance(electiveClass.electiveClassId);
+      if (qrSession.session?.status === 'confirmed') throw new Error('Today\'s attendance has already been confirmed. Use manual attendance to make corrections.');
+      (qrSession.students || []).filter(student => student.isScanned).forEach(student => {
+        const row = document.querySelector(`#attTbody tr[data-student-id="${student.id}"]`);
+        if (!row || row.dataset.manualChoice) return;
+        const button = row.querySelector('.att-btn.P');
+        row.querySelectorAll('.att-btn').forEach(item => {
+          item.classList.toggle('selected', item === button);
+          item.setAttribute('aria-pressed', String(item === button));
+        });
+      });
+      updateAttCount();
       document.getElementById('qrAttendanceSection').textContent = `${electiveClass.className} Â· ${electiveClass.subjectName}`;
       document.getElementById('qrAttendanceDate').textContent = today;
       document.getElementById('qrAttendanceRuleText').textContent = 'Scanned students are marked present. Review the roster before confirming attendance.';
@@ -374,11 +381,17 @@
   }
 
   function openQrAttendanceFinalReview() {
+    if (!qrSession?.session?.id) return toast('Scan at least one student before reviewing attendance.', 'error');
     stopQrCamera();
     const students = qrSession?.students || [];
     qrDraftRecords = students.map(student => ({
       studentId: String(student.id),
-      status: student.isScanned ? 'present' : 'absent'
+      status: (() => {
+        const row = document.querySelector(`#attTbody tr[data-student-id="${student.id}"]`);
+        const code = row?.dataset.manualChoice;
+        return { P: 'present', A: 'absent', L: 'late', E: 'excused' }[code] ||
+          (student.isScanned ? 'present' : 'pending');
+      })()
     }));
     window.TeacherClassViews.renderQrAttendanceFinalReview({
       students,
@@ -387,6 +400,10 @@
       onChange: (studentId, status) => {
         const record = qrDraftRecords.find(item => item.studentId === String(studentId));
         if (record) record.status = status;
+        const row = document.querySelector(`#attTbody tr[data-student-id="${studentId}"]`);
+        const code = { present: 'P', absent: 'A', late: 'L', excused: 'E' }[status];
+        const button = code && row?.querySelector(`.att-btn.${code}`);
+        if (button) setAtt(button, code);
       }
     });
     document.getElementById('qrAttendanceScanGroups').hidden = true;
@@ -411,7 +428,7 @@
 
   async function startQrCamera() {
     const video = document.getElementById('qrScannerVideo');
-    if (!video || qrSession?.session?.status !== 'draft') return;
+    if (!video || qrSession?.session?.status === 'confirmed') return;
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access is not available in this browser.');
       qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
@@ -448,16 +465,31 @@
   }
 
   async function handleScannedQr(rawValue) {
-    if (!qrSession?.session?.id || qrScanInFlight) return;
+    if (qrScanInFlight) return;
     const token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(rawValue);
     if (!token) return;
     const status = document.getElementById('qrScannerStatus');
     qrScanInFlight = true;
     try {
-      const result = await window.EDUGNAY_API.scanShsElectiveQrAttendance(qrSession.session.id, token);
+      let result;
+      if (qrSession?.session?.id) {
+        result = await window.EDUGNAY_API.scanShsElectiveQrAttendance(qrSession.session.id, token);
+      } else {
+        qrSession = await window.EDUGNAY_API.startShsElectiveQrAttendance(electiveClass.electiveClassId, token);
+        result = qrSession.scanResult;
+      }
       if (result.scanned && result.student) {
         const student = qrSession.students.find(item => String(item.id) === String(result.student.id));
         if (student) { student.isScanned = true; student.attendanceStatus = 'present'; }
+        const row = document.querySelector(`#attTbody tr[data-student-id="${result.student.id}"]`);
+        if (row && !row.dataset.manualChoice) {
+          const button = row.querySelector('.att-btn.P');
+          row.querySelectorAll('.att-btn').forEach(item => {
+            item.classList.toggle('selected', item === button);
+            item.setAttribute('aria-pressed', String(item === button));
+          });
+          updateAttCount();
+        }
         if (status) status.textContent = `${result.student.displayName} scanned.`;
         renderQrWorkspace();
       } else if (status) status.textContent = result.duplicate ? 'This learner was already scanned.' : 'QR could not be accepted.';
@@ -466,11 +498,14 @@
   }
 
   async function confirmQrAttendance() {
+    if (!qrSession?.session?.id || qrDraftRecords.some(record => record.status === 'pending')) {
+      return toast('Scan a student and set a status for every student before confirming.', 'error');
+    }
     stopQrCamera();
     const records = qrDraftRecords.map(record => ({
       studentId: record.studentId,
       status: record.status,
-      remarks: ''
+      remarks: document.querySelector(`#attTbody tr[data-student-id="${record.studentId}"] [data-attendance-remark]`)?.value.trim() || ''
     }));
     try {
       qrSession = await window.EDUGNAY_API.confirmShsElectiveQrAttendance(qrSession.session.id, records);

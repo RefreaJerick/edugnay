@@ -12,6 +12,9 @@ const SCHOOL_ACCENT_PALETTES = [
       tab: 'profile',
       logoData: '',
       termDraft: null,
+      rolloverSetup: false,
+      rolloverYear: null,
+      rolloverDrafts: {},
       termAction: null,
       termTrigger: null,
       apiActive: false,
@@ -97,7 +100,11 @@ const SCHOOL_ACCENT_PALETTES = [
       return `<div class="school-division-switcher" role="tablist" aria-label="School levels">${levels.map(level => `<button class="school-division-tab ${level === current ? 'active' : ''}" type="button" role="tab" aria-selected="${level === current}" data-school-division="${window.EDUGNAY_CONFIG.escapeHtml(level)}">${window.EDUGNAY_CONFIG.escapeHtml(levelLabel(level))}</button>`).join('')}</div>`;
     }
     function bindDivisionSwitcher() {
-      document.querySelectorAll('[data-school-division]').forEach(button => button.addEventListener('click', () => { state.division = button.dataset.schoolDivision; renderPane(); }));
+      document.querySelectorAll('[data-school-division]').forEach(button => button.addEventListener('click', () => {
+        if (state.tab === 'terms' && state.rolloverSetup) captureRolloverDraft();
+        state.division = button.dataset.schoolDivision;
+        renderPane();
+      }));
     }
     function notify(message) { showAppToast(message, 'error'); }
     function frontendPeriodType(type) {
@@ -196,15 +203,76 @@ const SCHOOL_ACCENT_PALETTES = [
         .sort((first, second) => Number(first.sequenceNumber) - Number(second.sequenceNumber));
     }
 
+    function selectedAcademicYear(years) {
+      return years.find(year => year.status === 'active')
+        || years.find(year => year.status === 'upcoming' && Number(year.id) === Number(state.apiAcademicYear?.id))
+        || years.find(year => year.status === 'upcoming')
+        || years.find(year => year.label === state.school.schoolYear)
+        || years[0] || null;
+    }
+
+    function schoolCalendarToday() {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date());
+      const value = type => parts.find(part => part.type === type)?.value;
+      return `${value('year')}-${value('month')}-${value('day')}`;
+    }
+
+    function yearScheduleProblem(requireClosed) {
+      const year = state.apiAcademicYear;
+      if (!year) return 'Set up a school year first.';
+      const levels = state.apiStructure.filter(level => level.isEnabled !== false);
+      if (!levels.length) return 'Enable and configure a school level first.';
+      let finalEndDate = '';
+      for (const level of levels) {
+        const expected = { quarterly: 4, semestral: 2, trimestral: 3 }[level.gradingPeriodType];
+        const terms = getApiTermsForLevel(level.levelCode);
+        if (!expected || terms.length !== expected) return `Complete the ${level.displayName} term schedule first.`;
+        let previousEnd = '';
+        for (let index = 0; index < terms.length; index += 1) {
+          const term = terms[index];
+          if (Number(term.sequenceNumber) !== index + 1 || !term.name?.trim()
+            || !term.plannedStartDate || !term.plannedEndDate
+            || term.plannedStartDate < year.startDate || term.plannedEndDate > year.endDate
+            || term.plannedStartDate >= term.plannedEndDate || (previousEnd && term.plannedStartDate <= previousEnd)) {
+            return `Review the ${level.displayName} term dates and order.`;
+          }
+          if (term.status !== (requireClosed ? 'closed' : 'upcoming')) {
+            return requireClosed ? 'Close every grading period first.' : 'Every term must still be upcoming.';
+          }
+          previousEnd = term.plannedEndDate;
+          if (term.plannedEndDate > finalEndDate) finalEndDate = term.plannedEndDate;
+        }
+      }
+      if (requireClosed && schoolCalendarToday() <= finalEndDate) return 'Available the day after the final planned term ends.';
+      return '';
+    }
+
+    function captureRolloverDraft() {
+      const form = document.getElementById('schoolAcademicTermsForm');
+      if (!form) return;
+      const level = currentDivisionKey(activeSchool());
+      state.rolloverYear = {
+        label: form.querySelector('#termSchoolYear').value.trim(),
+        startDate: form.querySelector('#termSchoolYearStart').value,
+        endDate: form.querySelector('#termSchoolYearEnd').value
+      };
+      state.rolloverDrafts[level] = Array.from(form.querySelectorAll('[data-term-period]')).map(row => ({
+        name: row.querySelector('[data-term-period-name]').value,
+        sequence: Number(row.querySelector('[data-term-period-sequence]').value),
+        plannedStartDate: row.querySelector('[data-term-period-start]').value,
+        plannedEndDate: row.querySelector('[data-term-period-end]').value,
+        status: 'upcoming'
+      }));
+    }
+
     function applyApiAcademicTerms(years, terms) {
       state.apiAcademicYears = years;
-      state.apiAcademicYear = years.find(year => year.status === 'active')
-        || years.find(year => year.label === state.school.schoolYear)
-        || years[0]
-        || null;
+      state.apiAcademicYear = selectedAcademicYear(years);
       state.apiTerms = terms;
 
-      if (state.apiAcademicYear) {
+      if (state.apiAcademicYear?.status === 'active') {
         state.school.schoolYear = state.apiAcademicYear.label;
         state.school.schoolYearStartDate = state.apiAcademicYear.startDate;
         state.school.schoolYearEndDate = state.apiAcademicYear.endDate;
@@ -423,17 +491,28 @@ const SCHOOL_ACCENT_PALETTES = [
       const school = activeSchool();
       setSettingsHeading('Academic terms', 'Plan and control each grading period.');
       const { level, data } = activeDivision(school);
+      const year = state.apiAcademicYear;
+      const rollover = state.rolloverSetup && ['closed', 'archived'].includes(year?.status);
       const draft = state.termDraft?.schoolLevel === level ? state.termDraft : null;
-      const periods = draft?.academicPeriods || (Array.isArray(data.academicPeriods) ? data.academicPeriods : []);
+      const periods = rollover
+        ? (state.rolloverDrafts[level] || window.EDUGNAY_CONFIG.createAcademicPeriods(data.gradingPeriodType, [], `rollover-${level}`))
+        : (draft?.academicPeriods || (Array.isArray(data.academicPeriods) ? data.academicPeriods : []));
       const gradingPeriodType = draft?.gradingPeriodType || data.gradingPeriodType;
       const type = window.EDUGNAY_CONFIG.academicPeriodTypes[gradingPeriodType] || window.EDUGNAY_CONFIG.academicPeriodTypes.quarterly;
       const threeTermSchedule = type.id === 'three_term';
-      const activePeriod = periods.find(period => period.id === data.activeAcademicPeriodId) || null;
+      const activePeriod = rollover ? null : periods.find(period => period.id === data.activeAcademicPeriodId) || null;
       const nextPeriod = periods.find(period => period.status === 'upcoming') || null;
       const hasStarted = periods.some(period => period.status !== 'upcoming');
-      const schoolYearHasStarted = Object.values(school.divisions || {}).some(division =>
+      const schoolYearHasStarted = !rollover && Object.values(school.divisions || {}).some(division =>
         division.academicPeriods?.some(period => period.status !== 'upcoming')
       );
+      const yearReadOnly = ['closed', 'archived'].includes(year?.status) && !rollover;
+      const yearFieldsLocked = schoolYearHasStarted || yearReadOnly;
+      const yearValues = rollover ? state.rolloverYear : {
+        label: year?.label || school.schoolYear || '',
+        startDate: year?.startDate || school.schoolYearStartDate || '',
+        endDate: year?.endDate || school.schoolYearEndDate || ''
+      };
       const scheduleComplete = periods.length > 0 && periods.every(period => period.plannedStartDate && period.plannedEndDate);
       const reminder = window.EDUGNAY_CONFIG.getAcademicPeriodReminder(activePeriod);
       const periodTypeOptions = Object.values(window.EDUGNAY_CONFIG.academicPeriodTypes).map(option =>
@@ -452,10 +531,16 @@ const SCHOOL_ACCENT_PALETTES = [
 
       let currentCard = '<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>Schedule not configured</strong><p>Complete and save the grading-period dates before starting the school year.</p></div>';
       let currentActions = '';
-      if (activePeriod) {
+      if (yearReadOnly) {
+        currentCard = `<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(year.label)} is ${year.status === 'archived' ? 'archived' : 'closed'}</strong><p>Its records are read-only${year.status === 'closed' ? ' and remain available to archive' : ''}.</p></div>`;
+      } else if (rollover) {
+        currentCard = '<div class="term-current-copy"><span class="term-current-label">Next school year</span><strong>Set up the upcoming year</strong><p>Enter its dates and save a fresh term schedule for each enabled level.</p></div>';
+      } else if (year?.status === 'upcoming') {
+        currentCard = `<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(year.label)} is upcoming</strong><p>Save the term schedule for every enabled level before activation.</p></div>`;
+      } else if (activePeriod) {
         currentCard = `<div class="term-current-copy"><span class="term-current-label">Active grading period</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(activePeriod.name)}</strong><p>${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(activePeriod.plannedStartDate))} – ${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(activePeriod.plannedEndDate))}</p>${reminder ? `<span class="term-reminder ${reminder.tone}">${window.EDUGNAY_CONFIG.escapeHtml(reminder.label)}</span>` : ''}</div>`;
         currentActions = `<button class="top-btn secondary" type="button" data-term-action="extend" data-period-id="${window.EDUGNAY_CONFIG.escapeHtml(activePeriod.id)}"><i data-lucide="calendar-plus"></i> Extend end date</button><button class="top-btn primary" type="button" data-term-action="close" data-period-id="${window.EDUGNAY_CONFIG.escapeHtml(activePeriod.id)}"><i data-lucide="check-circle-2"></i> Review and close</button>`;
-      } else if (nextPeriod && scheduleComplete) {
+      } else if (nextPeriod && scheduleComplete && year?.status === 'active') {
         currentCard = `<div class="term-current-copy"><span class="term-current-label">Next grading period</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(nextPeriod.name)}</strong><p>${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(nextPeriod.plannedStartDate))} – ${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(nextPeriod.plannedEndDate))}</p></div>`;
         currentActions = draft
           ? '<span class="term-modal-alert">Save these academic terms before starting a grading period.</span>'
@@ -464,15 +549,23 @@ const SCHOOL_ACCENT_PALETTES = [
         currentCard = '<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>All grading periods are closed</strong><p>This school year’s period lifecycle is complete.</p></div>';
       }
 
+      const closeProblem = year?.status === 'active' ? yearScheduleProblem(true) : '';
+      const activateProblem = year?.status === 'upcoming' ? yearScheduleProblem(false) : '';
+      const lifecycleAction = year?.status === 'active'
+        ? `<div class="term-year-lifecycle"><button class="term-year-link" type="button" data-year-action="close" ${closeProblem ? 'disabled' : ''}>Close school year</button>${closeProblem ? `<small>${window.EDUGNAY_CONFIG.escapeHtml(closeProblem)}</small>` : ''}</div>`
+        : year?.status === 'upcoming'
+          ? `<div class="term-year-lifecycle"><button class="term-year-link" type="button" data-year-action="activate" ${activateProblem ? 'disabled' : ''}>Activate school year</button>${activateProblem ? `<small>${window.EDUGNAY_CONFIG.escapeHtml(activateProblem)}</small>` : ''}</div>`
+          : yearReadOnly ? '<div class="term-year-lifecycle"><button class="term-year-link" type="button" id="startYearRollover">Set up next school year</button></div>' : '';
+
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-terms-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicTermsForm">
             <div class="school-form-grid term-config-grid">
-              <div class="school-field"><label for="termSchoolYear">School year</label><input id="termSchoolYear" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYear || school.schoolYear || '')}" pattern="[0-9]{4}-[0-9]{4}" ${schoolYearHasStarted ? 'disabled' : ''} required></div>
-              <div class="school-field"><label for="termSchoolYearStart">School-year start date</label><input id="termSchoolYearStart" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYearStartDate || school.schoolYearStartDate || '')}" ${schoolYearHasStarted ? 'disabled' : ''} required></div>
-              <div class="school-field"><label for="termSchoolYearEnd">School-year end date</label><input id="termSchoolYearEnd" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYearEndDate || school.schoolYearEndDate || '')}" ${schoolYearHasStarted ? 'disabled' : ''} required></div>
-              <div class="school-field"><label for="termPeriodType">Period structure</label><select id="termPeriodType" ${hasStarted ? 'disabled' : ''}>${periodTypeOptions}</select><small>${hasStarted ? 'The structure is locked because a grading period has started.' : 'Changing this regenerates the period schedule.'}</small></div>
+              <div class="school-field"><label for="termSchoolYear">School year</label><input id="termSchoolYear" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYear || yearValues?.label || '')}" pattern="[0-9]{4}-[0-9]{4}" ${yearFieldsLocked ? 'disabled' : ''} required></div>
+              <div class="school-field"><label for="termSchoolYearStart">School-year start date</label><input id="termSchoolYearStart" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYearStartDate || yearValues?.startDate || '')}" ${yearFieldsLocked ? 'disabled' : ''} required></div>
+              <div class="school-field"><label for="termSchoolYearEnd">School-year end date</label><input id="termSchoolYearEnd" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYearEndDate || yearValues?.endDate || '')}" ${yearFieldsLocked ? 'disabled' : ''} required></div>
+              <div class="school-field"><label for="termPeriodType">Period structure</label><select id="termPeriodType" ${hasStarted || yearReadOnly || rollover || year?.status === 'upcoming' ? 'disabled' : ''}>${periodTypeOptions}</select><small>${hasStarted || yearReadOnly || rollover || year?.status === 'upcoming' ? 'The period structure is fixed for this school level.' : 'Changing this regenerates the period schedule.'}</small></div>
             </div>
 
             <div class="school-section-block term-tracker-block">
@@ -484,34 +577,35 @@ const SCHOOL_ACCENT_PALETTES = [
               ${currentCard}
               <div class="term-current-actions">${currentActions}</div>
             </div>
+            ${lifecycleAction}
 
             <div class="school-section-block">
               <div class="school-section-block-head"><div><div class="school-section-block-title">Planned schedule</div><div class="school-section-block-sub">Closed and active periods are protected. Upcoming dates may still be adjusted.</div></div></div>
               <div class="term-schedule-list ${threeTermSchedule ? 'three-term-schedule' : ''}">
                 ${periods.map(period => threeTermSchedule ? `<div class="term-schedule-row term-schedule-card" data-term-period>
-                  <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}">
+                  <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}"><input type="hidden" data-term-period-sequence value="${period.sequence}">
                   <div class="term-schedule-card-header">
                     <div class="school-field"><label>Grading period</label><input data-term-period-name value="${window.EDUGNAY_CONFIG.escapeHtml(period.name)}" readonly></div>
                     <span class="term-status ${period.status}">${period.status === 'closed' ? 'Closed' : period.status === 'active' ? 'Active' : 'Upcoming'}</span>
                   </div>
                   <div class="term-schedule-dates">
                     <div class="school-field academic-range-group" data-academic-range><label>Date range</label><div class="academic-range-native-pair">
-                      <label>Start date<input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
-                      <label>End date<input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
+                      <label>Start date<input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' && !yearReadOnly ? '' : 'disabled'} required></label>
+                      <label>End date<input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' && !yearReadOnly ? '' : 'disabled'} required></label>
                     </div></div>
                   </div>
                 </div>` : `<div class="term-schedule-row" data-term-period>
-                  <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}">
+                  <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}"><input type="hidden" data-term-period-sequence value="${period.sequence}">
                   <div class="school-field"><label>Grading period</label><input data-term-period-name value="${window.EDUGNAY_CONFIG.escapeHtml(period.name)}" readonly></div>
                   <div class="school-field academic-range-group" data-academic-range><label>Date range</label><div class="academic-range-native-pair">
-                    <label>Start date<input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
-                    <label>End date<input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
+                    <label>Start date<input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' && !yearReadOnly ? '' : 'disabled'} required></label>
+                    <label>End date<input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' && !yearReadOnly ? '' : 'disabled'} required></label>
                   </div></div>
                   <span class="term-status ${period.status}">${period.status === 'closed' ? 'Closed' : period.status === 'active' ? 'Active' : 'Upcoming'}</span>
                 </div>`).join('')}
               </div>
             </div>
-            <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic terms</button></div>
+            ${yearReadOnly ? '' : '<div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic terms</button></div>'}
           </form>
         </div>`;
 
@@ -530,6 +624,15 @@ const SCHOOL_ACCENT_PALETTES = [
       });
       document.getElementById('termPeriodType').addEventListener('change', changeAcademicPeriodType);
       document.querySelectorAll('[data-term-action]').forEach(button => button.addEventListener('click', () => openTermActionModal(button.dataset.termAction, button.dataset.periodId)));
+      document.querySelectorAll('[data-year-action]').forEach(button => button.addEventListener('click', () => openYearActionModal(button.dataset.yearAction)));
+      document.getElementById('startYearRollover')?.addEventListener('click', () => {
+        const match = String(year.label).match(/^(\d{4})-(\d{4})$/);
+        state.termDraft = null;
+        state.rolloverYear = { label: match ? `${Number(match[1]) + 1}-${Number(match[2]) + 1}` : '', startDate: '', endDate: '' };
+        state.rolloverDrafts = {};
+        state.rolloverSetup = true;
+        renderAcademicTermsPane();
+      });
       bindDivisionSwitcher();
       if (window.lucide) lucide.createIcons();
     }
@@ -2307,9 +2410,9 @@ const SCHOOL_ACCENT_PALETTES = [
         state.publishedShsGradeCount = gradingSettings.publishedShsGradeCount;
         state.apiAttendanceRules = attendance.settings;
         state.reportWeekSettings = reportWeek.settings || state.reportWeekSettings;
-        const activeYear = years.find(year => year.status === 'active') || years[0] || null;
-        const terms = activeYear
-          ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: activeYear.id })
+        const selectedYear = selectedAcademicYear(years);
+        const terms = selectedYear
+          ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: selectedYear.id })
           : [];
         applyApiAcademicTerms(years, terms);
         state.apiFeatures = portal.features;
@@ -2489,15 +2592,12 @@ const SCHOOL_ACCENT_PALETTES = [
 
     async function reloadBackendAcademicTerms() {
       const years = await window.EDUGNAY_API.getAcademicYears();
-      const activeYear = years.find(year => year.status === 'active')
-        || years.find(year => year.label === state.school.schoolYear)
-        || years[0]
-        || null;
-      const terms = activeYear
-        ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: activeYear.id })
+      const selectedYear = selectedAcademicYear(years);
+      const terms = selectedYear
+        ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: selectedYear.id })
         : [];
       applyApiAcademicTerms(years, terms);
-      return activeYear;
+      return selectedYear;
     }
 
     async function saveBackendAcademicTerms(values, level) {
@@ -2506,41 +2606,36 @@ const SCHOOL_ACCENT_PALETTES = [
 
       const levelRecord = getApiLevel(level);
       if (!levelRecord) throw new Error('The selected school level was not found.');
-      const existingTerms = getApiTermsForLevel(level);
+      const existingTerms = state.rolloverSetup ? [] : getApiTermsForLevel(level);
       const currentPeriodType = frontendPeriodType(levelRecord.gradingPeriodType);
       if (existingTerms.length && values.gradingPeriodType !== currentPeriodType) {
         throw new Error('The period structure cannot change after terms have been configured.');
       }
 
       let year = state.apiAcademicYear;
-      if (!year || year.status === 'closed' || year.label !== values.schoolYear) {
+      if (!year || state.rolloverSetup) {
         const sameLabel = state.apiAcademicYears.find(item => item.label === values.schoolYear);
-        const otherActive = state.apiAcademicYears.find(item => item.status === 'active' && item.label !== values.schoolYear);
-        if (otherActive && !sameLabel) throw new Error('Complete the current academic year before creating another one.');
-        if (sameLabel?.status === 'closed') throw new Error('A closed academic year cannot be reused.');
-        year = sameLabel || await window.EDUGNAY_API.createAcademicYear({
+        if (sameLabel) throw new Error('Use a new school-year label for the next year.');
+        year = await window.EDUGNAY_API.createAcademicYear({
           label: values.schoolYear,
           startDate: values.schoolYearStartDate,
-          endDate: values.schoolYearEndDate,
-          status: 'active'
+          endDate: values.schoolYearEndDate
         });
       }
-      if (year && (year.startDate !== values.schoolYearStartDate
-        || year.endDate !== values.schoolYearEndDate
-        || year.status === 'upcoming')) {
+      if (year.status === 'closed' || year.status === 'archived') throw new Error('A closed school year cannot be changed.');
+      state.apiAcademicYear = year;
+      state.rolloverSetup = false;
+      if (year.label !== values.schoolYear || year.startDate !== values.schoolYearStartDate
+        || year.endDate !== values.schoolYearEndDate) {
         year = await window.EDUGNAY_API.updateAcademicYear(year.id, {
           label: values.schoolYear,
           startDate: values.schoolYearStartDate,
-          endDate: values.schoolYearEndDate,
-          status: 'active'
+          endDate: values.schoolYearEndDate
         });
+        state.apiAcademicYear = year;
       }
 
       if (!year?.id) throw new Error('The academic year could not be saved.');
-      if (state.school.schoolYear !== year.label) {
-        const school = await window.EDUGNAY_API.updateSchoolSettings({ currentSchoolYearLabel: year.label });
-        applyApiSchoolSettings(school);
-      }
 
       if (values.gradingPeriodType !== currentPeriodType) {
         const school = activeSchool();
@@ -2596,6 +2691,7 @@ const SCHOOL_ACCENT_PALETTES = [
           if (!state.apiActive) throw new Error('School settings are still loading. Please try again.');
           await saveBackendAcademicTerms(values, level);
           state.termDraft = null;
+          state.rolloverDrafts = {};
           applyApiContext();
           renderAcademicTermsPane();
           window.refreshEdUgnayShellContext?.();
@@ -2604,6 +2700,9 @@ const SCHOOL_ACCENT_PALETTES = [
         }
       } catch (error) {
         notify(error.message || 'The academic terms could not be saved.');
+        if (state.apiAcademicYear && !state.rolloverSetup) {
+          try { await reloadBackendAcademicTerms(); renderAcademicTermsPane(); } catch {}
+        }
       }
     }
 
@@ -2614,6 +2713,30 @@ const SCHOOL_ACCENT_PALETTES = [
       state.termAction = null;
       state.termTrigger?.focus();
       state.termTrigger = null;
+    }
+
+    function openYearActionModal(action) {
+      const year = state.apiAcademicYear;
+      if (!year || (action === 'close' ? year.status !== 'active' : year.status !== 'upcoming')) return;
+      const problem = yearScheduleProblem(action === 'close');
+      if (problem) { notify(problem); return; }
+      const modal = document.getElementById('termActionModal');
+      const confirmButton = document.getElementById('confirmTermAction');
+      const label = window.EDUGNAY_CONFIG.escapeHtml(year.label);
+      state.termTrigger = document.activeElement;
+      state.termAction = { action: `${action}-year`, yearId: year.id };
+      document.getElementById('termActionTitle').textContent = action === 'close' ? 'Close school year' : 'Activate school year';
+      document.getElementById('termActionSubtitle').textContent = action === 'close'
+        ? 'Review the school year before making it read-only.'
+        : 'Make this the current school year.';
+      document.getElementById('termActionBody').innerHTML = action === 'close'
+        ? `<p class="term-modal-message">Close <strong>${label}</strong>? Its terms, grades, attendance, and other records become read-only. The year will remain available to archive later.</p>`
+        : `<p class="term-modal-message">Activate <strong>${label}</strong>? It will become the current school year. Start each grading period using the existing term controls.</p>`;
+      confirmButton.textContent = action === 'close' ? 'Close school year' : 'Activate school year';
+      confirmButton.disabled = false;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      confirmButton.focus();
     }
 
     async function openTermActionModal(action, periodId) {
@@ -2657,11 +2780,22 @@ const SCHOOL_ACCENT_PALETTES = [
     async function submitTermAction(event) {
       event.preventDefault();
       if (!state.termAction) return;
-      const { action, periodId } = state.termAction;
+      const { action, periodId, yearId } = state.termAction;
       const confirmButton = document.getElementById('confirmTermAction');
       confirmButton.disabled = true;
 
       try {
+        if (action === 'close-year' || action === 'activate-year') {
+          if (action === 'close-year') await window.EDUGNAY_API.closeAcademicYear(yearId);
+          else await window.EDUGNAY_API.activateAcademicYear(yearId);
+          await reloadBackendAcademicTerms();
+          if (action === 'activate-year') applyApiSchoolSettings(await window.EDUGNAY_API.getSchoolSettings());
+          applyApiContext();
+          closeTermActionModal();
+          renderAcademicTermsPane();
+          showAppToast(action === 'close-year' ? 'School year closed.' : 'School year activated.');
+          return;
+        }
         {
           const apiTermId = Number(periodId);
           if (!Number.isInteger(apiTermId) || apiTermId < 1) throw new Error('The academic-term identifier is invalid.');

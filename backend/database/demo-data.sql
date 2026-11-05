@@ -222,10 +222,10 @@ VALUES
 INSERT INTO assignments (
   id, school_id, section_id, subject_id, academic_term_id,
   grading_category_id, teacher_user_id, title, description, due_at,
-  max_score, online_submission_enabled, status
+  max_score, online_submission_enabled, status, published_at
 ) VALUES
-  (1, 1, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 'Complete the Values Education activity.', '2025-06-13 23:59:00', 20.00, 1, 'published'),
-  (2, 1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 'Review the core values lesson.', '2025-06-11 23:59:00', 25.00, 1, 'published');
+  (1, 1, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 'Complete the Values Education activity.', '2025-06-13 23:59:00', 20.00, 1, 'published', '2025-06-09 08:00:00'),
+  (2, 1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 'Review the core values lesson.', '2025-06-11 23:59:00', 25.00, 1, 'published', '2025-06-09 08:00:00');
 
 INSERT INTO assignment_submissions (
   school_id, assignment_id, student_user_id, file_name, file_path, file_size_bytes,

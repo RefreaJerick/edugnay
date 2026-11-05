@@ -1360,10 +1360,19 @@ function renderSubjectGradeChecks(contextValue = activeSubjectGrade, subject = n
   const existingGradeIds = new Set((subject?.gradeLevelIds || []).map(Number));
   const chosenGradeIds = context.gradeOptions.map(grade => Number(grade.id));
   const prefill = subject ? existingGradeIds : new Set(chosenGradeIds);
-  target.innerHTML = context.gradeOptions.map(grade => {
-    const checked = prefill.has(Number(grade.id));
-    return `<label class="grade-check-item"><input type="checkbox" name="gradeLevelIds" value="${Number(grade.id)}" data-level-code="${grade.levelCode}" data-grade-code="${grade.gradeCode}" ${checked ? 'checked' : ''} data-page-change="g9914d313cdd7"><span>${managementLevelLabel(grade.levelCode)} · ${grade.displayName}</span></label>`;
-  }).join('') || '<small class="form-help">Configure a school level and grade before adding a subject.</small>';
+  const groupedGrades = new Map();
+  context.gradeOptions.forEach(grade => {
+    if (!groupedGrades.has(grade.levelCode)) groupedGrades.set(grade.levelCode, []);
+    groupedGrades.get(grade.levelCode).push(grade);
+  });
+  target.innerHTML = [...groupedGrades].map(([levelCode, grades]) => `
+    <div class="grade-check-group" role="group" aria-labelledby="subject-grade-group-${levelCode}">
+      <div class="grade-check-group-title" id="subject-grade-group-${levelCode}">${managementLevelLabel(levelCode)}</div>
+      <div class="grade-check-grid">${grades.map(grade => {
+        const checked = prefill.has(Number(grade.id));
+        return `<label class="grade-check-item"><input type="checkbox" name="gradeLevelIds" value="${Number(grade.id)}" data-level-code="${grade.levelCode}" data-grade-code="${grade.gradeCode}" ${checked ? 'checked' : ''} data-page-change="g9914d313cdd7"><span>${grade.displayName}</span></label>`;
+      }).join('')}</div>
+    </div>`).join('') || '<small class="form-help">Configure a school level and grade before adding a subject.</small>';
   updateSubjectShsFields();
 }
 

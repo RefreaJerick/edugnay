@@ -345,6 +345,7 @@
 .parent-report-dialog-open { overflow: hidden; }
 .parent-report-modal { width: min(620px, 100%); }
 .parent-report-modal-body { overflow-y: auto; }
+#parent-report-modal-actions > .report-correction-notice { margin-top: 6px; }
 
 .rm-text {
   margin: 0;

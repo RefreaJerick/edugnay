@@ -47,12 +47,14 @@ test('shared shell omits a missing school-year suffix instead of displaying null
     const yearElement = { textContent: '' };
     const school = { id: 7, name: 'Test School', shortName: 'TS', schoolType: 'elementary', schoolLevels: [], activeDivision: 'elem', schoolYear };
     const context = {
+      cacheSchoolBrandSnapshot() {},
+      schoolBrandCacheSuppressed: false,
       window: {
         EDUGNAY_API_SCHOOL_CONTEXT: school,
         EDUGNAY_CONFIG: {
           getActiveSchool: () => school,
           getSchoolTypeInfo: () => ({ label: 'Elementary' }),
-          getCurrentAcademicPeriod: () => null,
+          getCurrentAcademicPeriod: () => { throw new Error('an active division must not supply a dashboard period'); },
           isGradesPageEnabled: () => false
         }
       },
@@ -203,18 +205,77 @@ test('school portal sidebars begin without a tenant name and load the shared she
         assert.equal(content.trim(), '', role + '/' + filename + ' should not show a school before context loads');
       }
       if (html.includes('shell-common.js')) {
-        assert.doesNotMatch(html, /shell-common\.js\?v=10/, role + '/' + filename + ' should fetch the updated shell');
-        assert.match(html, /shell-common\.js\?v=11/, role + '/' + filename + ' should use the updated shell version');
+        assert.doesNotMatch(html, /shell-common\.js\?v=11/, role + '/' + filename + ' should fetch the updated shell');
+        const shellVersion = role === 'student' && filename === 'edugnay-student-dashboard.html' ? 13 : 12;
+        assert.match(html, new RegExp(`shell-common\\.js\\?v=${shellVersion}`), role + '/' + filename + ' should use the expected shell version');
       }
     }
   }
 });
 
-test('school-context events apply the current short name immediately and clear stale names', () => {
+test('shared active-period label uses its explicit school level instead of the school default', () => {
+  const source = shell.match(/function applyActiveSchoolToShell\(\) \{[\s\S]*?\n\}/)[0];
+  const activePeriod = { textContent: '', dataset: { schoolLevel: 'shs' } };
+  const requestedLevels = [];
+  const school = { id: 7, name: 'Test School', shortName: 'TS', schoolType: 'combined', schoolLevels: [], activeDivision: 'elem', schoolYear: '2026-2027' };
+  const context = {
+    cacheSchoolBrandSnapshot() {},
+    schoolBrandCacheSuppressed: false,
+    window: {
+      EDUGNAY_API_SCHOOL_CONTEXT: school,
+      EDUGNAY_CONFIG: {
+        getActiveSchool: () => school,
+        getSchoolTypeInfo: () => ({ label: 'Combined' }),
+        getCurrentAcademicPeriod(schoolId, schoolLevel) {
+          requestedLevels.push([schoolId, schoolLevel]);
+          return schoolLevel === 'shs' ? { name: 'Term 2' } : { name: 'Quarter 3' };
+        },
+        isGradesPageEnabled: () => true
+      }
+    },
+    document: {
+      body: { dataset: {} },
+      querySelectorAll(selector) {
+        return selector === '[data-active-academic-period]' ? [activePeriod] : [];
+      }
+    }
+  };
+
+  vm.runInNewContext(`${source}\napplyActiveSchoolToShell();`, context);
+
+  assert.equal(activePeriod.textContent, 'Term 2 · S.Y. 2026-2027');
+  assert.deepEqual(requestedLevels, [[7, 'shs']]);
+});
+
+test('only the student dashboard includes the active grading period card', () => {
+  const dashboardHtml = role => fs.readFileSync(
+    path.join(__dirname, '../../views', role, `edugnay-${role}-dashboard.html`), 'utf8');
+
+  const studentHtml = dashboardHtml('student');
+  assert.match(studentHtml, /class="grading-period-card"[\s\S]*?data-active-academic-period/);
+  const studentDashboardScript = pageFs.readFileSync(
+    path.join(__dirname, '../../assets/js/student/dashboard.js'), 'utf8');
+  assert.match(studentDashboardScript,
+    /const sections = await window\.EDUGNAY_API\.getSections\(\);\s*const currentSection = sections\.find\(section => section\.academicYearStatus === 'active'\);\s*if \(dashboardPeriod\) \{\s*dashboardPeriod\.dataset\.schoolLevel = currentSection\?\.level \|\| '';\s*window\.refreshEdUgnayShellContext\?\.\(\);/,
+    'the student dashboard resolves the displayed period from the enrolled section in the active year');
+  for (const role of ['admin', 'teacher', 'parent']) {
+    const html = dashboardHtml(role);
+    assert.doesNotMatch(html, /data-active-academic-period/);
+    assert.doesNotMatch(html, /class="grading-period-card"/);
+  }
+  for (const role of ['teacher', 'parent']) {
+    const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js', role, 'dashboard.js'), 'utf8');
+    assert.doesNotMatch(script, /dashboardPeriod|data-active-academic-period/,
+      `${role} dashboard must not update a removed period card`);
+  }
+});
+
+test('school-context events apply and cache the current short name without clearing a verified name during a missing context', () => {
   const setContextSource = shell.match(/function setApiSchoolContext\(school, features = null\) \{[\s\S]*?\n\}/)[0];
   const applySource = shell.match(/function applyActiveSchoolToShell\(\) \{[\s\S]*?\n\}/)[0];
   const brand = { textContent: '' };
   const listeners = new Map();
+  let cachedShortName = '';
   const document = {
     body: { dataset: {} },
     addEventListener(name, callback) { listeners.set(name, callback); },
@@ -235,6 +296,8 @@ test('school-context events apply the current short name immediately and clear s
   const context = {
     document,
     window,
+    schoolBrandCacheSuppressed: false,
+    cacheSchoolBrandSnapshot(school) { cachedShortName = school.shortName; },
     CustomEvent: class CustomEvent {
       constructor(type, options = {}) { this.type = type; this.detail = options.detail; }
     }
@@ -249,14 +312,86 @@ test('school-context events apply the current short name immediately and clear s
 
   context.setApiSchoolContext({ id: 12, name: 'Current School', shortName: 'CURRENT SCHOOL', schoolType: 'jhs', schoolLevels: [] });
   assert.equal(brand.textContent, 'CURRENT SCHOOL');
+  assert.equal(cachedShortName, 'CURRENT SCHOOL');
 
   context.setApiSchoolContext(null);
-  assert.equal(brand.textContent, '');
+  assert.equal(brand.textContent, 'CURRENT SCHOOL', 'a temporary missing context should not erase the verified sidebar name');
 
   brand.textContent = 'PLATFORM ADMINISTRATION';
   document.body.dataset.platformPortal = 'true';
   vm.runInNewContext('applyActiveSchoolToShell();', context);
   assert.equal(brand.textContent, 'PLATFORM ADMINISTRATION');
+});
+
+test('sidebar school name restores only from a role and school matched cache before markup paint', () => {
+  const helperStart = shell.indexOf('function isSchoolPortalRole(role) {');
+  const helperEnd = shell.indexOf('\nfunction saveProfileDisplaySnapshot(session) {', helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart);
+  const helperSource = shell.slice(helperStart, helperEnd);
+
+  function createBrandHarness({ role = 'teacher', accountRole = role, schoolId = '12', cachedSchoolId = schoolId, cachedRole = role, shortName = 'QA SCHOOL' } = {}) {
+    const storage = new Map([
+      ['edugnay_school_brand_v1', JSON.stringify({ version: 1, role: cachedRole, schoolId: cachedSchoolId, shortName })]
+    ]);
+    const labels = [];
+    const observers = [];
+    class TestMutationObserver {
+      constructor(callback) { this.callback = callback; this.disconnected = false; observers.push(this); }
+      observe() {}
+      disconnect() { this.disconnected = true; }
+    }
+    const document = {
+      documentElement: {},
+      querySelectorAll(selector) { return selector === '.brand-sub:not([data-platform-brand])' ? labels : []; },
+      addEventListener() {}
+    };
+    const context = vm.createContext({
+      document,
+      sessionStorage: {
+        getItem: key => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, value),
+        removeItem: key => storage.delete(key)
+      },
+      MutationObserver: TestMutationObserver
+    });
+    vm.runInContext(`const EDUGNAY_SCHOOL_BRAND_CACHE_KEY = 'edugnay_school_brand_v1';
+      const portalRoleForCurrentPage = '${role}';
+      let cachedProfileDisplaySnapshot = { version: 1, role: '${accountRole}', userId: '7', schoolId: '${schoolId}' };
+      let cachedSchoolBrandObserver = null;
+      let schoolBrandCacheSuppressed = false;
+      ${helperSource}`, context);
+    return {
+      storage, labels, observers, context,
+      addLabel() {
+        const label = { textContent: '' };
+        labels.push(label);
+        observers.filter(observer => !observer.disconnected).forEach(observer => observer.callback());
+        return label;
+      }
+    };
+  }
+
+  const matching = createBrandHarness();
+  const matchingLabel = matching.addLabel();
+  assert.equal(matchingLabel.textContent, 'QA SCHOOL', 'matching cache is restored as soon as sidebar markup is inserted');
+  vm.runInContext("cacheSchoolBrandSnapshot({ id: 12, shortName: 'Renamed School' })", matching.context);
+  assert.equal(matchingLabel.textContent, 'Renamed School', 'fresh context replaces the visible cached name');
+  assert.deepEqual(JSON.parse(matching.storage.get('edugnay_school_brand_v1')), {
+    version: 1, role: 'teacher', schoolId: '12', shortName: 'Renamed School'
+  });
+
+  for (const options of [
+    { cachedSchoolId: '13' },
+    { cachedRole: 'student' },
+    { role: 'student', accountRole: 'teacher' },
+    { shortName: ' ' }
+  ]) {
+    const mismatched = createBrandHarness(options);
+    assert.equal(mismatched.addLabel().textContent, '', 'mismatched or invalid saved identity stays blank');
+  }
+
+  const platform = createBrandHarness({ role: 'platform_admin', accountRole: 'platform_admin' });
+  assert.equal(platform.addLabel().textContent, '', 'platform branding does not restore a school name');
 });
 
 test('the school label updates before shared startup waits for the account request', () => {

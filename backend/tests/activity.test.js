@@ -372,6 +372,14 @@ test('SHS activity messages keep only concise identifying context', () => {
   assert.equal(approvedSubject.title, 'added Creative Composition 1 as an approved SHS subject');
   assert.equal(approvedSubject.detail, 'Grade 11 · Academic track');
 
+  const deletedOffering = activity.formatActivity({
+    id: 9, actionType: 'shs_offering_deleted', entityType: 'shs_offering', actor: 'Alex Test Admin',
+    details: { subjectName: 'Creative Composition 1', gradeCode: 'grade-11', trackCode: 'academic',
+      schoolYearLabel: '2026-2027' }
+  });
+  assert.equal(deletedOffering.title, 'deleted the SHS offering for Creative Composition 1');
+  assert.equal(deletedOffering.detail, 'Grade 11 Â· Academic track');
+
   const createdClass = activity.formatActivity({
     id: 2, actionType: 'shs_elective_class_created', entityType: 'shs_elective_class', actor: 'Alex Test Admin',
     details: { className: 'Capstone QA AE034', subjectName: 'Business 1 (Basic Accounting)',
@@ -539,8 +547,9 @@ test('activity search can find a report by section or grade name', async () => {
   assert.equal(result.error, null);
   assert.match(queries[0].sql, /activity_sections\.name LIKE \?/);
   assert.match(queries[0].sql, /school_grade_levels\.display_name LIKE \?/);
-  assert.deepEqual(queries[0].values.slice(0, 7), [4,
+  assert.deepEqual(queries[0].values.slice(0, 8), [4,
     'narrative_report_draft_generated', 'narrative_report_draft_regenerated', 'narrative_report_draft_reviewed',
+    'narrative_report_draft_deleted',
     'narrative_report_confirmed_held', 'narrative_report_reopened', 'narrative_report_released_to_parents']);
   assert.equal(queries[0].values.at(-6), '%St. John%');
 });

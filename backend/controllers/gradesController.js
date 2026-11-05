@@ -162,7 +162,7 @@ async function getManagedGradingItem(connection, user, gradingItemId) {
   const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN subjects ON subjects.id = grading_items.subject_id AND subjects.school_id = grading_items.school_id AND subjects.is_active = TRUE INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
   const item = rows[0];
   if (!item || (user.role === 'teacher' && Number(item.teacherUserId) !== Number(user.id))) return null;
-  if (item.academicYearStatus === 'archived') throw createError('Records from an archived school year are read-only.', 409);
+  if (['closed', 'archived'].includes(item.academicYearStatus)) throw createError('Records from a closed or archived school year are read-only.', 409);
   return item;
 }
 

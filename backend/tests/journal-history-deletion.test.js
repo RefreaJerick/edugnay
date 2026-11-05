@@ -162,6 +162,8 @@ test('school and teacher history use the shared modal card design', () => {
   assert.match(styles, /\.journal-history-card-content\s*\{[^}]*background: var\(--blue-xpale\)/s);
   assert.match(styles, /\.journal-history-card-content\s*\{[^}]*border: 1px solid var\(--blue-pale\)/s);
   assert.match(styles, /\.journal-history-card-content\s*\{[^}]*font-style: italic/s);
+  assert.match(styles, /@media \(max-width: 600px\)[\s\S]*?\.journal-history-card-head\s*\{\s*flex-wrap:\s*nowrap;/);
+  assert.doesNotMatch(styles, /\.journal-history-status\s*\{[^}]*order\s*:/);
   assert.match(styles, /\.journal-entry-viewer-grid/);
   assert.match(styles, /journal-entry-viewer\.is-detail/);
   assert.match(styles, /@media \(max-width: 600px\)/);

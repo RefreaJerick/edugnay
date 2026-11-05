@@ -97,6 +97,7 @@ test('Class Management keeps data regions blank during a slow load and renders r
     },
     window: {
       EDUGNAY_SCHOOL_READY: schoolReady,
+      EDUGNAY_PAGE_LOADING: { ready() {} },
       EDUGNAY_CONFIG: {
         renderPanelEmptyState: options => `empty:${options.title}:${options.text}`
       },
@@ -185,6 +186,111 @@ test('subject modal uses Strengthened SHS type, track, and hours fields', () => 
   assert.match(css, /#subjectModalBackdrop \.modal\s*\{\s*max-width:\s*640px;/);
   assert.match(css, /#subjectModalBackdrop #createSubjectForm > \.form-row-2,[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*?#subjectModalBackdrop \.form-row-2\s*\{\s*grid-template-columns:\s*1fr;/);
+});
+
+test('subject grade groups preserve checkbox values, selection, and SHS field behavior', () => {
+  const grades = [
+    { id: 2, levelCode: 'elementary', gradeCode: 'grade-2', displayName: 'Grade 2' },
+    { id: 3, levelCode: 'elementary', gradeCode: 'grade-3', displayName: 'Grade 3' },
+    { id: 7, levelCode: 'jhs', gradeCode: 'grade-7', displayName: 'Grade 7' },
+    { id: 11, levelCode: 'shs', gradeCode: 'grade-11', displayName: 'Grade 11' },
+    { id: 12, levelCode: 'shs', gradeCode: 'grade-12', displayName: 'Grade 12' }
+  ];
+  const contexts = {
+    all: { key: 'all', mode: 'all', gradeOptions: grades },
+    elementary: { key: 'elementary', mode: 'division', gradeOptions: grades.slice(0, 2) },
+    'elementary:grade-2': { key: 'elementary:grade-2', mode: 'grade', gradeOptions: grades.slice(0, 1) },
+    shs: { key: 'shs', mode: 'division', gradeOptions: grades.slice(3) }
+  };
+  const target = { innerHTML: '' };
+  const contextInput = { value: '' };
+  const panel = { hidden: true };
+  const groupSelect = { value: '' };
+  const trackSelect = { value: '' };
+  const hoursSelect = { value: '' };
+  const inputPattern = /<input type="checkbox" name="gradeLevelIds" value="(\d+)" data-level-code="([^"]+)" data-grade-code="([^"]+)"\s+(checked\s+)?data-page-change="g9914d313cdd7">/g;
+  const checks = () => Array.from(target.innerHTML.matchAll(inputPattern), ([, value, levelCode, gradeCode, checked]) => ({
+    value: Number(value), levelCode, gradeCode, checked: Boolean(checked)
+  }));
+  const state = { contextValue: 'all', contextStrand: 'all', subject: null };
+  const context = vm.createContext({
+    activeSubjectGrade: 'all',
+    subjectModalState: state,
+    getSubjectModalContext: value => contexts[value],
+    managementLevelLabel: value => ({ elementary: 'Elementary', jhs: 'Junior High School', shs: 'Senior High School' })[value],
+    managementSetOptions() {},
+    managementTrackOptions: () => [],
+    document: {
+      getElementById(id) {
+        return ({
+          subjectGradeChecks: target, subjectModalContext: contextInput,
+          subjectShsFields: panel, subjectShsGroup: groupSelect,
+          subjectShsTrack: trackSelect, subjectShsHours: hoursSelect
+        })[id];
+      },
+      querySelectorAll() {
+        return checks().filter(input => input.checked).map(input => ({
+          value: String(input.value),
+          dataset: { levelCode: input.levelCode, gradeCode: input.gradeCode }
+        }));
+      }
+    }
+  });
+  const start = management.indexOf('function renderSubjectGradeChecks(');
+  const end = management.indexOf('\nfunction openSubjectModal(', start);
+  new vm.Script(management.slice(start, end)).runInContext(context);
+
+  context.renderSubjectGradeChecks('all');
+  assert.equal((target.innerHTML.match(/class="grade-check-group"/g) || []).length, 3);
+  assert.match(target.innerHTML, /Elementary<\/div>[\s\S]*Grade 2/);
+  assert.match(target.innerHTML, /Junior High School<\/div>[\s\S]*Grade 7/);
+  assert.match(target.innerHTML, /Senior High School<\/div>[\s\S]*Grade 11/);
+  assert.doesNotMatch(target.innerHTML, /Elementary · Grade 2/);
+  assert.equal(checks().map(input => input.value).join(','), '2,3,7,11,12');
+  assert.ok(checks().every(input => input.checked));
+  assert.equal(panel.hidden, false);
+
+  const subject = { gradeLevelIds: [2, 11] };
+  context.renderSubjectGradeChecks('elementary', subject);
+  assert.equal(contextInput.value, 'elementary');
+  assert.equal(checks().map(input => input.value).join(','), '2,3');
+  assert.equal(checks().filter(input => input.checked).map(input => input.value).join(','), '2');
+  assert.equal(panel.hidden, true);
+
+  const selectionStart = management.indexOf('  const context = getSubjectModalContext(subjectModalState.contextValue, subjectModalState.contextStrand);',
+    management.indexOf("document.getElementById('createSubjectForm').addEventListener('submit'"));
+  const selectionEnd = management.indexOf('  if (!gradeLevelIds.length)', selectionStart);
+  new vm.Script('function savedGradeIds(form) {' + management.slice(selectionStart, selectionEnd) +
+    ' return gradeLevelIds; }').runInContext(context);
+  const form = { querySelectorAll: () => checks().filter(input => input.checked).map(input => ({ value: String(input.value) })) };
+  context.renderSubjectGradeChecks('all');
+  state.contextValue = 'all';
+  state.subject = null;
+  assert.equal(Array.from(context.savedGradeIds(form)).join(','), '2,3,7,11,12', 'new subjects keep the default grade selection');
+
+  context.renderSubjectGradeChecks('all', subject);
+  state.subject = subject;
+  assert.equal(Array.from(context.savedGradeIds(form)).join(','), '2,11', 'editing all levels keeps only saved grades');
+
+  context.renderSubjectGradeChecks('elementary', subject);
+  state.contextValue = 'elementary';
+  assert.equal(Array.from(context.savedGradeIds(form)).join(','), '11,2', 'editing preserves a grade outside the visible level');
+
+  context.renderSubjectGradeChecks('elementary:grade-2', subject);
+  state.contextValue = 'elementary:grade-2';
+  assert.equal(checks().map(input => input.value).join(','), '2');
+  assert.equal(Array.from(context.savedGradeIds(form)).join(','), '11,2', 'single-grade editing preserves other grades');
+
+  context.renderSubjectGradeChecks('shs', subject);
+  assert.equal(checks().filter(input => input.checked).map(input => input.value).join(','), '11');
+  assert.equal(panel.hidden, false);
+  target.innerHTML = target.innerHTML.replace('data-grade-code="grade-11" checked ', 'data-grade-code="grade-11" ');
+  context.updateSubjectShsFields();
+  assert.equal(panel.hidden, true, 'clearing the last SHS grade hides SHS fields');
+
+  const css = pageFs.readFileSync(path.join(__dirname, '../../assets/css/admin/management.css'), 'utf8');
+  assert.match(css, /#subjectModalBackdrop \.grade-check-grid\s*\{\s*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?#subjectModalBackdrop \.grade-check-grid\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
 });
 
 test('inactive subject cards show their saved school level and grade', () => {

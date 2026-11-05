@@ -81,6 +81,23 @@ test('SHS Program uses two staff tabs and no longer exposes readiness or complet
   assert.doesNotMatch(client, /getShsCompletion|confirmShsCompletion|verifyShsPrior|recordShsPrior|loadCompletion|renderCompletion/);
 });
 
+test('elective class modal aligns capacity and term controls for each term mode', () => {
+  const page = read('views/admin/edugnay-admin-shs-program.html');
+  const styles = read('assets/css/shs-program.css');
+  const fieldsStart = page.indexOf('<div class="shs-class-field shs-class-capacity-term-fields" id="shs-class-capacity-term-fields"');
+  const fieldsEnd = page.indexOf('<p class="timetable-error" id="shs-dialog-error"', fieldsStart);
+  const fields = fieldsStart >= 0 && fieldsEnd > fieldsStart ? page.slice(fieldsStart, fieldsEnd) : '';
+
+  assert.match(fields, /id="shs-capacity-field"[\s\S]*id="shs-single-term-field"/);
+  assert.match(fields, /id="shs-term-range-fields"[\s\S]*id="shs-start-term"[\s\S]*id="shs-end-term"/);
+  assert.match(fields, /id="shs-capacity" name="capacity"/);
+  assert.match(fields, /id="shs-start-term" name="startTermId"[\s\S]*id="shs-end-term" name="endTermId"/);
+  assert.match(styles, /\.shs-class-capacity-term-fields\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
+  assert.match(styles, /\.shs-class-capacity-term-fields\s+#shs-capacity-field\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s);
+  assert.match(styles, /\.shs-class-capacity-term-fields:has\(#shs-single-term-field:not\(\[hidden\]\)\)\s+#shs-capacity-field\s*\{[^}]*grid-column:\s*auto/s);
+  assert.match(styles, /\.shs-class-capacity-term-fields\s+#shs-term-range-fields:not\(\[hidden\]\)\s*\{[^}]*grid-column:\s*1\s*\/\s*-1[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
+});
+
 test('SHS subject filters live inside their panel and class menu actions have decorative icons', () => {
   const page = read('views/admin/edugnay-admin-shs-program.html');
   const client = read('assets/js/admin/shs-program.js');
@@ -153,6 +170,7 @@ test('SHS approved-subject form keeps the searchable multiselect visible in a re
 
 test('SHS offering cards have responsive layout, clear actions, and Available classes status rows', () => {
   const client = read('assets/js/admin/shs-program.js');
+  const api = read('assets/js/shell-common.js');
   const styles = read('assets/css/shs-program.css');
   const sharedStyles = read('assets/css/styles.css');
 
@@ -169,6 +187,8 @@ test('SHS offering cards have responsive layout, clear actions, and Available cl
   assert.match(styles, /\.shs-class-status-schedule\s*>\s*svg\s*\{[^}]*color:\s*var\(--theme-accent-text\)/s);
   assert.match(styles, /\.shs-class-status-warning\s*>\s*svg\s*\{[^}]*color:\s*var\(--theme-warning-strong\)/s);
   assert.match(styles, /\.shs-offering-head\s*>\s*div\s*>\s*span/);
+  assert.match(styles, /\.shs-offering-actions \.shs-offering-delete:not\(:disabled\)[^{]*\{[^}]*color:\s*var\(--red\)/s);
+  assert.match(styles, /\.shs-offering-delete-note\s*\{[^}]*flex:\s*1 0 100%/s);
   assert.match(styles, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.shs-offering-head\s*>\s*div\s*\{[^}]*flex:\s*1 1 100%;[^}]*width:\s*100%;/);
   assert.match(styles, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.shs-offering-head\s*>\s*\.badge\s*\{[^}]*clip-path:\s*inset\(50%\);[^}]*white-space:\s*nowrap;/);
   assert.match(styles, /\.shs-class-copy\s*>\s*span/);
@@ -201,10 +221,19 @@ test('SHS offering cards have responsive layout, clear actions, and Available cl
   assert.match(client, /shs-delete-overlay/);
   assert.match(client, /shs-delete-overlay'\)\.addEventListener\('keydown'[\s\S]*event\.key !== 'Tab'/);
   assert.match(read('backend/routes/shsProgram.js'), /router\.delete\('\/classes\/:classId', controller\.deleteClass\)/);
-  assert.match(client, /closeDeleteClass\(\{ restoreFocus: false \}\);[\s\S]*load\(yearId\);[\s\S]*querySelector\('\.shs-class-menu-trigger'\)[\s\S]*Class deleted\./);
+  assert.match(client, /closeDeleteDialog\(\{ restoreFocus: false \}\);[\s\S]*load\(yearId\);[\s\S]*querySelector\('\.shs-class-menu-trigger'\)[\s\S]*Class deleted\./);
   assert.match(client, /catch \(error\) \{[\s\S]*shs-delete-error/);
   assert.match(client, /data-add-class=/);
   assert.match(client, /data-toggle="\$\{item\.id\}"/);
+  assert.match(client, /data-delete-offering="\$\{item\.id\}" \$\{deleteDisabled \? `disabled title="\$\{escape\(deleteNote\)\}"` : 'title="Permanently delete this subject offering"'\}/);
+  assert.match(client, /classes\.length \? 'Delete its classes first; classes with linked records must be kept\.'/);
+  assert.match(client, /openDeleteOffering\(button\.dataset\.deleteOffering, button\)/);
+  assert.match(client, /deleteShsOffering\(state\.deleteOfferingId\)/);
+  assert.match(client, /Permanently delete \$\{item\.subjectName\}, Grade \$\{grade\}/);
+  assert.match(api, /deleteShsOffering: offeringId => requestApi\(`\/shs-program\/offerings\/\$\{encodeURIComponent\(offeringId\)\}`,[\s\S]*method: 'DELETE'/);
+  const route = read('backend/routes/shsProgram.js');
+  assert.match(route, /router\.use\(requireAuth, requireSchoolUser, requireSchoolAdmin\)/);
+  assert.match(route, /router\.delete\('\/offerings\/:offeringId', controller\.deleteOffering\)/);
   assert.match(client, /href="edugnay-admin-timetables\.html\?academicYearId=/);
   assert.match(styles, /\.shs-class-menu-item\s*\{[^}]*text-decoration:\s*none/s);
   assert.match(styles, /\.shs-class-menu-item:hover\s*\{[^}]*text-decoration:\s*none/s);
@@ -258,6 +287,124 @@ test('SHS class deletion removes only an unused active-year class and records th
   const deleteIndex = calls.findIndex(call => call.sql?.includes('DELETE FROM shs_elective_classes'));
   assert.ok(auditIndex >= 0 && auditIndex < deleteIndex);
   assert.ok(calls.some(call => call.type === 'commit'));
+});
+
+test('SHS offering deletion removes active and paused unused offerings and records the action', async t => {
+  async function invokeDelete(isActive) {
+    const calls = [];
+    const offeringRow = { id: 31, school_id: 7, academic_year_id: 2027, yearStatus: 'active',
+      schoolYearLabel: '2026-2027', subject_name: 'Creative Composition 1', gradeCode: 'grade-11',
+      track_code: 'academic', is_active: isActive };
+    database = { async getConnection() { return {
+      async beginTransaction() { calls.push({ type: 'begin' }); },
+      async commit() { calls.push({ type: 'commit' }); },
+      async rollback() { calls.push({ type: 'rollback' }); },
+      release() {},
+      async execute(sql, args = []) {
+        calls.push({ sql, args });
+        if (sql.includes('FROM shs_offerings o')) return [[offeringRow]];
+        if (sql.includes('SELECT id FROM academic_years')) return [[{ id: 2027 }]];
+        if (sql.includes('SELECT id FROM shs_offerings WHERE')) return [[{ id: 31 }]];
+        if (sql.includes('AS classCount')) return [[{ classCount: 0, gradingProfileCount: 0 }]];
+        if (sql.includes('INSERT INTO audit_logs')) return [{ affectedRows: 1 }];
+        if (sql.includes('DELETE FROM shs_offerings')) return [{ affectedRows: 1 }];
+        throw new Error(`Unexpected query: ${sql}`);
+      }
+    }; } };
+    const res = response();
+    let error;
+    await controller.deleteOffering({ user: { id: 8, schoolId: 7, role: 'school_admin' }, params: { offeringId: '31' } },
+      res, value => { error = value; });
+    return { calls, res, error };
+  }
+
+  for (const [label, isActive] of [['active', 1], ['paused', 0]]) {
+    await t.test(`${label} unused offering can be deleted`, async () => {
+      const { calls, res, error } = await invokeDelete(isActive);
+      assert.equal(error, undefined);
+      assert.equal(res.statusCode, 204);
+      assert.equal(res.ended, true);
+      const scopedLookups = calls.filter(call => call.sql?.includes('FROM shs_offerings o'));
+      assert.equal(scopedLookups.length, 2);
+      assert.ok(scopedLookups.every(call => call.args[0] === 31 && call.args[1] === 7));
+      const lock = calls.find(call => call.sql?.includes('SELECT id FROM shs_offerings WHERE'));
+      assert.match(lock.sql, /FOR UPDATE/);
+      assert.deepEqual(lock.args, [31, 7]);
+      const dependencyCheck = calls.find(call => call.sql?.includes('AS classCount'));
+      assert.match(dependencyCheck.sql, /FROM shs_elective_classes\b/);
+      assert.match(dependencyCheck.sql, /FROM shs_grading_profiles\b/);
+      assert.deepEqual(dependencyCheck.args, [7, 31, 7, 31]);
+      const auditIndex = calls.findIndex(call => call.sql?.includes('INSERT INTO audit_logs'));
+      const deleteIndex = calls.findIndex(call => call.sql?.includes('DELETE FROM shs_offerings'));
+      assert.ok(auditIndex >= 0 && auditIndex < deleteIndex);
+      assert.deepEqual(calls.find(call => call.sql?.includes('DELETE FROM shs_offerings')).args, [31, 7]);
+      const audit = calls.find(call => call.sql?.includes('INSERT INTO audit_logs'));
+      const details = JSON.parse(audit.args[5]);
+      assert.equal(details.subjectName, 'Creative Composition 1');
+      assert.equal(details.gradeCode, 'grade-11');
+      assert.ok(calls.some(call => call.type === 'commit'));
+    });
+  }
+});
+
+test('SHS offering deletion blocks dependencies, archived years, and another school’s offering', async t => {
+  async function invokeDelete({ classCount = 0, gradingProfileCount = 0, archived = false, exists = true } = {}) {
+    const calls = [];
+    const offeringRow = { id: 31, school_id: 7, academic_year_id: 2027, yearStatus: archived ? 'archived' : 'active',
+      schoolYearLabel: '2026-2027', subject_name: 'Creative Composition 1', gradeCode: 'grade-11', track_code: 'academic' };
+    database = { async getConnection() { return {
+      async beginTransaction() { calls.push({ type: 'begin' }); },
+      async commit() { calls.push({ type: 'commit' }); },
+      async rollback() { calls.push({ type: 'rollback' }); },
+      release() {},
+      async execute(sql, args = []) {
+        calls.push({ sql, args });
+        if (sql.includes('FROM shs_offerings o')) return [exists ? [offeringRow] : []];
+        if (sql.includes('SELECT id FROM academic_years')) return [[{ id: 2027 }]];
+        if (sql.includes('SELECT id FROM shs_offerings WHERE')) return [[{ id: 31 }]];
+        if (sql.includes('AS classCount')) return [[{ classCount, gradingProfileCount }]];
+        if (sql.includes('INSERT INTO audit_logs')) return [{ affectedRows: 1 }];
+        if (sql.includes('DELETE FROM shs_offerings')) return [{ affectedRows: 1 }];
+        throw new Error(`Unexpected query: ${sql}`);
+      }
+    }; } };
+    const res = response();
+    let error;
+    await controller.deleteOffering({ user: { id: 8, schoolId: 7, role: 'school_admin' }, params: { offeringId: '31' } },
+      res, value => { error = value; });
+    return { calls, res, error };
+  }
+
+  for (const [label, options] of [
+    ['offering with classes', { classCount: 1 }],
+    ['offering with saved grading settings', { gradingProfileCount: 1 }]
+  ]) {
+    await t.test(`${label} cannot be deleted`, async () => {
+      const { calls, error } = await invokeDelete(options);
+      assert.equal(error?.status, 409);
+      assert.match(error.message, /Delete its classes and clear its saved grading settings first/);
+      assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM shs_offerings')));
+      assert.ok(!calls.some(call => call.sql?.includes('INSERT INTO audit_logs')));
+      assert.ok(calls.some(call => call.type === 'rollback'));
+      assert.ok(!calls.some(call => call.type === 'commit'));
+    });
+  }
+
+  await t.test('archived-year offering cannot be deleted', async () => {
+    const { calls, error } = await invokeDelete({ archived: true });
+    assert.equal(error?.status, 409);
+    assert.match(error.message, /Archived school years are read-only/);
+    assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM shs_offerings')));
+    assert.ok(!calls.some(call => call.type === 'begin'));
+  });
+
+  await t.test('offering from another school is not found', async () => {
+    const { calls, error } = await invokeDelete({ exists: false });
+    assert.equal(error?.status, 404);
+    assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM shs_offerings')));
+    assert.ok(!calls.some(call => call.type === 'begin'));
+    assert.deepEqual(calls.find(call => call.sql?.includes('FROM shs_offerings o')).args, [31, 7]);
+  });
 });
 
 test('SHS class updates record the fields that changed for activity messages', async () => {

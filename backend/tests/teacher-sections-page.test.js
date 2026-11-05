@@ -24,7 +24,19 @@ function extractSourceBetween(source, startMarker, endMarker) {
 test('teacher student roster uses identity cards on phones and keeps table data accessible', () => {
   assert.match(sectionsScript, /data-column="\$\{columnKey\}"/);
   assert.match(sectionsScript, /student-roster-mobile-email" aria-hidden="true"/);
+  assert.match(sectionsScript, /const mobileDetailsArrow = details && student\.id[\s\S]*?aria-label="View details for \$\{name\}"[\s\S]*?data-lucide="chevron-right"/);
+  assert.match(sectionsScript, /openTeacherStudentDetails\(row\.dataset\.studentId, detailButton \|\| row\.querySelector\('\[data-student-details\]'\)\)/);
   assert.match(sectionsStyles, /@media \(max-width: 560px\)[\s\S]*?#studentTable thead[\s\S]*?clip-path: inset\(50%\)/);
+  assert.match(sectionsStyles, /\.student-roster-arrow\s*\{\s*display: none;\s*\}/);
+  const mobileArrowStyles = sectionsStyles.match(/@media \(max-width: 560px\) \{[\s\S]*?#studentTable \.student-roster-arrow \{[^}]*\}/);
+  assert.ok(mobileArrowStyles);
+  assert.match(mobileArrowStyles[0], /width: 36px/);
+  assert.match(mobileArrowStyles[0], /height: 36px/);
+  assert.match(mobileArrowStyles[0], /border: 0/);
+  assert.match(mobileArrowStyles[0], /background: transparent/);
+  assert.match(mobileArrowStyles[0], /color: var\(--gray-400\)/);
+  assert.match(sectionsStyles, /#studentTable \.student-roster-arrow:hover,[\s\S]*?#studentTable \.student-roster-arrow:focus-visible \{[^}]*color: var\(--theme-accent-text\)/);
+  assert.match(sectionsStyles, /#studentTable \.student-roster-arrow:focus-visible \{[^}]*outline: 2px solid var\(--theme-accent-text\)/);
   assert.match(sectionsStyles, /#studentTable tbody tr\[data-student-id\] td:not\(\[data-column="student"\]\)[\s\S]*?clip-path: inset\(50%\)/);
   assert.match(sectionsStyles, /#studentTable \.student-roster-mobile-email[\s\S]*?overflow-wrap: anywhere/);
   assert.match(sectionsStyles, /#studentTable tbody tr\.panel-empty-row td[\s\S]*?display: block/);
@@ -60,10 +72,51 @@ test('regular attendance passes saved records to the shared row renderer', () =>
 });
 
 test('student and attendance updates tolerate shared empty table rows', () => {
-  assert.match(sectionsSource, /if \(studentGradePeriodName && workspace\.term\?\.name\)/);
+  assert.match(sectionsSource, /if \(workspace\.term\?\.name\) \{\s*const sectionPeriodName = document\.getElementById\('sectionPeriodName'\);\s*if \(sectionPeriodName\) sectionPeriodName\.textContent = workspace\.term\.name;\s*if \(studentGradePeriodName\) studentGradePeriodName\.textContent = workspace\.term\.name;/);
   assert.match(sectionsSource, /querySelectorAll\('#attTbody tr\[data-student-id\]'\)/);
   assert.match(sectionsSource, /\(history\.sessions \|\| \[\]\)\.forEach/);
   assert.match(sectionsSource, /const attendanceLoad = \(async \(\) => \{[\s\S]*?\}\)\(\)\.catch\(error => \{/);
+});
+
+test('SHS core section header shows the resolved period and a clear unavailable fallback', () => {
+  const helperMatch = sectionsScript.match(/function setShsSectionPeriodHeader\(terms\) \{[\s\S]*?\n    \}/);
+  assert.ok(helperMatch, 'SHS term selection should have one tested header update path');
+  const header = { textContent: 'Current period' };
+  const context = vm.createContext({
+    header,
+    document: { getElementById: id => id === 'sectionPeriodName' ? header : null }
+  });
+  vm.runInContext(`let ACTIVE_ACADEMIC_PERIOD_ID = '';\n${helperMatch[0]}\nglobalThis.getActiveTermId = () => ACTIVE_ACADEMIC_PERIOD_ID;`, context);
+
+  const scenarios = [
+    { terms: [{ id: 1, name: 'Term 1', status: 'closed' }, { id: 2, name: 'Term 2', status: 'active' }, { id: 3, name: 'Term 3', status: 'upcoming' }], id: '2', name: 'Term 2' },
+    { terms: [{ id: 1, name: 'Term 1', status: 'closed' }, { id: 2, name: 'Term 2', status: 'upcoming' }], id: '1', name: 'Term 1' },
+    { terms: [], id: '', name: 'No active grading period' }
+  ];
+  for (const scenario of scenarios) {
+    context.terms = scenario.terms;
+    vm.runInContext('setShsSectionPeriodHeader(terms)', context);
+    assert.equal(context.getActiveTermId(), scenario.id);
+    assert.equal(header.textContent, scenario.name);
+  }
+
+  const gradeLoadStart = sectionsSource.indexOf('const gradeLoad = (async () => {');
+  const shsBranchStart = sectionsSource.indexOf('if (USE_SHS_CORE_GRADEBOOK) {', gradeLoadStart);
+  const shsBranchEnd = sectionsSource.indexOf('} else {', shsBranchStart);
+  assert.ok(gradeLoadStart >= 0 && shsBranchStart > gradeLoadStart && shsBranchEnd > shsBranchStart);
+  const shsBranch = sectionsSource.slice(shsBranchStart, shsBranchEnd);
+  const periodResolution = shsBranch.indexOf('setShsSectionPeriodHeader(terms);');
+  const workspaceRequest = shsBranch.indexOf('getShsGradeWorkspace({');
+  assert.ok(periodResolution >= 0 && workspaceRequest > periodResolution,
+    'the banner should show the active term before requesting grade data');
+  assert.match(shsBranch, /catch \(error\) \{\s*ACADEMIC_PERIODS = \[\];\s*setShsSectionPeriodHeader\(\[\]\);/);
+  assert.match(shsBranch, /if \(sectionPeriodName\) sectionPeriodName\.textContent = workspace\.term\.name;/,
+    'the workspace term name should refresh the banner when returned');
+  const workspaceCatchStart = shsBranch.indexOf('} catch (error) {', workspaceRequest);
+  const workspaceCatchEnd = shsBranch.indexOf('\n            }', workspaceCatchStart);
+  assert.ok(workspaceCatchStart > workspaceRequest && workspaceCatchEnd > workspaceCatchStart);
+  assert.doesNotMatch(shsBranch.slice(workspaceCatchStart, workspaceCatchEnd), /sectionPeriodName/,
+    'a grade-workspace failure should leave the already resolved term in the banner');
 });
 
 test('teacher tabs begin loading independently and assignments are not nested in grade loading', () => {
@@ -649,7 +702,7 @@ test('notification links can open an active advisory section without a subject a
 test('student names open a section-scoped details modal with guardian contact details', () => {
   assert.match(sectionsSource, /data-student-details=/);
   assert.match(sectionsSource, /const row = event\.target\.closest\('tr\[data-student-id\]'\)/);
-  assert.match(sectionsSource, /openTeacherStudentDetails\(row\.dataset\.studentId, row\.querySelector\('\[data-student-details\]'\)\)/);
+  assert.match(sectionsSource, /openTeacherStudentDetails\(row\.dataset\.studentId, detailButton \|\| row\.querySelector\('\[data-student-details\]'\)\)/);
   assert.match(sectionsSource, /EDUGNAY_API\.getSectionStudentDetails\(CURRENT_SECTION_ID, studentId\)/);
   assert.match(sectionsSource, /teacherStudentDetailsModal/);
   assert.match(sectionsSource, /Parents and guardians/);
@@ -743,6 +796,29 @@ test('QR attendance quick action requires a teacher section and subject choice',
   assert.match(dashboardSource, /target\.searchParams\.set\('subjectId', assignment\.subjectId\)/);
   assert.match(dashboardSource, /target\.searchParams\.set\('tab', 'attendance'\)/);
   assert.match(dashboardSource, /target\.searchParams\.set\('action', 'qr'\)/);
+});
+
+test('opening QR attendance reads the session without creating a draft', async () => {
+  const prepare = extractSourceBetween(sectionsScript,
+    'async function prepareBackendQrAttendance() {', '\n    async function loadAttendanceForDate');
+  let reads = 0;
+  let starts = 0;
+  let synced;
+  const context = vm.createContext({
+    window: { EDUGNAY_API: {
+      getQrAttendance: async () => { reads++; return { session: null, students: [] }; },
+      startQrAttendance: async () => { starts++; }
+    } },
+    BACKEND_ATTENDANCE_CONTEXT: { sectionId: '8' },
+    CURRENT_SUBJECT_ID: '1', CURRENT_COMMUNICATION_COMPONENT_CODE: null,
+    syncBackendQrAttendance: data => { synced = data; }
+  });
+  vm.runInContext(prepare, context);
+  await context.prepareBackendQrAttendance();
+  assert.equal(reads, 1);
+  assert.equal(starts, 0);
+  assert.equal(synced.session, null);
+  assert.doesNotMatch(sectionsScript, /function startBackendQrSession\(/);
 });
 
 test('assignment modal follows the selected subject and saves its ID', () => {

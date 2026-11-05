@@ -47,7 +47,7 @@ function structuredActivityDetails(actionType, details = {}) {
     setIfMissing('announcementTitle', summary);
   } else if (actionType === 'calendar_notice_created') {
     setIfMissing('noticeTitle', summary);
-  } else if (['academic_year_created', 'academic_year_updated'].includes(actionType)) {
+  } else if (['academic_year_created', 'academic_year_updated', 'academic_year_closed', 'academic_year_activated'].includes(actionType)) {
     setIfMissing('schoolYearLabel', summary);
   } else if (actionType.startsWith('academic_term_')) {
     setIfMissing('termName', parts[0]);

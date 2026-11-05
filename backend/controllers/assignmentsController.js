@@ -257,8 +257,8 @@ async function getAssignmentForManagement(connection, user, assignmentId, lock =
 }
 
 function assertAssignmentYearWritable(assignment) {
-  if (assignment.academicYearStatus === 'archived') {
-    throw createError('Records from an archived school year are read-only.', 409);
+  if (['closed', 'archived'].includes(assignment.academicYearStatus)) {
+    throw createError('Records from a closed or archived school year are read-only.', 409);
   }
 }
 
@@ -632,7 +632,7 @@ async function getParentAssignmentActivity(req, res, next) {
         AND assignment_submissions.student_user_id = ?
       WHERE assignments.school_id = ? AND sections.school_id = ? AND sections.status = 'active'
         AND assignments.status = 'published' AND assignments.due_at IS NOT NULL
-        AND DATE(assignments.due_at) = ?
+        AND DATE(assignments.published_at) <= ? AND DATE(assignments.due_at) >= ?
         AND EXISTS (
           SELECT 1 FROM student_parent_links
           WHERE student_parent_links.school_id = assignments.school_id
@@ -640,7 +640,7 @@ async function getParentAssignmentActivity(req, res, next) {
             AND student_parent_links.parent_user_id = ?
         )
       ORDER BY subjects.name, assignments.title`,
-      [studentId, studentId, req.user.schoolId, req.user.schoolId, date, req.user.id]
+      [studentId, studentId, req.user.schoolId, req.user.schoolId, date, date, req.user.id]
     );
     let electiveRows = [];
     if (process.env.SHS_SELECTION_ENABLED === 'true') {
@@ -660,13 +660,14 @@ async function getParentAssignmentActivity(req, res, next) {
            AND (em.withdrawn_at IS NULL OR a.created_at <= em.withdrawn_at)
          LEFT JOIN assignment_submissions s ON s.school_id = a.school_id AND s.assignment_id = a.id
            AND s.student_user_id = ?
-         WHERE a.school_id = ? AND a.status = 'published' AND a.due_at IS NOT NULL AND DATE(a.due_at) = ?
+         WHERE a.school_id = ? AND a.status = 'published' AND a.due_at IS NOT NULL
+           AND DATE(a.published_at) <= ? AND DATE(a.due_at) >= ?
            AND ec.is_active = TRUE AND o.is_active = TRUE
            AND ${classHasStartedSql('ec.id', 'ec.school_id')}
            AND EXISTS (SELECT 1 FROM student_parent_links pl WHERE pl.school_id = a.school_id
              AND pl.student_user_id = em.student_user_id AND pl.parent_user_id = ?)
          ORDER BY o.subject_name, a.title`,
-        [studentId, studentId, req.user.schoolId, date, req.user.id]);
+        [studentId, studentId, req.user.schoolId, date, date, req.user.id]);
     }
 
     const assignments = rows.map(row => {
@@ -790,7 +791,15 @@ async function createAssignment(req, res, next) {
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
-    const [result] = await connection.execute('INSERT INTO assignments (school_id, section_id, subject_id, communication_component_code, academic_term_id, grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title, description, due_at, max_score, online_submission_enabled, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, description, dueAt, maxScore, onlineSubmissionEnabled, status]);
+    const [result] = await connection.execute(
+      `INSERT INTO assignments (school_id, section_id, subject_id, communication_component_code, academic_term_id,
+        grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title,
+        description, due_at, max_score, online_submission_enabled, status, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
+      [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId,
+        subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, description, dueAt, maxScore,
+        onlineSubmissionEnabled, status, status]);
     if (isGraded) {
       const [item] = await connection.execute(
         `INSERT INTO grading_items (school_id, section_id, subject_id, communication_component_code, academic_term_id,
@@ -847,9 +856,11 @@ async function updateAssignment(req, res, next) {
       if (req.body.grade && current.gradingItemId) throw createError('This assignment already has a score component.', 409);
       if (req.body.grade === false && current.gradingItemId) throw createError('A linked score component cannot be removed here.', 409);
       await connection.execute(
-        `UPDATE assignments SET title = ?, description = ?, due_at = ?, online_submission_enabled = ?, status = ?
+        `UPDATE assignments SET published_at = CASE
+           WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
+         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, status = ?
          WHERE id = ? AND school_id = ? AND shs_elective_class_id = ?`,
-        [title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId, current.electiveClassId]);
+        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId, current.electiveClassId]);
       if (req.body.grade) await createLinkedAssignmentItem(connection, req, current.electiveClassId, assignmentId,
         { ...req.body.grade, title });
       const [updatedRows] = await connection.execute(
@@ -918,7 +929,14 @@ async function updateAssignment(req, res, next) {
         if (published.length) throw createError('Published grades prevent changing this assignment’s maximum score.', 409);
       }
     }
-    await connection.execute('UPDATE assignments SET academic_term_id=?, grading_category_id=?, subject_grading_component_id=?, subject_grading_exam_part_id=?, title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, status=? WHERE id=? AND school_id=?', [academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, title, description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId]);
+    await connection.execute(
+      `UPDATE assignments SET published_at = CASE
+         WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
+       academic_term_id=?, grading_category_id=?, subject_grading_component_id=?, subject_grading_exam_part_id=?,
+       title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, status=?
+       WHERE id=? AND school_id=?`,
+      [status, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, title,
+        description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId]);
     if (current.gradingItemId) await connection.execute(
       'UPDATE grading_items SET title = ?, max_score = ? WHERE id = ? AND school_id = ?',
       [title, maxScore, current.gradingItemId, req.user.schoolId]
@@ -1126,9 +1144,11 @@ async function createElectiveAssignment(req, res, next) {
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const [result] = await connection.execute(
       `INSERT INTO assignments (school_id, shs_elective_class_id, academic_term_id, teacher_user_id, title, description,
-        due_at, max_score, online_submission_enabled, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-      [electiveClass.schoolId, electiveClass.id, activeTerms[0].id, req.user.id, title, description, dueAt, onlineSubmissionEnabled, status]);
+        due_at, max_score, online_submission_enabled, status, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?,
+        CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
+      [electiveClass.schoolId, electiveClass.id, activeTerms[0].id, req.user.id, title, description, dueAt,
+        onlineSubmissionEnabled, status, status]);
     if (req.body.grade) await createLinkedAssignmentItem(connection, req, electiveClass.id, result.insertId,
       { ...req.body.grade, title });
     const [rows] = await connection.execute(

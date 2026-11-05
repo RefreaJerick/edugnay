@@ -2,11 +2,14 @@
 
 const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
 const EDUGNAY_SCHOOL_ACCENT_CACHE_KEY = 'edugnay_school_accent_v1';
+const EDUGNAY_SCHOOL_BRAND_CACHE_KEY = 'edugnay_school_brand_v1';
 const EDUGNAY_TEACHER_NAV_CACHE_PREFIX = 'edugnay_teacher_sidebar_v1:';
 const EDUGNAY_STUDENT_NAV_CACHE_PREFIX = 'edugnay_student_sidebar_v1:';
 const EDUGNAY_PARENT_NAV_CACHE_PREFIX = 'edugnay_parent_sidebar_v1:';
 const EDUGNAY_PROFILE_DISPLAY_KEY = 'edugnay_profile_display_v1';
 const EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY = 'edugnay_student_profile_display_v1';
+let cachedSchoolBrandObserver = null;
+let schoolBrandCacheSuppressed = false;
 window.EDUGNAY_TEACHER_NAV_CACHE_PREFIX = EDUGNAY_TEACHER_NAV_CACHE_PREFIX;
 window.EDUGNAY_STUDENT_NAV_CACHE_PREFIX = EDUGNAY_STUDENT_NAV_CACHE_PREFIX;
 window.EDUGNAY_PARENT_NAV_CACHE_PREFIX = EDUGNAY_PARENT_NAV_CACHE_PREFIX;
@@ -66,7 +69,12 @@ function clearProfileDisplaySnapshot() {
     sessionStorage.removeItem(EDUGNAY_PROFILE_DISPLAY_KEY);
     sessionStorage.removeItem(EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY);
     sessionStorage.removeItem(EDUGNAY_SCHOOL_ACCENT_CACHE_KEY);
+    sessionStorage.removeItem(EDUGNAY_SCHOOL_BRAND_CACHE_KEY);
   } catch {}
+  cachedSchoolBrandObserver?.disconnect();
+  cachedSchoolBrandObserver = null;
+  schoolBrandCacheSuppressed = true;
+  document.querySelectorAll('.brand-sub:not([data-platform-brand])').forEach(element => { element.textContent = ''; });
   cachedProfileDisplaySnapshot = null;
 }
 
@@ -120,6 +128,72 @@ if (cachedProfileDisplaySnapshot && portalRoleForCurrentPage
   clearProfileDisplaySnapshot();
 }
 
+function isSchoolPortalRole(role) {
+  return role === 'school_admin' || role === 'teacher' || role === 'student' || role === 'parent';
+}
+
+function readSchoolBrandSnapshot() {
+  if (!isSchoolPortalRole(portalRoleForCurrentPage) || !cachedProfileDisplaySnapshot
+    || cachedProfileDisplaySnapshot.role !== portalRoleForCurrentPage
+    || !cachedProfileDisplaySnapshot.schoolId) return null;
+  try {
+    const snapshot = JSON.parse(sessionStorage.getItem(EDUGNAY_SCHOOL_BRAND_CACHE_KEY) || 'null');
+    if (snapshot?.version !== 1 || snapshot.role !== portalRoleForCurrentPage
+      || String(snapshot.schoolId) !== String(cachedProfileDisplaySnapshot.schoolId)
+      || typeof snapshot.shortName !== 'string' || !snapshot.shortName.trim()) return null;
+    return snapshot;
+  } catch { return null; }
+}
+
+function applyCachedSchoolBrandToShell(snapshot = readSchoolBrandSnapshot()) {
+  if (!snapshot || schoolBrandCacheSuppressed) return false;
+  const brandLabels = document.querySelectorAll('.brand-sub:not([data-platform-brand])');
+  if (!brandLabels.length) return false;
+  brandLabels.forEach(element => { element.textContent = snapshot.shortName; });
+  return true;
+}
+
+function observeSchoolBrandForPrepaint() {
+  if (!isSchoolPortalRole(portalRoleForCurrentPage)) return;
+  if (applyCachedSchoolBrandToShell()) return;
+  if (typeof MutationObserver === 'function') {
+    cachedSchoolBrandObserver = new MutationObserver(() => {
+      if (applyCachedSchoolBrandToShell()) {
+        cachedSchoolBrandObserver?.disconnect();
+        cachedSchoolBrandObserver = null;
+      }
+    });
+    cachedSchoolBrandObserver.observe(document.documentElement, { childList: true, subtree: true });
+    document.addEventListener('DOMContentLoaded', () => {
+      applyCachedSchoolBrandToShell();
+      cachedSchoolBrandObserver?.disconnect();
+      cachedSchoolBrandObserver = null;
+    }, { once: true });
+    return;
+  }
+  document.addEventListener('DOMContentLoaded', () => applyCachedSchoolBrandToShell(), { once: true });
+}
+
+function cacheSchoolBrandSnapshot(school) {
+  if (!isSchoolPortalRole(portalRoleForCurrentPage) || schoolBrandCacheSuppressed || !school?.id) return;
+  const shortName = String(school.shortName || '').trim();
+  document.querySelectorAll('.brand-sub:not([data-platform-brand])').forEach(element => { element.textContent = shortName; });
+  try {
+    if (!shortName) {
+      sessionStorage.removeItem(EDUGNAY_SCHOOL_BRAND_CACHE_KEY);
+      return;
+    }
+    sessionStorage.setItem(EDUGNAY_SCHOOL_BRAND_CACHE_KEY, JSON.stringify({
+      version: 1,
+      role: portalRoleForCurrentPage,
+      schoolId: String(school.id),
+      shortName
+    }));
+  } catch { /* A cache failure must not block school context. */ }
+}
+
+observeSchoolBrandForPrepaint();
+
 function saveProfileDisplaySnapshot(session) {
   const snapshot = createProfileDisplaySnapshot(session);
   if (!snapshot) {
@@ -134,6 +208,7 @@ function saveProfileDisplaySnapshot(session) {
     sessionStorage.removeItem(EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY);
   } catch {}
   cachedProfileDisplaySnapshot = snapshot;
+  schoolBrandCacheSuppressed = false;
 }
 
 function restoreProfileChip() {
@@ -598,6 +673,16 @@ async function updateApiAcademicYear(yearId, values = {}) {
     method: 'PATCH',
     body: JSON.stringify(values)
   });
+  return normalizeApiAcademicYear(response?.academicYear);
+}
+
+async function closeApiAcademicYear(yearId) {
+  const response = await requestApi(`/academic-years/${Number(yearId)}/close`, { method: 'POST' });
+  return normalizeApiAcademicYear(response?.academicYear);
+}
+
+async function activateApiAcademicYear(yearId) {
+  const response = await requestApi(`/academic-years/${Number(yearId)}/activate`, { method: 'POST' });
   return normalizeApiAcademicYear(response?.academicYear);
 }
 
@@ -1610,11 +1695,13 @@ async function getApiQrAttendance(sectionId, subjectId, communicationComponentCo
   return normalizeApiAttendanceData(response);
 }
 
-async function startApiQrAttendance(sectionId, subjectId, communicationComponentCode = '') {
+async function startApiQrAttendance(sectionId, subjectId, communicationComponentCode = '', qrToken) {
   const params = new URLSearchParams();
   if (communicationComponentCode) params.set('communicationComponentCode', communicationComponentCode);
   const query = params.size ? `?${params}` : '';
-  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/start${query}`, { method: 'POST' });
+  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/start${query}`, {
+    method: 'POST', body: JSON.stringify({ qrToken })
+  });
   return normalizeApiAttendanceData(response);
 }
 
@@ -2123,6 +2210,7 @@ window.EDUGNAY_API = {
   clearApprovedShsSelection: requestId => requestApi(`/shs-selection/requests/${encodeURIComponent(requestId)}/clear`, { method: 'POST' }),
   activateShsOffering: values => requestApi('/shs-program/offerings', { method: 'POST', body: JSON.stringify(values) }),
   setShsOfferingActive: (offeringId, isActive) => requestApi(`/shs-program/offerings/${encodeURIComponent(offeringId)}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
+  deleteShsOffering: offeringId => requestApi(`/shs-program/offerings/${encodeURIComponent(offeringId)}`, { method: 'DELETE' }),
   createShsClass: values => requestApi('/shs-program/classes', { method: 'POST', body: JSON.stringify(values) }),
   updateShsClass: (classId, values) => requestApi(`/shs-program/classes/${encodeURIComponent(classId)}`, { method: 'PATCH', body: JSON.stringify(values) }),
   deleteShsClass: classId => requestApi(`/shs-program/classes/${encodeURIComponent(classId)}`, { method: 'DELETE' }),
@@ -2166,6 +2254,8 @@ window.EDUGNAY_API = {
   getAcademicTerms: getApiAcademicTerms,
   createAcademicYear: createApiAcademicYear,
   updateAcademicYear: updateApiAcademicYear,
+  closeAcademicYear: closeApiAcademicYear,
+  activateAcademicYear: activateApiAcademicYear,
   createAcademicTerm: createApiAcademicTerm,
   updateAcademicTerm: updateApiAcademicTerm,
   activateAcademicTerm: activateApiAcademicTerm,
@@ -3717,8 +3807,10 @@ function applyCurrentDateToGradingBanners() {
     getShsElectiveAttendanceHistory: classId => requestApi(`/shs-teaching/classes/${Number(classId)}/attendance/history`),
     getShsElectiveQrAttendance: async classId => normalizeApiAttendanceData(await requestApi(
       `/shs-teaching/classes/${Number(classId)}/qr-attendance`)),
-    startShsElectiveQrAttendance: async classId => normalizeApiAttendanceData(await requestApi(
-      `/shs-teaching/classes/${Number(classId)}/qr-attendance/start`, { method: 'POST' })),
+    startShsElectiveQrAttendance: async (classId, qrToken) => normalizeApiAttendanceData(await requestApi(
+      `/shs-teaching/classes/${Number(classId)}/qr-attendance/start`, {
+        method: 'POST', body: JSON.stringify({ qrToken })
+      })),
     scanShsElectiveQrAttendance: (sessionId, qrToken) => requestApi(
       `/shs-teaching/qr-sessions/${Number(sessionId)}/scan`, { method: 'POST', body: JSON.stringify({ qrToken }) }),
     confirmShsElectiveQrAttendance: async (sessionId, records = []) => normalizeApiAttendanceData(await requestApi(
@@ -4294,16 +4386,14 @@ function applyActiveSchoolToShell() {
   const config = window.EDUGNAY_CONFIG;
   const school = window.EDUGNAY_API_SCHOOL_CONTEXT || config.getActiveSchool();
   const brandLabels = document.querySelectorAll('.brand-sub:not([data-platform-brand])');
-  if (!school) {
-    brandLabels.forEach(element => { element.textContent = ''; });
-    return;
-  }
+  if (!school) return;
   const typeLabel = config.getSchoolTypeInfo(school.schoolLevels).label;
   const schoolYear = String(school.schoolYear || '').trim();
 
   brandLabels.forEach(element => {
-    element.textContent = String(school.shortName || '').trim();
+    element.textContent = schoolBrandCacheSuppressed ? '' : String(school.shortName || '').trim();
   });
+  cacheSchoolBrandSnapshot(school);
   document.querySelectorAll('[data-school-name]').forEach(element => {
     element.textContent = school.name;
   });
@@ -4316,8 +4406,8 @@ function applyActiveSchoolToShell() {
     element.textContent = schoolYear;
   });
   document.querySelectorAll('[data-active-academic-period]').forEach(element => {
-    const schoolLevel = element.dataset.schoolLevel || school.activeDivision;
-    const activePeriod = config.getCurrentAcademicPeriod(school.id, schoolLevel);
+    const schoolLevel = String(element.dataset.schoolLevel || '').trim();
+    const activePeriod = schoolLevel ? config.getCurrentAcademicPeriod(school.id, schoolLevel) : null;
     const schoolYearSuffix = schoolYear ? ` · S.Y. ${schoolYear}` : '';
     const activePeriodLabel = activePeriod
       ? `${activePeriod.name}${schoolYearSuffix}`

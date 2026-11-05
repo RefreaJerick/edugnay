@@ -499,6 +499,29 @@
   gap: 8px;
 }
 
+.term-year-lifecycle {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 10px 0 0 16px;
+}
+
+.term-year-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--theme-accent-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.term-year-link:hover:not(:disabled) { text-decoration: underline; }
+.term-year-link:disabled { color: var(--gray-400); cursor: not-allowed; }
+.term-year-lifecycle small { color: var(--gray-500); font-size: 11px; }
+
 .term-reminder {
   margin-top: 8px;
 }

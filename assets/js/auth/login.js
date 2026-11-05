@@ -77,7 +77,7 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
 
     async function requestPasswordReset(event) {
       event.preventDefault();
-      const form = event.currentTarget;
+      const form = event.target;
       const personalEmailInput = document.getElementById('resetEmailInput');
       const personalEmail = personalEmailInput.value.trim();
       const submitButton = form.querySelector('button[type="submit"]');
@@ -121,7 +121,7 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
 
     async function completePasswordReset(event) {
       event.preventDefault();
-      const form = event.currentTarget;
+      const form = event.target;
       const password = document.getElementById('newPasswordInput').value;
       const confirmation = document.getElementById('confirmPasswordInput').value;
       const submitButton = form.querySelector('button[type="submit"]');
@@ -171,7 +171,7 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
 
     function clearPortalCachesForSignIn() {
       const prefixes = ['edugnay_teacher_sidebar_v1:', 'edugnay_student_sidebar_v1:', 'edugnay_parent_sidebar_v1:',
-        'edugnay_profile_display_v1', 'edugnay_student_profile_display_v1', 'edugnay_school_accent_v1'];
+        'edugnay_profile_display_v1', 'edugnay_student_profile_display_v1', 'edugnay_school_accent_v1', 'edugnay_school_brand_v1'];
       try {
         for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
           const key = sessionStorage.key(index);

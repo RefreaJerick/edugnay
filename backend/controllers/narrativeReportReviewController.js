@@ -20,7 +20,7 @@ async function lockAdviserReport(connection, req) {
       reports.ai_follow_up_suggestion AS followUpSuggestion,
       reports.student_user_id AS studentId, reports.section_id AS sectionId,
       reports.released_at AS releasedAt, reports.pending_correction AS pendingCorrection,
-      reports.report_week_start_date AS weekStartDate
+      reports.report_week_start_date AS weekStartDate, reports.report_period_key AS periodKey
     FROM narrative_reports AS reports
     INNER JOIN sections ON sections.id = reports.section_id AND sections.school_id = reports.school_id
     INNER JOIN school_portal_features AS features ON features.school_id = reports.school_id
@@ -83,6 +83,52 @@ async function saveReviewDraft(req, database = getDatabase()) {
     return { reportId: String(report.id), status: 'draft' };
   } catch (error) {
     if (transactionStarted) await connection.rollback();
+    throw error;
+  } finally { connection.release(); }
+}
+
+async function deleteUnreleasedDraft(req, database = getDatabase()) {
+  const sectionId = Number(req.query?.sectionId);
+  const startDate = req.query?.startDate;
+  if (!Number.isSafeInteger(sectionId) || sectionId < 1 ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(String(startDate))) {
+    throw createError('Select a valid advisory section and report week.');
+  }
+  const connection = await database.getConnection();
+  let transactionStarted = false;
+  try {
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const report = await lockAdviserReport(connection, req);
+    if (Number(report.sectionId) !== sectionId || report.periodKey !== `week:${startDate}`) {
+      throw createError('This report is not in the selected section and week.', 409);
+    }
+    if (report.status !== 'draft' || report.releasedAt || report.pendingCorrection) {
+      throw createError('Only an unreleased draft can be deleted.', 409);
+    }
+    const [[history]] = await connection.execute(
+      `SELECT
+        EXISTS(SELECT 1 FROM narrative_report_releases WHERE narrative_report_id = ?) AS hasRelease,
+        EXISTS(SELECT 1 FROM report_reopen_requests WHERE narrative_report_id = ?) AS hasReopenRequest`,
+      [report.id, report.id]
+    );
+    if (history.hasRelease || history.hasReopenRequest) {
+      throw createError('This report has protected history and cannot be deleted.', 409);
+    }
+    const [result] = await connection.execute(
+      `DELETE FROM narrative_reports WHERE id = ? AND school_id = ? AND section_id = ?
+        AND report_period_key = ? AND report_status = 'draft'
+        AND released_at IS NULL AND pending_correction = FALSE`,
+      [report.id, Number(req.user.schoolId), sectionId, `week:${startDate}`]
+    );
+    if (result.affectedRows !== 1) throw createError('This draft changed. Reload and try again.', 409);
+    await writeAuditLog(connection, req, 'narrative_report_draft_deleted', 'narrative_reports', report.id,
+      { sectionId, studentId: Number(report.studentId), reportWeekStartDate: startDate });
+    await connection.commit();
+    transactionStarted = false;
+  } catch (error) {
+    if (transactionStarted) await connection.rollback();
+    if (error.errno === 1451) throw createError('This report has protected history and cannot be deleted.', 409);
     throw error;
   } finally { connection.release(); }
 }
@@ -248,6 +294,14 @@ async function saveReview(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function deleteDraft(req, res, next) {
+  try {
+    await deleteUnreleasedDraft(req);
+    res.set('Cache-Control', 'no-store');
+    res.status(204).end();
+  } catch (error) { next(error); }
+}
+
 async function confirmReview(req, res, next) {
   try {
     const result = await confirmDraft(req);
@@ -361,6 +415,6 @@ async function listSchoolReleaseHistory(req, res, next) {
 }
 
 module.exports = {
-  saveReview, confirmReview, releaseReview, reopenReview, getReleaseHistory, listSchoolReleaseHistory,
-  saveReviewDraft, confirmDraft, reopenConfirmedReport, releaseConfirmedReport, readReleaseHistory, reviewValues
+  saveReview, deleteDraft, confirmReview, releaseReview, reopenReview, getReleaseHistory, listSchoolReleaseHistory,
+  saveReviewDraft, deleteUnreleasedDraft, confirmDraft, reopenConfirmedReport, releaseConfirmedReport, readReleaseHistory, reviewValues
 };

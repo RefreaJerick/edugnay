@@ -54,12 +54,12 @@ INSERT INTO assignments (
   school_id, section_id, subject_id, academic_term_id, grading_category_id,
   subject_grading_component_id, subject_grading_exam_part_id, grading_item_id,
   teacher_user_id, title, description, due_at, max_score,
-  online_submission_enabled, status
+  online_submission_enabled, status, published_at
 )
 SELECT 26, 15, 88, 39, NULL, NULL, NULL, NULL, 99,
   'Synthetic QA Narrative Report Evidence - 2026-10-19',
   'Synthetic assignment fixture for narrative report generation testing.',
-  '2026-10-19 23:59:00', NULL, 0, 'published'
+  '2026-10-19 23:59:00', NULL, 0, 'published', '2026-10-19 08:00:00'
 FROM sections AS section
 JOIN section_teachers AS teacher_subject ON teacher_subject.school_id = section.school_id
   AND teacher_subject.section_id = section.id AND teacher_subject.teacher_user_id = 99

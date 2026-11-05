@@ -12,6 +12,8 @@ const schoolAdminOnly = [requireAuth, requireSchoolAdmin];
 router.get('/academic-years', ...schoolAdminOnly, controller.listAcademicYears);
 router.post('/academic-years', ...schoolAdminOnly, controller.createAcademicYear);
 router.patch('/academic-years/:yearId', ...schoolAdminOnly, controller.updateAcademicYear);
+router.post('/academic-years/:yearId/close', ...schoolAdminOnly, controller.closeAcademicYear);
+router.post('/academic-years/:yearId/activate', ...schoolAdminOnly, controller.activateAcademicYear);
 router.get('/academic-terms', requireAuth, requireSchoolUser, controller.listAcademicTerms);
 router.post('/academic-terms', ...schoolAdminOnly, controller.createAcademicTerm);
 router.get('/academic-terms/:termId', ...schoolAdminOnly, controller.getAcademicTerm);

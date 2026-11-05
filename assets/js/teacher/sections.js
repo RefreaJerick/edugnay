@@ -1160,7 +1160,7 @@ lucide.createIcons();
         const detailButton = event.target.closest('[data-student-details]');
         const otherControl = event.target.closest('a, button, input, select, textarea');
         if (otherControl && otherControl !== detailButton) return;
-        openTeacherStudentDetails(row.dataset.studentId, row.querySelector('[data-student-details]'));
+        openTeacherStudentDetails(row.dataset.studentId, detailButton || row.querySelector('[data-student-details]'));
       } : null;
       head.innerHTML = columns.map(column => {
         if (column.key !== 'grade') return `<th>${window.EDUGNAY_CONFIG.escapeHtml(column.label || '')}</th>`;
@@ -1185,8 +1185,11 @@ lucide.createIcons();
             const nameContent = details && student.id
               ? `<button class="student-name-button" type="button" data-student-details="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" aria-haspopup="dialog" aria-label="View details for ${name}">${name}</button>`
               : name;
+            const mobileDetailsArrow = details && student.id
+              ? `<button class="student-roster-arrow" type="button" data-student-details="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" aria-haspopup="dialog" aria-label="View details for ${name}"><i data-lucide="chevron-right" aria-hidden="true" style="width:16px;height:16px;"></i></button>`
+              : '';
             const mobileEmail = window.EDUGNAY_CONFIG.escapeHtml(student.schoolEmail || '');
-            return `<td data-column="${columnKey}"><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student', size: 'sm' })}<div class="student-roster-info"><div class="student-name">${nameContent}</div><div class="student-roster-mobile-email" aria-hidden="true">${mobileEmail}</div></div></div></td>`;
+            return `<td data-column="${columnKey}"><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student', size: 'sm' })}<div class="student-roster-info"><div class="student-name">${nameContent}</div><div class="student-roster-mobile-email" aria-hidden="true">${mobileEmail}</div></div>${mobileDetailsArrow}</div></td>`;
           }
           const rendered = typeof column.render === 'function' ? column.render(student) : student[column.key];
           return `<td data-column="${columnKey}">${rendered == null ? '' : typeof column.render === 'function' ? rendered : window.EDUGNAY_CONFIG.escapeHtml(rendered)}</td>`;
@@ -1649,6 +1652,15 @@ lucide.createIcons();
 
     function academicPeriodName(periodId) {
       return ACADEMIC_PERIODS.find(period => period.id === periodId)?.name || 'Grading period';
+    }
+
+    function setShsSectionPeriodHeader(terms) {
+      const termList = Array.isArray(terms) ? terms : [];
+      const resolvedTerm = termList.find(term => term.status === 'active') || termList[0] || null;
+      ACTIVE_ACADEMIC_PERIOD_ID = String(resolvedTerm?.id || '');
+      const periodName = ACTIVE_ACADEMIC_PERIOD_ID ? String(resolvedTerm?.name || '').trim() : '';
+      const header = document.getElementById('sectionPeriodName');
+      if (header) header.textContent = periodName || 'No active grading period';
     }
 
     function isReopenBackendMode() {
@@ -2808,15 +2820,8 @@ lucide.createIcons();
       if (existing?.session?.status === 'confirmed') {
         throw new Error('Today\'s attendance has already been confirmed.');
       }
-      const data = existing?.session ? existing : await window.EDUGNAY_API.startQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, CURRENT_COMMUNICATION_COMPONENT_CODE);
-      syncBackendQrAttendance(data);
-      return data;
-    }
-
-    async function startBackendQrSession() {
-      if (!isBackendAttendanceMode() || qrAttendanceContext?.sessionId) return;
-      const data = await window.EDUGNAY_API.startQrAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, CURRENT_COMMUNICATION_COMPONENT_CODE);
-      syncBackendQrAttendance(data);
+      syncBackendQrAttendance(existing);
+      return existing;
     }
 
     async function loadAttendanceForDate(dateStr) {
@@ -2845,7 +2850,6 @@ lucide.createIcons();
       const isPast = dateStr < APP_TODAY;
       const dateData = BACKEND_ATTENDANCE_BY_DATE.get(dateStr);
       const locked = isPast && dateData?.canEdit !== true;
-      const qrDraft = dateData?.session?.method === 'qr' && dateData.session.status === 'draft';
       const attendanceUnavailable = isBackendAttendanceMode() && (!CURRENT_SUBJECT_ASSIGNMENT || Boolean(BACKEND_ATTENDANCE_ERROR));
       const lockBanner = document.getElementById('attLockBanner');
       const lockTitle = lockBanner.querySelector('.publish-info-title');
@@ -2875,7 +2879,7 @@ lucide.createIcons();
         group.querySelectorAll('.att-btn').forEach(b => {
           b.classList.remove('selected');
           b.setAttribute('aria-pressed', 'false');
-          b.disabled = locked || qrDraft || attendanceUnavailable;
+          b.disabled = locked || attendanceUnavailable;
         });
         const match = status ? group.querySelector('.att-btn.' + status) : null;
         if (match) {
@@ -2884,12 +2888,13 @@ lucide.createIcons();
         }
 
         remarksInput.value = recordByStudent[studentId]?.remark || '';
-        remarksInput.disabled = locked || qrDraft || attendanceUnavailable;
+        remarksInput.disabled = locked || attendanceUnavailable;
       });
 
-      document.querySelector('#content-attendance .top-btn.secondary:not(#qrAttendanceButton)').disabled = locked || qrDraft || attendanceUnavailable;
-      document.querySelector('#content-attendance .top-btn.primary').disabled = locked || qrDraft || attendanceUnavailable;
-      document.getElementById('qrAttendanceButton').disabled = dateStr !== APP_TODAY || attendanceUnavailable || !CURRENT_SUBJECT_ASSIGNMENT;
+      document.querySelector('#content-attendance .top-btn.secondary:not(#qrAttendanceButton)').disabled = locked || attendanceUnavailable;
+      document.querySelector('#content-attendance .top-btn.primary').disabled = locked || attendanceUnavailable;
+      document.getElementById('qrAttendanceButton').disabled = dateStr !== APP_TODAY || attendanceUnavailable ||
+        !CURRENT_SUBJECT_ASSIGNMENT || dateData?.session?.status === 'confirmed';
 
       updateAttCount();
     }
@@ -2931,7 +2936,16 @@ lucide.createIcons();
         APP_TODAY = qrAttendanceContext.date;
         dateInput.value = APP_TODAY;
         dateInput.max = APP_TODAY;
-        await loadAttendanceForDate(APP_TODAY);
+        qrAttendanceScans.forEach(scan => {
+          const row = document.querySelector(`#attTbody tr[data-student-id="${scan.studentId}"]`);
+          if (!row || row.dataset.manualChoice) return;
+          const button = row.querySelector('.att-btn.P');
+          row.querySelectorAll('.att-btn').forEach(item => {
+            item.classList.toggle('selected', item === button);
+            item.setAttribute('aria-pressed', String(item === button));
+          });
+        });
+        updateAttCount();
       } catch (error) {
         alert(error?.message || 'QR attendance could not be started.');
         qrAttendanceContext = null;
@@ -3056,6 +3070,10 @@ lucide.createIcons();
     }
 
     function openQrAttendanceFinalReview() {
+      if (!qrAttendanceContext?.sessionId) {
+        setQrScannerStatus('Scan at least one student before reviewing attendance.', 'error');
+        return;
+      }
       stopQrScanner();
       const scansByStudent = Object.fromEntries(qrAttendanceScans.map(scan => [scan.studentId, scan]));
       const attendanceStudents = getAttendanceStudents();
@@ -3067,7 +3085,11 @@ lucide.createIcons();
         teacherId: qrAttendanceContext.teacherId,
         studentId: student.id,
         date: qrAttendanceContext.date,
-        status: scansByStudent[student.id] ? 'present' : 'pending',
+        status: (() => {
+          const row = document.querySelector(`#attTbody tr[data-student-id="${student.id}"]`);
+          const manual = row?.dataset.manualChoice;
+          return ATTENDANCE_STATUS_BY_CODE[manual] || (scansByStudent[student.id] ? 'present' : 'pending');
+        })(),
         scannedAt: scansByStudent[student.id]?.scannedAt || null,
         source: 'qr'
       }));
@@ -3085,6 +3107,10 @@ lucide.createIcons();
         onChange: (studentId, status) => {
           const record = qrAttendanceDraft.find(item => String(item.studentId) === String(studentId));
           if (record) record.status = status;
+          const row = document.querySelector(`#attTbody tr[data-student-id="${studentId}"]`);
+          const code = ATTENDANCE_CODE_BY_STATUS[status];
+          const button = code && row?.querySelector(`.att-btn.${code}`);
+          if (button) setAtt(button, code);
         }
       });
     }
@@ -3174,14 +3200,6 @@ lucide.createIcons();
 
     async function startQrScanner() {
       if (qrScannerActive) return;
-      if (isBackendAttendanceMode() && !qrAttendanceContext?.sessionId) {
-        try {
-          await startBackendQrSession();
-        } catch (error) {
-          setQrScannerStatus(error?.message || 'QR attendance could not be started.', 'error');
-          return;
-        }
-      }
       if (!navigator.mediaDevices?.getUserMedia) {
         setQrScannerStatus('Camera access is not supported in this browser or connection.', 'error');
         return;
@@ -3264,25 +3282,37 @@ lucide.createIcons();
     }
 
     async function handleQrAttendanceScan(rawValue) {
-      if (!qrAttendanceContext?.sessionId) {
-        setQrScannerStatus('Start the attendance session before scanning.', 'error');
-        playQrScannerTone('error', rawValue);
-        return;
-      }
-
       try {
-        const result = await window.EDUGNAY_API.scanQrAttendance(qrAttendanceContext.sessionId, rawValue);
+        let result;
+        if (qrAttendanceContext?.sessionId) {
+          result = await window.EDUGNAY_API.scanQrAttendance(qrAttendanceContext.sessionId, rawValue);
+        } else {
+          const data = await window.EDUGNAY_API.startQrAttendance(
+            BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID,
+            CURRENT_COMMUNICATION_COMPONENT_CODE, rawValue);
+          syncBackendQrAttendance(data);
+          result = data.scanResult;
+        }
         if (result?.duplicate) {
           const duplicateName = result.student?.displayName || 'This student';
           setQrScannerStatus(`${duplicateName} has already been scanned.`, 'active');
           playQrScannerTone('error', rawValue);
         } else if (result?.scanned && result.student) {
           const student = result.student;
-          qrAttendanceScans.push({
-            studentId: String(student.id),
-            status: 'present',
-            scannedAt: new Date().toISOString()
-          });
+          if (!qrAttendanceScans.some(scan => String(scan.studentId) === String(student.id))) {
+            qrAttendanceScans.push({
+              studentId: String(student.id), status: 'present', scannedAt: new Date().toISOString()
+            });
+          }
+          const row = document.querySelector(`#attTbody tr[data-student-id="${student.id}"]`);
+          if (row && !row.dataset.manualChoice) {
+            const button = row.querySelector('.att-btn.P');
+            row.querySelectorAll('.att-btn').forEach(item => {
+              item.classList.toggle('selected', item === button);
+              item.setAttribute('aria-pressed', String(item === button));
+            });
+            updateAttCount();
+          }
           if (BACKEND_QR_ATTENDANCE_DATA?.students) {
             const scannedStudent = BACKEND_QR_ATTENDANCE_DATA.students.find(item => String(item.id) === String(student.id));
             if (scannedStudent) scannedStudent.isScanned = true;
@@ -3336,6 +3366,7 @@ lucide.createIcons();
 
     function setAtt(btn, status) {
       const group = btn.closest('.att-btn-group');
+      group.closest('tr[data-student-id]').dataset.manualChoice = status;
       group.querySelectorAll('.att-btn').forEach(b => {
         b.classList.remove('selected');
         b.setAttribute('aria-pressed', 'false');
@@ -3359,6 +3390,7 @@ lucide.createIcons();
 
     function markAll(status) {
       document.querySelectorAll('#attTbody .att-btn-group').forEach(group => {
+        group.closest('tr[data-student-id]').dataset.manualChoice = status;
         group.querySelectorAll('.att-btn').forEach(b => {
           b.classList.remove('selected');
           b.setAttribute('aria-pressed', 'false');
@@ -3412,6 +3444,7 @@ lucide.createIcons();
         saved = true;
         BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
         await loadAttendanceForDate(date);
+        rows.forEach(row => { delete row.dataset.manualChoice; });
         showAppToast('Attendance saved.');
       } catch (error) {
         showAppToast(saved ? `Attendance was saved, but the view could not refresh: ${error?.message || 'Reload the page.'}` : error?.message || 'Attendance could not be saved. Please try again.', saved ? 'info' : 'error');
@@ -4437,10 +4470,10 @@ lucide.createIcons();
               id: String(term.id), name: term.name,
               status: term.status, sequenceNumber: term.sequenceNumber
             }));
-            ACTIVE_ACADEMIC_PERIOD_ID = String(terms.find(term => term.status === 'active')?.id || terms[0]?.id || '');
+            setShsSectionPeriodHeader(terms);
           } catch (error) {
             ACADEMIC_PERIODS = [];
-            ACTIVE_ACADEMIC_PERIOD_ID = '';
+            setShsSectionPeriodHeader([]);
             console.warn('SHS grading periods could not be loaded for the section workspace.', error.message);
           }
           if (ACTIVE_ACADEMIC_PERIOD_ID) {
@@ -4459,7 +4492,11 @@ lucide.createIcons();
               }));
               STUDENT_LIST_GRADE_ERROR = '';
               const studentGradePeriodName = document.getElementById('studentGradePeriodName');
-              if (studentGradePeriodName && workspace.term?.name) studentGradePeriodName.textContent = workspace.term.name;
+              if (workspace.term?.name) {
+                const sectionPeriodName = document.getElementById('sectionPeriodName');
+                if (sectionPeriodName) sectionPeriodName.textContent = workspace.term.name;
+                if (studentGradePeriodName) studentGradePeriodName.textContent = workspace.term.name;
+              }
             } catch (error) {
               STUDENT_LIST_GRADE_ERROR = error?.message || 'SHS grades could not be loaded.';
             }

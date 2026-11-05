@@ -240,6 +240,16 @@ test('school settings offers all approved accents and previews a real action, li
   assert.match(pageLoading, /edugnay:page-loading-failed/);
 });
 
+test('school accent outlines links and custom focus targets without doubling native control rings', () => {
+  const theme = read('assets/css/theme.css');
+  const styles = read('assets/css/styles.css');
+
+  assert.match(theme, /html\[data-school-accent\] body :is\(a, \[tabindex\]\):focus-visible:not\(button\):not\(input\):not\(select\):not\(textarea\)\s*\{[^}]*outline: 2px solid var\(--theme-accent-text\);[^}]*outline-offset: 2px;/s);
+  assert.match(styles, /button:focus-visible,[\s\S]*?\[role="button"\]:focus-visible \{\s*outline: none;\s*box-shadow: 0 0 0 3px var\(--button-focus-ring\);/);
+  assert.match(styles, /\.form-input:focus\s*\{[^}]*border-color: var\(--theme-accent-text\);[^}]*box-shadow: 0 0 0 3px var\(--button-focus-ring\);/s);
+  assert.match(styles, /select:not\(\[multiple\]\):focus\s*\{[^}]*border-color: var\(--theme-accent-text\) !important;[^}]*box-shadow: 0 0 0 3px var\(--button-focus-ring\);/s);
+});
+
 test('school accent keeps the Narrative Reports pipeline on its solid page surface', () => {
   const theme = read('assets/css/theme.css');
   const reportsStyles = read('assets/css/adviser/narrative-reports.css');

@@ -303,6 +303,7 @@ function renderTable() {
   tbody.innerHTML = filtered.map((s, i) => {
     const student = STUDENT_BY_ID[s.studentId];
     if (!student) return '';
+    const studentName = window.EDUGNAY_CONFIG.escapeHtml(student.displayName);
     const excerpt = s.submitted && s.entryText ? window.EDUGNAY_CONFIG.escapeHtml(s.entryText.slice(0, 90) + (s.entryText.length > 90 ? '…' : '')) : '—';
 
     let scoreCellHtml;
@@ -325,30 +326,42 @@ function renderTable() {
       statusBadge = `<span class="badge badge-orange">Pending review</span>`;
     }
 
+    const mobileStatus = !s.submitted
+      ? { label: 'Not submitted', tone: 'not-submitted' }
+      : s.reviewed
+        ? { label: 'Reviewed', tone: 'reviewed' }
+        : { label: 'Pending review', tone: 'pending' };
+    const mobileStatusLabel = `${mobileStatus.label}${s.submitted && s.late ? ' · Late' : ''}`;
+
     return `
       <tr class="${s.reviewed ? 'reviewed' : ''}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { openEntry(String(s.studentId)) })}">
-        <td style="color:var(--gray-400);font-size:12px;">${i + 1}</td>
-        <td>
+        <td class="journal-row-number" data-label="#" style="color:var(--gray-400);font-size:12px;">${i + 1}</td>
+        <td class="journal-student-cell" data-label="Student">
           <div class="student-cell">
             ${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student' })}
-            <div>
-              <div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div>
+            <div class="journal-student-info">
+              <div class="student-name">${studentName}</div>
+              <div class="journal-mobile-status journal-mobile-status--${mobileStatus.tone}">
+                <span>${mobileStatusLabel}</span>
+              </div>
             </div>
           </div>
         </td>
-        <td><div class="entry-preview">${excerpt}</div></td>
-        <td class="center">
+        <td class="journal-excerpt-cell" data-label="Journal excerpt"><div class="entry-preview">${excerpt}</div></td>
+        <td class="journal-submitted-cell center" data-label="Submitted">
           ${s.submitted
             ? (s.late
                 ? `<span class="badge badge-gold"><i data-lucide="clock-alert" style="width:10px;height:10px;"></i> Late</span>`
                 : `<span class="badge badge-blue"><i data-lucide="check" style="width:10px;height:10px;"></i> Yes</span>`)
             : `<span class="badge badge-red">No</span>`}
         </td>
-        <td class="center">${scoreCellHtml}</td>
-        <td class="center">${statusBadge}</td>
-        <td>
-          <button class="row-btn primary" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { event.stopPropagation();openEntry(String(s.studentId)) })}">
-            <i data-lucide="eye" style="width:11px;height:11px;"></i> Review
+        <td class="journal-score-cell center" data-label="Score">${scoreCellHtml}</td>
+        <td class="journal-status-cell center" data-label="Status">${statusBadge}</td>
+        <td class="journal-review-cell" data-label="Action">
+          <button type="button" class="row-btn primary" aria-label="Review ${studentName}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { event.stopPropagation();openEntry(String(s.studentId)) })}">
+            <i class="journal-review-eye" data-lucide="eye" aria-hidden="true" style="width:11px;height:11px;"></i>
+            <span class="journal-review-text">Review</span>
+            <i class="journal-review-chevron" data-lucide="chevron-right" aria-hidden="true" style="width:18px;height:18px;"></i>
           </button>
         </td>
       </tr>`;

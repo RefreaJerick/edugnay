@@ -4,7 +4,7 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const api = () => window.EDUGNAY_API;
   const state = { data: null, mode: '', offeringId: null, classId: null, returnFocus: null, previousOverflow: '',
-    deleteClassId: null, deleteClassName: '', deleteReturnFocus: null, deletePreviousOverflow: '',
+    deleteClassId: null, deleteOfferingId: null, deleteClassName: '', deleteReturnFocus: null, deletePreviousOverflow: '',
     reviewPage: 1, reviewData: null, reviewSearchTimer: null, choiceStudentId: null, choiceStatus: '', choiceRequestId: null,
     choiceData: null, choiceReturnFocus: null, choicePreviousOverflow: '', activeTab: 'subjects', catalogCodes: new Set() };
 
@@ -68,6 +68,9 @@
     $('shs-offerings').innerHTML = offerings.length ? offerings.map(item => {
       const classes = data.classes.filter(c => Number(c.offeringId) === Number(item.id));
       const active = Boolean(item.isActive);
+      const deleteDisabled = archived || classes.length > 0;
+      const deleteNote = archived ? 'Archived school years are read-only.'
+        : classes.length ? 'Delete its classes first; classes with linked records must be kept.' : '';
       const catalogEntry = data.catalog.find(entry => entry.code === item.catalogCode);
       const catalogReview = !item.catalogValid
         ? '<small class="shs-track-review">Subject details do not match the current DepEd list. Existing records were kept; please review before using this subject for new choices.</small>'
@@ -103,7 +106,9 @@
             </div></div></div>`;
         }).join('') : '<p class="shs-muted">No classes yet. Add a class, assign a teacher, and schedule its meetings.</p>'}</div>
         <div class="shs-offering-actions"><button class="timetable-button" type="button" data-add-class="${item.id}" ${archived || !active || !item.catalogAvailableForNewUse ? 'disabled' : ''}>Add class</button>
-          <button class="timetable-button secondary" type="button" data-toggle="${item.id}" ${archived || (!active && !item.catalogAvailableForNewUse) ? 'disabled' : ''}>${active ? 'Pause subject' : 'Reactivate subject'}</button></div>
+          <button class="timetable-button secondary" type="button" data-toggle="${item.id}" ${archived || (!active && !item.catalogAvailableForNewUse) ? 'disabled' : ''}>${active ? 'Pause subject' : 'Reactivate subject'}</button>
+          <button class="timetable-button secondary shs-offering-delete" type="button" data-delete-offering="${item.id}" ${deleteDisabled ? `disabled title="${escape(deleteNote)}"` : 'title="Permanently delete this subject offering"'}><i data-lucide="trash-2" aria-hidden="true"></i>Delete subject</button>
+          ${deleteNote ? `<small class="shs-offering-delete-note">${escape(deleteNote)}</small>` : ''}</div>
       </article>`;
     }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subject classes yet', text: 'Add an approved subject to start setting up SHS classes.' });
     window.lucide?.createIcons();
@@ -130,9 +135,12 @@
     if (!item || state.data.year?.status === 'archived') return;
     closeClassMenus();
     state.deleteClassId = Number(classId);
+    state.deleteOfferingId = null;
     state.deleteClassName = item.className;
     state.deleteReturnFocus = trigger;
     state.deletePreviousOverflow = document.body.style.overflow;
+    $('shs-delete-title').textContent = 'Delete class?';
+    $('shs-delete-confirm').textContent = 'Delete class';
     $('shs-delete-message').textContent = `Delete “${item.className}”? This permanently removes the class only when it has no linked timetable, learner, or learning records. Classes with records are kept and can be paused instead.`;
     $('shs-delete-error').textContent = '';
     $('shs-delete-confirm').disabled = false;
@@ -141,32 +149,60 @@
     $('shs-delete-title').focus();
   }
 
-  function closeDeleteClass({ restoreFocus = true } = {}) {
+  function openDeleteOffering(offeringId, trigger) {
+    const item = state.data?.offerings.find(row => Number(row.id) === Number(offeringId));
+    if (!item || state.data.year?.status === 'archived'
+      || state.data.classes.some(row => Number(row.offeringId) === Number(offeringId))) return;
+    state.deleteClassId = null;
+    state.deleteOfferingId = Number(offeringId);
+    state.deleteClassName = '';
+    state.deleteReturnFocus = trigger;
+    state.deletePreviousOverflow = document.body.style.overflow;
+    const grade = String(item.gradeCode || '').replace(/^grade-/, '');
+    const year = state.data.year?.label || 'this school year';
+    $('shs-delete-title').textContent = 'Delete subject?';
+    $('shs-delete-confirm').textContent = 'Delete subject';
+    $('shs-delete-message').textContent = `Permanently delete ${item.subjectName}, Grade ${grade}, for ${year}? The approved subject stays in the catalog and can be added again. This deletion cannot be undone.`;
+    $('shs-delete-error').textContent = '';
+    $('shs-delete-confirm').disabled = false;
+    $('shs-delete-overlay').hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('shs-delete-title').focus();
+  }
+
+  function closeDeleteDialog({ restoreFocus = true } = {}) {
     $('shs-delete-overlay').hidden = true;
     document.body.style.overflow = state.deletePreviousOverflow;
     const returnFocus = state.deleteReturnFocus;
     state.deleteReturnFocus = null;
     if (restoreFocus) returnFocus?.focus?.();
     state.deleteClassId = null;
+    state.deleteOfferingId = null;
     state.deleteClassName = '';
+    $('shs-delete-title').textContent = 'Delete class?';
+    $('shs-delete-confirm').textContent = 'Delete class';
   }
 
-  async function confirmDeleteClass() {
-    if (!state.deleteClassId) return;
+  async function confirmDelete() {
+    if (!state.deleteClassId && !state.deleteOfferingId) return;
     const button = $('shs-delete-confirm');
     button.disabled = true;
     $('shs-delete-error').textContent = '';
     try {
-      await api().deleteShsClass(state.deleteClassId);
+      const deletingOffering = Boolean(state.deleteOfferingId);
+      if (deletingOffering) await api().deleteShsOffering(state.deleteOfferingId);
+      else await api().deleteShsClass(state.deleteClassId);
       const yearId = state.data.year.id;
-      closeDeleteClass({ restoreFocus: false });
+      closeDeleteDialog({ restoreFocus: false });
       await load(yearId);
       const nextFocus = $('shs-offerings').querySelector('.shs-class-menu-trigger')
-        || $('shs-offerings').querySelector('[data-add-class]');
+        || $('shs-offerings').querySelector('[data-add-class]:not(:disabled)')
+        || $('shs-offerings').querySelector('[data-delete-offering]:not(:disabled)')
+        || $('shs-activate');
       nextFocus?.focus();
-      showAppToast('Class deleted.');
+      showAppToast(deletingOffering ? 'Subject deleted.' : 'Class deleted.');
     } catch (error) {
-      $('shs-delete-error').textContent = error.message || 'The class could not be deleted. Its records have been kept.';
+      $('shs-delete-error').textContent = error.message || 'The item could not be deleted. Its records have been kept.';
       button.disabled = false;
     }
   }
@@ -547,7 +583,9 @@
         $('shs-start-term').value = String(existing.startTermId || '');
         $('shs-end-term').value = String(existing.endTermId || '');
       }
-      $('shs-dialog-title').textContent = existing ? 'Edit elective class' : 'Add elective class';
+      const classLabel = offering?.subjectType === 'work_immersion' ? 'Work Immersion class'
+        : offering?.catalogGroup === 'field_experience' ? 'Field Experience class' : 'elective class';
+      $('shs-dialog-title').textContent = `${existing ? 'Edit' : 'Add'} ${classLabel}`;
       $('shs-dialog-subtitle').textContent = yearLong
         ? 'Assign a teacher and seats. This Grade 11 TechPro class covers all three terms.'
         : twoTerms
@@ -716,6 +754,8 @@
       } else if (button.dataset.deleteClass) {
         const trigger = button.closest('.shs-class-menu')?.querySelector('.shs-class-menu-trigger');
         openDeleteClass(button.dataset.deleteClass, trigger);
+      } else if (button.dataset.deleteOffering) {
+        openDeleteOffering(button.dataset.deleteOffering, button);
       } else if (button.dataset.toggle) {
         const item = state.data.offerings.find(o => Number(o.id) === Number(button.dataset.toggle));
         button.disabled = true;
@@ -758,15 +798,15 @@
     $('shs-close').addEventListener('click', close);
     $('shs-cancel').addEventListener('click', close);
     $('shs-dialog-overlay').addEventListener('click', event => { if (event.target === event.currentTarget) close(); });
-    $('shs-delete-close').addEventListener('click', closeDeleteClass);
-    $('shs-delete-cancel').addEventListener('click', closeDeleteClass);
-    $('shs-delete-confirm').addEventListener('click', confirmDeleteClass);
-    $('shs-delete-overlay').addEventListener('click', event => { if (event.target === event.currentTarget) closeDeleteClass(); });
+    $('shs-delete-close').addEventListener('click', closeDeleteDialog);
+    $('shs-delete-cancel').addEventListener('click', closeDeleteDialog);
+    $('shs-delete-confirm').addEventListener('click', confirmDelete);
+    $('shs-delete-overlay').addEventListener('click', event => { if (event.target === event.currentTarget) closeDeleteDialog(); });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') {
         if (!$('shs-choice-clear-overlay').hidden) closeClearChoiceDialog();
         else if (!$('shs-choice-overlay').hidden) closeChoiceDialog();
-        else if (!$('shs-delete-overlay').hidden) closeDeleteClass();
+        else if (!$('shs-delete-overlay').hidden) closeDeleteDialog();
         else if (!$('shs-dialog-overlay').hidden) close();
         else closeClassMenus(true);
       }

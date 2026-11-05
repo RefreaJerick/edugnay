@@ -5,7 +5,7 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const { saveReviewDraft, confirmDraft, reviewValues } = require('../controllers/narrativeReportReviewController');
+const { saveReviewDraft, deleteUnreleasedDraft, confirmDraft, reviewValues } = require('../controllers/narrativeReportReviewController');
 const teacherScript = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/narrative-reports.js'), 'utf8');
 
 test('adviser week options include the current week and retain completed weeks within the academic year', () => {
@@ -45,17 +45,21 @@ function weekNoticeHarness({ endDate = '2026-10-23', today = '2026-10-23', fail 
     'report-week-notice': { hidden: false, querySelector: () => noticeText },
     'reports-grid': { innerHTML: '' },
     'week-caption': { textContent: '' },
-    'pipeline-context': { textContent: '' }
+    'pipeline-context': { textContent: '' },
+    'count-total': { textContent: '' }, 'count-drafts': { textContent: '' },
+    'count-confirmed': { textContent: '' }, 'count-follow-up': { textContent: '' }
   };
-  const state = { evidence: null, reports: [] };
+  const state = { evidence: null, reports: [], weekRequestId: 0 };
   const messages = {};
   const source = teacherScript.slice(teacherScript.indexOf('  async function loadWeek()'), teacherScript.indexOf('  function generationCandidates()'));
   const loadWeek = vm.runInNewContext(`${source}\nloadWeek`, {
     state,
     $: id => elements[id],
     setGenerationButtonState() {},
+    clearReportCounts() {},
     renderCounts() {},
     renderCards() {},
+    renderEmptyState(icon, title, text) { messages.emptyState = { icon, title, text }; },
     updateGenerationControl() {},
     setMessage(id, text, error) { messages[id] = { text, error }; },
     formatDate: value => value,
@@ -92,7 +96,7 @@ test('week notice shows current or past guidance after loading and stays hidden 
   const failed = weekNoticeHarness({ fail: true });
   await failed.loadWeek();
   assert.equal(failed.elements['report-week-notice'].hidden, true);
-  assert.equal(failed.messages['reports-message'].error, true);
+  assert.equal(failed.messages.emptyState.title, 'Weekly reports unavailable');
 });
 
 test('week notice is hidden when the section has no selectable report weeks', () => {
@@ -199,6 +203,151 @@ test('foreign, confirmed, and malformed reports cannot be edited or confirmed', 
   assert.throws(() => reviewValues({ summary: 'Okay', parentActions: [''], teacherNote: '' }), /invalid/);
   assert.throws(() => reviewValues({ summary: 'Okay', parentActions: [], teacherNote: '', followUpDecision: 'accept' }), /valid report/);
   assert.throws(() => reviewValues({ summary: 'Okay', parentActions: [], teacherNote: '', released: true }), /valid report/);
+});
+
+function deletionDatabase(report = {
+  id: 101, sectionId: 22, studentId: 4, status: 'draft',
+  periodKey: 'week:2026-10-19', releasedAt: null, pendingCorrection: false
+}, { hasRelease = false, hasReopenRequest = false, affectedRows = 1 } = {}) {
+  const calls = [];
+  const connection = {
+    async beginTransaction() { calls.push('BEGIN'); },
+    async execute(sql, values = []) {
+      calls.push({ sql, values });
+      if (sql.includes('FROM narrative_reports AS reports')) return [[report].filter(Boolean)];
+      if (sql.includes('EXISTS(SELECT 1 FROM narrative_report_releases')) return [[{ hasRelease, hasReopenRequest }]];
+      if (sql.startsWith('DELETE FROM narrative_reports')) return [{ affectedRows }];
+      return [{ affectedRows: 1 }];
+    },
+    async commit() { calls.push('COMMIT'); },
+    async rollback() { calls.push('ROLLBACK'); },
+    release() { calls.push('RELEASE'); }
+  };
+  return { calls, async getConnection() { return connection; } };
+}
+
+function deletionRequest(overrides = {}) {
+  return { ...request(), query: { sectionId: '22', startDate: '2026-10-19' }, ...overrides };
+}
+
+test('deleting an unreleased draft targets only its selected section and week and writes an audit entry', async () => {
+  const database = deletionDatabase();
+  await deleteUnreleasedDraft(deletionRequest(), database);
+  const deletion = database.calls.find(call => call.sql?.startsWith('DELETE FROM narrative_reports'));
+  assert.deepEqual(deletion.values, [101, 1, 22, 'week:2026-10-19']);
+  assert.match(deletion.sql, /report_status = 'draft'[\s\S]*released_at IS NULL/);
+  assert.ok(database.calls.some(call => call.sql?.startsWith('INSERT INTO audit_logs') &&
+    call.values[2] === 'narrative_report_draft_deleted'));
+  assert.ok(database.calls.includes('COMMIT'));
+});
+
+test('draft deletion rejects mismatched scope, confirmed or released reports, and protected history', async () => {
+  for (const [req, database, status] of [
+    [deletionRequest({ query: { sectionId: '23', startDate: '2026-10-19' } }), deletionDatabase(), 409],
+    [deletionRequest({ query: { sectionId: '22', startDate: '2026-10-12' } }), deletionDatabase(), 409],
+    [deletionRequest(), deletionDatabase({ id: 101, status: 'confirmed' }), 409],
+    [deletionRequest(), deletionDatabase({ id: 101, status: 'draft', releasedAt: '2026-10-20' }), 409],
+    [deletionRequest(), deletionDatabase({ id: 101, status: 'draft', pendingCorrection: true }), 409],
+    [deletionRequest(), deletionDatabase(null), 404],
+    [deletionRequest(), deletionDatabase(undefined, { hasRelease: true }), 409],
+    [deletionRequest(), deletionDatabase(undefined, { hasReopenRequest: true }), 409]
+  ]) {
+    await assert.rejects(deleteUnreleasedDraft(req, database), error => error.status === status);
+    assert.ok(database.calls.includes('ROLLBACK'));
+    assert.equal(database.calls.some(call => call.sql?.startsWith('DELETE FROM narrative_reports')), false);
+  }
+});
+
+test('a draft changed during deletion rolls back and is not audited', async () => {
+  const database = deletionDatabase(undefined, { affectedRows: 0 });
+  await assert.rejects(deleteUnreleasedDraft(deletionRequest(), database), error => error.status === 409);
+  assert.ok(database.calls.includes('ROLLBACK'));
+  assert.equal(database.calls.some(call => call.sql?.startsWith('INSERT INTO audit_logs')), false);
+});
+
+test('delete confirmation preserves edits on cancel, then refreshes the selected week after deletion', async () => {
+  const source = teacherScript.slice(teacherScript.indexOf('  function setDeleteConfirmation('), teacherScript.indexOf('  function showReview('));
+  const nodes = new Map();
+  const node = id => {
+    if (!nodes.has(id)) nodes.set(id, {
+      hidden: false, disabled: false, value: '', attributes: {},
+      setAttribute(key, value) { this.attributes[key] = value; },
+      focus() { this.focused = true; }
+    });
+    return nodes.get(id);
+  };
+  node('review-summary').value = 'Unsaved adviser edit';
+  const state = {
+    selectedReportId: '101', busy: false, deleteConfirmOpen: false,
+    reports: [{ id: '101', studentId: '4', status: 'draft', releasedAt: null, pendingCorrection: false,
+      reportWeekStartDate: '2026-10-19', reportWeekEndDate: '2026-10-23' }],
+    evidence: { section: { id: '22' }, reportWeek: { startDate: '2026-10-19' },
+      students: [{ id: '4', displayName: 'Learner Four' }] }
+  };
+  const requests = [];
+  let refreshed = false;
+  const context = {
+    state, $: node, formatDate: value => value, setRegenerateConfirmation() {},
+    setMessage(id, message) { node(id).textContent = message; },
+    api: { async request(url, options) { requests.push({ url, options }); } },
+    closeModal() {}, showAppToast() {},
+    async loadWeek() { state.reports = []; refreshed = true; }
+  };
+  const controls = vm.runInNewContext(`${source}\n({ openDeleteConfirmation, cancelDeleteConfirmation, deleteReview })`, context);
+  controls.openDeleteConfirmation();
+  assert.match(node('review-delete-detail').textContent, /Learner Four.*2026-10-19.*2026-10-23/);
+  assert.equal(node('review-delete-confirmation').hidden, false);
+  controls.cancelDeleteConfirmation();
+  assert.equal(node('review-summary').value, 'Unsaved adviser edit');
+  assert.equal(node('review-delete-confirmation').hidden, true);
+  assert.equal(requests.length, 0);
+  controls.openDeleteConfirmation();
+  await controls.deleteReview();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].options.method, 'DELETE');
+  assert.match(requests[0].url, /\/weekly-drafts\/101\?sectionId=22&startDate=2026-10-19$/);
+  assert.equal(refreshed, true);
+  assert.equal(state.reports.length, 0);
+});
+
+test('failed draft deletion keeps the confirmation and report visible', async () => {
+  const source = teacherScript.slice(teacherScript.indexOf('  async function deleteReview('), teacherScript.indexOf('  function showReview('));
+  const nodes = new Map();
+  const node = id => {
+    if (!nodes.has(id)) nodes.set(id, { disabled: false });
+    return nodes.get(id);
+  };
+  const state = { selectedReportId: '101', deleteConfirmOpen: true, busy: false,
+    reports: [{ id: '101' }], evidence: { section: { id: '22' }, reportWeek: { startDate: '2026-10-19' } } };
+  let closed = false;
+  const deleteReview = vm.runInNewContext(`${source}\ndeleteReview`, {
+    state, $: node, api: { async request() { throw new Error('Draft changed.'); } },
+    closeModal() { closed = true; }, loadWeek() {}, showAppToast() {},
+    setMessage(id, message) { node(id).textContent = message; }
+  });
+  await deleteReview();
+  assert.equal(closed, false);
+  assert.equal(state.reports.length, 1);
+  assert.equal(node('review-delete-error').textContent, 'Draft changed.');
+  assert.equal(node('confirm-delete-draft').disabled, false);
+});
+
+test('removing the selected-week draft makes that learner eligible for generation again', () => {
+  const reportLookup = teacherScript.slice(teacherScript.indexOf('  function reportFor('), teacherScript.indexOf('  function studentInitials('));
+  const generationControl = teacherScript.slice(teacherScript.indexOf('  function generationCandidates()'), teacherScript.indexOf('  function showGeneration()'));
+  const state = { evidence: { students: [{ id: '4' }] }, reports: [{ studentId: '4' }],
+    generationEnabled: true, reportsEnabled: true, aiEvidenceApproved: true, generationSwitchEnabled: true };
+  let disabled;
+  const { generationCandidates, updateGenerationControl } = vm.runInNewContext(
+    `${reportLookup}\n${generationControl}\n({ generationCandidates, updateGenerationControl })`,
+    { state, setGenerationButtonState(value) { disabled = value; } }
+  );
+  updateGenerationControl();
+  assert.equal(disabled, true);
+  state.reports = [];
+  updateGenerationControl();
+  assert.equal(disabled, false);
+  assert.equal(generationCandidates().length, 1);
 });
 
 test('teacher page gates parent release separately from confirmation', () => {
@@ -316,6 +465,7 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(styles, /@media \(max-width: 1232px\)/);
   assert.match(styles, /@media \(max-width: 520px\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/confirm.*requireSchoolUser.*requireRoles\('teacher'\)/);
+  assert.match(routes, /router\.delete\('\/weekly-drafts\/:reportId', requireSchoolUser, requireRoles\('teacher'\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/release.*requireSchoolUser.*requireRoles\('teacher'\)/);
 });
 
@@ -335,6 +485,7 @@ test('teacher Narrative Reports mobile controls fit their available width', () =
   const root = path.join(__dirname, '../..');
   const page = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
   const styles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const sharedButtonStyles = pageFs.readFileSync(path.join(root, 'assets/css/modal-system.css'), 'utf8');
   const mobileStyles = styles.slice(styles.lastIndexOf('/* Narrative Reports mobile control layout */'));
 
   assert.match(page, /class="filter-row"[\s\S]*?id="report-search"[\s\S]*?id="report-status"/);
@@ -345,11 +496,105 @@ test('teacher Narrative Reports mobile controls fit their available width', () =
   assert.match(mobileStyles, /\.filter-row \.search-wrap,[\s\S]*?\.filter-row \.select-filter\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/s);
   assert.match(mobileStyles, /\.generation-control\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*none;/s);
   assert.match(mobileStyles, /\.panel-head-right \.generation-control > \.top-btn\s*\{[^}]*width:\s*100%;/s);
-  assert.match(mobileStyles, /@media \(max-width: 520px\)[\s\S]*?#review-modal \.review-modal-foot-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
-  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > #confirm-review\s*\{\s*grid-row:\s*1;\s*grid-column:\s*1\s*\/\s*-1;/);
-  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > \[data-close-modal\]\s*\{\s*grid-row:\s*2;\s*grid-column:\s*1;/);
-  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > #save-review\s*\{\s*grid-row:\s*2;\s*grid-column:\s*2;/);
-  assert.match(mobileStyles, /@media \(max-width: 360px\)\s*\{\s*#review-modal \.review-modal-foot-actions\s*\{\s*grid-template-columns:\s*1fr;\s*\}[\s\S]*?#review-modal \.review-modal-foot-actions > \[data-close-modal\]\s*\{\s*grid-row:\s*2;\s*grid-column:\s*1;\s*\}[\s\S]*?#review-modal \.review-modal-foot-actions > #save-review\s*\{\s*grid-row:\s*3;\s*grid-column:\s*1;/);
+  assert.match(mobileStyles, /@media \(max-width: 760px\)[\s\S]*?#review-modal \.review-modal-foot-actions\s*\{[^}]*order:\s*1;[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*width:\s*100%;/s);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot\s*\{\s*row-gap:\s*8px;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions\s*\{[^}]*row-gap:\s*8px;/s);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > \[data-close-modal\]\s*\{\s*display:\s*none;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > #confirm-review,[\s\S]*?#review-modal \.review-modal-foot-actions > #release-report\s*\{\s*grid-row:\s*1;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot-actions > #save-review\s*\{\s*grid-row:\s*2;/);
+  assert.match(page, /class="modal-close" type="button" data-close-modal aria-label="Close review dialog"/);
+  assert.match(page, /id="review-release-note"[\s\S]*?id="review-delete-confirmation"[\s\S]*?class="review-modal-foot"><button class="top-btn btn-danger delete-draft-trigger"[^>]*id="delete-review"/);
+  assert.match(page, /class="top-btn btn-danger" id="confirm-delete-draft"/);
+  assert.match(styles, /#review-modal \.review-delete-confirmation \{[^}]*border:\s*1px solid var\(--red-border\);[^}]*background:\s*var\(--red-pale\);/s);
+  assert.doesNotMatch(mobileStyles, /#review-modal \.review-modal-foot-actions > #confirm-review,[\s\S]*?#review-modal \.review-modal-foot-actions > #save-review\s*\{[^}]*min-height:/);
+  assert.match(sharedButtonStyles, /body :is\([\s\S]*?\.top-btn,[\s\S]*?min-height:\s*var\(--button-height\);[\s\S]*?border-radius:\s*var\(--button-radius\);/);
+  assert.match(sharedButtonStyles, /@media \(max-width: 560px\)[\s\S]*?body :is\([\s\S]*?\.top-btn,[\s\S]*?min-height:\s*36px;[\s\S]*?font-size:\s*12px;/);
+  assert.match(mobileStyles, /#review-modal \.delete-draft-trigger\s*\{[^}]*order:\s*2;[^}]*width:\s*100%;[^}]*min-height:\s*48px;[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*color:\s*var\(--red\);/s);
+  assert.doesNotMatch(mobileStyles, /#review-modal \.delete-draft-trigger::before/);
+  assert.match(styles, /\.top-btn:focus-visible\s*\{\s*outline:\s*3px solid var\(--blue-mid\);/);
+});
+
+test('report pipeline keeps its desktop stages and exposes the grouped mobile flow', () => {
+  const root = path.join(__dirname, '../..');
+  const page = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const mobileStyles = styles.slice(styles.lastIndexOf('/* Narrative Reports mobile control layout */'));
+  const pipelineStyles = styles.slice(styles.indexOf('/* Mobile pipeline disclosure.'));
+
+  assert.match(page, /class="pipeline-banner"[^>]*aria-labelledby="pipeline-title"/);
+  assert.match(page, /id="generation-state"/);
+  assert.match(page, /id="pipeline-toggle" type="button" aria-controls="pipeline-flow" aria-expanded="true"[^>]*hidden/);
+  assert.match(page, /id="pipeline-flow" role="group" aria-label="Report preparation steps"/);
+  assert.match(page, /class="pipeline-data-heading">Collect data<\/h3>/);
+  assert.match(page, /class="pipeline-data-sources"[\s\S]*?>Attendance<[\s\S]*?>Assignments<[\s\S]*?>Academic<[\s\S]*?>Journal</);
+  assert.match(page, /class="flow-step ai"[\s\S]*?>AI draft<[\s\S]*?class="flow-step final"[\s\S]*?>To parent</);
+  assert.ok(page.indexOf('id="generation-state"') < page.indexOf('id="pipeline-flow"'), 'availability status stays visible outside the collapsible flow');
+
+  assert.match(styles, /\.pipeline-flow\s*\{[^}]*display:\s*flex;/s);
+  assert.match(styles, /\.pipeline-data-group,\s*\.pipeline-data-sources\s*\{\s*display:\s*contents;\s*\}/);
+  assert.match(pipelineStyles, /\.pipeline-flow\[hidden\]\s*\{\s*display:\s*none !important;\s*\}/);
+  assert.match(pipelineStyles, /@media \(max-width: 760px\)[\s\S]*?\.pipeline-banner:has\(\.pipeline-flow\[hidden\]\) \.pipeline-head\s*\{\s*margin-bottom:\s*0;\s*\}/);
+  assert.match(pipelineStyles, /@media \(max-width: 760px\)[\s\S]*?#generation-state\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(pipelineStyles, /#pipeline-toggle\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
+  assert.match(pipelineStyles, /#pipeline-toggle:focus-visible\s*\{\s*outline:\s*none;\s*box-shadow:\s*0 0 0 3px var\(--button-focus-ring\);\s*\}/);
+  assert.match(pipelineStyles, /\.pipeline-data-sources\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s);
+  assert.match(pipelineStyles, /@media \(max-width: 380px\)\s*\{\s*\.pipeline-data-sources\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/);
+  assert.match(styles, /\.pipeline-toggle\[aria-expanded="true"\] svg\s*\{\s*transform:\s*rotate\(180deg\);\s*\}/);
+});
+
+test('pipeline disclosure collapses on mobile and restores the expanded desktop flow', () => {
+  const start = teacherScript.indexOf('  function initPipelineDisclosure() {');
+  const end = teacherScript.indexOf('\n  document.addEventListener(\'DOMContentLoaded\'', start);
+  assert.ok(start >= 0 && end > start);
+
+  const attributes = new Map();
+  const handlers = new Map();
+  const toggle = {
+    hidden: true,
+    addEventListener(type, handler) { handlers.set(type, handler); },
+    getAttribute(name) { return attributes.get(name); },
+    setAttribute(name, value) { attributes.set(name, value); }
+  };
+  const flow = { hidden: false };
+  let onViewportChange;
+  const mobileQuery = {
+    matches: true,
+    addEventListener(type, handler) { onViewportChange = handler; },
+    addListener(type, handler) { onViewportChange = handler; }
+  };
+  const initPipelineDisclosure = vm.runInNewContext(
+    `${teacherScript.slice(start, end)}\ninitPipelineDisclosure`,
+    {
+      $: id => id === 'pipeline-toggle' ? toggle : id === 'pipeline-flow' ? flow : null,
+      window: { matchMedia(query) { assert.equal(query, '(max-width: 760px)'); return mobileQuery; } }
+    }
+  );
+
+  initPipelineDisclosure();
+  assert.equal(flow.hidden, true);
+  assert.equal(toggle.hidden, false);
+  assert.equal(attributes.get('aria-expanded'), 'false');
+  assert.equal(attributes.get('aria-label'), 'Show report preparation steps');
+
+  handlers.get('click')();
+  assert.equal(flow.hidden, false);
+  assert.equal(attributes.get('aria-expanded'), 'true');
+  assert.equal(attributes.get('aria-label'), 'Hide report preparation steps');
+  handlers.get('click')();
+  assert.equal(flow.hidden, true);
+
+  mobileQuery.matches = false;
+  onViewportChange();
+  assert.equal(flow.hidden, false);
+  assert.equal(toggle.hidden, true);
+  assert.equal(attributes.get('aria-expanded'), 'true');
+  assert.equal(attributes.get('aria-label'), 'Hide report preparation steps');
+
+  mobileQuery.matches = true;
+  onViewportChange();
+  assert.equal(flow.hidden, true);
+  assert.equal(toggle.hidden, false);
+  assert.equal(attributes.get('aria-expanded'), 'false');
 });
 
 test('adviser report actions use success toasts and show regeneration progress', () => {

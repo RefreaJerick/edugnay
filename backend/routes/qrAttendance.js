@@ -24,7 +24,7 @@ router.get('/students/:studentId/qr', requireAuth, requireRoles('school_admin', 
 router.post('/students/:studentId/qr/regenerate', requireAuth, requireRoles('school_admin', 'student'), regenerateStudentQr);
 router.use(requireAuth, requireRoles('teacher'));
 router.get('/sections/:sectionId/subjects/:subjectId', getCurrentQrAttendance);
-router.post('/sections/:sectionId/subjects/:subjectId/start', startQrAttendance);
+router.post('/sections/:sectionId/subjects/:subjectId/start', scanLimiter, startQrAttendance);
 router.post('/sessions/:sessionId/scan', scanLimiter, scanQrAttendance);
 router.put('/sessions/:sessionId/confirm', confirmQrAttendance);
 
