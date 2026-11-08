@@ -500,6 +500,98 @@
   margin: 11px 0 0;
 }
 
+.assignment-submitted-file {
+  margin-top: 12px;
+}
+
+.assignment-submitted-file[hidden],
+.assignment-submitted-file-actions[hidden],
+.assignment-own-preview-message[hidden],
+.assignment-own-preview-frame[hidden] {
+  display: none;
+}
+
+.assignment-submitted-file .form-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.assignment-submitted-file-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.assignment-submitted-file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--gray-800);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.assignment-submitted-file-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.assignment-file-text-action {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--theme-accent-text);
+  cursor: pointer;
+  font: 700 11px 'Plus Jakarta Sans', sans-serif;
+  text-decoration: none;
+}
+
+.assignment-file-text-action:hover,
+.assignment-file-text-action:focus-visible {
+  text-decoration: underline;
+}
+
+#assignmentOwnPreviewModal .modal {
+  width: min(980px, 100%);
+  max-width: 980px;
+}
+
+#assignmentOwnPreviewDownload {
+  text-decoration: none;
+}
+
+.assignment-own-preview-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: min(68vh, 720px);
+  padding: 12px !important;
+  background: var(--gray-50);
+}
+
+.assignment-own-preview-message {
+  display: grid;
+  flex: 1 1 auto;
+  place-items: center;
+  min-height: 220px;
+  color: var(--gray-500);
+  font-size: 12px;
+  text-align: center;
+}
+
+.assignment-own-preview-frame {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 68vh;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--theme-surface);
+}
+
 .assignment-detail-notice {
   margin-top: 0;
   color: var(--gray-500);
@@ -719,6 +811,20 @@
 }
 
 @media (max-width: 560px) {
+  #assignmentOwnPreviewModal .modal {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .assignment-own-preview-body,
+  .assignment-own-preview-frame {
+    min-height: 54vh;
+  }
+
+  .assignment-own-preview-body {
+    padding: 8px !important;
+  }
+
   #assignmentSubmissionModal .modal-body {
     padding: 16px !important;
   }

@@ -310,6 +310,7 @@ lucide.createIcons();
       document.getElementById('assignmentOnlineNotice').textContent = (STATUS_META[item.submissionStatus] || STATUS_META.pending).label;
       document.getElementById('assignmentSubmissionForm').hidden = true;
       document.getElementById('assignmentSubmissionSubmit').hidden = true;
+      document.getElementById('assignmentSubmittedFile').hidden = true;
       const link = document.getElementById('assignmentHistoryDownload');
       link.hidden = !item.fileAvailable;
       if (item.fileAvailable) link.href = window.EDUGNAY_API.getHistoricalSubmissionUrl(item.id);
@@ -337,6 +338,14 @@ lucide.createIcons();
     }
 
     let activeSubmissionAssignmentId = null;
+    let ownPreviewRequestId = 0;
+    let ownPreviewObjectUrl = null;
+
+    function ownSubmissionFor(assignmentId) {
+      return STUDENT_SUBMISSIONS.find(function (record) {
+        return record.assignmentId === String(assignmentId);
+      });
+    }
 
     function openAssignmentSubmissionModal(assignmentId) {
       const assignment = ASSIGNMENTS.find(function (item) {
@@ -345,14 +354,19 @@ lucide.createIcons();
       if (!assignment) return;
 
       activeSubmissionAssignmentId = assignment.id;
-      const ownSubmission = STUDENT_SUBMISSIONS.find(function (record) {
-        return record.assignmentId === assignment.id;
-      });
+      const ownSubmission = ownSubmissionFor(assignment.id);
       const hasOnlineSubmission = Boolean(ownSubmission);
       const readOnlyElective = isElectiveAssignment(assignment) && assignment.electiveMembershipActive === false;
+      const downloadUrl = ownSubmission?.fileUrl
+        ? window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignment.id, ownSubmission.id) : null;
+      document.getElementById('assignmentSubmittedFile').hidden = !ownSubmission?.fileName;
+      document.getElementById('assignmentSubmittedFileName').textContent = ownSubmission?.fileName || '';
+      document.getElementById('assignmentSubmittedFileActions').hidden = !downloadUrl;
+      const submittedFileDownload = document.getElementById('assignmentSubmittedFileDownload');
+      submittedFileDownload.href = downloadUrl || '';
       const submissionDownload = document.getElementById('assignmentHistoryDownload');
-      submissionDownload.hidden = !(isElectiveAssignment(assignment) && ownSubmission?.fileUrl);
-      submissionDownload.href = submissionDownload.hidden ? '' : ownSubmission.fileUrl;
+      submissionDownload.hidden = true;
+      submissionDownload.removeAttribute('href');
       document.getElementById('submissionModalTitle').textContent = readOnlyElective
         ? 'Elective submission details'
         : assignment.onlineSubmissionEnabled
@@ -404,6 +418,60 @@ lucide.createIcons();
       modal.classList.remove('open');
       modal.hidden = true;
       activeSubmissionAssignmentId = null;
+    }
+
+    async function openOwnSubmissionPreview() {
+      const assignmentId = activeSubmissionAssignmentId;
+      const submission = ownSubmissionFor(assignmentId);
+      const downloadUrl = submission?.fileUrl
+        ? window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignmentId, submission.id) : null;
+      if (!downloadUrl) return;
+
+      const requestId = ++ownPreviewRequestId;
+      if (ownPreviewObjectUrl) URL.revokeObjectURL(ownPreviewObjectUrl);
+      ownPreviewObjectUrl = null;
+      const frame = document.getElementById('assignmentOwnPreviewFrame');
+      const message = document.getElementById('assignmentOwnPreviewMessage');
+      frame.removeAttribute('src');
+      frame.hidden = true;
+      message.hidden = false;
+      message.textContent = 'Preparing preview…';
+      document.getElementById('assignmentOwnPreviewFileName').textContent = submission.fileName || 'Submitted file';
+      document.getElementById('assignmentOwnPreviewDownload').href = downloadUrl;
+      const modal = document.getElementById('assignmentOwnPreviewModal');
+      modal.hidden = false;
+      modal.classList.add('open');
+      document.getElementById('assignmentSubmissionModal').inert = true;
+      document.getElementById('assignmentOwnPreviewClose').focus();
+
+      try {
+        const result = await window.EDUGNAY_API.getAssignmentSubmissionPreview(assignmentId, submission.id);
+        if (requestId !== ownPreviewRequestId) return;
+        if (!String(result.contentType || '').toLowerCase().startsWith('application/pdf')) {
+          throw new Error('A preview is not available for this file. Download it to open the original.');
+        }
+        ownPreviewObjectUrl = URL.createObjectURL(new Blob([result.buffer], { type: 'application/pdf' }));
+        frame.src = ownPreviewObjectUrl;
+        frame.hidden = false;
+        message.hidden = true;
+      } catch (error) {
+        if (requestId !== ownPreviewRequestId) return;
+        message.textContent = error.message || 'The file preview could not be loaded. Download the original file instead.';
+      }
+    }
+
+    function closeOwnSubmissionPreview() {
+      ++ownPreviewRequestId;
+      const frame = document.getElementById('assignmentOwnPreviewFrame');
+      frame.removeAttribute('src');
+      frame.hidden = true;
+      if (ownPreviewObjectUrl) URL.revokeObjectURL(ownPreviewObjectUrl);
+      ownPreviewObjectUrl = null;
+      const modal = document.getElementById('assignmentOwnPreviewModal');
+      modal.classList.remove('open');
+      modal.hidden = true;
+      document.getElementById('assignmentSubmissionModal').inert = false;
+      document.getElementById('assignmentSubmittedFileView').focus();
     }
 
     function validateAssignmentSubmission() {
@@ -516,6 +584,9 @@ lucide.createIcons();
       });
       document.getElementById('assignmentSubmissionClose').addEventListener('click', closeAssignmentSubmissionModal);
       document.getElementById('assignmentSubmissionCancel').addEventListener('click', closeAssignmentSubmissionModal);
+      document.getElementById('assignmentSubmittedFileView').addEventListener('click', openOwnSubmissionPreview);
+      document.getElementById('assignmentOwnPreviewClose').addEventListener('click', closeOwnSubmissionPreview);
+      document.getElementById('assignmentOwnPreviewDone').addEventListener('click', closeOwnSubmissionPreview);
       document.getElementById('assignmentSubmissionFile').addEventListener('change', validateAssignmentSubmission);
       document.getElementById('assignmentSubmissionSubmit').addEventListener('click', submitStudentAssignment);
       window.EDUGNAY_PAGE_LOADING.ready();

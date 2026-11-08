@@ -564,7 +564,7 @@ lucide.createIcons();
 
         const gradeNumber = String(selectedSection.grade || '').match(/\d+/)?.[0];
         document.getElementById('sectionHeaderName').textContent = selectedSection.name || 'Section';
-        document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SEC';
+        document.getElementById('sectionGradeLabel').textContent = gradeNumber ? `Grade ${gradeNumber}` : 'Class section';
         document.querySelector('[data-school-year]').textContent = selectedSection.academicYear || 'Academic year unavailable';
         document.getElementById('sectionAdviserMeta').hidden = String(selectedSection.adviserId || '') !== CURRENT_TEACHER_ID;
 
@@ -2000,6 +2000,8 @@ lucide.createIcons();
       renderGradingRules();
     }
 
+    let addingScoreComponent = false;
+
     function openScoreComponentModal() {
       if (new URLSearchParams(window.location.search).has('classId') || USE_SHS_CORE_GRADEBOOK) return;
       if (BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured) {
@@ -2010,7 +2012,11 @@ lucide.createIcons();
       // The shared modal is also configured for SHS classes. Restore the regular
       // class submit handler and fields whenever this entry point opens it.
       const submitButton = document.getElementById('addScoreComponentSubmit');
-      if (submitButton) submitButton.onclick = addComponent;
+      if (submitButton) {
+        submitButton.onclick = addComponent;
+        submitButton.disabled = addingScoreComponent;
+        document.getElementById('addScoreComponentSubmitLabel').textContent = addingScoreComponent ? 'Adding...' : 'Add Component';
+      }
       document.getElementById('compNameInput').readOnly = false;
       openModal('addCompModal');
     }
@@ -2044,6 +2050,7 @@ lucide.createIcons();
     }
 
     function addComponent() {
+      if (addingScoreComponent) return;
       const periodId = document.getElementById('academicPeriodSelect').value;
       if (!requireScoreEditingAccess(periodId)) return;
       const name = document.getElementById('compNameInput').value.trim();
@@ -2065,6 +2072,10 @@ lucide.createIcons();
           alert('Select an examination part before adding this score component.');
           return;
         }
+        const submitButton = document.getElementById('addScoreComponentSubmit');
+        addingScoreComponent = true;
+        submitButton.disabled = true;
+        document.getElementById('addScoreComponentSubmitLabel').textContent = 'Adding...';
         window.EDUGNAY_API.createGradingItem({
           sectionId: BACKEND_GRADE_CONTEXT.sectionId,
           subjectId: BACKEND_GRADE_CONTEXT.subjectId,
@@ -2080,7 +2091,12 @@ lucide.createIcons();
           closeModal('addCompModal');
           renderScoreTable(periodId);
           showAppToast('Gradebook item added.');
-        }).catch(error => showAppToast(error.message || 'The gradebook item could not be added.', 'error'));
+        }).catch(error => showAppToast(error.message || 'The gradebook item could not be added.', 'error'))
+          .finally(() => {
+            addingScoreComponent = false;
+            submitButton.disabled = false;
+            document.getElementById('addScoreComponentSubmitLabel').textContent = 'Add Component';
+          });
         return;
       }
 
@@ -2102,7 +2118,7 @@ lucide.createIcons();
       }).length;
 
       document.getElementById('sectionHeaderName').textContent = CURRENT_SECTION_RECORD?.name || 'Section';
-      document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SEC';
+      document.getElementById('sectionGradeLabel').textContent = gradeNumber ? `Grade ${gradeNumber}` : 'Class section';
       updateSectionSubjectControl();
       document.getElementById('sectionStudentCount').textContent = studentCount;
       const selectedPeriod = ACADEMIC_PERIODS.find(period => period.id === academicPeriodId);
@@ -2111,9 +2127,12 @@ lucide.createIcons();
       if (selectedPeriod) document.getElementById('sectionPeriodMeta').removeAttribute('hidden');
       document.getElementById('scoreSectionName').textContent = CURRENT_SECTION;
       document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
-      document.getElementById('sectionEncodingStatus').textContent = encodedCount
-        ? `${encodedCount} of ${studentCount} encoded`
-        : 'Encoding not started';
+      document.getElementById('sectionEncodingStatus').textContent = !encodedCount
+        ? 'Encoding not started'
+        : encodedCount === studentCount ? 'Encoding complete' : 'Encoding in progress';
+      const encodedCountNode = document.getElementById('sectionEncodedCount');
+      encodedCountNode.textContent = `${encodedCount} of ${studentCount} students encoded`;
+      encodedCountNode.hidden = false;
     }
 
     function updateSectionSubjectControl() {
@@ -4639,7 +4658,6 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p5adc771cd24c: function(event) { openPublishGradesModal() },
     p6875bf9d15fb: function(event) { publishGrades() },
     p6cd4f4a9a6f6: function(event) { closeModal('addCompModal') },
-    p716d33fe961b: function(event) { addComponent() },
     p796d301f2a60: function(event) { switchTab('attendance') },
     p7ce03f3255f5: function(event) { closeModal('assignmentStatusModal') },
     p85a0391f1830: function(event) { startQrScanner() },

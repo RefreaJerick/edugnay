@@ -131,3 +131,75 @@ test('SMTP failure logging exposes only a sanitized error code', async () => {
     }
   }
 });
+
+test('SMTP envelope diagnostics identify the failed command without logging recipient addresses', async () => {
+  const emailPath = require.resolve('../config/email');
+  const names = ['MAIL_HOST', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASSWORD', 'MAIL_FROM'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  const originalTransport = nodemailer.createTransport;
+  const originalError = console.error;
+  const logs = [];
+  delete require.cache[emailPath];
+  const isolatedEmail = require(emailPath);
+  Object.assign(process.env, {
+    MAIL_HOST: 'smtp.example.test', MAIL_PORT: '587', MAIL_USER: 'test',
+    MAIL_PASSWORD: 'test', MAIL_FROM: 'Academix <no-reply@example.test>'
+  });
+  nodemailer.createTransport = () => ({ sendMail: async () => {
+    throw Object.assign(new Error('private detail'), {
+      code: 'EENVELOPE', command: 'RCPT TO', responseCode: 550,
+      response: '550 Recipient jane@example.com rejected\r\nprivate@example.test'
+    });
+  } });
+  console.error = (...args) => logs.push(args.join(' '));
+  try {
+    assert.deepEqual(await isolatedEmail.sendEmail({
+      to: 'jane@example.com', subject: 'test', text: 'test body'
+    }), { status: 'failed', errorCode: 'EENVELOPE' });
+    assert.match(logs[0], /"command":"RCPT TO"/);
+    assert.match(logs[0], /"responseCode":550/);
+    assert.doesNotMatch(logs[0], /jane@example\.com|private@example\.test|private detail/);
+  } finally {
+    nodemailer.createTransport = originalTransport;
+    console.error = originalError;
+    delete require.cache[emailPath];
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});
+
+test('Gmail daily sending limit is delayed without treating it as a malformed address', async () => {
+  const emailPath = require.resolve('../config/email');
+  const names = ['MAIL_HOST', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASSWORD', 'MAIL_FROM'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  const originalTransport = nodemailer.createTransport;
+  const originalError = console.error;
+  delete require.cache[emailPath];
+  const isolatedEmail = require(emailPath);
+  Object.assign(process.env, {
+    MAIL_HOST: 'smtp.example.test', MAIL_PORT: '587', MAIL_USER: 'test',
+    MAIL_PASSWORD: 'test', MAIL_FROM: 'Academix <no-reply@example.test>'
+  });
+  nodemailer.createTransport = () => ({ sendMail: async () => {
+    throw Object.assign(new Error('daily limit'), {
+      code: 'EENVELOPE', command: 'DATA', responseCode: 550,
+      response: '550-5.4.5 Daily user sending limit exceeded.'
+    });
+  } });
+  console.error = () => {};
+  try {
+    assert.deepEqual(await isolatedEmail.sendEmail({
+      to: 'jane@example.com', subject: 'test', text: 'test body'
+    }), { status: 'failed', errorCode: 'gmail_daily_limit', retryAfterSeconds: 86400 });
+  } finally {
+    nodemailer.createTransport = originalTransport;
+    console.error = originalError;
+    delete require.cache[emailPath];
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});

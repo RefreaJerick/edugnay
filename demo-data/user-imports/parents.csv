@@ -1,0 +1,6 @@
+firstName,lastName,personalEmail,studentLrn,relationship
+Michael,Jordan,michael.jordan.parent@example.test,999999999001,father
+Kobe,Bryant,kobe.bryant.parent@example.test,999999999002,father
+Shaquille,O'Neal,shaquille.oneal.parent@example.test,999999999003,guardian
+Tim,Duncan,tim.duncan.parent@example.test,999999999004,father
+Magic,Johnson,magic.johnson.parent@example.test,999999999005,guardian

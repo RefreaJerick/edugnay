@@ -71,7 +71,9 @@ async function sendQueuedEmail(database, job, claimToken) {
   }
 
   const failed = job.attempts >= MAX_ATTEMPTS * (Number(job.manualRetries || 0) + 1);
-  const retrySeconds = Math.min(3600, 60 * (2 ** Math.max(0, job.attempts - 1)));
+  const retrySeconds = result.retryAfterSeconds === 24 * 60 * 60
+    ? result.retryAfterSeconds
+    : Math.min(3600, 60 * (2 ** Math.max(0, job.attempts - 1)));
   const errorCode = String(result.errorCode || 'smtp_failed').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 80);
   console.error('School account email SMTP attempt failed', JSON.stringify({
     outboxId: job.id,

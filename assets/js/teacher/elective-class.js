@@ -25,6 +25,8 @@
 
   function updateHeaderGradeStatus(workspaceData) {
     if (!electiveClass || String(electiveClass.electiveClassId) !== classId) return;
+    const encodedCountNode = document.getElementById('sectionEncodedCount');
+    encodedCountNode.hidden = true;
     const term = workspaceData?.term;
     document.getElementById('sectionPeriodName').textContent = term?.name || electiveClass.activePeriodName || 'Grading period unavailable';
     const yearNode = document.querySelector('[data-school-year]');
@@ -55,9 +57,11 @@
       return score !== null && score !== undefined && score !== ''
         && Number.isFinite(value) && value >= 0 && value <= Number(item.maxScore);
     })).length : 0;
-    document.getElementById('sectionEncodingStatus').textContent = encodedCount
-      ? `${encodedCount} of ${students.length} encoded`
-      : 'Encoding not started';
+    document.getElementById('sectionEncodingStatus').textContent = !encodedCount
+      ? 'Encoding not started'
+      : encodedCount === students.length ? 'Encoding complete' : 'Encoding in progress';
+    encodedCountNode.textContent = `${encodedCount} of ${students.length} students encoded`;
+    encodedCountNode.hidden = false;
   }
 
   function loadHeaderGradeWorkspace() {
@@ -101,7 +105,7 @@
 
   function renderPage() {
     const gradeNumber = String(electiveClass.gradeName || '').match(/\d+/)?.[0] || '';
-    document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SHS';
+    document.getElementById('sectionGradeLabel').textContent = electiveClass.gradeName || 'Elective class';
     document.getElementById('sectionHeaderName').textContent = electiveClass.className;
     document.getElementById('sectionSubjectName').textContent = electiveClass.subjectName;
     document.getElementById('sectionSubjectSelect').hidden = true;

@@ -18,7 +18,7 @@ router.delete('/:assignmentId', requireRoles('school_admin', 'teacher'), control
 router.patch('/:assignmentId/students/:studentId/status', requireTeacher, controller.updateStudentAssignmentStatus);
 router.post('/:assignmentId/submissions', requireRoles('student'), assignmentSubmissionUpload.single('file'), controller.submitAssignment);
 router.get('/:assignmentId/submissions', controller.listSubmissions);
-router.get('/:assignmentId/submissions/:submissionId/preview', requireRoles('school_admin', 'teacher'), controller.previewSubmission);
-router.get('/:assignmentId/submissions/:submissionId/download', requireRoles('school_admin', 'teacher'), controller.downloadSubmission);
+router.get('/:assignmentId/submissions/:submissionId/preview', requireRoles('school_admin', 'teacher', 'student'), controller.previewSubmission);
+router.get('/:assignmentId/submissions/:submissionId/download', requireRoles('school_admin', 'teacher', 'student'), controller.downloadSubmission);
 
 module.exports = router;

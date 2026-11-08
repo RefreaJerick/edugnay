@@ -103,8 +103,8 @@
       </div>
       <div class="modal-foot">
         <button class="btn btn-cancel" data-page-click="p6cd4f4a9a6f6">Cancel</button>
-        <button class="btn btn-save" id="addScoreComponentSubmit" data-page-click="p716d33fe961b">
-          <i data-lucide="plus" style="width:13px;height:13px;"></i> Add Component
+        <button class="btn btn-save" id="addScoreComponentSubmit">
+          <i data-lucide="plus" style="width:13px;height:13px;"></i> <span id="addScoreComponentSubmitLabel">Add Component</span>
         </button>
       </div>
     </div>
@@ -815,41 +815,50 @@
 
         <!-- Section header -->
         <section class="section-header" aria-labelledby="sectionHeaderName">
-          <div class="section-header-left">
-            <div class="section-badge" id="sectionGradeBadge" aria-hidden="true"></div>
-            <div class="section-info">
-              <h2 class="section-name" id="sectionHeaderName"></h2>
-              <div class="section-subject">
-                <i data-lucide="book-open"></i>
-                <span>Subject:</span>
+          <div class="section-header-top">
+            <div class="section-header-left">
+              <div class="section-info">
+                <div class="section-grade-label" id="sectionGradeLabel">Class section</div>
+                <h2 class="section-name" id="sectionHeaderName"></h2>
+              </div>
+            </div>
+            <div class="section-header-status" aria-label="Grade recording status">
+              <div class="section-status-item is-published" data-publication-status="published" hidden>
+                <i data-lucide="check-circle"></i>
+                <span id="sectionPublicationStatus">Grades published</span>
+              </div>
+              <div class="section-status-item">
+                <i data-lucide="clipboard-check"></i>
+                <span id="sectionEncodingStatus">Encoding not started</span>
+              </div>
+              <div class="section-encoded-count" id="sectionEncodedCount" hidden></div>
+            </div>
+          </div>
+          <div class="section-meta">
+            <div class="section-detail section-subject">
+              <div class="section-detail-label"><i data-lucide="book-open"></i>Subject</div>
+              <div class="section-detail-value">
                 <strong id="sectionSubjectName">Values Education</strong>
                 <select id="sectionSubjectSelect" class="section-subject-select"
                   aria-label="Choose a subject for this section" hidden></select>
               </div>
-              <div class="section-meta">
-                <div class="section-meta-item">
-                  <i data-lucide="users"></i>
-                  <strong id="sectionStudentCount">0</strong> students
-                </div>
-                <div class="section-meta-item" id="sectionAdviserMeta" hidden>
-                  <i data-lucide="star"></i>
-                  Class Adviser
-                </div>
-                <div class="section-meta-item" id="sectionPeriodMeta" hidden>
-                  <i data-lucide="calendar"></i>
-                  <span id="sectionPeriodName"></span> · <span data-school-year></span>
-                </div>
+            </div>
+            <div class="section-detail section-meta-item">
+              <div class="section-detail-label"><i data-lucide="users"></i>Students</div>
+              <div class="section-detail-value"><strong id="sectionStudentCount">0</strong></div>
+            </div>
+            <div class="section-detail section-meta-item">
+              <div class="section-detail-label"><i data-lucide="star"></i>Role</div>
+              <div class="section-detail-value">
+                <span id="sectionAdviserMeta" hidden>Class Adviser</span>
+                <span class="section-role-fallback">Subject Teacher</span>
               </div>
             </div>
-          </div>
-          <div class="section-header-status" aria-label="Grade recording status">
-            <div class="section-status-item is-published" data-publication-status="published" hidden>
-              <i data-lucide="check-circle"></i>
-              <span id="sectionPublicationStatus">Grades published</span>
-            </div>
-            <div class="section-status-item">
-              <i data-lucide="clipboard-check"></i>
-              <span id="sectionEncodingStatus">Encoding not started</span>
+            <div class="section-detail section-meta-item">
+              <div class="section-detail-label"><i data-lucide="calendar"></i>Term</div>
+              <div class="section-detail-value" id="sectionPeriodMeta" hidden>
+                <span id="sectionPeriodName"></span> · <span data-school-year></span>
+              </div>
             </div>
           </div>
         </section>

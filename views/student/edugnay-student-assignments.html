@@ -262,6 +262,16 @@
             <div class="form-label">Submission</div>
             <div class="assignment-detail-notice" id="assignmentOnlineNotice"></div>
           </div>
+          <div class="assignment-submitted-file" id="assignmentSubmittedFile" hidden>
+            <div class="form-label">Submitted file</div>
+            <div class="assignment-submitted-file-row">
+              <div class="assignment-submitted-file-name" id="assignmentSubmittedFileName"></div>
+              <div class="assignment-submitted-file-actions" id="assignmentSubmittedFileActions">
+                <button class="assignment-file-text-action" type="button" id="assignmentSubmittedFileView">View</button>
+                <a class="assignment-file-text-action" id="assignmentSubmittedFileDownload">Download</a>
+              </div>
+            </div>
+          </div>
           <div class="form-group" id="assignmentSubmissionForm">
             <label class="form-label" for="assignmentSubmissionFile">File</label>
             <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
@@ -275,6 +285,31 @@
         <button class="btn btn-save" type="button" id="assignmentSubmissionSubmit">
           <i data-lucide="send" style="width:13px;height:13px;"></i> Submit work
         </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop dashboard-modal-backdrop" id="assignmentOwnPreviewModal" hidden>
+    <div class="modal assignment-own-preview-modal" role="dialog" aria-modal="true" aria-labelledby="assignmentOwnPreviewTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-text"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="assignmentOwnPreviewTitle">Submitted file preview</div>
+            <div class="modal-sub" id="assignmentOwnPreviewFileName"></div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" id="assignmentOwnPreviewClose" aria-label="Close preview">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <div class="modal-body assignment-own-preview-body">
+        <div class="assignment-own-preview-message" id="assignmentOwnPreviewMessage" role="status" aria-live="polite">Preparing preview…</div>
+        <iframe class="assignment-own-preview-frame" id="assignmentOwnPreviewFrame" title="Your submitted file preview" referrerpolicy="no-referrer" hidden></iframe>
+      </div>
+      <div class="modal-foot">
+        <a class="btn btn-cancel" id="assignmentOwnPreviewDownload">Download</a>
+        <button class="btn btn-save" type="button" id="assignmentOwnPreviewDone">Close</button>
       </div>
     </div>
   </div>

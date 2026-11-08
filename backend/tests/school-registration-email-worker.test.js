@@ -137,6 +137,19 @@ test('transient SMTP failures retry and become visible after five attempts', asy
   }
 });
 
+test('Gmail daily sending limit waits a day before another attempt', async () => {
+  const updates = [];
+  await withSender(async () => ({
+    status: 'failed', errorCode: 'gmail_daily_limit', retryAfterSeconds: 86400
+  }), async worker => {
+    await worker.sendQueuedEmail({ async execute(sql, values) { updates.push({ sql, values }); } },
+      job({ attempts: 6, manualRetries: 1 }), 'claim');
+  });
+  assert.equal(updates[0].values[0], 'pending');
+  assert.equal(updates[0].values[1], 86400);
+  assert.equal(updates[0].values[2], 'gmail_daily_limit');
+});
+
 test('manual retry grants another attempt window while preserving the lifetime attempt count', async () => {
   const updates = [];
   await withSender(async () => ({ status: 'failed' }), async worker => {

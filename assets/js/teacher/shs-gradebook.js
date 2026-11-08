@@ -38,6 +38,7 @@
     const modal = document.getElementById('addCompModal');
     const body = modal.querySelector('.modal-body');
     const save = modal.querySelector('#addScoreComponentSubmit');
+    const saveLabel = modal.querySelector('#addScoreComponentSubmitLabel');
     const components = data.scope.policy?.components || [];
     const choices = body.querySelector('#compTypeOpts');
     const titleInput = body.querySelector('#compNameInput');
@@ -87,8 +88,11 @@
       updateExamParts(selected);
     };
     save.disabled = !writable || !components.length;
+    saveLabel.textContent = 'Add Component';
+    let adding = false;
     save.onclick = async event => {
       event.preventDefault();
+      if (adding || save.disabled) return;
       const selectedButton = choices.querySelector('[data-component-code].selected');
       if (!titleInput.reportValidity() || !maxInput.reportValidity() || !selectedButton) return;
       const selectedComponent = components.find(component => String(component.code) === selectedButton.dataset.componentCode);
@@ -101,7 +105,9 @@
         examPartCode: examGroup.hidden ? null : examSelect.value,
         maxScore: maxInput.value
       };
+      adding = true;
       save.disabled = true;
+      saveLabel.textContent = 'Adding...';
       try {
         await api().createShsGradingItem(values);
         window.closeModal('addCompModal');
@@ -109,7 +115,10 @@
         await reload(data.term.id);
       } catch (error) {
         toast(error.message || 'Score component could not be added.', 'error');
-        save.disabled = false;
+      } finally {
+        adding = false;
+        save.disabled = !writable || !components.length;
+        saveLabel.textContent = 'Add Component';
       }
     };
     window.lucide?.createIcons();

@@ -568,7 +568,8 @@ test('SHS class header shows the selected grading period and saved-score progres
   const nodes = {
     sectionPeriodName: { textContent: '' },
     sectionPeriodMeta: { hidden: true, removeAttribute() { this.hidden = false; } },
-    sectionEncodingStatus: { textContent: '' }
+    sectionEncodingStatus: { textContent: '' },
+    sectionEncodedCount: { textContent: '', hidden: true }
   };
   const yearNode = { textContent: '' };
   let editable = true;
@@ -595,12 +596,39 @@ test('SHS class header shows the selected grading period and saved-score progres
   });
   assert.equal(nodes.sectionPeriodName.textContent, 'Term 2');
   assert.equal(nodes.sectionPeriodMeta.hidden, false);
-  assert.equal(nodes.sectionEncodingStatus.textContent, '1 of 2 encoded');
+  assert.equal(nodes.sectionEncodingStatus.textContent, 'Encoding in progress');
+  assert.equal(nodes.sectionEncodedCount.textContent, '1 of 2 students encoded');
+  assert.equal(nodes.sectionEncodedCount.hidden, false);
   assert.equal(yearNode.textContent, '2026-2027');
+
+  context.update({
+    scope: { yearStatus: 'active', policy: {} },
+    term: { name: 'Term 3', status: 'active' },
+    students: [{ studentId: '1' }, { studentId: '2' }],
+    items: [{ id: '11', maxScore: 10 }],
+    scores: []
+  });
+  assert.equal(nodes.sectionPeriodName.textContent, 'Term 3');
+  assert.equal(nodes.sectionEncodingStatus.textContent, 'Encoding not started');
+  assert.equal(nodes.sectionEncodedCount.textContent, '0 of 2 students encoded');
+
+  context.update({
+    scope: { yearStatus: 'active', policy: {} },
+    term: { name: 'Term 3', status: 'active' },
+    students: [{ studentId: '1' }, { studentId: '2' }],
+    items: [{ id: '11', maxScore: 10 }],
+    scores: [
+      { studentId: '1', gradingItemId: '11', score: 0 },
+      { studentId: '2', gradingItemId: '11', score: 8 }
+    ]
+  });
+  assert.equal(nodes.sectionEncodingStatus.textContent, 'Encoding complete');
+  assert.equal(nodes.sectionEncodedCount.textContent, '2 of 2 students encoded');
 
   editable = false;
   context.update({ scope: { yearStatus: 'active', policy: {} }, term: { name: 'Term 2', status: 'active' } });
   assert.equal(nodes.sectionEncodingStatus.textContent, 'Read only');
+  assert.equal(nodes.sectionEncodedCount.hidden, true);
 
   context.electiveClass.activePeriodName = '';
   context.update({ term: null });

@@ -1236,8 +1236,7 @@ async function listSubmissions(req, res, next) {
       const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ?', [req.user.schoolId, assignmentId, req.user.id]);
       return res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
         ...submission,
-        fileUrl: filePath && ownAssignment.electiveClassId
-          ? `/api/assignments/history/${assignmentId}/file` : null
+        fileUrl: filePath ? `/api/assignments/${assignmentId}/submissions/${submission.id}/download` : null
       })) });
     }
     const [submissions] = await database.execute('SELECT assignment_submissions.id, assignment_submissions.assignment_id AS assignmentId, assignment_submissions.student_user_id AS studentId, students.display_name AS studentName, assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath, assignment_submissions.file_size_bytes AS fileSizeBytes, assignment_submissions.submission_status AS submissionStatus, assignment_submissions.submitted_at AS submittedAt, assignment_submissions.updated_at AS updatedAt FROM assignment_submissions INNER JOIN users AS students ON students.id = assignment_submissions.student_user_id AND students.school_id = assignment_submissions.school_id WHERE assignment_submissions.school_id = ? AND assignment_submissions.assignment_id = ? ORDER BY students.last_name, students.first_name', [assignment.schoolId, assignmentId]);
@@ -1266,6 +1265,18 @@ async function getManagedSubmissionFile(database, user, assignmentId, submission
   const [submissions] = await database.execute(
     'SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions WHERE id = ? AND school_id = ? AND assignment_id = ? LIMIT 1',
     [submissionId, assignment.schoolId, assignmentId]
+  );
+  const submission = submissions[0];
+  return resolveStoredSubmission(submission?.fileName, submission?.filePath);
+}
+
+async function getAccessibleSubmissionFile(database, user, assignmentId, submissionId) {
+  if (user.role !== 'student') return getManagedSubmissionFile(database, user, assignmentId, submissionId);
+  const assignment = await getStudentAssignment(database, user.schoolId, user.id, assignmentId);
+  if (!assignment) throw createError('Assignment was not found.', 404);
+  const [submissions] = await database.execute(
+    'SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions WHERE id = ? AND school_id = ? AND assignment_id = ? AND student_user_id = ? LIMIT 1',
+    [submissionId, user.schoolId, assignmentId, user.id]
   );
   const submission = submissions[0];
   return resolveStoredSubmission(submission?.fileName, submission?.filePath);
@@ -1325,7 +1336,7 @@ async function downloadOwnHistoricalSubmission(req, res, next) {
     if (!rows.length) throw createError('The previous submission was not found.', 404);
     const submission = resolveStoredSubmission(rows[0].fileName, rows[0].filePath);
     res.set('Cache-Control', 'no-store');
-    res.download(submission.filePath, submission.fileName, error => {
+    res.download(submission.filePath, submission.fileName, { dotfiles: 'allow' }, error => {
       if (error && !res.headersSent) next(error);
     });
   } catch (error) { next(error); }
@@ -1388,8 +1399,8 @@ async function downloadSubmission(req, res, next) {
   try {
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
     const submissionId = parseId(req.params.submissionId, 'submission ID');
-    const submission = await getManagedSubmissionFile(getDatabase(), req.user, assignmentId, submissionId);
-    res.download(submission.filePath, submission.fileName, error => {
+    const submission = await getAccessibleSubmissionFile(getDatabase(), req.user, assignmentId, submissionId);
+    res.download(submission.filePath, submission.fileName, { dotfiles: 'allow' }, error => {
       if (error && !res.headersSent) next(error);
     });
   } catch (error) { next(error); }
@@ -1399,7 +1410,7 @@ async function previewSubmission(req, res, next) {
   try {
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
     const submissionId = parseId(req.params.submissionId, 'submission ID');
-    const submission = await getManagedSubmissionFile(getDatabase(), req.user, assignmentId, submissionId);
+    const submission = await getAccessibleSubmissionFile(getDatabase(), req.user, assignmentId, submissionId);
     const pdf = await createSubmissionPdfPreview(submission.filePath);
     res.set({
       'Content-Type': 'application/pdf',

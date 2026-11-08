@@ -73,8 +73,22 @@ async function sendEmail({ to, subject, text }) {
     };
   } catch (error) {
     const errorCode = String(error.code || 'smtp_failed').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 80);
-    console.error('Email delivery failed', JSON.stringify({ errorCode: errorCode || 'smtp_failed' }));
-    return { status: 'failed', errorCode: errorCode || 'smtp_failed' };
+    const command = String(error.command || '').toUpperCase();
+    const responseCode = Number(error.responseCode);
+    const rawResponse = String(error.response || '');
+    const dailyLimit = responseCode === 550 && /\b5\.4\.5\b/.test(rawResponse)
+      && /daily user sending limit exceeded/i.test(rawResponse);
+    const response = sanitizeSmtpValue(rawResponse
+      .replace(/[^\s<>@]+@[^\s<>@]+/g, '[email]'), 200);
+    console.error('Email delivery failed', JSON.stringify({
+      errorCode: errorCode || 'smtp_failed',
+      ...(command && ['API', 'MAIL FROM', 'RCPT TO', 'DATA'].includes(command) ? { command } : {}),
+      ...(Number.isInteger(responseCode) && responseCode >= 100 && responseCode <= 599 ? { responseCode } : {}),
+      ...(response ? { response } : {})
+    }));
+    return dailyLimit
+      ? { status: 'failed', errorCode: 'gmail_daily_limit', retryAfterSeconds: 24 * 60 * 60 }
+      : { status: 'failed', errorCode: errorCode || 'smtp_failed' };
   }
 }
 

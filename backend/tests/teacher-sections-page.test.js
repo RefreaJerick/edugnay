@@ -173,7 +173,7 @@ function createSectionContext(search, section) {
   const roster = new Promise((resolve, reject) => { releaseRoster = resolve; rejectRoster = reject; });
   const elements = new Map([
     ['sectionHeaderName', { textContent: '' }],
-    ['sectionGradeBadge', { textContent: '' }],
+    ['sectionGradeLabel', { textContent: '' }],
     ['sectionAdviserMeta', { hidden: true }],
     ['schoolYear', { textContent: '' }]
   ]);
@@ -235,7 +235,7 @@ test('section identity and adviser status render while the student roster is sti
 
     assert.equal(testContext.rosterRequested(), true);
     assert.equal(testContext.elements.get('sectionHeaderName').textContent, section.name);
-    assert.equal(testContext.elements.get('sectionGradeBadge').textContent, `G${section.grade.match(/\d+/)[0]}`);
+    assert.equal(testContext.elements.get('sectionGradeLabel').textContent, `Grade ${section.grade.match(/\d+/)[0]}`);
     assert.equal(testContext.elements.get('schoolYear').textContent, section.academicYear);
     assert.equal(testContext.elements.get('sectionAdviserMeta').hidden, section.adviserId !== '7');
 
@@ -942,6 +942,16 @@ test('section subject dropdown follows its navy and gold header style on desktop
   assert.match(sectionsStyles, /\.section-header \.section-subject \.searchable-select-control::after\s*\{[^}]*border-top-color:\s*#f7d980;/s);
   assert.match(sectionsStyles, /@media \(max-width: 420px\)[\s\S]*?\.section-header \.section-subject \.searchable-select:not\(\[hidden\]\)\s*\{[^}]*flex:\s*1 1 200px;/);
   assert.match(modalStyles, /\.searchable-select-menu\s*\{[^}]*background:\s*var\(--theme-surface\);/s);
+});
+
+test('section banner keeps the grade label and lets the top row fit its content', () => {
+  assert.match(sectionsSource, /id="sectionGradeLabel"/);
+  assert.doesNotMatch(sectionsSource, /sectionGradeBadge|section-badge/);
+  assert.doesNotMatch(sectionsStyles, /\.section-badge\s*\{/);
+  const headerTop = sectionsStyles.match(/\.section-header-top\s*\{([^}]*)\}/)?.[1];
+  assert.ok(headerTop);
+  assert.doesNotMatch(headerTop, /min-height/);
+  assert.match(headerTop, /padding:\s*16px 24px/);
 });
 
 test('custom selects use the filled down triangle shown in the dropdown reference', () => {
