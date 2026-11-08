@@ -306,10 +306,10 @@ test('migration backfills existing published assignments from their creation tim
   assert.match(migration, /SET published_at = created_at\s+WHERE status = 'published'/);
 });
 
-test('parent dashboard empty state describes assignments active on the selected day', () => {
+test('parent dashboard empty state describes upcoming assignments', () => {
   const dashboard = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/dashboard.js'), 'utf8');
-  assert.match(dashboard, /title: 'No active assignments'/);
-  assert.match(dashboard, /text: 'No published assignments are active on this day\.'/);
+  assert.match(dashboard, /title: 'No upcoming assignments'/);
+  assert.match(dashboard, /text: 'Published assignments due today or later will appear here\.'/);
 });
 
 test('parent cannot request assignment activity for an unlinked child', async () => {

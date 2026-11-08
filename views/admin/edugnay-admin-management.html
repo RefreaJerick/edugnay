@@ -456,84 +456,6 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="importStudentsModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div class="modal-heading">
-        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="upload"></i></div>
-        <div class="modal-heading-copy">
-        <div class="modal-title">Import and Auto-Sort Students</div>
-        <div class="modal-sub">Upload a CSV with student averages to auto-assign sections.</div>
-        </div>
-      </div>
-      <button class="modal-close" data-page-click="p1f2503babb1e"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="modal-body">
-      <form id="importStudentsForm" method="post" action="/assignments/students/import" enctype="multipart/form-data">
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label" for="importSchoolLevel">School Level</label>
-            <select class="form-select dropdown" id="importSchoolLevel" name="schoolLevel" data-page-change="p4c80dd168b55" required></select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="importGrade">Grade Level</label>
-            <select class="form-select dropdown" id="importGrade" name="gradeLevel" data-page-change="pe5039f913d89" required></select>
-          </div>
-        </div>
-        <div class="form-row-2" id="importStrandRow" style="display:none;">
-          <div class="form-group" id="importTrackGroup" style="display:none;">
-            <label class="form-label" for="importTrack">SHS Track</label>
-            <select class="form-select dropdown" id="importTrack" name="track" data-page-change="p4c80dd168b55"></select>
-          </div>
-          <div class="form-group" id="importStrandGroup" style="display:none;">
-            <label class="form-label" for="importStrand">Strand</label>
-            <select class="form-select dropdown" id="importStrand" name="strand" data-page-change="p4c80dd168b55"></select>
-          </div>
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">CSV File</label>
-          <input type="file" name="csvFile" id="csvFileInput" accept=".csv" required
-                 style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
-                 data-page-change="pd5dc2b0e69e0"/>
-          <div class="file-upload-wrap">
-            <button type="button" class="file-upload-btn" data-page-click="pb2bb82330b78">
-              <i data-lucide="upload" style="width:14px;height:14px;"></i>Choose File
-            </button>
-            <span class="file-upload-name" id="fileUploadName">No file selected</span>
-          </div>
-          <div class="csv-hint">
-            <i data-lucide="info" style="width:14px;height:14px;"></i>
-            <div>
-              <span class="csv-hint-label">Expected columns</span>
-              <div class="csv-hint-cols">
-                <span class="csv-col-tag">schoolEmail</span>
-                <span class="csv-col-tag">firstName</span>
-                <span class="csv-col-tag">lastName</span>
-                <span class="csv-col-tag">lrn</span>
-                <span class="csv-col-tag">average</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="csvPreviewWrap" style="display:none;margin-top:14px;">
-          <div class="form-label" style="margin-bottom:6px;">Preview</div>
-          <div class="csv-preview-scroll" style="max-height:220px;overflow:auto;border:1px solid var(--gray-200);border-radius:var(--radius-sm);">
-            <table style="width:100%;font-size:12px;">
-              <thead id="csvPreviewHead"></thead>
-              <tbody id="csvPreviewBody"></tbody>
-            </table>
-          </div>
-          <div style="font-size:12px;color:var(--gray-500);margin-top:6px;" id="csvPreviewCount"></div>
-        </div>
-      </form>
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" data-page-click="p1f2503babb1e">Cancel</button>
-      <button type="submit" form="importStudentsForm" class="btn btn-save">Upload &amp; Auto-Sort</button>
-    </div>
-  </div>
-</div>
-
 <!-- ══════════════════════════════════════════════════════════
      PAGE SHELL
 ══════════════════════════════════════════════════════════ -->
@@ -863,7 +785,7 @@
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
         <div>
           <div class="info-title">How student assignments work</div>
-          <div class="info-text">Assign individual students to a section, move them between sections, or import a CSV to sort students by average within a school level and grade.</div>
+          <div class="info-text">Assign individual students to a section or move them between sections.</div>
         </div>
       </div>
 
@@ -885,7 +807,6 @@
               <div class="enrolled-meta" id="enrolledMeta">Showing students across the school’s sections</div>
             </div>
             <div class="toolbar-actions">
-              <button class="top-btn secondary" data-page-click="pf08d514c12bf"><i data-lucide="file-up" style="width:16px;height:16px;"></i>Import Students</button>
               <button class="top-btn primary" data-page-click="p327607e8aaf5"><i data-lucide="plus" style="width:16px;height:16px;"></i>Assign Student</button>
             </div>
           </div>

@@ -213,6 +213,11 @@
   color: rgba(255, 255, 255, 0.72);
 }
 
+#sectionAdviserMeta[hidden],
+#sectionPeriodMeta[hidden] {
+  display: none;
+}
+
 .section-meta-item strong {
   color: var(--white);
   font-weight: 700;

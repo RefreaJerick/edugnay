@@ -7,6 +7,12 @@ const vm = require('node:vm');
 const management = fs.readFileSync(path.join(__dirname, '../../assets/js/admin/management.js'), 'utf8').replace(/\r\n/g, '\n');
 const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8');
 
+test('Class Management keeps manual student assignment and removes CSV auto-sort', () => {
+  assert.match(html, /data-page-click="p327607e8aaf5"[\s\S]*?Assign Student/);
+  assert.doesNotMatch(html, /Import Students|Import and Auto-Sort Students|importStudentsForm|csvFileInput|csvPreview/);
+  assert.doesNotMatch(management, /openImportStudentsModal|previewCSV|createImportedStudentAccount|auto-sorted into/);
+});
+
 function sourceBetween(startMarker, endMarker) {
   const start = management.indexOf(startMarker);
   const end = management.indexOf(endMarker, start);
@@ -93,8 +99,7 @@ function createHarness({ enrollStudentsBulk, refreshManagementViews = async () =
     closeSubjectModal() {},
     closeTeacherModal() {},
     closeDepedSubjectReview() {},
-    closeConfirmRemoveModal() {},
-    closeImportStudentsModal() {}
+    closeConfirmRemoveModal() {}
   });
 
   vm.runInContext(`

@@ -3,7 +3,7 @@ document.addEventListener('keydown', e => {
   closeSectionMenus();
   closeSectionAddModal(); closeSectionEditModal(); closeSectionStudentsModal();
   closeSubjectModal(); closeTeacherModal(); closeDepedSubjectReview();
-  closeStudentAssignModal(); closeConfirmRemoveModal(); closeImportStudentsModal();
+  closeStudentAssignModal(); closeConfirmRemoveModal();
 });
 
 /* ══════════════════════════════════════════════
@@ -2610,208 +2610,6 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
 
 });
 
-function openImportStudentsModal() {
-  document.getElementById('importStudentsForm').reset();
-  document.getElementById('csvPreviewWrap').style.display = 'none';
-  document.getElementById('importSchoolLevel').value = managementDefaultLevel();
-  updateImportGradeOptions();
-  document.getElementById('fileUploadName').textContent = 'No file selected';
-  document.getElementById('fileUploadName').classList.remove('has-file');
-  document.getElementById('importStudentsModalBackdrop').classList.add('open');
-}
-function closeImportStudentsModal() { document.getElementById('importStudentsModalBackdrop').classList.remove('open'); }
-document.getElementById('importStudentsModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeImportStudentsModal(); });
-
-function updateImportGradeOptions() {
-  const levelSelect = document.getElementById('importSchoolLevel');
-  const levels = managementSchoolLevels();
-  const requestedLevel = levelSelect?.value || managementDefaultLevel();
-  const level = levels.includes(requestedLevel) ? requestedLevel : levels[0] || '';
-  managementSetOptions(levelSelect, levels.map(option => ({ value: option, label: managementLevelLabel(option) })), 'Select a school level', level);
-  const gradeSelect = document.getElementById('importGrade');
-  const currentGrade = gradeSelect?.value || '';
-  const grades = managementGradeOptions(level);
-  const grade = grades.find(option => managementGradeKey(option) === managementGradeKey(currentGrade)) || grades[0] || '';
-  managementSetOptions(gradeSelect, grades.map(option => ({ value: option, label: option })), 'Select a grade level', grade);
-  const trackSelect = document.getElementById('importTrack');
-  const trackGroup = document.getElementById('importTrackGroup');
-  const tracks = level === 'shs' ? managementTrackOptions() : [];
-  const track = tracks.find(item => String(item.id) === trackSelect?.value) || tracks[0] || null;
-  if (trackGroup) trackGroup.style.display = level === 'shs' ? '' : 'none';
-  managementSetOptions(trackSelect, tracks.map(item => ({ value: String(item.id), label: item.displayName })), 'Select a track', track ? String(track.id) : '');
-  if (trackSelect) trackSelect.required = level === 'shs';
-  const strandSelect = document.getElementById('importStrand');
-  const strandRow = document.getElementById('importStrandRow');
-  const strandGroup = document.getElementById('importStrandGroup');
-  const strands = track ? managementStrandOptions(track.id) : [];
-  const strand = strands.find(item => String(item.id) === strandSelect?.value) || strands[0] || null;
-  const requiresStrand = managementStrandRequired(track);
-  if (strandRow) strandRow.style.display = level === 'shs' ? 'grid' : 'none';
-  if (strandGroup) strandGroup.style.display = requiresStrand ? '' : 'none';
-  managementSetOptions(strandSelect, strands.map(option => ({ value: String(option.id), label: option.displayName })), 'Select a strand', strand ? String(strand.id) : '');
-  if (strandSelect) strandSelect.required = requiresStrand;
-}
-
-function selectImportGrade(value) {
-  const gradeSelect = document.getElementById('importGrade');
-  if (gradeSelect) gradeSelect.value = value;
-}
-
-function previewCSV(input) {
-  const file = input.files[0];
-  const nameEl = document.getElementById('fileUploadName');
-  if (!file) { nameEl.textContent = 'No file selected'; nameEl.classList.remove('has-file'); return; }
-  nameEl.textContent = file.name;
-  nameEl.classList.add('has-file');
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim().length);
-    if (!lines.length) return;
-    const headers = lines[0].split(',').map(h => h.trim());
-    const rows = lines.slice(1, 6).map(l => l.split(',').map(c => c.trim()));
-
-    document.getElementById('csvPreviewHead').innerHTML =
-      '<tr>' + headers.map(h => `<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--gray-200);">${h}</th>`).join('') + '</tr>';
-    document.getElementById('csvPreviewBody').innerHTML =
-      rows.map(r => '<tr>' + r.map(c => `<td style="padding:6px 8px;border-bottom:1px solid var(--gray-100);">${c}</td>`).join('') + '</tr>').join('');
-    document.getElementById('csvPreviewCount').textContent = `Showing ${rows.length} of ${lines.length - 1} rows`;
-    document.getElementById('csvPreviewWrap').style.display = '';
-  };
-  reader.readAsText(file);
-}
-
-/* ── IMPORT & AUTO-SORT SUBMIT (mirrors importUsersForm on the users page) ── */
-async function createImportedStudentAccount(record, level, grade, strand, section) {
-  const firstName = String(record.firstName || '').trim();
-  const lastName = String(record.lastName || '').trim();
-  const schoolEmail = String(record.schoolEmail || '').trim().toLowerCase();
-  {
-    const existing = STUDENTS_DATA.find(item => String(item.schoolEmail || '').toLowerCase() === schoolEmail);
-    let user = existing;
-    if (user) {
-      const updated = await window.EDUGNAY_API.updateUser(user.id, { firstName, lastName, schoolEmail, lrn: String(record.lrn || '').trim() });
-      user = updated.user;
-    } else {
-      const created = await window.EDUGNAY_API.createUser({ role: 'student', firstName, lastName, schoolEmail, lrn: String(record.lrn || '').trim() });
-      user = created.user;
-    }
-    await window.EDUGNAY_API.enrollStudent(section.id, user.id);
-    return user;
-  }
-}
-
-document.getElementById('importStudentsForm').addEventListener('submit', async function (e) {
-  e.preventDefault();
-
-  const level = document.getElementById('importSchoolLevel').value;
-  const grade = document.getElementById('importGrade').value;
-  const trackId = document.getElementById('importTrack').value;
-  const strand = document.getElementById('importStrand').value;
-  const track = managementTrackOptions().find(item => String(item.id) === trackId);
-  const requiresStrand = managementStrandRequired(track);
-  const fileInput = document.getElementById('csvFileInput');
-  const file = fileInput.files[0];
-
-  if (!level || !grade || (level === 'shs' && !trackId) || (requiresStrand && !strand)) { alert('Please select a school level, grade, and SHS track or strand where required.'); return; }
-  if (!file) { alert('Please choose a CSV file.'); return; }
-
-  const reader = new FileReader();
-  reader.onload = async function (ev) {
-    const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim().length);
-    if (lines.length < 2) { alert('CSV appears to be empty.'); return; }
-
-    const headers = lines[0].split(',').map(h => h.trim());
-    const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
-
-    const records = rows.map(cols => {
-      const record = {};
-      headers.forEach((h, i) => record[h] = cols[i] || '');
-      return record;
-    });
-
-    const users = STUDENTS_DATA;
-    const importedLrns = new Set();
-    const importedEmails = new Set();
-    for (let index = 0; index < records.length; index += 1) {
-      const record = records[index];
-      const lrn = String(record.lrn || '').trim();
-      const schoolEmail = String(record.schoolEmail || '').trim().toLowerCase();
-      const existingUser = schoolEmail
-        ? users.find(user => String(user.schoolEmail || '').toLowerCase() === schoolEmail)
-        : null;
-      const lrnOwner = users.find(user => user.role === 'student' && String(user.lrn || '').trim() === lrn);
-
-      if (!schoolEmail) {
-        alert(`Row ${index + 2}: School email is required.`);
-        return;
-      }
-
-      if (!/^\d{12}$/.test(lrn)) {
-        alert(`Row ${index + 2}: LRN must contain exactly 12 digits.`);
-        return;
-      }
-      if (importedLrns.has(lrn) || (lrnOwner && lrnOwner.id !== existingUser?.id)) {
-        alert(`Row ${index + 2}: That LRN is already assigned to another student account.`);
-        return;
-      }
-      if (schoolEmail && importedEmails.has(schoolEmail)) {
-        alert(`Row ${index + 2}: That school email appears more than once in this file.`);
-        return;
-      }
-
-      record.lrn = lrn;
-      record.schoolEmail = schoolEmail;
-      importedLrns.add(lrn);
-      if (schoolEmail) importedEmails.add(schoolEmail);
-    }
-
-    // Highest averages get seated first, then distributed round-robin
-    // across this grade's sections so no single section overfills first.
-    records.sort((a, b) => (parseFloat(b.average) || 0) - (parseFloat(a.average) || 0));
-
-    const gradeSections = managementSectionRecords().filter(section => section.level === level && managementGradeKey(section.grade) === managementGradeKey(grade)
-      && (level !== 'shs' || section.trackId === trackId)
-      && (!requiresStrand || section.strandId === strand)
-      && !section.needsCurriculumSetup);
-    if (!gradeSections.length) { alert('No sections found for this placement.'); return; }
-
-    let sectionIdx = 0;
-    let placed = 0;
-
-    let importError = null;
-    for (const record of records) {
-      // skip sections that are already full
-      let attempts = 0;
-      while (gradeSections[sectionIdx].students >= gradeSections[sectionIdx].capacity && attempts < gradeSections.length) {
-        sectionIdx = (sectionIdx + 1) % gradeSections.length;
-        attempts++;
-      }
-      if (attempts >= gradeSections.length) break; // all sections full, student stays unplaced
-
-      const targetSection = gradeSections[sectionIdx];
-      try {
-        await createImportedStudentAccount(record, level, grade, strand, targetSection);
-      } catch (error) {
-        importError = error;
-        break;
-      }
-
-      targetSection.students++;
-      placed++;
-      sectionIdx = (sectionIdx + 1) % gradeSections.length;
-    }
-
-    await refreshManagementViews();
-    closeImportStudentsModal();
-    alert(importError
-      ? `${placed} of ${records.length} student(s) were imported before the error: ${importError.message}`
-      : `${placed} of ${records.length} student(s) auto-sorted into ${managementLevelLabel(level)} ${grade} sections.`);
-
-  };
-  reader.readAsText(file);
-});
-
 let activeStudentGrade   = 'all';
 let activeStudentSection = null;
 
@@ -2895,7 +2693,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await window.EDUGNAY_SCHOOL_READY;
     updateSectionFormFields('create');
-    updateImportGradeOptions();
     await refreshManagementViews();
   } catch (error) {
     showManagementLoadError(error);
@@ -2915,7 +2712,6 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p00d12a63031d: function(event) { updateManagementAssignmentFields('strand') },
     p14ab24f20e72: function(event) { previewTeacher(this) },
     p1c4523cacec2: function(event) { updateManagementAssignmentFields('track') },
-    p4c80dd168b55: function(event) { updateImportGradeOptions() },
     p6687e9537cb3: function(event) { updateManagementAssignmentFields('grade') },
     p6d6830e5d9a6: function(event) { updateManagementAssignmentFields('level') },
     p89ae277910af: function(event) { filterTeacherBlocks() },
@@ -2923,16 +2719,13 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p9914d313cdd7: function(event) { updateSubjectShsFields() },
     pa54c25592849: function(event) { updateSectionFormFields('create') },
     pbbc4dd07b0a1: function(event) { updateManagementMoveFields('track') },
-    pd5dc2b0e69e0: function(event) { previewCSV(this) },
     pdc0dc7ae47a2: function(event) { filterSections() },
-    pe5039f913d89: function(event) { selectImportGrade(this.value) },
     pee82f9d7923a: function(event) { updateManagementMoveFields('strand') },
     pf77aad0b0237: function(event) { updateManagementMoveContext() },
   },
   click: {
     p104d763fb19f: function(event) { closeSectionAddModal() },
     p1a0385c98765: function(event) { closeStudentAssignModal() },
-    p1f2503babb1e: function(event) { closeImportStudentsModal() },
     p2a2410f95a1e: function(event) { switchStudentGradeTab('unassigned', null) },
     p327607e8aaf5: function(event) { openStudentAssignModal() },
     p3e0caa483472: function(event) { switchMgmtTab('sections', this) },
@@ -2947,10 +2740,8 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p8dc53892dd44: function(event) { switchMgmtTab('students', this) },
     pa41ba0a60d37: function(event) { closeSubjectModal() },
     pab856521776b: function(event) { switchMgmtTab('teachers', this) },
-    pb2bb82330b78: function(event) { document.getElementById('csvFileInput').click() },
     pca06ba85cf78: function(event) { closeSectionStudentsModal() },
     pe8b4c9eda421: function(event) { setSectionView('table') },
-    pf08d514c12bf: function(event) { openImportStudentsModal() },
     g5a9c210f6c2: function(event) { event.preventDefault(); window.location.reload(); },
   },
   input: {

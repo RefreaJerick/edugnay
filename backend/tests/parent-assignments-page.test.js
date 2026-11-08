@@ -14,6 +14,7 @@ const script = pageFs.readFileSync(path.join(root, 'assets/js/parent/assignments
 function createPage(api) {
   const elements = new Map();
   const documentListeners = new Map();
+  let pageReadyCalls = 0;
   const element = id => {
     if (!elements.has(id)) elements.set(id, {
       value: id === 'assignmentSubjectFilter' ? 'all' : '', textContent: '', innerHTML: '', hidden: id === 'assignmentDetailModal',
@@ -29,6 +30,7 @@ function createPage(api) {
   };
   const context = vm.createContext({ document, window: {
     EDUGNAY_API: api, EDUGNAY_SCHOOL_READY: Promise.resolve(),
+    EDUGNAY_PAGE_LOADING: { ready() { pageReadyCalls += 1; } },
     EDUGNAY_CONFIG: {
       escapeHtml: value => String(value),
       renderPanelEmptyState: ({ title }) => title,
@@ -38,7 +40,7 @@ function createPage(api) {
     lucide: { createIcons() {} }
   } });
   new vm.Script(script).runInContext(context);
-  documentListeners.get('DOMContentLoaded')();
+  const initialized = documentListeners.get('DOMContentLoaded')();
   const click = (id, dataset) => element(id).listeners.get('click')({ target: { closest: () => ({ dataset, focus() {} }) } });
   const key = (id, keyName, dataset) => {
     let prevented = false;
@@ -47,7 +49,7 @@ function createPage(api) {
   };
   const change = (id, value) => { element(id).value = value; element(id).listeners.get('change')({ target: element(id) }); };
   const flush = async () => { await new Promise(resolve => setImmediate(resolve)); await new Promise(resolve => setImmediate(resolve)); };
-  return { element, click, change, key, flush };
+  return { element, click, change, key, flush, initialized, get pageReadyCalls() { return pageReadyCalls; } };
 }
 
 const terms = [
@@ -78,6 +80,16 @@ test('parent assignment page has read-only details and navigation on every paren
     const page = pageFs.readFileSync(path.join(root, 'views/parent', filename), 'utf8');
     assert.match(page, /href="edugnay-parent-assignments\.html"/, filename);
   }
+});
+
+test('parent assignment page signals ready after its initial data load', async () => {
+  const page = createPage({ isBackendAvailable: true,
+    getParentChildren: async () => [],
+    getAcademicTerms: async () => []
+  });
+  assert.equal(page.pageReadyCalls, 0);
+  await page.initialized;
+  assert.equal(page.pageReadyCalls, 1);
 });
 
 test('student and parent previous-section work share an accessible accordion card style', () => {

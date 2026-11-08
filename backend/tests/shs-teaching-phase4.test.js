@@ -567,6 +567,7 @@ test('SHS class header shows the selected grading period and saved-score progres
   assert.ok(source);
   const nodes = {
     sectionPeriodName: { textContent: '' },
+    sectionPeriodMeta: { hidden: true, removeAttribute() { this.hidden = false; } },
     sectionEncodingStatus: { textContent: '' }
   };
   const yearNode = { textContent: '' };
@@ -593,12 +594,17 @@ test('SHS class header shows the selected grading period and saved-score progres
     ]
   });
   assert.equal(nodes.sectionPeriodName.textContent, 'Term 2');
+  assert.equal(nodes.sectionPeriodMeta.hidden, false);
   assert.equal(nodes.sectionEncodingStatus.textContent, '1 of 2 encoded');
   assert.equal(yearNode.textContent, '2026-2027');
 
   editable = false;
   context.update({ scope: { yearStatus: 'active', policy: {} }, term: { name: 'Term 2', status: 'active' } });
   assert.equal(nodes.sectionEncodingStatus.textContent, 'Read only');
+
+  context.electiveClass.activePeriodName = '';
+  context.update({ term: null });
+  assert.equal(nodes.sectionPeriodName.textContent, 'Grading period unavailable');
 });
 
 test('a failed SHS assignment grade link rolls back the assignment', async () => {

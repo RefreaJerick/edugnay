@@ -26,9 +26,10 @@
   function updateHeaderGradeStatus(workspaceData) {
     if (!electiveClass || String(electiveClass.electiveClassId) !== classId) return;
     const term = workspaceData?.term;
-    document.getElementById('sectionPeriodName').textContent = term?.name || electiveClass.activePeriodName || 'No active grading period';
+    document.getElementById('sectionPeriodName').textContent = term?.name || electiveClass.activePeriodName || 'Grading period unavailable';
     const yearNode = document.querySelector('[data-school-year]');
     if (yearNode) yearNode.textContent = electiveClass.schoolYear || '';
+    document.getElementById('sectionPeriodMeta')?.removeAttribute('hidden');
     if (!term) {
       document.getElementById('sectionEncodingStatus').textContent = 'No active grading period';
       return;
@@ -68,6 +69,10 @@
         })
         .catch(error => {
           document.getElementById('sectionEncodingStatus').textContent = 'Grade status unavailable';
+          if (!document.getElementById('sectionPeriodName').textContent) {
+            document.getElementById('sectionPeriodName').textContent = 'Grading period unavailable';
+            document.getElementById('sectionPeriodMeta')?.removeAttribute('hidden');
+          }
           throw error;
         });
     }
@@ -102,8 +107,11 @@
     document.getElementById('sectionSubjectSelect').hidden = true;
     document.getElementById('sectionStudentCount').textContent = String(Number(electiveClass.enrolledCount || 0));
     document.getElementById('sectionAdviserMeta').innerHTML = `<i data-lucide="user-round" aria-hidden="true"></i>${escapeHtml(electiveClass.teacherName || 'Assigned teacher')}`;
-    if (electiveClass.activePeriodName) document.getElementById('sectionPeriodName').textContent = electiveClass.activePeriodName;
-    else document.getElementById('sectionPeriodName').innerHTML = '';
+    document.getElementById('sectionAdviserMeta').removeAttribute('hidden');
+    if (electiveClass.activePeriodName) {
+      document.getElementById('sectionPeriodName').textContent = electiveClass.activePeriodName;
+      document.getElementById('sectionPeriodMeta').removeAttribute('hidden');
+    }
     document.querySelector('[data-school-year]').textContent = electiveClass.schoolYear || '';
     document.getElementById('sectionEncodingStatus').innerHTML = canEdit()
       ? '' : 'Read only';

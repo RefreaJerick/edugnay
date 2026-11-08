@@ -303,6 +303,10 @@
   background: linear-gradient(180deg, var(--theme-surface-tint) 0%, var(--theme-surface) 100%);
 }
 
+.day-strip[hidden] {
+  display: none;
+}
+
 .day-pill {
   flex: 0 0 auto;
   min-width: 52px;

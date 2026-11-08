@@ -1661,10 +1661,6 @@ tbody tr:hover {
   gap: 14px;
 }
 
-#importStrandGroup {
-  grid-column: 1 / 2;
-}
-
 .form-select {
   width: 100%;
   padding: 11px 36px 11px 14px;

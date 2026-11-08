@@ -6,8 +6,10 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const html = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
-const loadGradeData = html.split('  async function loadBackendGradeData() {')[1]
+const loadGradeData = html.split('  async function loadBackendGradeData(termsPromise) {')[1]
   .split('  async function loadBackendAttendanceData() {')[0];
+const sectionTermsRequest = html.split('const sectionTermsPromise = ')[1]
+  .split(/;\r?\n\s*const periodLoad/)[0];
 const lookupTerm = html.split('  function getBackendTermId(academicPeriodId) {')[1]
   .split('  function getPublishedGradesForPeriod(')[0];
 
@@ -52,10 +54,11 @@ test('teacher grading periods belong only to the selected section year and level
     const BACKEND_SUBMISSIONS = new Map();
     function isBackendGradeMode() { return Boolean(BACKEND_GRADE_CONTEXT); }
     function getBackendTermId(academicPeriodId) {${lookupTerm}
-    async function loadBackendGradeData() {${loadGradeData}
+    async function loadBackendGradeData(termsPromise) {${loadGradeData}
+    function loadSectionTerms() { return ${sectionTermsRequest}; }
   `, context);
 
-  assert.equal(await vm.runInContext('loadBackendGradeData()', context), true, JSON.stringify(warnings));
+  assert.equal(await vm.runInContext('loadBackendGradeData(loadSectionTerms())', context), true, JSON.stringify(warnings));
   assert.deepEqual(JSON.parse(JSON.stringify(requests[0])), { academicYearId: 10, schoolLevelId: 7 });
   assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(ACADEMIC_PERIODS.map(term => term.name))', context)),
     ['Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4']);
@@ -63,13 +66,13 @@ test('teacher grading periods belong only to the selected section year and level
   assert.equal(vm.runInContext('getBackendTermId(22)', context), null);
 
   vm.runInContext('CURRENT_BACKEND_SECTION.academicYearId = 11', context);
-  assert.equal(await vm.runInContext('loadBackendGradeData()', context), true);
+  assert.equal(await vm.runInContext('loadBackendGradeData(loadSectionTerms())', context), true);
   assert.deepEqual(JSON.parse(JSON.stringify(requests[1])), { academicYearId: 11, schoolLevelId: 7 });
   assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(ACADEMIC_PERIODS.map(term => term.id))', context)), ['21', '22']);
   assert.equal(vm.runInContext('ACTIVE_ACADEMIC_PERIOD_ID', context), '22');
 
   vm.runInContext('CURRENT_BACKEND_SECTION.academicYearId = 12', context);
-  assert.equal(await vm.runInContext('loadBackendGradeData()', context), false);
+  assert.equal(await vm.runInContext('loadBackendGradeData(loadSectionTerms())', context), false);
   assert.match(vm.runInContext('BACKEND_GRADE_ERROR', context), /No grading periods are set up/);
   assert.equal(vm.runInContext('ACADEMIC_PERIODS.length', context), 0);
   assert.equal(vm.runInContext('getBackendTermId(2)', context), null);

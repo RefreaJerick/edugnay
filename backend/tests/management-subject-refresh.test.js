@@ -6,7 +6,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const html = pageFs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8');
-const management = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/management.js'), 'utf8');
+const management = pageFs.readFileSync(path.join(__dirname, '../../assets/js/admin/management.js'), 'utf8').replace(/\r\n/g, '\n');
 const refresh = html.split('async function refreshManagementViews() {')[1]
   .split('function managementApiSectionPayload(')[0];
 
@@ -107,7 +107,6 @@ test('Class Management keeps data regions blank during a slow load and renders r
     lucide: { createIcons() {} },
     handleManagementStudentChange() {},
     updateSectionFormFields() {},
-    updateImportGradeOptions() {},
     loadManagementApiData: async () => {},
     renderManagementGradeFilters() {},
     renderTeacherOptions() {},
@@ -403,7 +402,7 @@ test('Elementary and JHS subject cards and removal details omit type labels whil
   assert.equal(context.managementSubjectDescriptor(core), 'core-shs · Core subject');
   assert.equal(context.managementSubjectDescriptor(unclassified), 'legacy-shs · Needs Strengthened SHS setup');
   assert.match(html, /const descriptor = managementSubjectDescriptor\(subject\)/);
-  assert.match(html, /context: managementSubjectDescriptor\(subject, 'Configured subject'\)/);
+  assert.match(html, /context: managementSubjectDescriptor\(subject, 'Subject details'\)/);
 });
 
 test('Class Management inline scripts parse', () => {

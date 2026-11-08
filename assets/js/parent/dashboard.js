@@ -21,15 +21,19 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       lucide.createIcons();
     }
 
+    function dashboardWeekDays(today) {
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      return ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((key, index) => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + index);
+        return { key, label: key[0].toUpperCase() + key.slice(1), date: date.getDate(),
+          isoDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` };
+      });
+    }
+
     const today = new Date();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-    const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'].map((key, index) => {
-      const date = new Date(monday);
-      date.setDate(monday.getDate() + index);
-      return { key, label: key[0].toUpperCase() + key.slice(1), date: date.getDate(),
-        isoDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` };
-    });
+    const DAYS = dashboardWeekDays(today);
 
     const PARENT_CHILDREN = [];
     let PARENT_CHILDREN_LOADING = true;
@@ -69,7 +73,8 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
     }));
 
     let currentChild = PARENT_CHILDREN[0]?.studentId || null;
-    let currentDay = DAYS[Math.min((today.getDay() + 6) % 7, 4)].key;
+    let currentDay = DAYS[(today.getDay() + 6) % 7].key;
+    let activeDailyTab = 'attendance';
 
     function getCurrentChild() {
       const link = PARENT_CHILDREN.find(child => child.studentId === currentChild);
@@ -181,13 +186,15 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
 
     function switchChild(childKey, el) {
       currentChild = childKey;
+      assignmentsRequestId += 1;
+      document.getElementById('assignments-detail').innerHTML = '';
       document.querySelectorAll('.child-card').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
 
       updateChildContext();
       renderDayStrip();
       renderAttendanceDetail();
-      renderAssignmentsDetail();
+      if (activeDailyTab === 'assignments') renderUpcomingAssignments();
     }
 
     function renderDayStrip() {
@@ -206,6 +213,9 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
         <div class="day-pill-date">${d.date}</div>
       </button>`;
       }).join('');
+      if (strip.scrollWidth > strip.clientWidth && (currentDay === 'sat' || currentDay === 'sun')) {
+        strip.scrollLeft = strip.scrollWidth - strip.clientWidth;
+      }
     }
 
     function selectDay(dayKey, btn) {
@@ -213,7 +223,6 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       document.querySelectorAll('.day-pill').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       renderAttendanceDetail();
-      renderAssignmentsDetail();
     }
 
     function renderAttendanceDetail() {
@@ -265,17 +274,16 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       lucide.createIcons();
     }
 
-    async function getParentAssignments(studentId, dayKey) {
-      const day = DAYS.find(item => item.key === dayKey);
-      if (!day) return [];
-      return window.EDUGNAY_API.getParentAssignmentActivity(studentId, day.isoDate);
+    function getUpcomingAssignments(assignments, currentDate) {
+      return assignments.filter(item => item.dueDate && item.dueDate >= currentDate)
+        .sort((first, second) => first.dueDate.localeCompare(second.dueDate))
+        .slice(0, 3);
     }
 
-    async function renderAssignmentsDetail() {
+    async function renderUpcomingAssignments() {
       const container = document.getElementById('assignments-detail');
       const requestId = ++assignmentsRequestId;
       const selectedChild = currentChild;
-      const selectedDay = currentDay;
       if (PARENT_CHILDREN_ERROR) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Children unavailable', text: PARENT_CHILDREN_ERROR });
         lucide.createIcons();
@@ -287,24 +295,36 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
         return;
       }
 
-      container.innerHTML = '';
+      container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'clock', title: 'Loading assignments', text: 'Checking upcoming work...'
+      });
       lucide.createIcons();
 
-      let tasks;
+      let response;
       try {
-        tasks = await getParentAssignments(selectedChild, selectedDay);
+        response = await window.EDUGNAY_API.getParentChildAssignments(selectedChild);
+        if (String(response?.studentId) !== String(selectedChild) || !Array.isArray(response.assignments)) {
+          throw new Error('Assignment information could not be loaded.');
+        }
       } catch {
-        if (requestId !== assignmentsRequestId || selectedChild !== currentChild || selectedDay !== currentDay) return;
-        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Assignments could not be loaded', text: 'Refresh and try again.' });
+        if (requestId !== assignmentsRequestId || selectedChild !== currentChild || activeDailyTab !== 'assignments') return;
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Assignments could not be loaded', text: 'Try again to check upcoming work.' })
+          + '<button type="button" class="top-btn secondary" id="retry-upcoming-assignments">Try again</button>';
+        document.getElementById('retry-upcoming-assignments').addEventListener('click', renderUpcomingAssignments);
         lucide.createIcons();
         return;
       }
-      if (requestId !== assignmentsRequestId || selectedChild !== currentChild || selectedDay !== currentDay) return;
+      if (requestId !== assignmentsRequestId || selectedChild !== currentChild || activeDailyTab !== 'assignments') return;
+
+      const fallbackDate = new Date();
+      const currentDate = response.currentDate || backendCurrentDate || [fallbackDate.getFullYear(),
+        String(fallbackDate.getMonth() + 1).padStart(2, '0'), String(fallbackDate.getDate()).padStart(2, '0')].join('-');
+      const tasks = getUpcomingAssignments(response.assignments, currentDate);
 
       if (tasks.length === 0) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'clipboard-check', title: 'No active assignments',
-          text: 'No published assignments are active on this day.'
+          icon: 'clipboard-check', title: 'No upcoming assignments',
+          text: 'Published assignments due today or later will appear here.'
         });
         lucide.createIcons();
         return;
@@ -313,14 +333,16 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       container.innerHTML = `
     <div>
       ${tasks.map(t => {
-        const status = t.status;
+        const status = t.submissionStatus;
         const visual = ({
           submitted: { bg: 'var(--green-pale)', color: '#16a34a', icon: 'check', badge: '<span class="badge badge-green">Submitted</span>' },
           pending: { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Pending</span>' },
           not_submitted: { bg: 'var(--red-pale)', color: 'var(--red)', icon: 'x', badge: '<span class="badge badge-red">Not submitted</span>' }
         })[status] || { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Pending</span>' };
 
-        const dueLabel = new Date(t.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const dueLabel = new Date(`${t.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const subject = t.communicationComponentName || t.subjectName || 'Subject';
+        const subjectLabel = t.electiveClassName ? `${subject} · ${t.electiveClassName}` : subject;
 
         return `
           <div class="assignment-row">
@@ -328,8 +350,8 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
               <i data-lucide="${visual.icon}" style="width:15px;height:15px;"></i>
             </div>
             <div class="assignment-info">
-              <div class="assignment-subject">${window.EDUGNAY_CONFIG.escapeHtml(t.subject || '')}</div>
-              <div class="assignment-task">${window.EDUGNAY_CONFIG.escapeHtml(t.task || '')} · Due ${window.EDUGNAY_CONFIG.escapeHtml(dueLabel)}</div>
+              <div class="assignment-subject">${window.EDUGNAY_CONFIG.escapeHtml(subjectLabel)}</div>
+              <div class="assignment-task">${window.EDUGNAY_CONFIG.escapeHtml(t.title || '')} · Due ${window.EDUGNAY_CONFIG.escapeHtml(dueLabel)}</div>
             </div>
             ${visual.badge}
           </div>`;
@@ -339,11 +361,13 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
     }
 
     function switchMiniTab(tabKey, btn) {
+      activeDailyTab = tabKey;
       document.querySelectorAll('.mini-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.mini-pane').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('pane-' + tabKey).classList.add('active');
-      if (tabKey === 'assignments') renderAssignmentsDetail();
+      document.getElementById('day-strip').hidden = tabKey === 'assignments';
+      if (tabKey === 'assignments') renderUpcomingAssignments();
     }
 
     function renderWeekCalendar() {
@@ -382,7 +406,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       }
     }
 
-    /* Load linked children and their current-week attendance and assignments. */
+    /* Load linked children and their current-week attendance. */
     document.addEventListener('DOMContentLoaded', async () => {
       if (window.EDUGNAY_API?.isBackendAvailable) {
         renderChildSwitcher();
@@ -416,15 +440,8 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
           }
           const [year, month, day] = backendCurrentDate.split('-').map(Number);
           const today = year && month && day ? new Date(year, month - 1, day) : new Date();
-          const monday = new Date(today);
-          monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-          DAYS.splice(0, DAYS.length, ...['mon', 'tue', 'wed', 'thu', 'fri'].map((key, index) => {
-            const date = new Date(monday);
-            date.setDate(monday.getDate() + index);
-            return { key, label: key[0].toUpperCase() + key.slice(1), date: date.getDate(),
-              isoDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` };
-          }));
-          currentDay = DAYS[Math.min((today.getDay() + 6) % 7, 4)].key;
+          DAYS.splice(0, DAYS.length, ...dashboardWeekDays(today));
+          currentDay = DAYS[(today.getDay() + 6) % 7].key;
           currentChild = PARENT_CHILDREN[0]?.studentId || null;
           CHILD_DASHBOARD_RECORDS.splice(0, CHILD_DASHBOARD_RECORDS.length, ...PARENT_CHILDREN.map(child => ({
             studentId: child.studentId,
@@ -458,7 +475,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       updateChildContext();
       renderDayStrip();
       renderAttendanceDetail();
-      renderAssignmentsDetail();
+      if (activeDailyTab === 'assignments') renderUpcomingAssignments();
       renderWeekCalendar();
       lucide.createIcons();
       window.EDUGNAY_PAGE_LOADING.ready();

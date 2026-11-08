@@ -22,8 +22,13 @@ const connection = {
     }
     if (sql.startsWith('SELECT id, role, avatar_filename')) return [state.users];
     if (sql.startsWith('SELECT COUNT(*) AS total FROM academic_years')) return [[{ total: state.years }]];
+    if (sql.startsWith('SELECT 1 AS found FROM attendance_status_codes')) {
+      return [state.defaultAttendanceCodes ? [{ found: 1 }] : []];
+    }
     if (sql.startsWith('SELECT 1 AS found FROM')) return [[sql.includes(`FROM ${state.activityTable} `) ? { found: 1 } : undefined].filter(Boolean)];
     if (sql.startsWith('SELECT id FROM school_registration_email_outbox')) return [state.emailQueued ? [{ id: 1 }] : []];
+    if (sql.startsWith('DELETE FROM attendance_status_codes')) state.defaultAttendanceCodes = false;
+    if (sql.startsWith('DELETE FROM academic_terms')) state.plannedTerms = false;
     if (sql.startsWith('DELETE FROM') && state.failOn && sql.includes(state.failOn)) {
       const error = new Error('Foreign key restriction');
       error.code = 'ER_ROW_IS_REFERENCED_2';
@@ -48,12 +53,16 @@ async function remove(options = {}) {
   return result;
 }
 
-test('deletes a registration-only rejected or suspended school and keeps a platform audit', async () => {
+test('deletes registration defaults for a rejected or suspended school and keeps a platform audit', async () => {
   for (const status of ['rejected', 'suspended']) {
-    const result = await remove({ status });
+    const result = await remove({ status, defaultAttendanceCodes: true, plannedTerms: true });
     assert.equal(result.error, undefined);
     assert.equal(result.status, 200);
     assert.equal(result.data.deletedSchoolId, 8);
+    assert.equal(state.defaultAttendanceCodes, false);
+    assert.equal(state.plannedTerms, false);
+    assert.ok(calls.some(sql => sql.startsWith('DELETE FROM attendance_status_codes')));
+    assert.ok(calls.some(sql => sql.startsWith('DELETE FROM academic_terms')));
     assert.ok(calls.some(sql => sql.startsWith('DELETE FROM users')));
     assert.ok(calls.some(sql => sql.startsWith('DELETE FROM schools')));
     assert.ok(calls.some(sql => sql.startsWith('INSERT INTO audit_logs')));
@@ -88,6 +97,7 @@ test('blocks extra accounts, school records, and queued email', async () => {
     { users: [{ id: 17, role: 'school_admin' }, { id: 18, role: 'student' }] },
     { years: 2 },
     { activityTable: 'sections' },
+    { activityTable: 'attendance_sessions' },
     { emailQueued: true }
   ];
   for (const options of cases) {

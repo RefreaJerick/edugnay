@@ -79,25 +79,28 @@ test('student and attendance updates tolerate shared empty table rows', () => {
 });
 
 test('SHS core section header shows the resolved period and a clear unavailable fallback', () => {
-  const helperMatch = sectionsScript.match(/function setShsSectionPeriodHeader\(terms\) \{[\s\S]*?\n    \}/);
+  const helperMatch = sectionsScript.match(/function setSectionPeriodHeader\(terms\) \{[\s\S]*?\n    \}/);
   assert.ok(helperMatch, 'SHS term selection should have one tested header update path');
-  const header = { textContent: 'Current period' };
+  const header = { textContent: '' };
+  const periodMeta = { hidden: true, removeAttribute: () => { periodMeta.hidden = false; } };
   const context = vm.createContext({
     header,
-    document: { getElementById: id => id === 'sectionPeriodName' ? header : null }
+    document: { getElementById: id => id === 'sectionPeriodName' ? header : id === 'sectionPeriodMeta' ? periodMeta : null }
   });
   vm.runInContext(`let ACTIVE_ACADEMIC_PERIOD_ID = '';\n${helperMatch[0]}\nglobalThis.getActiveTermId = () => ACTIVE_ACADEMIC_PERIOD_ID;`, context);
 
   const scenarios = [
     { terms: [{ id: 1, name: 'Term 1', status: 'closed' }, { id: 2, name: 'Term 2', status: 'active' }, { id: 3, name: 'Term 3', status: 'upcoming' }], id: '2', name: 'Term 2' },
     { terms: [{ id: 1, name: 'Term 1', status: 'closed' }, { id: 2, name: 'Term 2', status: 'upcoming' }], id: '1', name: 'Term 1' },
-    { terms: [], id: '', name: 'No active grading period' }
+    { terms: [], id: '', name: 'Grading period unavailable' }
   ];
   for (const scenario of scenarios) {
+    periodMeta.hidden = true;
     context.terms = scenario.terms;
-    vm.runInContext('setShsSectionPeriodHeader(terms)', context);
+    vm.runInContext('setSectionPeriodHeader(terms)', context);
     assert.equal(context.getActiveTermId(), scenario.id);
     assert.equal(header.textContent, scenario.name);
+    assert.equal(periodMeta.hidden, false);
   }
 
   const gradeLoadStart = sectionsSource.indexOf('const gradeLoad = (async () => {');
@@ -105,11 +108,11 @@ test('SHS core section header shows the resolved period and a clear unavailable 
   const shsBranchEnd = sectionsSource.indexOf('} else {', shsBranchStart);
   assert.ok(gradeLoadStart >= 0 && shsBranchStart > gradeLoadStart && shsBranchEnd > shsBranchStart);
   const shsBranch = sectionsSource.slice(shsBranchStart, shsBranchEnd);
-  const periodResolution = shsBranch.indexOf('setShsSectionPeriodHeader(terms);');
+  const periodResolution = shsBranch.indexOf('setSectionPeriodHeader(terms);');
   const workspaceRequest = shsBranch.indexOf('getShsGradeWorkspace({');
   assert.ok(periodResolution >= 0 && workspaceRequest > periodResolution,
     'the banner should show the active term before requesting grade data');
-  assert.match(shsBranch, /catch \(error\) \{\s*ACADEMIC_PERIODS = \[\];\s*setShsSectionPeriodHeader\(\[\]\);/);
+  assert.match(shsBranch, /catch \(error\) \{\s*ACADEMIC_PERIODS = \[\];\s*setSectionPeriodHeader\(\[\]\);/);
   assert.match(shsBranch, /if \(sectionPeriodName\) sectionPeriodName\.textContent = workspace\.term\.name;/,
     'the workspace term name should refresh the banner when returned');
   const workspaceCatchStart = shsBranch.indexOf('} catch (error) {', workspaceRequest);
@@ -119,15 +122,47 @@ test('SHS core section header shows the resolved period and a clear unavailable 
     'a grade-workspace failure should leave the already resolved term in the banner');
 });
 
+test('section period metadata waits for terms and uses an unavailable fallback on failure', async () => {
+  assert.match(sectionsSource, /id="sectionAdviserMeta" hidden/);
+  assert.match(sectionsSource, /id="sectionPeriodMeta" hidden/);
+  assert.match(sectionsSource, /<span id="sectionPeriodName"><\/span> · <span data-school-year><\/span>/);
+  assert.match(sectionsStyles, /#sectionAdviserMeta\[hidden\],\s*#sectionPeriodMeta\[hidden\]\s*\{\s*display: none;/);
+
+  const periodSource = extractSourceBetween(sectionsScript,
+    'const sectionTermsPromise =', '\n      const gradeLoad =');
+  assert.ok(periodSource);
+  assert.match(sectionsScript, /if \(!CURRENT_SUBJECT_ASSIGNMENT\) \{\s*try \{\s*const terms = await sectionTermsPromise;/);
+  assert.match(sectionsScript, /loadBackendGradeData\(sectionTermsPromise\)/);
+
+  for (const shouldFail of [false, true]) {
+    let resolveTerms;
+    let rejectTerms;
+    const calls = [];
+    const termsRequest = new Promise((resolve, reject) => { resolveTerms = resolve; rejectTerms = reject; });
+    const context = vm.createContext({
+      CURRENT_BACKEND_SECTION: { academicYearId: 2, schoolLevelId: 3 },
+      window: { EDUGNAY_API: { getAcademicTerms: () => termsRequest } },
+      setSectionPeriodHeader: terms => calls.push(terms)
+    });
+    vm.runInContext(`${periodSource}; globalThis.waitForPeriod = periodLoad;`, context);
+    assert.equal(calls.length, 0, 'the period stays hidden while the request is pending');
+    if (shouldFail) rejectTerms(new Error('Terms unavailable'));
+    else resolveTerms([{ id: 4, name: 'Term 1', status: 'active' }]);
+    await context.waitForPeriod;
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].length, shouldFail ? 0 : 1);
+  }
+});
+
 test('teacher tabs begin loading independently and assignments are not nested in grade loading', () => {
   const startup = sectionsSource.split("document.addEventListener('DOMContentLoaded', async () => {")[1]
     .split("document.addEventListener('visibilitychange'")[0];
   assert.match(startup, /const attendanceLoad = \(async \(\) =>/);
   assert.match(startup, /const materialsLoad = loadBackendMaterials\(\)/);
   assert.match(startup, /const assignmentsLoad = loadBackendAssignments\(\)/);
-  assert.match(startup, /Promise\.allSettled\(\[gradeLoad, attendanceLoad, assignmentsLoad, materialsLoad\]\)/);
+  assert.match(startup, /Promise\.allSettled\(\[periodLoad, gradeLoad, attendanceLoad, assignmentsLoad, materialsLoad\]\)/);
   assert.match(sectionsSource, /async function loadBackendAssignments\(\)/);
-  assert.doesNotMatch(sectionsSource.split('async function loadBackendGradeData() {')[1]
+  assert.doesNotMatch(sectionsSource.split('async function loadBackendGradeData(termsPromise) {')[1]
     .split('async function loadBackendAttendanceData()')[0], /getAssignments\(/);
 });
 
@@ -138,7 +173,9 @@ function createSectionContext(search, section) {
   const roster = new Promise((resolve, reject) => { releaseRoster = resolve; rejectRoster = reject; });
   const elements = new Map([
     ['sectionHeaderName', { textContent: '' }],
-    ['sectionGradeBadge', { textContent: '' }]
+    ['sectionGradeBadge', { textContent: '' }],
+    ['sectionAdviserMeta', { hidden: true }],
+    ['schoolYear', { textContent: '' }]
   ]);
   const context = vm.createContext({
     URLSearchParams,
@@ -162,7 +199,10 @@ function createSectionContext(search, section) {
     keepSectionInUrl() {},
     refreshSectionSettings() {},
     updateSectionSubjectControl() {},
-    document: { getElementById: id => elements.get(id) },
+    document: {
+      getElementById: id => elements.get(id),
+      querySelector: selector => selector === '[data-school-year]' ? elements.get('schoolYear') : null
+    },
     window: {
       location: { search },
       EDUGNAY_SCHOOL_READY: Promise.resolve(),
@@ -184,10 +224,10 @@ function createSectionContext(search, section) {
   return { context, elements, releaseRoster, rejectRoster, rosterRequested: () => rosterRequested };
 }
 
-test('section name and grade render while the student roster is still loading', async () => {
+test('section identity and adviser status render while the student roster is still loading', async () => {
   for (const section of [
-    { id: 14, name: 'QA-only', grade: 'Grade 11', level: 'shs', schoolId: 'school-1', subjectAssignments: [{ subjectId: 9, subjectName: 'Effective Communication' }] },
-    { id: 15, name: 'St. Peter', grade: 'Grade 8', level: 'jhs', schoolId: 'school-1', subjectAssignments: [{ subjectId: 10, subjectName: 'English' }] }
+    { id: 14, name: 'QA-only', grade: 'Grade 11', level: 'shs', schoolId: 'school-1', academicYear: '2026–2027', adviserId: '7', subjectAssignments: [{ subjectId: 9, subjectName: 'Effective Communication' }] },
+    { id: 15, name: 'St. Peter', grade: 'Grade 8', level: 'jhs', schoolId: 'school-1', academicYear: '2026–2027', adviserId: null, subjectAssignments: [{ subjectId: 10, subjectName: 'English' }] }
   ]) {
     const testContext = createSectionContext('', section);
     const initialized = testContext.context.initialize();
@@ -196,6 +236,8 @@ test('section name and grade render while the student roster is still loading', 
     assert.equal(testContext.rosterRequested(), true);
     assert.equal(testContext.elements.get('sectionHeaderName').textContent, section.name);
     assert.equal(testContext.elements.get('sectionGradeBadge').textContent, `G${section.grade.match(/\d+/)[0]}`);
+    assert.equal(testContext.elements.get('schoolYear').textContent, section.academicYear);
+    assert.equal(testContext.elements.get('sectionAdviserMeta').hidden, section.adviserId !== '7');
 
     testContext.releaseRoster({ students: [] });
     assert.equal(await initialized, true);

@@ -95,8 +95,7 @@ function createHarness({ assignTeacher = async () => {}, updateTeacherAssignment
     closeSubjectModal() {},
     closeDepedSubjectReview() {},
     closeStudentAssignModal() {},
-    closeConfirmRemoveModal() {},
-    closeImportStudentsModal() {}
+    closeConfirmRemoveModal() {}
   });
 
   vm.runInContext(`

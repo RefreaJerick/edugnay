@@ -31,7 +31,7 @@ const ATTENDANCE_STATUS_DEFAULTS = [
 ];
 const FEATURE_FIELDS = ['gradesEnabled', 'narrativeReportsEnabled', 'journalsEnabled', 'attendanceEnabled', 'sfTemplatesEnabled'];
 const SCHOOL_ACTIVITY_TABLES = [
-  'attendance_status_codes', 'parent_notification_triggers', 'subjects', 'sections',
+  'parent_notification_triggers', 'subjects', 'sections',
   'section_students', 'section_teachers', 'grading_categories', 'assignments',
   'published_final_grades', 'shs_communication_component_grades',
   'attendance_sessions', 'grading_period_reopen_requests',
@@ -1053,6 +1053,7 @@ async function deletePlatformSchool(req, res, next) {
 
     await connection.execute('DELETE FROM school_registration_email_outbox WHERE school_id = ?', [schoolId]);
     await connection.execute('DELETE FROM audit_logs WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM attendance_status_codes WHERE school_id = ?', [schoolId]);
     await connection.execute('DELETE FROM academic_terms WHERE school_id = ?', [schoolId]);
     await connection.execute('DELETE FROM academic_years WHERE school_id = ?', [schoolId]);
     await connection.execute('DELETE FROM school_shs_tracks WHERE school_id = ?', [schoolId]);

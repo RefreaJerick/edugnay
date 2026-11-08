@@ -23,7 +23,7 @@ const backdropHandlerSource = sourceBetween(
 const escapeHandlerSource = sourceBetween("document.addEventListener('keydown', e => {", '\n\n/*');
 const submitHandlerSource = sourceBetween(
   "document.getElementById('removeStudentForm').addEventListener('submit', async function (event) {",
-  '\n\nfunction openImportStudentsModal('
+  '\nlet activeStudentGrade'
 );
 
 function classList(initial = []) {
@@ -118,8 +118,7 @@ function createHarness(assignments, removeTeacherAssignment = async () => {}) {
     closeSubjectModal() {},
     closeTeacherModal() {},
     closeDepedSubjectReview() {},
-    closeStudentAssignModal() {},
-    closeImportStudentsModal() {}
+    closeStudentAssignModal() {}
   });
 
   vm.runInContext(`

@@ -15,7 +15,7 @@ test('internal panels share one scrollbar target list and style', () => {
   assert.equal(selectors.length, 5);
   assert.ok(selectors.every(selector => selector === selectors[0]), 'each scrollbar rule targets the same panels');
   for (const name of ['.tb-notif-list', '.push-settings-dialog', '.modal-body', '.review-body',
-    '.journal-history-list', '.student-multi-list', '.table-wrap', '.csv-preview-scroll',
+    '.journal-history-list', '.student-multi-list', '.table-wrap',
     '.sf-workbook-viewport', '.onboarding-form-area']) {
     assert.ok(selectors[0].includes(name), `${name} is covered`);
   }
@@ -29,6 +29,6 @@ test('browser, sidebar, and hidden tab scrollbars stay outside the shared style'
     assert.ok(!selectors.includes(excluded), `${excluded} keeps its existing scrollbar`);
   }
   assert.match(css, /\.sidebar\s*::-webkit-scrollbar\s*\{/);
-  assert.match(pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-management.html'), 'utf8'),
-    /class="csv-preview-scroll"[^>]*overflow:auto/);
+  assert.doesNotMatch(pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-management.html'), 'utf8'),
+    /csv-preview-scroll/);
 });

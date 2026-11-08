@@ -565,6 +565,8 @@ lucide.createIcons();
         const gradeNumber = String(selectedSection.grade || '').match(/\d+/)?.[0];
         document.getElementById('sectionHeaderName').textContent = selectedSection.name || 'Section';
         document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SEC';
+        document.querySelector('[data-school-year]').textContent = selectedSection.academicYear || 'Academic year unavailable';
+        document.getElementById('sectionAdviserMeta').hidden = String(selectedSection.adviserId || '') !== CURRENT_TEACHER_ID;
 
         const studentResponse = await window.EDUGNAY_API.getSectionStudents(selectedSection.id);
 
@@ -967,7 +969,7 @@ lucide.createIcons();
       return [];
     }
 
-    async function loadBackendGradeData() {
+    async function loadBackendGradeData(termsPromise) {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
         BACKEND_GRADE_ERROR = 'Scores are not available right now. Refresh and try again.';
         return false;
@@ -989,7 +991,7 @@ lucide.createIcons();
         }
 
         const [terms, gradingSettings, subjectGradingConfig] = await Promise.all([
-          window.EDUGNAY_API.getAcademicTerms({ academicYearId: section.academicYearId, schoolLevelId: section.schoolLevelId }),
+          termsPromise,
           window.EDUGNAY_API.getGradingSettings({
             schoolLevelId: section.schoolLevelId,
             sectionId: section.id,
@@ -1656,13 +1658,14 @@ lucide.createIcons();
       return ACADEMIC_PERIODS.find(period => period.id === periodId)?.name || 'Grading period';
     }
 
-    function setShsSectionPeriodHeader(terms) {
+    function setSectionPeriodHeader(terms) {
       const termList = Array.isArray(terms) ? terms : [];
       const resolvedTerm = termList.find(term => term.status === 'active') || termList[0] || null;
       ACTIVE_ACADEMIC_PERIOD_ID = String(resolvedTerm?.id || '');
       const periodName = ACTIVE_ACADEMIC_PERIOD_ID ? String(resolvedTerm?.name || '').trim() : '';
       const header = document.getElementById('sectionPeriodName');
-      if (header) header.textContent = periodName || 'No active grading period';
+      if (header) header.textContent = periodName || 'Grading period unavailable';
+      document.getElementById('sectionPeriodMeta')?.removeAttribute('hidden');
     }
 
     function isReopenBackendMode() {
@@ -2102,8 +2105,10 @@ lucide.createIcons();
       document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SEC';
       updateSectionSubjectControl();
       document.getElementById('sectionStudentCount').textContent = studentCount;
-      document.getElementById('sectionPeriodName').textContent = academicPeriodName(academicPeriodId);
+      const selectedPeriod = ACADEMIC_PERIODS.find(period => period.id === academicPeriodId);
+      if (selectedPeriod) document.getElementById('sectionPeriodName').textContent = selectedPeriod.name;
       document.querySelector('[data-school-year]').textContent = CURRENT_SECTION_RECORD?.academicYear || 'Academic year unavailable';
+      if (selectedPeriod) document.getElementById('sectionPeriodMeta').removeAttribute('hidden');
       document.getElementById('scoreSectionName').textContent = CURRENT_SECTION;
       document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
       document.getElementById('sectionEncodingStatus').textContent = encodedCount
@@ -4459,23 +4464,41 @@ lucide.createIcons();
       const requestedTab = pageParams.get('tab');
       if (['students', 'scores', 'attendance', 'assignments', 'materials'].includes(requestedTab)) switchTab(requestedTab);
 
+      const sectionTermsPromise = window.EDUGNAY_API.getAcademicTerms({
+        academicYearId: CURRENT_BACKEND_SECTION.academicYearId,
+        schoolLevelId: CURRENT_BACKEND_SECTION.schoolLevelId
+      });
+      const periodLoad = sectionTermsPromise.then(terms => {
+        setSectionPeriodHeader(terms);
+      }).catch(() => {
+        setSectionPeriodHeader([]);
+      });
       const gradeLoad = (async () => {
-        if (USE_SHS_CORE_GRADEBOOK) {
+        if (!CURRENT_SUBJECT_ASSIGNMENT) {
+          try {
+            const terms = await sectionTermsPromise;
+            ACADEMIC_PERIODS = terms.map(term => ({
+              id: String(term.id), name: term.name, status: term.status, sequenceNumber: term.sequenceNumber
+            }));
+            ACTIVE_ACADEMIC_PERIOD_ID = String(terms.find(term => term.status === 'active')?.id || ACADEMIC_PERIODS[0]?.id || '');
+          } catch (error) {
+            ACADEMIC_PERIODS = [];
+            ACTIVE_ACADEMIC_PERIOD_ID = '';
+            console.warn('Advisory grading periods could not be loaded.', error.message);
+          }
+        } else if (USE_SHS_CORE_GRADEBOOK) {
           const host = document.querySelector('#content-scores .panel');
           try {
-            const terms = await window.EDUGNAY_API.getAcademicTerms({
-              academicYearId: CURRENT_BACKEND_SECTION.academicYearId,
-              schoolLevelId: CURRENT_BACKEND_SECTION.schoolLevelId
-            });
+            const terms = await sectionTermsPromise;
             BACKEND_TERMS = terms;
             ACADEMIC_PERIODS = terms.map(term => ({
               id: String(term.id), name: term.name,
               status: term.status, sequenceNumber: term.sequenceNumber
             }));
-            setShsSectionPeriodHeader(terms);
+            setSectionPeriodHeader(terms);
           } catch (error) {
             ACADEMIC_PERIODS = [];
-            setShsSectionPeriodHeader([]);
+            setSectionPeriodHeader([]);
             console.warn('SHS grading periods could not be loaded for the section workspace.', error.message);
           }
           if (ACTIVE_ACADEMIC_PERIOD_ID) {
@@ -4506,7 +4529,7 @@ lucide.createIcons();
             STUDENT_LIST_GRADE_ERROR = 'No grading period is available for this class.';
           }
         } else {
-          const loaded = await loadBackendGradeData();
+          const loaded = await loadBackendGradeData(sectionTermsPromise);
           STUDENT_LIST_GRADE_ERROR = loaded ? '' : BACKEND_GRADE_ERROR;
         }
         if (!USE_SHS_CORE_GRADEBOOK) renderGradingRules();
@@ -4519,7 +4542,6 @@ lucide.createIcons();
             : '<option value="">No grading periods available</option>';
           periodSelect.disabled = !ACADEMIC_PERIODS.length;
           document.getElementById('publishedPeriodName').textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
-          document.getElementById('sectionPeriodName').textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
           const studentGradePeriodName = document.getElementById('studentGradePeriodName');
           if (studentGradePeriodName) {
             studentGradePeriodName.textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
@@ -4562,7 +4584,7 @@ lucide.createIcons();
             : requestedTab === 'materials' ? materialsLoad : Promise.resolve();
       await Promise.allSettled([activeTabLoad]);
       window.EDUGNAY_PAGE_LOADING.ready();
-      await Promise.allSettled([gradeLoad, attendanceLoad, assignmentsLoad, materialsLoad]);
+      await Promise.allSettled([periodLoad, gradeLoad, attendanceLoad, assignmentsLoad, materialsLoad]);
     });
 
     document.addEventListener('visibilitychange', () => {
