@@ -70,6 +70,8 @@ test('component term grades average only when both valid whole-number grades exi
   assert.equal(averageCommunicationGrades(80, 81), 81);
   assert.equal(averageCommunicationGrades('84', '85'), 85);
   assert.equal(averageCommunicationGrades(0, 100), 50);
+  assert.equal(averageCommunicationGrades(80, 81, 'truncate'), 80);
+  assert.equal(averageCommunicationGrades(80, 81, 'roundup'), 81);
   for (const incomplete of [[80], [80, null], [80, undefined], [80, '']]) {
     assert.equal(averageCommunicationGrades(...incomplete), null);
   }
@@ -128,12 +130,12 @@ test('component data stays isolated while legacy grades remain readable and writ
   assert.match(schema, /communication_component_code VARCHAR\(20\) NULL/);
   assert.match(assignments, /section_teachers\.communication_component_code <=> \?/);
   assert.match(assignments, /grading_items \(school_id, section_id, subject_id, communication_component_code/);
-  assert.match(grades, /Legacy combined communication records are read-only/);
-  assert.match(grades, /averageCommunicationGrades\(components\.english\?\.finalGrade, components\.filipino\?\.finalGrade\)/);
+  assert.match(grades, /Grades cannot be entered for this older combined Communication class/);
+  assert.match(grades, /averageCommunicationGrades\(components\.english\?\.finalGrade,[\s\S]*?components\.filipino\?\.finalGrade, scope\.policy\.gradeRounding\)/);
   assert.match(grades, /shs_communication_component_grades/);
   assert.match(attendance, /attendance_sessions\.communication_component_code <=> \?/);
   assert.match(qrAttendance, /section_teachers\.communication_component_code <=> attendance_sessions\.communication_component_code/);
-  assert.match(materials, /Legacy combined communication materials are read-only/);
+  assert.match(materials, /older combined Communication class is read-only/);
   assert.match(completion, /p\.communication_grade_source = 'component_average'/);
   assert.match(overview, /communicationComponentGrades: communicationComponentRows/);
   assert.match(read('assets/js/student/grades.js'), /Effective Communication/);

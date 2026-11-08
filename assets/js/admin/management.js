@@ -326,7 +326,7 @@ function managementApiSectionPayload(sectionData, sectionId = '') {
     : null;
   const academicYearId = MANAGEMENT_API_CONTEXT.activeAcademicYear?.id;
   if (!academicYearId || !level?.id || !grade?.id || (sectionData.level === 'shs' && !track?.id)) {
-    throw new Error('The selected academic year, school level, grade, or track is not configured.');
+    throw new Error('Select an available school year, school level, grade, and track, then try again.');
   }
   return {
     academicYearId: Number(academicYearId),
@@ -829,7 +829,7 @@ function renderSubjects() {
   const assignmentStats = getTeacherAssignmentStats();
   const subjectSlots = subjectRecords.reduce((total, subject) => total + subject.total, 0);
   renderManagementStatCards('subjects-summary-cards', [
-    { tone: 'blue', icon: 'library', value: subjectRecords.length, label: 'Total Subjects', sub: 'Configured for this school' },
+    { tone: 'blue', icon: 'library', value: subjectRecords.length, label: 'Total Subjects', sub: 'Set up for this school' },
     { tone: 'gold', icon: 'layers', value: subjectSlots, label: 'Subject Slots', sub: `${subjectRecords.length} subjects · ${managementSectionRecords().length} sections` },
     { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Slots Assigned', sub: 'Teachers already linked' },
     { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Slots Unassigned', sub: 'Still needs a teacher' },
@@ -966,6 +966,7 @@ const managementTeacherCollapseState = {};
 let teacherTargetSection = null;
 let teacherTargetSubjectId = null;
 let teacherTargetCommunicationComponentCode = null;
+let teacherAssignmentPending = false;
 
 function bindTeacherRemoveButtons(container) {
   container.querySelectorAll('.section-block .row-btn.remove').forEach(button => {
@@ -999,7 +1000,7 @@ function renderTeacherAssignments() {
   const sections = managementSectionRecords();
   const assignmentStats = getTeacherAssignmentStats();
   renderManagementStatCards('teacher-summary-cards', [
-    { tone: 'blue', icon: 'clipboard-list', value: assignmentStats.total, label: 'Total Assignments', sub: 'Across configured sections' },
+    { tone: 'blue', icon: 'clipboard-list', value: assignmentStats.total, label: 'Total Assignments', sub: 'Across the school’s sections' },
     { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Assigned', sub: 'Subject-section slots filled' },
     { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Unassigned', sub: 'Still needs a teacher' },
     { tone: 'gold', icon: 'book-open', value: assignmentStats.faculty, label: 'Faculty Assigned', sub: 'Unique teachers linked' },
@@ -1031,7 +1032,7 @@ function renderTeacherAssignments() {
           <div class="row-actions"><button class="row-btn assign">+ Assign</button></div>
         `}
       </div>`;
-      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects configured', text: 'Assign subjects to this section to manage their teachers.' });
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects added', text: 'Add subjects to this section to assign their teachers.' });
     const collapsed = managementTeacherCollapseState[section.id] ?? section.collapsed;
     return `
       <div class="section-block${collapsed ? ' collapsed' : ''}" data-grade="${managementSectionFilterKey(section)}" data-level="${section.level}" data-name="${section.name.toLowerCase()}" data-status="${full ? 'complete' : 'incomplete'}" data-id="${section.id}">
@@ -1156,7 +1157,7 @@ function renderEnrolledTable() {
         <td><div class="user-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'user-av', role: 'student' })}<div><div class="user-name">${student.displayName}</div><div class="user-email">${student.schoolEmail}</div></div></div></td>
         <td><span class="enrolled-section-name">${section.name}</span><div class="table-secondary" title="${window.EDUGNAY_CONFIG.escapeHtml(managementSectionContext(section))}">${window.EDUGNAY_CONFIG.escapeHtml(managementSectionCompactContext(section))}</div></td>
         <td><span class="badge gb-${managementSectionTone(section.level, section.gradeValue)}">${section.grade}</span></td>
-        <td><div class="row-actions enrolled-actions"><button class="row-btn move" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { openMoveStudentModal(String(student.displayName), String(student.id), String(section.id)) })}">Move</button><button class="row-btn remove" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { removeStudentFromClass(String(student.displayName), String(section.name), String(student.id), String(section.id), this) })}">Remove</button></div></td>
+        <td><div class="row-actions enrolled-actions"><button class="row-btn move" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { openMoveStudentModal(String(student.displayName), String(student.id), String(section.id)) })}">Move</button><button class="row-btn remove" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { removeStudentFromClass(String(student.displayName), String(section.name), String(student.id), String(section.id)) })}">Remove</button></div></td>
       </tr>`;
     }
     return `
@@ -1210,7 +1211,10 @@ function renderStudentsTab() {
 function closeSectionEditModal() { document.getElementById('sectionEditModalBackdrop').classList.remove('open'); }
 document.getElementById('sectionEditModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionEditModal(); });
 
-function closeSectionStudentsModal() { document.getElementById('sectionStudentsModalBackdrop').classList.remove('open'); }
+function closeSectionStudentsModal() {
+  if (studentRemovalPending) return;
+  document.getElementById('sectionStudentsModalBackdrop').classList.remove('open');
+}
 document.getElementById('sectionStudentsModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionStudentsModal(); });
 
 function managementSectionById(id) {
@@ -1256,8 +1260,8 @@ function openSectionDeleteConfirmation(section) {
   });
 }
 
-function openSectionStudentsModal(card) {
-  const section = managementSectionById(card.dataset.id);
+function renderSectionStudentsModal(sectionId, open = false) {
+  const section = managementSectionById(sectionId);
   if (!section) return;
   const assigned = STUDENTS_DATA.filter(student => student.sectionId === section.id);
   document.getElementById('sectionStudentsModalTitle').textContent = `${section.name}: Students`;
@@ -1269,10 +1273,16 @@ function openSectionStudentsModal(card) {
           <td>${index + 1}</td>
           <td><strong>${student.displayName}</strong></td>
           <td>${student.schoolEmail || ''}</td>
-          <td>${student.id ? `<button class="row-btn remove" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { removeStudentFromClass(String(student.displayName), String(section.name), String(student.id), String(section.id), this) })}">Remove</button>` : '<span class="table-muted">—</span>'}</td>
+          <td>${student.id ? `<button class="row-btn remove" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { removeStudentFromClass(String(student.displayName), String(section.name), String(student.id), String(section.id)) })}">Remove</button>` : '<span class="table-muted">—</span>'}</td>
         </tr>`).join('')
     : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
-  document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
+  if (open) document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
+}
+
+function openSectionStudentsModal(card) {
+  const section = managementSectionById(card.dataset.id);
+  if (!section) return;
+  renderSectionStudentsModal(section.id, true);
 }
 
 function setSectionView(view) {
@@ -1482,7 +1492,7 @@ document.getElementById('createSubjectForm').addEventListener('submit', async fu
     (level.gradeLevels || []).filter(grade => Number(grade.id) === Number(id)).map(grade => ({ ...grade, levelCode: level.levelCode, schoolLevelId: level.id }))
   )[0]).filter(Boolean);
   if (gradeRows.length !== gradeLevelIds.length) {
-    showAppToast('Choose configured grade levels for this subject.', 'error');
+    showAppToast('Choose grade levels enabled for this school.', 'error');
     return;
   }
   const levelIds = [...new Set(gradeRows.map(grade => Number(grade.schoolLevelId)))];
@@ -1612,6 +1622,7 @@ function toggleTeacherSection(head) {
 }
 
 function openTeacherModal(context) {
+  if (teacherAssignmentPending) return;
   const ctx = context || 'Choose a teacher for assignment';
   renderTeacherOptions();
   document.getElementById('teacherCtxVal').textContent = ctx;
@@ -1621,10 +1632,19 @@ function openTeacherModal(context) {
   document.getElementById('teacherModalBackdrop').classList.add('open');
   document.getElementById('teacherPreview').classList.remove('visible');
   const select = document.getElementById('teacherSelect');
+  select.disabled = false;
   select.value = '';
   window.syncSearchableSelect?.(select);
+  const submitButton = document.getElementById('teacherAssignmentSubmit');
+  if (submitButton) {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Save Assignment';
+  }
 }
-function closeTeacherModal() { document.getElementById('teacherModalBackdrop').classList.remove('open'); }
+function closeTeacherModal() {
+  if (teacherAssignmentPending) return;
+  document.getElementById('teacherModalBackdrop').classList.remove('open');
+}
 document.getElementById('teacherModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeTeacherModal(); });
 
 function previewTeacher(select) {
@@ -1647,6 +1667,7 @@ function previewTeacher(select) {
 
 document.getElementById('assignTeacherForm').addEventListener('submit', async event => {
   event.preventDefault();
+  if (teacherAssignmentPending) return;
   const sectionId = document.getElementById('teacherAssignmentSectionId').value;
   const subjectId = document.getElementById('teacherAssignmentSubjectId').value;
   const communicationComponentCode = document.getElementById('teacherAssignmentCommunicationComponentCode').value || null;
@@ -1656,36 +1677,53 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
     return;
   }
 
-  {
-    const submitButton = event.submitter;
-    if (submitButton) submitButton.disabled = true;
-    let saved = false;
-    try {
-      const section = managementSectionById(sectionId);
-      const currentAssignment = section?.teacherAssignments?.find(item => item.subjectId === subjectId
-        && (item.communicationComponentCode || null) === communicationComponentCode);
-      if (currentAssignment?.teacherId === teacherId) {
-        closeTeacherModal();
-        await refreshManagementViews();
-        return;
-      }
-      if (currentAssignment?.assignmentId) {
-        await window.EDUGNAY_API.updateTeacherAssignment(sectionId, currentAssignment.assignmentId, teacherId);
-      } else {
-        await window.EDUGNAY_API.assignTeacher(sectionId, teacherId, subjectId, communicationComponentCode);
-      }
-      saved = true;
-      closeTeacherModal();
-      await refreshManagementViews();
-      showAppToast('Teacher assignment saved.');
-    } catch (error) {
-      showAppToast(saved ? 'Teacher assignment saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The teacher assignment could not be saved.', saved ? 'info' : 'error');
-    } finally {
-      if (submitButton) submitButton.disabled = false;
-    }
-    return;
+  const section = managementSectionById(sectionId);
+  const currentAssignment = section?.teacherAssignments?.find(item => item.subjectId === subjectId
+    && (item.communicationComponentCode || null) === communicationComponentCode);
+  const submitButton = document.getElementById('teacherAssignmentSubmit') || event.submitter;
+  const teacherSelect = document.getElementById('teacherSelect');
+  const originalLabel = submitButton?.textContent || 'Save Assignment';
+  teacherAssignmentPending = true;
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Assigning…';
   }
+  teacherSelect.disabled = true;
+  window.syncSearchableSelect?.(teacherSelect);
 
+  let saved = false;
+  try {
+    if (currentAssignment?.teacherId === teacherId) {
+      await refreshManagementViews();
+      teacherAssignmentPending = false;
+      closeTeacherModal();
+      return;
+    }
+    if (currentAssignment?.assignmentId) {
+      await window.EDUGNAY_API.updateTeacherAssignment(sectionId, currentAssignment.assignmentId, teacherId);
+    } else {
+      await window.EDUGNAY_API.assignTeacher(sectionId, teacherId, subjectId, communicationComponentCode);
+    }
+    saved = true;
+    await refreshManagementViews();
+    teacherAssignmentPending = false;
+    closeTeacherModal();
+    showAppToast('Teacher assignment saved.');
+  } catch (error) {
+    if (saved) {
+      teacherAssignmentPending = false;
+      closeTeacherModal();
+    }
+    showAppToast(saved ? 'Teacher assignment saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The teacher assignment could not be saved.', saved ? 'info' : 'error');
+  } finally {
+    teacherAssignmentPending = false;
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalLabel;
+    }
+    teacherSelect.disabled = false;
+    window.syncSearchableSelect?.(teacherSelect);
+  }
 });
 
 function filterTeacherBlocks() {
@@ -2037,14 +2075,19 @@ function updateManagementAssignmentContext() {
 }
 
 function updateManagementMoveContext() {
-  const section = managementSectionRecords().find(item => item.id === document.getElementById('moveSectionSelect')?.value);
+  const sections = managementSectionRecords();
+  const section = sections.find(item => item.id === document.getElementById('moveSectionSelect')?.value);
+  const sourceSection = sections.find(item => String(item.id) === String(managementMoveState.student?.sectionId));
   managementMoveState.section = section?.id || '';
   const context = document.getElementById('moveCtxVal');
   if (!context) return;
   const track = managementTrackOptions().find(item => String(item.id) === managementMoveState.track);
   const strand = managementStrandOptions(managementMoveState.track).find(item => String(item.id) === managementMoveState.strand);
   const placement = [managementLevelLabel(managementMoveState.level), managementMoveState.grade, track?.displayName, strand?.displayName].filter(Boolean).join(' · ');
-  context.textContent = section ? `${placement} · ${section.name}` : `Currently in ${managementMoveState.excludedSection || 'an existing section'}`;
+  const currentPlacement = sourceSection
+    ? `Currently in ${[sourceSection.grade, managementSectionPath(sourceSection), sourceSection.name].filter(Boolean).join(' · ')}`
+    : 'Current section details unavailable';
+  context.textContent = section ? `${placement} · ${section.name}` : currentPlacement;
 }
 
 function updateManagementAssignmentFields(changed = '') {
@@ -2093,6 +2136,8 @@ function handleManagementStudentChange(studentIds) {
   updateManagementAssignmentFields();
 }
 
+let studentAssignmentPending = false;
+
 function openStudentAssignModal(studentId = '') {
   const matchedStudent = managementStudentMeta(studentId);
   document.getElementById('studentModalTitle').textContent = 'Assign Students';
@@ -2114,7 +2159,10 @@ function openStudentAssignModal(studentId = '') {
 
   document.getElementById('studentAssignModalBackdrop').classList.add('open', 'is-assigning');
 }
-function closeStudentAssignModal() { document.getElementById('studentAssignModalBackdrop').classList.remove('open'); }
+function closeStudentAssignModal() {
+  if (studentAssignmentPending) return;
+  document.getElementById('studentAssignModalBackdrop').classList.remove('open');
+}
 document.getElementById('studentAssignModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeStudentAssignModal(); });
 
 function openMoveStudentModal(studentName, studentId, currentSection) {
@@ -2143,6 +2191,8 @@ function openMoveStudentModal(studentName, studentId, currentSection) {
 }
 
 let pendingRemoveRequest = null;
+let studentRemovalPending = false;
+let teacherRemovalPending = false;
 
 function setConfirmRemoveIcons(iconName) {
   ['confirmRemoveHeaderIcon', 'confirmRemoveContextIcon'].forEach(id => {
@@ -2180,7 +2230,6 @@ function openConfirmRemoveModal(config) {
   form.action = config.action || '/records/remove';
   form.dataset.removeType = type;
   form.dataset.targetId = targetId;
-  form._rowElement = config.rowElement || null;
 
   const context = config.context || '';
   const contextValue = document.getElementById('confirmRemoveName');
@@ -2228,7 +2277,7 @@ function openSubjectRemoveConfirmation(subject) {
   if (!subject) return;
   const scope = getSubjectModalContext(activeSubjectGrade, activeSubjectStrand);
   const removingAll = scope.mode === 'all';
-  const scopeLabel = removingAll ? 'all configured grade levels and strands' : scope.label;
+  const scopeLabel = removingAll ? 'all enabled grade levels and strands' : scope.label;
   openConfirmRemoveModal({
     type: 'subject',
     id: subject.id,
@@ -2236,7 +2285,7 @@ function openSubjectRemoveConfirmation(subject) {
     contextValue: activeSubjectGrade,
     contextStrand: activeSubjectStrand,
     name: subject.name,
-    context: managementSubjectDescriptor(subject, 'Configured subject'),
+    context: managementSubjectDescriptor(subject, 'Subject details'),
     contextLabel: 'Subject',
     title: `Remove: ${subject.name}`,
     sub: 'Remove this subject from the selected grade or strand.',
@@ -2249,7 +2298,7 @@ function openSubjectRemoveConfirmation(subject) {
   });
 }
 
-function removeStudentFromClass(studentName, section, studentId, sectionId, rowElement) {
+function removeStudentFromClass(studentName, section, studentId, sectionId) {
   openConfirmRemoveModal({
     type: 'student',
     id: studentId,
@@ -2262,7 +2311,7 @@ function removeStudentFromClass(studentName, section, studentId, sectionId, rowE
     label: 'Removing',
     icon: 'user-minus',
     action: '/assignments/students/remove',
-    rowElement,
+    submitLabel: 'Yes, Remove',
     messageParts: [
       { text: 'This will remove ' },
       { text: studentName, strong: true },
@@ -2273,7 +2322,119 @@ function removeStudentFromClass(studentName, section, studentId, sectionId, rowE
   });
 }
 
-function closeConfirmRemoveModal() {
+function setStudentRemovalPendingState(request, pending) {
+  const removeButtons = [...document.querySelectorAll('#sectionStudentsTableBody .row-btn.remove')];
+  if (pending) request.removeButtonStates = new Map(removeButtons.map(button => [button, button.disabled]));
+  removeButtons.forEach(button => {
+    button.disabled = pending ? true : request.removeButtonStates?.get(button) || false;
+  });
+  const submitButton = document.getElementById('confirmRemoveSubmit');
+  if (submitButton) {
+    submitButton.disabled = pending;
+    submitButton.textContent = pending ? 'Removing…' : request.submitLabel || 'Yes, Remove';
+  }
+  if (!pending) delete request.removeButtonStates;
+}
+
+function setTeacherRemovalPendingState(request, pending) {
+  const removeButtons = [...document.querySelectorAll('#panel-teachers .section-block .row-btn.remove')];
+  if (pending) request.removeButtonStates = new Map(removeButtons.map(button => [button, button.disabled]));
+  removeButtons.forEach(button => {
+    button.disabled = pending ? true : request.removeButtonStates?.get(button) || false;
+  });
+  const submitButton = document.getElementById('confirmRemoveSubmit');
+  if (submitButton) {
+    submitButton.disabled = pending;
+    submitButton.textContent = pending ? 'Removing…' : request.submitLabel || 'Yes, Unassign';
+  }
+  if (!pending) delete request.removeButtonStates;
+}
+
+function updateTeacherAssignmentAfterRemoval(request) {
+  const section = SECTION_RECORDS.find(record => String(record.id) === String(request.sectionId));
+  if (!section) throw new Error('The teacher assignment was removed, but its section could not be updated. Reload the page to verify it.');
+  const assignments = Array.isArray(section.teacherAssignments) ? section.teacherAssignments : [];
+  const assignmentIndex = assignments.findIndex(record => String(record.assignmentId ?? record.id) === String(request.assignmentId));
+  if (assignmentIndex === -1) throw new Error('The teacher assignment was removed, but the list could not be updated. Reload the page to verify it.');
+
+  assignments.splice(assignmentIndex, 1);
+  section.teacherAssignments = assignments;
+  const teacherSection = TEACHER_ASSIGNMENTS_DATA.find(record => String(record.sectionId) === String(section.id));
+  if (teacherSection) teacherSection.subjects = assignments;
+
+  renderManagementTabPills();
+  renderSubjects();
+  filterSubjects();
+  renderTeacherAssignments();
+}
+
+async function removeTeacherAssignmentInPlace(request) {
+  if (teacherRemovalPending) return;
+
+  teacherRemovalPending = true;
+  setTeacherRemovalPendingState(request, true);
+  let removed = false;
+  try {
+    await window.EDUGNAY_API.removeTeacherAssignment(request.sectionId, request.assignmentId);
+    removed = true;
+    updateTeacherAssignmentAfterRemoval(request);
+    closeConfirmRemoveModal(true);
+    showAppToast('Teacher assignment removed.');
+  } catch (error) {
+    if (removed) {
+      closeConfirmRemoveModal(true);
+      showAppToast('Teacher assignment removed, but the list could not update. Reload the page to verify it.', 'info');
+    } else {
+      showAppToast(error?.message || 'The teacher assignment could not be removed.', 'error');
+    }
+  } finally {
+    teacherRemovalPending = false;
+    setTeacherRemovalPendingState(request, false);
+  }
+}
+
+async function removeStudentFromSection(request, student) {
+  if (studentRemovalPending) return;
+  const sectionId = request.sectionId || student.sectionId;
+  if (!sectionId) {
+    showAppToast('This student is not assigned to a section.', 'error');
+    return;
+  }
+
+  studentRemovalPending = true;
+  setStudentRemovalPendingState(request, true);
+  try {
+    await window.EDUGNAY_API.withdrawStudent(sectionId, student.id);
+    student.sectionId = null;
+    student.schoolLevel = '';
+    student.gradeLevel = '';
+    student.trackId = null;
+    student.track = '';
+    student.strandId = null;
+    student.strand = '';
+    MANAGEMENT_ASSIGNMENT_STUDENTS = STUDENTS_DATA.filter(record => !record.sectionId);
+    closeConfirmRemoveModal(true);
+
+    try {
+      renderSectionStudentsModal(sectionId);
+      renderManagementTabPills();
+      renderSections();
+      filterSections();
+      renderStudentsTab();
+      showAppToast('Student removed from section.');
+    } catch (error) {
+      showAppToast('Student removed, but the lists could not update. Reload the page to verify it.', 'info');
+    }
+  } catch (error) {
+    showAppToast(error?.message || 'The student could not be removed from the section.', 'error');
+  } finally {
+    studentRemovalPending = false;
+    setStudentRemovalPendingState(request, false);
+  }
+}
+
+function closeConfirmRemoveModal(force = false) {
+  if ((studentRemovalPending || teacherRemovalPending) && !force) return;
   document.getElementById('confirmRemoveModalBackdrop').classList.remove('open');
   pendingRemoveRequest = null;
 }
@@ -2281,6 +2442,7 @@ document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', 
 
 document.getElementById('assignStudentForm').addEventListener('submit', async function (event) {
   event.preventDefault();
+  if (studentAssignmentPending) return;
   const studentIds = managementStudentPicker.getSelectedIds();
   const section = managementSectionById(document.getElementById('studentSectionSelect').value);
   const track = managementTrackOptions().find(item => String(item.id) === managementAssignState.track);
@@ -2299,20 +2461,34 @@ document.getElementById('assignStudentForm').addEventListener('submit', async fu
     return;
   }
 
-  const submitButton = event.submitter;
-  if (submitButton) submitButton.disabled = true;
-  managementStudentPicker.setDisabled(true);
+  const submitButton = document.getElementById('studentModalSubmitBtn');
+  const originalLabel = submitButton?.textContent || 'Save Assignment';
+  studentAssignmentPending = true;
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Assigning…';
+  }
   let saved = false;
   try {
+    managementStudentPicker.setDisabled(true);
     await window.EDUGNAY_API.enrollStudentsBulk(section.id, studentIds);
     saved = true;
-    closeStudentAssignModal();
     await refreshManagementViews();
+    studentAssignmentPending = false;
+    closeStudentAssignModal();
     showAppToast(`${studentIds.length} student${studentIds.length === 1 ? '' : 's'} assigned to section.`);
   } catch (error) {
+    if (saved) {
+      studentAssignmentPending = false;
+      closeStudentAssignModal();
+    }
     showAppToast(saved ? 'Student assignment saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'That student could not be updated.', saved ? 'info' : 'error');
   } finally {
-    if (submitButton) submitButton.disabled = false;
+    studentAssignmentPending = false;
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalLabel;
+    }
     managementStudentPicker.setDisabled(false);
   }
 });
@@ -2383,23 +2559,8 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
 
   if (type === 'teacher') {
     const request = pendingRemoveRequest || {};
-    {
-      const submitButton = event.submitter;
-      if (submitButton) submitButton.disabled = true;
-      let removed = false;
-      try {
-        await window.EDUGNAY_API.removeTeacherAssignment(request.sectionId, request.assignmentId);
-        removed = true;
-        closeConfirmRemoveModal();
-        await refreshManagementViews();
-        showAppToast('Teacher assignment removed.');
-      } catch (error) {
-        showAppToast(removed ? 'Teacher assignment removed, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The teacher assignment could not be removed.', removed ? 'info' : 'error');
-      } finally {
-        if (submitButton) submitButton.disabled = false;
-      }
-      return;
-    }
+    await removeTeacherAssignmentInPlace(request);
+    return;
   }
 
   if (type === 'section') {
@@ -2445,26 +2606,7 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
   const studentId = document.getElementById('removeStudentId').value || targetId;
   const student = managementStudentMeta(studentId);
   if (!student) { closeConfirmRemoveModal(); return; }
-
-  {
-    const submitButton = event.submitter;
-    if (submitButton) submitButton.disabled = true;
-    let removed = false;
-    try {
-      const sourceSectionId = pendingRemoveRequest?.sectionId || student.sectionId;
-      await window.EDUGNAY_API.withdrawStudent(sourceSectionId, studentId);
-      removed = true;
-      closeConfirmRemoveModal();
-      closeSectionStudentsModal();
-      await refreshManagementViews();
-      showAppToast('Student removed from section.');
-    } catch (error) {
-      showAppToast(removed ? 'Student removed, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The student could not be removed from the section.', removed ? 'info' : 'error');
-    } finally {
-      if (submitButton) submitButton.disabled = false;
-    }
-    return;
-  }
+  await removeStudentFromSection(pendingRemoveRequest || {}, student);
 
 });
 

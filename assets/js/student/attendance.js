@@ -9,13 +9,13 @@ lucide.createIcons();
           window.location.replace('./edugnay-student-dashboard.html');
           return;
         }
-        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The attendance API is not configured.');
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('Attendance isn’t available right now. Refresh and try again.');
         const data = await window.EDUGNAY_API.getStudentAttendance();
         const date = data?.currentDate;
         const parsed = new Date(date + 'T00:00:00Z');
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime())
           || parsed.toISOString().slice(0, 10) !== date || !Array.isArray(data.records)) {
-          throw new Error('The attendance response is incomplete. Please try again.');
+          throw new Error('Attendance information could not be loaded. Refresh and try again.');
         }
         attendanceHistory.setRecords(data.records, date);
       } catch (error) {

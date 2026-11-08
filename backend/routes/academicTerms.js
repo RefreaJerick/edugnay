@@ -36,6 +36,7 @@ router.get('/subject-grading-config', requireAuth, requireSchoolUser, (req, res,
 router.put('/subject-grading-config', ...schoolAdminOnly, subjectGradingController.saveSubjectGradingConfig);
 router.put('/deped-k10/subject-group-config', ...schoolAdminOnly, subjectGradingController.saveK10CatalogSubjectGroupConfig);
 router.get('/shs-grading', ...schoolAdminOnly, shsGradingSettingsController.list);
+router.put('/shs-grading/final-grade-rules', ...schoolAdminOnly, shsGradingSettingsController.saveFinalGradeRules);
 router.put('/shs-grading', ...schoolAdminOnly, shsGradingSettingsController.save);
 router.post('/shs-grading/restore', ...schoolAdminOnly, shsGradingSettingsController.restore);
 

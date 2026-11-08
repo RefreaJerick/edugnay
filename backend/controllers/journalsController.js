@@ -171,7 +171,7 @@ async function getConfiguredJournalSubject(database, schoolId) {
     LIMIT 1`,
     [schoolId]
   );
-  if (!subjects[0]) throw createError('Journals are not enabled or configured for this school.', 403);
+  if (!subjects[0]) throw createError('Journals are not available for this school yet. Ask your school administrator to set them up.', 403);
   return subjects[0];
 }
 

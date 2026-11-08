@@ -251,12 +251,12 @@ lucide.createIcons();
     document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('materials-container').innerHTML = '';
       try {
-        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The school API is unavailable. Try again when the connection is ready.');
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('Learning materials aren’t available right now. Refresh and try again.');
         await window.EDUGNAY_SCHOOL_READY;
         MATERIAL_RECORDS = await window.EDUGNAY_API.getMaterials();
       } catch (error) {
         document.getElementById('materials-container').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'cloud-off', title: 'Materials unavailable', text: error.message || 'Try again when the connection is ready.'
+          icon: 'cloud-off', title: 'Materials unavailable', text: error.message || 'Refresh the page and try again.'
         });
         window.EDUGNAY_PAGE_LOADING.ready();
         return;

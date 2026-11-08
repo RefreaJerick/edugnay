@@ -1,6 +1,7 @@
 // DepEd Order No. 015, s. 2026, section 44 and Table 10 (KS4), with details
 // in Annex D. These rules apply to Strengthened SHS Grade 11 and Grade 12.
 // Explicit groups prevent a subject title from choosing its own assessment weights.
+const { roundGrade } = require('../utils/shsFinalGradeRules');
 const GROUPS = Object.freeze({
   core: { written: 20, performance: 50, examination: 30 },
   academic_general: { written: 20, performance: 50, examination: 30 },
@@ -140,14 +141,15 @@ function calculateTermGrade(policy, items, scoresByItem) {
   }
   const roundedInitial = Math.round(initialGrade * 100) / 100;
   const termGrade = policy.method === 'adjusted_2026'
-    ? transmuteStrengthenedShsInitialGrade(roundedInitial) : Math.round(roundedInitial);
+    ? transmuteStrengthenedShsInitialGrade(roundedInitial)
+    : roundGrade(roundedInitial, policy.gradeRounding);
   return { initialGrade: roundedInitial, termGrade };
 }
 
-function calculateSubjectFinal(termGrades) {
+function calculateSubjectFinal(termGrades, rounding = 'round') {
   if (!termGrades.length || termGrades.some(value => !Number.isInteger(Number(value))
     || Number(value) < 0 || Number(value) > 100)) return null;
-  return Math.round(termGrades.reduce((sum, value) => sum + Number(value), 0) / termGrades.length);
+  return roundGrade(termGrades.reduce((sum, value) => sum + Number(value), 0) / termGrades.length, rounding);
 }
 
 module.exports = { GROUPS, POLICY_SOURCES, policyFor, policyBlockReason, requiredParts,

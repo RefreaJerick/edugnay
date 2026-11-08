@@ -531,7 +531,7 @@
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="scan-line"></i></div>
           <div class="modal-heading-copy">
             <div class="modal-title" id="qrAttendanceModalTitle">QR Attendance</div>
-            <div class="modal-sub">Prepare a current-day attendance session.</div>
+            <div class="modal-sub">Scan and review attendance for this class today.</div>
           </div>
         </div>
         <button type="button" class="modal-close" aria-label="Close QR attendance"
@@ -553,9 +553,8 @@
         <div class="qr-attendance-rule">
           <i data-lucide="info" aria-hidden="true"></i>
           <div>
-            <strong>Current-day attendance only</strong>
-            <span id="qrAttendanceRuleText">Scans mark students present for the selected subject today. Review the
-              roster and set a status for each unscanned student before saving.</span>
+            <strong>Record attendance for today</strong>
+          <span id="qrAttendanceRuleText">Scanning marks a student present. Review the roster and choose a status for every student before confirming attendance.</span>
           </div>
         </div>
         <div class="qr-attendance-workspace">
@@ -566,12 +565,12 @@
               <div class="qr-scanner-empty" id="qrScannerEmpty">
                 <i data-lucide="camera"></i>
                 <strong>Camera is off</strong>
-                <span>Start the camera and place a student's attendance QR inside the frame.</span>
+                <span>Start the camera and show the student’s attendance QR code inside the frame.</span>
               </div>
             </div>
             <div class="qr-scanner-feedback">
               <div class="qr-scanner-status" id="qrScannerStatus" role="status" aria-live="polite">
-                Camera access has not started.
+                Camera has not started.
               </div>
               <label class="qr-scanner-sound-toggle">
                 <i data-lucide="volume-2" aria-hidden="true"></i>
@@ -980,9 +979,8 @@
                 <div class="publish-banner-icon"><i data-lucide="lock" style="width:18px;height:18px;"></i></div>
                 <div>
                   <div class="publish-info-title" style="color:var(--gray-700);" id="quarterLockTitle">Grading period is
-                    locked</div>
-                  <div class="publish-info-sub" id="quarterLockDesc">This grading period is closed. Scores are
-                    read-only.</div>
+                    not active</div>
+                  <div class="publish-info-sub" id="quarterLockDesc">Scores are read-only while this grading period is not active.</div>
                 </div>
               </div>
               <div id="quarterLockAction"></div>
@@ -1102,9 +1100,8 @@
                 <div class="publish-banner-icon"><i data-lucide="lock"
                     style="width:18px;height:18px;color:var(--red);"></i></div>
                 <div>
-                  <div class="publish-info-title" style="color:var(--red);">Past Attendance Locked</div>
-                  <div class="publish-info-sub">Editing is disabled for this date. Enable "Allow Teachers to Edit Past
-                    Attendance" in System Config to make changes.</div>
+                  <div class="publish-info-title" style="color:var(--red);">Past attendance is read-only</div>
+                  <div class="publish-info-sub">To allow changes for this date, ask your school administrator to enable “Allow Teachers to Edit Past Attendance” in System Config.</div>
                 </div>
               </div>
             </div>

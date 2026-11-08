@@ -63,14 +63,14 @@
       }));
     }
 
-    throw new Error('The platform API is not configured.');
+    throw new Error('Platform information is not available right now. Refresh and try again.');
   }
 
   async function getActivityRecords() {
     if (window.EDUGNAY_API?.isBackendAvailable) {
       return window.EDUGNAY_API.getDashboardActivity('platform');
     }
-    throw new Error('The platform API is not configured.');
+    throw new Error('Platform information is not available right now. Refresh and try again.');
   }
 
   function getDashboardSummary(schools = []) {

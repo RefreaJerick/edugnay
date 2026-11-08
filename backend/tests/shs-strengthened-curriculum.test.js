@@ -44,7 +44,7 @@ test('new SHS subjects store type and hours while legacy grade entry is blocked'
   assert.match(subjects, /SHS_SUBJECT_HOURS\[shsSubjectType\]\.includes\(instructionalHours\)/);
   assert.match(subjects, /SHS_GRADE_ELIGIBILITY\[shsSubjectType\]/);
   assert.match(grades, /Strengthened SHS grades cannot be calculated or published/);
-  assert.match(terms, /Strengthened SHS grading settings will be available in the grading phase/);
+  assert.match(terms, /Manage Senior High School grading settings in the SHS Program/);
   assert.match(read('backend/database/migrations/050_strengthened_shs_foundation.sql'), /ADD COLUMN shs_subject_type/);
 });
 

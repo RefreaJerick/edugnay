@@ -165,7 +165,7 @@ lucide.createIcons();
     async function saveTeacherTodo(event) {
       event?.preventDefault();
       if (!TEACHER_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('teacherTodoFeedback', 'The backend is required to save tasks.');
+        setDashboardFeedback('teacherTodoFeedback', 'Tasks can’t be saved right now. Refresh and try again.');
         return false;
       }
       const todoId = document.getElementById('teacherTodoId').value;
@@ -197,7 +197,7 @@ lucide.createIcons();
 
     function toggleTeacherTodo(todoId, checkbox) {
       if (!TEACHER_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('teacherTodoListFeedback', 'The backend is required to update tasks.');
+        setDashboardFeedback('teacherTodoListFeedback', 'Tasks can’t be updated right now. Refresh and try again.');
         renderTeacherTodos();
         return;
       }
@@ -240,7 +240,7 @@ lucide.createIcons();
 
     async function confirmDeleteTeacherTodo() {
       if (!TEACHER_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('teacherTodoDeleteFeedback', 'The backend is required to delete tasks.');
+        setDashboardFeedback('teacherTodoDeleteFeedback', 'Tasks can’t be deleted right now. Refresh and try again.');
         return;
       }
       const todoId = document.getElementById('teacherTodoDeleteId').value;
@@ -473,7 +473,7 @@ lucide.createIcons();
       const fail = message => setDashboardFeedback('teacherMaterialFeedback', message);
       setDashboardFeedback('teacherMaterialFeedback');
 
-      if (!TEACHER_DASHBOARD_API_ENABLED) { fail('The backend is required to upload learning materials.'); return false; }
+      if (!TEACHER_DASHBOARD_API_ENABLED) { fail('Learning materials can’t be uploaded right now. Refresh and try again.'); return false; }
       if (!file) { fail('Please choose a file.'); return false; }
       if (!title) { fail('Please enter a material title.'); return false; }
       if (!grade) { fail('Please select a grade level.'); return false; }
@@ -839,7 +839,7 @@ lucide.createIcons();
           TEACHER_SECTIONS_ERROR = error.message || 'Assigned sections could not be loaded.';
         }
       } else {
-        TEACHER_SECTIONS_ERROR = 'The backend is required to load your assigned sections.';
+        TEACHER_SECTIONS_ERROR = 'Your assigned sections couldn’t be loaded. Refresh and try again.';
       }
       if (TEACHER_DASHBOARD_API_ENABLED) {
         try {
@@ -868,7 +868,7 @@ lucide.createIcons();
           TEACHER_FLAGS_ERROR = error.message || 'Student indicators could not be loaded.';
         }
       } else {
-        TEACHER_FLAGS_ERROR = TEACHER_SECTIONS_ERROR || 'The backend is required to load student indicators.';
+        TEACHER_FLAGS_ERROR = TEACHER_SECTIONS_ERROR || 'Student indicators couldn’t be loaded. Refresh and try again.';
       }
       if (TEACHER_DASHBOARD_API_ENABLED) {
         try {
@@ -881,7 +881,7 @@ lucide.createIcons();
           TEACHER_ANNOUNCEMENTS_ERROR = error.message || 'Announcements could not be loaded.';
         }
       } else {
-        TEACHER_ANNOUNCEMENTS_ERROR = 'The backend is required to load announcements.';
+        TEACHER_ANNOUNCEMENTS_ERROR = 'Announcements couldn’t be loaded. Refresh and try again.';
       }
       await refreshTeacherTasks();
       TEACHER_ANNOUNCEMENTS_LOADING = false;

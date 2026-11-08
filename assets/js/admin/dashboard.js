@@ -55,7 +55,7 @@
         tone: 'green',
         icon: 'graduation-cap',
         label: 'Students',
-        sub: 'Across all configured grade levels',
+        sub: 'Across all grades',
         records: ADMIN_STUDENTS,
       },
       {
@@ -261,7 +261,7 @@
       ADMIN_SUMMARY_CARDS[1].records = ADMIN_TEACHERS;
       ADMIN_SUMMARY_CARDS[2].records = ADMIN_PARENTS;
       ADMIN_SUMMARY_CARDS[0].value = ADMIN_USER_ERRORS.students ? '—' : ADMIN_STUDENTS.length;
-      ADMIN_SUMMARY_CARDS[0].sub = ADMIN_USER_ERRORS.students || 'Across all configured grade levels';
+      ADMIN_SUMMARY_CARDS[0].sub = ADMIN_USER_ERRORS.students || 'Across all grades';
       ADMIN_SUMMARY_CARDS[1].value = ADMIN_USER_ERRORS.teachers ? '—' : ADMIN_TEACHERS.length;
       ADMIN_SUMMARY_CARDS[1].sub = ADMIN_USER_ERRORS.teachers || 'Active teachers this grading period';
       ADMIN_SUMMARY_CARDS[2].value = ADMIN_USER_ERRORS.parents ? '—' : ADMIN_PARENTS.length;
@@ -278,7 +278,7 @@
         actions.innerHTML = ADMIN_QUICK_ACTIONS.length
           ? ADMIN_QUICK_ACTIONS.map(action => `
             <a href="${action.href || '#'}" class="qa-item" ${action.action ? `data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', action.action)}"` : ''}><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('')
-          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here when they are configured.' });
+          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here when they are ready.' });
       }
       lucide.createIcons();
     }
@@ -372,7 +372,7 @@
     async function saveAdminTodo(event) {
       event?.preventDefault();
       if (!ADMIN_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('adminTodoFeedback', 'The backend is required to save tasks.');
+        setDashboardFeedback('adminTodoFeedback', 'Tasks can’t be saved right now. Refresh and try again.');
         return false;
       }
       const todoId = document.getElementById('adminTodoId').value;
@@ -404,7 +404,7 @@
 
     function toggleAdminTodo(todoId, checkbox) {
       if (!ADMIN_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('adminTodoListFeedback', 'The backend is required to update tasks.');
+        setDashboardFeedback('adminTodoListFeedback', 'Tasks can’t be updated right now. Refresh and try again.');
         renderAdminTodos();
         return;
       }
@@ -447,7 +447,7 @@
 
     async function confirmDeleteAdminTodo() {
       if (!ADMIN_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('adminTodoDeleteFeedback', 'The backend is required to delete tasks.');
+        setDashboardFeedback('adminTodoDeleteFeedback', 'Tasks can’t be deleted right now. Refresh and try again.');
         return;
       }
       const todoId = document.getElementById('adminTodoDeleteId').value;
@@ -533,7 +533,7 @@
           DASHBOARD_ACTIVITY_ERROR = error.message || 'Recent activity could not be loaded.';
         }
       } else {
-        const message = 'The backend is required to load school dashboard data.';
+        const message = 'Dashboard information couldn’t be loaded. Refresh and try again.';
         ADMIN_USER_ERRORS = { students: message, teachers: message, parents: message };
         ADMIN_ASSIGNMENT_ERROR = message;
         DASHBOARD_ACTIVITY_ERROR = message;
@@ -623,7 +623,7 @@
           saveButton.disabled = Boolean(ADMIN_ASSIGNMENT_ERROR);
         }
       } else {
-        ADMIN_ASSIGNMENT_ERROR = 'The backend is required to load students and sections.';
+        ADMIN_ASSIGNMENT_ERROR = 'Students and sections couldn’t be loaded. Refresh and try again.';
         saveButton.disabled = true;
         setDashboardFeedback('assignStudentFeedback', ADMIN_ASSIGNMENT_ERROR);
       }
@@ -653,7 +653,7 @@
       }
 
       if (!ADMIN_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('assignStudentFeedback', 'The backend is required to save section assignments.');
+        setDashboardFeedback('assignStudentFeedback', 'The section assignment couldn’t be saved. Refresh and try again.');
         return;
       }
       const saveButton = document.getElementById('assignStudentSaveButton');
@@ -744,7 +744,7 @@
         return false;
       }
       if (!ADMIN_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('announcementFeedback', 'The backend is required to save announcements.');
+        setDashboardFeedback('announcementFeedback', 'The announcement couldn’t be saved. Refresh and try again.');
         return false;
       }
 
@@ -761,7 +761,7 @@
 
       try {
         const savedAnnouncement = await window.EDUGNAY_API.createAnnouncement(values);
-        if (!savedAnnouncement) throw new Error('The server did not confirm the announcement save.');
+        if (!savedAnnouncement) throw new Error('The announcement could not be confirmed as saved. Refresh and check the announcements list.');
 
         if (window.EDUGNAY_COMMUNICATION?.backend) {
           const announcements = window.EDUGNAY_COMMUNICATION.announcements || [];

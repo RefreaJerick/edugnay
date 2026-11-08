@@ -11,6 +11,7 @@ const { startSchoolRegistrationEmailWorker } = require('./workers/schoolRegistra
 const { startParentNotificationWorker } = require('./workers/parentNotificationWorker');
 const { startPushNotificationWorker } = require('./workers/pushNotificationWorker');
 const { startScheduledAnnouncementWorker } = require('./workers/scheduledAnnouncementWorker');
+const { startNarrativeReportSmsWorker } = require('./workers/narrativeReportSmsWorker');
 const { getFrontendOrigin, getTrustProxyHops } = require('./config/deployment');
 const { errorHandler } = require('./middleware/errorHandler');
 const { createRequestOriginGuard } = require('./middleware/requestOrigin');
@@ -163,4 +164,5 @@ if (process.env.DISABLE_BACKGROUND_WORKERS !== 'true') {
   startParentNotificationWorker();
   startPushNotificationWorker();
   startScheduledAnnouncementWorker();
+  startNarrativeReportSmsWorker();
 }

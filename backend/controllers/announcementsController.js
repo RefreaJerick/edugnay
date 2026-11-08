@@ -338,19 +338,20 @@ async function updateAnnouncement(req, res, next) {
     if (current.status === 'published' && status !== 'published') throw createError('Published announcements cannot be unpublished.');
     if (req.body.imagePath !== undefined || req.body.pinned !== undefined) throw createError('Use the image upload and pin controls.');
     const schedule = scheduledTime(status === 'scheduled' && req.body.scheduledAt === undefined ? current.scheduledAt : req.body.scheduledAt, status);
-    if (req.file && req.body.removeImage === 'true') throw createError('Choose either a replacement image or remove the current image.');
+    const removeImage = req.body.removeImage === true || req.body.removeImage === 'true';
+    if (req.file && removeImage) throw createError('Choose either a replacement image or remove the current image.');
     const replaceAudiences = req.body.audiences !== undefined || req.body.audience !== undefined;
     const audiences = replaceAudiences
       ? normalizeAudiences(req.body.audiences === undefined ? req.body.audience : req.body.audiences)
       : (await getAnnouncementAudiences(connection, [announcementId])).get(announcementId) || [];
     await validateAudiences(connection, req.user, audiences);
     if (req.file) newImage = await saveAnnouncementImage(req.file);
-    if (req.file || req.body.removeImage === 'true') oldImage = current.imagePath;
+    if (req.file || removeImage) oldImage = current.imagePath;
     await connection.execute(
       `UPDATE announcements SET title = ?, body = ?, priority = ?, status = ?, image_path = ?, scheduled_at = ?,
         published_at = CASE WHEN ? = 'published' AND ? <> 'published' THEN NOW() ELSE published_at END
       WHERE id = ?`,
-      [title, body, priority, status, newImage || (req.body.removeImage === 'true' ? null : current.imagePath), schedule, status, current.status, announcementId]
+      [title, body, priority, status, newImage || (removeImage ? null : current.imagePath), schedule, status, current.status, announcementId]
     );
     if (replaceAudiences) {
       await connection.execute('DELETE FROM announcement_audiences WHERE announcement_id = ?', [announcementId]);

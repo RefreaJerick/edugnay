@@ -233,7 +233,11 @@
   padding: 16px 0;
   border-bottom: 1px solid var(--panel-divider);
 }
-.trigger-row:last-child {
+/* .trigger-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+} */
+#narrative-report-sms-row {
   border-bottom: none;
   padding-bottom: 0;
 }

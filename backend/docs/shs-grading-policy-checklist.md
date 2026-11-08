@@ -38,7 +38,8 @@ Every approved elective has an explicit catalog assessment group. Unknown groups
 
 ## Code and test safeguards
 
-- These rules are centralized in `backend/config/shsGrading.js` and are recorded in each publication snapshot.
+- The DepEd defaults are centralized in `backend/config/shsGrading.js`. Schools may select a school-specific final-grade method for one school year in School Settings. That method reports the weighted Initial Grade directly as a whole-number Term Grade, using the selected rounding rule. It averages published Term Grades using the same rounding rule and uses the saved passing grade from 0 to 100. DepEd mode always uses the year-based method above, nearest rounding, and a passing grade of 75.
+- Final-grade rules are shared by Grade 11 and Grade 12 subjects in that school year, while component and exam-part weights remain subject-specific. Grade previews and new publication snapshots record the effective final-grade rule. Any published SHS core, elective, or Communication component grade locks changes to the school-year final-grade rule.
 - School administrators may save subject- or offering-specific component and exam-part weights for one school year through School Settings. The DepEd table above remains the starting default. A saved rule is used by both teacher gradebooks and captured in later publication snapshots; it does not rewrite earlier publications. Rules with published grades are locked for that school year. Academix labels custom rules but does not certify any external approval for them.
 - Tests cover every explicit group, exam requirements, no-exam groups, missing or invalid scores, a published computation example, adjusted-table boundaries, later zero-based grading, and rejection of unsupported grade levels.
 - Grade publication remains protected by `SHS_SELECTION_ENABLED`. Keep that switch off until the test-school flow and policy checks pass.

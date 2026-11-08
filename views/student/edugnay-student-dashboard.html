@@ -180,18 +180,17 @@
 
         <div class="dash-col-left">
 
-          <!-- WELCOME BANNER — identity + date only, NO grade data -->
+          <!-- WELCOME BANNER — student period is based on the enrolled section level -->
           <div class="grading-banner">
             <div class="grading-welcome">
               <div class="grading-welcome-name" id="greeting-time-label">Welcome back, Juan!</div>
               <div class="grading-welcome-date" data-current-date>Monday, September 14, 2026.</div>
             </div>
-            <div class="grading-period-card">
-              <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i>
-              </div>
-              <div>
-                <div class="grading-period-label">Active grading period</div>
-                <div class="grading-period-value" data-active-academic-period></div>
+            <div class="grading-period-card student-grading-period-card" role="group" aria-label="Current grading period and school year">
+              <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i></div>
+              <div class="student-grading-period-details">
+                <div class="grading-period-value" data-active-academic-period data-period-only="true" aria-live="polite">No active period</div>
+                <div class="student-grading-period-year">S.Y. <span data-school-year></span></div>
               </div>
             </div>
           </div>

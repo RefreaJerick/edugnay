@@ -68,7 +68,7 @@ async function getAssignment(connection, schoolId, assignmentId) {
   return rows[0];
 }
 
-async function getMeetingOwner(connection, schoolId, meetingId) {
+async function getMeetingOwner(connection, schoolId, meetingId, forUpdate = false) {
   const [rows] = await connection.execute(
     `SELECT c.assignment_id AS assignmentId, c.shs_elective_class_id AS electiveClassId,
       m.weekday, TIME_FORMAT(m.start_time, '%H:%i') AS startTime,
@@ -77,15 +77,18 @@ async function getMeetingOwner(connection, schoolId, meetingId) {
       DATE_FORMAT(m.end_date, '%Y-%m-%d') AS endDate, m.room
      FROM timetable_meetings m
     JOIN scheduled_classes c ON c.id = m.scheduled_class_id AND c.school_id = m.school_id
-    WHERE m.id = ? AND m.school_id = ? LIMIT 1`, [meetingId, schoolId]
+    WHERE m.id = ? AND m.school_id = ? LIMIT 1${forUpdate ? ' FOR UPDATE' : ''}`, [meetingId, schoolId]
   );
   return rows[0];
 }
 
-async function getElectiveClass(connection, schoolId, classId) {
+async function getElectiveClass(connection, schoolId, classId, forUpdate = false) {
   const [rows] = await connection.execute(
     `SELECT c.id, c.class_name AS className, c.teacher_user_id AS teacherId, c.is_active AS classActive,
+      c.start_term_id AS startTermId, c.end_term_id AS endTermId,
+      first_term.name AS startTermName, first_term.sequence_number AS startTermSequence,
       DATE_FORMAT(first_term.planned_start_date, '%Y-%m-%d') AS firstTermStartDate,
+      last_term.name AS endTermName, last_term.sequence_number AS endTermSequence,
       DATE_FORMAT(last_term.planned_end_date, '%Y-%m-%d') AS lastTermEndDate,
       teacher.display_name AS teacherName, teacher.account_status AS teacherStatus,
       o.subject_name AS subjectName, o.track_code AS trackCode, g.grade_code AS gradeCode,
@@ -99,10 +102,38 @@ async function getElectiveClass(connection, schoolId, classId) {
      JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
      JOIN academic_years y ON y.id = o.academic_year_id AND y.school_id = o.school_id
      LEFT JOIN academic_terms first_term ON first_term.id = c.start_term_id AND first_term.school_id = c.school_id
+       AND first_term.academic_year_id = o.academic_year_id AND first_term.school_level_id = g.school_level_id
      LEFT JOIN academic_terms last_term ON last_term.id = c.end_term_id AND last_term.school_id = c.school_id
-     WHERE c.id = ? AND c.school_id = ? LIMIT 1`, [classId, schoolId]
+       AND last_term.academic_year_id = o.academic_year_id AND last_term.school_level_id = g.school_level_id
+     WHERE c.id = ? AND c.school_id = ? LIMIT 1${forUpdate ? ' FOR UPDATE' : ''}`, [classId, schoolId]
   );
   return rows[0];
+}
+
+function getElectiveTermRange(elective) {
+  const startTermId = Number(elective.startTermId);
+  const endTermId = Number(elective.endTermId);
+  const startSequence = Number(elective.startTermSequence);
+  const endSequence = Number(elective.endTermSequence);
+  let startDate;
+  let endDate;
+  try {
+    isoDate(elective.startDate, 'School year start date');
+    isoDate(elective.endDate, 'School year end date');
+    startDate = isoDate(elective.firstTermStartDate, 'Assigned term start date');
+    endDate = isoDate(elective.lastTermEndDate, 'Assigned term end date');
+  } catch {
+    fail('This class has no valid assigned term dates. Review its term assignment before scheduling.', 409);
+  }
+  if (!Number.isSafeInteger(startTermId) || startTermId < 1
+    || !Number.isSafeInteger(endTermId) || endTermId < 1
+    || !Number.isInteger(startSequence) || startSequence < 1
+    || !Number.isInteger(endSequence) || endSequence < startSequence
+    || !String(elective.startTermName || '').trim() || !String(elective.endTermName || '').trim()
+    || startDate > endDate || startDate < elective.startDate || endDate > elective.endDate) {
+    fail('This class has no valid assigned term dates. Review its term assignment before scheduling.', 409);
+  }
+  return { startDate, endDate };
 }
 
 async function listYears(req, res, next) {
@@ -203,7 +234,10 @@ async function list(req, res, next) {
       const [electives] = await getDatabase().execute(
         `SELECT ec.id AS electiveClassId, ec.class_name AS className, ec.teacher_user_id AS teacherId,
           ec.start_term_id AS startTermId, ec.end_term_id AS endTermId,
-          start_term.name AS startTermName, end_term.name AS endTermName,
+          start_term.name AS startTermName, start_term.sequence_number AS startTermSequence,
+          DATE_FORMAT(start_term.planned_start_date, '%Y-%m-%d') AS firstTermStartDate,
+          end_term.name AS endTermName, end_term.sequence_number AS endTermSequence,
+          DATE_FORMAT(end_term.planned_end_date, '%Y-%m-%d') AS lastTermEndDate,
           ec.is_active AS classActive, o.is_active AS offeringActive,
           o.subject_name AS subjectName, g.display_name AS gradeName,
           teacher.display_name AS teacherName, sc.id AS scheduledClassId,
@@ -216,7 +250,9 @@ async function list(req, res, next) {
          JOIN school_grade_levels g ON g.id = o.grade_level_id AND g.school_id = o.school_id
          JOIN users teacher ON teacher.id = ec.teacher_user_id AND teacher.school_id = ec.school_id
          LEFT JOIN academic_terms start_term ON start_term.id = ec.start_term_id AND start_term.school_id = ec.school_id
+           AND start_term.academic_year_id = o.academic_year_id AND start_term.school_level_id = g.school_level_id
          LEFT JOIN academic_terms end_term ON end_term.id = ec.end_term_id AND end_term.school_id = ec.school_id
+           AND end_term.academic_year_id = o.academic_year_id AND end_term.school_level_id = g.school_level_id
          LEFT JOIN academic_terms active_term ON active_term.school_id = ec.school_id
            AND active_term.academic_year_id = o.academic_year_id
            AND active_term.school_level_id = g.school_level_id AND active_term.status = 'active'
@@ -232,6 +268,10 @@ async function list(req, res, next) {
           scheduledClassId: item.scheduledClassId, sectionId: null,
           sectionName: item.className, gradeName: item.gradeName, teacherId: item.teacherId,
           teacherName: item.teacherName, subjectName: item.subjectName,
+          startTermId: item.startTermId, endTermId: item.endTermId,
+          startTermName: item.startTermName, startTermSequence: item.startTermSequence,
+          firstTermStartDate: item.firstTermStartDate, endTermName: item.endTermName,
+          endTermSequence: item.endTermSequence, lastTermEndDate: item.lastTermEndDate,
           weekday: item.weekday, startTime: item.startTime, endTime: item.endTime,
           startDate: item.startDate, endDate: item.endDate, room: item.room
         });
@@ -399,18 +439,23 @@ async function saveElective(req, res, next) {
     if (!initial) fail('Elective class not found.', 404);
     await connection.beginTransaction(); started = true;
     await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [initial.academicYearId, schoolId]);
-    const elective = await getElectiveClass(connection, schoolId, classId);
+    const elective = await getElectiveClass(connection, schoolId, classId, true);
     if (!elective || Number(elective.academicYearId) !== Number(initial.academicYearId)) fail('The class changed. Reload and try again.', 409);
     if (elective.yearStatus === 'archived' || !elective.classActive || !elective.offeringActive) fail('This school year or class is read-only.', 409);
     if (elective.teacherStatus !== 'active') fail('Assign an active teacher before scheduling this class.', 409);
-    const meeting = validateMeeting(req.body, elective);
-    if (!elective.firstTermStartDate || !elective.lastTermEndDate
-      || meeting.startDate < elective.firstTermStartDate || meeting.endDate > elective.lastTermEndDate) {
-      fail('Schedule this class only within its assigned terms. Review its term assignment first.', 409);
-    }
+    const assignedRange = getElectiveTermRange(elective);
+    const owner = meetingId ? await getMeetingOwner(connection, schoolId, meetingId, true) : null;
     if (meetingId) {
-      const owner = await getMeetingOwner(connection, schoolId, meetingId);
       if (Number(owner?.electiveClassId) !== classId) fail('Meeting not found.', 404);
+    }
+    const meetingDates = meetingId
+      ? { startDate: owner.startDate, endDate: owner.endDate }
+      : assignedRange;
+    const meeting = validateMeeting({ ...req.body, ...meetingDates }, elective);
+    if (meeting.startDate < assignedRange.startDate || meeting.endDate > assignedRange.endDate) {
+      fail(meetingId
+        ? 'The saved meeting dates are outside this class’s assigned terms. Review its term assignment before saving.'
+        : 'This class has no valid assigned term dates. Review its term assignment before scheduling.', 409);
     }
     const [[existingClass]] = await connection.execute(
       'SELECT id FROM scheduled_classes WHERE school_id = ? AND shs_elective_class_id = ? LIMIT 1', [schoolId, classId]

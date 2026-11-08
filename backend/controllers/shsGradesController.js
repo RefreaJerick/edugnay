@@ -64,7 +64,7 @@ async function resolveScope(db, user, input, write = false) {
     communicationComponentName: COMMUNICATION_COMPONENTS[communicationComponentCode] || null,
     legacyCommunication: communicationSubject && !communicationComponentCode };
   if (write && scope.legacyCommunication) {
-    fail('Legacy combined communication records are read-only. Assign an English or Filipino component to enter new grades.', 409);
+    fail('Grades cannot be entered for this older combined Communication class. Use Effective Communication or Mabisang Komunikasyon for new grades.', 409);
   }
   if (write && scope.yearStatus !== 'active') fail('Archived school years are read-only.', 409);
   scope.policy = await loadShsPolicy(db, scope);
@@ -104,7 +104,7 @@ async function assertTerm(db, scope, termId, write = false) {
     if (!lockedTerms.length) fail('The grading period does not belong to this class.', 404);
     term.status = lockedTerms[0].status;
   }
-  if (write && term.status !== 'active') fail('This grading period is locked.', 409);
+  if (write && term.status !== 'active') fail('Grades can only be changed during an active grading period.', 409);
   return term;
 }
 
@@ -226,7 +226,8 @@ async function workspace(req, res, next) {
     }
     res.json({ scope: { ...scope, policy: scope.policy && {
       group: scope.policy.group, weights: scope.policy.weights, components: scope.policy.components,
-      method: scope.policy.method,
+      method: scope.policy.method, gradingMode: scope.policy.gradingMode,
+      passingGradeThreshold: scope.policy.passingGradeThreshold, gradeRounding: scope.policy.gradeRounding,
       requiredExamParts: requiredParts(scope.policy), source: scope.policy.source
     }, policyBlockReason: policyBlockReason(scope.group, scope.yearLabel, scope.gradeCode) }, terms, term, students, items, scores, published });
   } catch (error) { next(error); }
@@ -433,7 +434,10 @@ async function buildPreview(db, scope, termId, forUpdate = false) {
     return { ...student, ...(blockReason ? { problem: blockReason } : calculateTermGrade(scope.policy, items, studentScores)),
       scoreSnapshot: { policy: { group: scope.policy?.group, weights: scope.policy?.weights,
         components: scope.policy?.components,
-        examParts: scope.policy?.examParts, method: scope.policy?.method, source: scope.policy?.source },
+        examParts: scope.policy?.examParts, method: scope.policy?.method,
+        gradingMode: scope.policy?.gradingMode,
+        passingGradeThreshold: scope.policy?.passingGradeThreshold,
+        gradeRounding: scope.policy?.gradeRounding, source: scope.policy?.source },
         items: items.map(item => ({ gradingItemId: Number(item.id), title: item.title,
           componentCode: item.componentCode, examPartCode: item.examPartCode,
           maxScore: Number(item.maxScore), score: studentScores.has(Number(item.id)) ? Number(studentScores.get(Number(item.id))) : null })) } };
@@ -513,7 +517,8 @@ async function publishCommunicationComponent(connection, req, scope, termId, pre
   let combinedCount = 0;
   for (const student of previewResult.students) {
     const components = componentsByStudent.get(String(student.studentId)) || {};
-    const combinedGrade = averageCommunicationGrades(components.english?.finalGrade, components.filipino?.finalGrade);
+    const combinedGrade = averageCommunicationGrades(components.english?.finalGrade,
+      components.filipino?.finalGrade, scope.policy.gradeRounding);
     if (combinedGrade === null) continue;
     const [currentRows] = await connection.execute(
       `SELECT publication_version AS publicationVersion,
@@ -526,7 +531,10 @@ async function publishCommunicationComponent(connection, req, scope, termId, pre
     const combinedVersion = Number(current?.publicationVersion || 0) + 1;
     const snapshot = {
       communicationGradeSource: 'component_average',
-      calculation: 'rounded arithmetic average of the English and Filipino component term grades',
+      calculation: 'arithmetic average of the English and Filipino component term grades',
+      policy: { method: scope.policy.method, gradingMode: scope.policy.gradingMode,
+        passingGradeThreshold: scope.policy.passingGradeThreshold,
+        gradeRounding: scope.policy.gradeRounding },
       components: {
         english: components.english,
         filipino: components.filipino
@@ -587,7 +595,7 @@ async function publish(req, res, next) {
     if (!scope.policy) fail(policyBlockReason(scope.group, scope.yearLabel, scope.gradeCode) || 'The SHS grading policy is unavailable.', 409);
     const termId = id(req.body.academicTermId, 'term ID');
     const previewResult = await buildPreview(connection, scope, termId, true);
-    if (previewResult.term.status !== 'active') fail('This grading period is locked.', 409);
+    if (previewResult.term.status !== 'active') fail('Grades can only be changed during an active grading period.', 409);
     if (!previewResult.students.length || previewResult.students.some(student => student.problem))
       fail('Resolve missing scores and assessment items before publishing.', 409);
     if (scope.communicationComponentCode) {

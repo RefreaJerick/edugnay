@@ -147,7 +147,7 @@
     }
     if (!selectedChild) { list.innerHTML = empty('users', 'No linked children', 'Ask your school to link a student account to yours.'); return; }
     const inPeriod = assignmentsForCurrentView();
-    if (!availableTerms().length) { list.innerHTML = empty('calendar-x', 'No grading periods available', 'Grading periods for this student’s school level will appear here when configured.'); return; }
+    if (!availableTerms().length) { list.innerHTML = empty('calendar-x', 'No grading periods available', 'Grading periods for this student’s school level will appear here after the school sets them up.'); return; }
     if (!selectedTerm) { list.innerHTML = empty('clipboard-check', 'No assignments yet', 'Published assignments will appear here when a grading period is available.'); return; }
     if (!inPeriod.length) { list.innerHTML = empty('clipboard-check', 'No assignments in this grading period', 'There are no published assignments for this child in the selected period.'); return; }
     const search = element('assignmentSearch').value.trim().toLowerCase();
@@ -248,7 +248,7 @@
     try {
       const response = await window.EDUGNAY_API.getParentChildAssignments(id);
       if (current !== requestId) return;
-      if (String(response?.studentId) !== id || !Array.isArray(response.assignments)) throw new Error('The assignment response is incomplete.');
+      if (String(response?.studentId) !== id || !Array.isArray(response.assignments)) throw new Error('Assignment information could not be loaded. Refresh and try again.');
       assignments = response.assignments;
       history = Array.isArray(response.history) ? response.history : [];
       selectDefaultPeriod();
@@ -267,7 +267,7 @@
     render();
     try {
       await window.EDUGNAY_SCHOOL_READY;
-      if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The school API is required to load assignments.');
+      if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('Assignments aren’t available right now. Refresh and try again.');
       const [linked, schoolTerms] = await Promise.all([window.EDUGNAY_API.getParentChildren(), window.EDUGNAY_API.getAcademicTerms()]);
       if (current !== requestId) return;
       children = linked;

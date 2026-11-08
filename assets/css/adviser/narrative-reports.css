@@ -773,8 +773,8 @@
     }
 
     #gen-modal .gen-modal {
-      width: min(480px, calc(100vw - 32px));
-      max-width: 480px;
+      width: min(600px, calc(100vw - 32px));
+      max-width: 600px;
       max-height: calc(100vh - 32px);
     }
     #gen-modal .gen-loading-view { display: none; }

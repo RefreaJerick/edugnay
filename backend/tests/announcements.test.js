@@ -3,6 +3,7 @@ const test = require('node:test');
 
 const databaseModule = require('../config/database');
 const auditLog = require('../utils/auditLog');
+const announcementImages = require('../config/announcementImages');
 const emailWorker = require('../workers/announcementEmailWorker');
 
 const events = [];
@@ -10,6 +11,14 @@ let failOutboxInsert = false;
 let savedAnnouncement;
 let dueRecords = [];
 let schoolStatus = 'active';
+const existingImagePath = '11111111-1111-4111-8111-111111111111.png';
+const replacementImagePath = '22222222-2222-4222-8222-222222222222.webp';
+
+announcementImages.deleteAnnouncementImage = async imagePath => { events.push(`delete_image:${imagePath}`); };
+announcementImages.saveAnnouncementImage = async () => {
+  events.push('save_image');
+  return replacementImagePath;
+};
 
 const connection = {
   async beginTransaction() { events.push('begin'); },
@@ -17,6 +26,22 @@ const connection = {
   async rollback() { events.push('rollback'); },
   release() { events.push('release'); },
   async execute(sql, values = []) {
+    if (sql.startsWith('SELECT announcements.id, announcements.school_id AS schoolId')) {
+      return [savedAnnouncement && values[1] === savedAnnouncement.schoolId ? [{ ...savedAnnouncement }] : []];
+    }
+    if (sql.startsWith('UPDATE announcements SET title =')) {
+      savedAnnouncement = {
+        ...savedAnnouncement,
+        title: values[0],
+        body: values[1],
+        priority: values[2],
+        status: values[3],
+        imagePath: values[4],
+        scheduledAt: values[5]
+      };
+      events.push('update_announcement');
+      return [{ affectedRows: 1 }];
+    }
     if (sql.startsWith('SELECT id, title, status FROM announcements')) {
       return [savedAnnouncement && values[1] === savedAnnouncement.schoolId ? [{ id: 31, title: savedAnnouncement.title, status: savedAnnouncement.status }] : []];
     }
@@ -108,6 +133,89 @@ test.beforeEach(() => {
   savedAnnouncement = null;
   dueRecords = [];
   schoolStatus = 'active';
+});
+
+function existingAnnouncement(imagePath = existingImagePath) {
+  savedAnnouncement = {
+    id: 31,
+    schoolId: 4,
+    title: 'School update',
+    body: 'A short announcement.',
+    priority: 'normal',
+    status: 'draft',
+    authorUserId: 10,
+    authorName: 'School Admin',
+    imagePath,
+    scheduledAt: null,
+    isPinned: 0,
+    publishedAt: null,
+    createdAt: '2026-10-01 10:00:00',
+    updatedAt: '2026-10-01 10:00:00'
+  };
+}
+
+async function updateAnnouncement(body = {}, file) {
+  const result = { body: null, error: null };
+  await announcements.updateAnnouncement({
+    user: { id: 10, schoolId: 4, role: 'school_admin' },
+    params: { announcementId: '31' },
+    body: { title: 'School update', body: 'A short announcement.', priority: 'normal', status: 'draft', ...body },
+    file
+  }, { json(body) { result.body = body; } }, error => { result.error = error; });
+  return result;
+}
+
+test('image removal sent as a JSON boolean clears the image and deletes the old file after commit', async () => {
+  existingAnnouncement();
+
+  const result = await updateAnnouncement({ removeImage: true });
+
+  assert.equal(result.error, null);
+  assert.equal(savedAnnouncement.imagePath, null);
+  assert.equal(result.body.announcement.imageUrl, null);
+  assert.ok(events.indexOf('commit') < events.indexOf(`delete_image:${existingImagePath}`));
+});
+
+test('image removal sent as a multipart string clears the image', async () => {
+  existingAnnouncement();
+
+  const result = await updateAnnouncement({ removeImage: 'true' });
+
+  assert.equal(result.error, null);
+  assert.equal(savedAnnouncement.imagePath, null);
+  assert.ok(events.includes(`delete_image:${existingImagePath}`));
+});
+
+test('editing without removing or replacing the image keeps the current image', async () => {
+  existingAnnouncement();
+
+  const result = await updateAnnouncement({ removeImage: false });
+
+  assert.equal(result.error, null);
+  assert.equal(savedAnnouncement.imagePath, existingImagePath);
+  assert.ok(!events.some(event => event.startsWith('delete_image:')));
+});
+
+test('replacing an image saves the replacement and removes the old image after commit', async () => {
+  existingAnnouncement();
+
+  const result = await updateAnnouncement({ removeImage: false }, { originalname: 'replacement.webp' });
+
+  assert.equal(result.error, null);
+  assert.equal(savedAnnouncement.imagePath, replacementImagePath);
+  assert.ok(events.includes('save_image'));
+  assert.ok(events.indexOf('commit') < events.indexOf(`delete_image:${existingImagePath}`));
+});
+
+test('image removal and replacement cannot be requested together', async () => {
+  existingAnnouncement();
+
+  const result = await updateAnnouncement({ removeImage: true }, { originalname: 'replacement.webp' });
+
+  assert.match(result.error?.message || '', /Choose either a replacement image or remove the current image/);
+  assert.ok(events.includes('rollback'));
+  assert.ok(!events.includes('save_image'));
+  assert.equal(savedAnnouncement.imagePath, existingImagePath);
 });
 
 test('published announcement commits its mail queue before responding and wakes delivery afterward', async () => {

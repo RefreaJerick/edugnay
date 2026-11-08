@@ -47,13 +47,13 @@
 
       try {
         await window.EDUGNAY_SCHOOL_READY;
-        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The backend is not configured.');
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('User accounts aren’t available right now. Refresh and try again.');
         const [users, sections, school] = await Promise.all([
           window.EDUGNAY_API.getAllUsers(),
           window.EDUGNAY_API.getSections(),
           window.EDUGNAY_API.getSchoolSettings()
         ]);
-        if (!school?.schoolEmailDomain) throw new Error('School email domain is not configured.');
+        if (!school?.schoolEmailDomain) throw new Error('School sign-in email details aren’t available. Contact your platform administrator.');
         managedSchoolDomain = school.schoolEmailDomain;
         USERS = users;
         sortUsersByDate();
@@ -75,8 +75,8 @@
           usersLoadError = 'Sign in as a school administrator to load user accounts.';
         } else {
           usersLoadError = error.status === 429 ? error.message
-            : error.status === 503 ? 'The server or database is temporarily unavailable.'
-            : error.message || 'User accounts could not be loaded from the backend.';
+            : error.status === 503 ? 'User accounts aren’t available right now. Refresh and try again.'
+            : error.message || 'User accounts couldn’t be loaded. Refresh and try again.';
         }
         console.warn(usersLoadError, error.message);
       } finally {
@@ -234,7 +234,7 @@
         if (usersLoading) {
           tbody.innerHTML = '';
         } else {
-          tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${columns}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'User accounts unavailable', text: usersLoadError || 'Try again when the connection is ready.' })}<button class="top-btn secondary" type="button" data-page-click="g19350957166b">Retry</button></td></tr>`;
+          tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${columns}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'User accounts unavailable', text: usersLoadError || 'Refresh the page and try again.' })}<button class="top-btn secondary" type="button" data-page-click="g19350957166b">Retry</button></td></tr>`;
         }
         updateRoleSummary();
         renderPagination(0, 1);
@@ -485,14 +485,14 @@
       const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
       document.getElementById('credentialSingleView').hidden = false;
       document.getElementById('credentialBatchView').hidden = true;
-      document.getElementById('credentialDeliveryModalSub').textContent = `Prepared for ${user.personalEmail || user.schoolEmail || 'the account owner'}.`;
+      document.getElementById('credentialDeliveryModalSub').textContent = `Sign-in email for ${user.personalEmail || user.schoolEmail || 'the account owner'}.`;
       document.getElementById('credentialDeliveryNotice').textContent = emailDelivery?.status === 'sent'
-        ? 'The backend generated the temporary password and sent the account credentials by email.'
-        : 'The account was created, but the credential email was not sent. Check the backend SMTP configuration before the user signs in.';
+        ? 'The account was created. The email service accepted the sign-in email, but we cannot confirm it reached the recipient’s inbox.'
+        : 'The account was created, but we could not send the sign-in email. Check the email address or ask your platform administrator for help.';
       document.getElementById('credentialSchoolEmail').textContent = user.schoolEmail || 'Not set';
       document.getElementById('credentialTemporaryPassword').textContent = emailDelivery?.status === 'sent'
-        ? 'Sent securely by email'
-        : 'Not delivered';
+        ? 'Email service accepted it; inbox delivery is not confirmed'
+        : 'Not sent';
       document.getElementById('credentialQrSection').hidden = true;
       document.getElementById('credentialQrImage').removeAttribute('src');
       backdrop.classList.add('open');
@@ -544,7 +544,7 @@
 
       try {
         if (!usersApiActive) {
-          throw new Error('User accounts are unavailable from the backend. Refresh the page and try again.');
+          throw new Error('User accounts aren’t available right now. Refresh and try again.');
         }
 
         const result = data.userId
@@ -573,7 +573,7 @@
       const userId = document.getElementById('deactivateUserId').value;
       const action = document.getElementById('deactivateAction').value; // 'deactivate' | 'reactivate'
       try {
-        if (!usersApiActive) throw new Error('User accounts are unavailable from the backend.');
+        if (!usersApiActive) throw new Error('User accounts aren’t available right now. Refresh and try again.');
         await window.EDUGNAY_API.setUserStatus(userId, action === 'deactivate' ? 'inactive' : 'active');
         await loadManagedUsers();
         closeDeactivateModal();
@@ -589,7 +589,7 @@
 
       const userId = document.getElementById('deleteUserId').value;
       if (!usersApiActive) {
-        showAppToast('User accounts are not connected to the backend. Try again after they load.', 'error');
+        showAppToast('User accounts aren’t available right now. Refresh and try again.', 'error');
         return;
       }
 
@@ -619,7 +619,7 @@
 
       if (importSubmitting) return;
       if (!usersApiActive || usersLoading || usersLoadError) {
-        showAppToast('User accounts must be connected to the backend before importing.', 'error');
+        showAppToast('User accounts aren’t available right now. Refresh and try again.', 'error');
         return;
       }
 
@@ -894,7 +894,7 @@
           <div class="user-details-qr">
             <img id="userDetailsAttendanceQrImage" alt="${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)} attendance QR code" hidden />
             <div class="user-details-qr-copy">
-              <p>Download a replacement copy or reissue the token if the current QR is no longer secure.</p>
+              <p>Download a replacement QR or issue a new one if the current code may have been shared.</p>
               <div class="user-details-qr-actions">
                 <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrDownload" data-page-click="g8e40f2d00672" disabled><i data-lucide="download"></i>Download QR</button>
                 <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrReissue" data-page-click="g886db1f2d6f7"><i data-lucide="refresh-cw"></i>Reissue QR</button>
@@ -952,9 +952,9 @@
     }
 
     async function displayUserDetailsQr(token, studentId, requestId) {
-      if (!token) throw new Error('The QR data is unavailable.');
+      if (!token) throw new Error('This student’s attendance QR code is not available.');
       const dataUrl = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(token);
-      if (!dataUrl) throw new Error('The QR image could not be created.');
+      if (!dataUrl) throw new Error('The QR code image could not be created. Try again.');
       if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(studentId)) return;
       const image = document.getElementById('userDetailsAttendanceQrImage');
       image.src = dataUrl;
@@ -1058,7 +1058,7 @@
       let rotated = false;
 
       try {
-        if (!usersApiActive) throw new Error('User accounts are unavailable from the backend.');
+        if (!usersApiActive) throw new Error('User accounts aren’t available right now. Refresh and try again.');
         const response = await window.EDUGNAY_API.regenerateStudentQr(student.apiId || student.id);
         rotated = true;
         token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
@@ -1252,7 +1252,7 @@
     /* ── IMPORT USERS MODAL ── */
     function openImportModal() {
       if (!usersApiActive || usersLoading || usersLoadError) {
-        showAppToast('User accounts must be connected to the backend before importing.', 'error');
+        showAppToast('User accounts aren’t available right now. Refresh and try again.', 'error');
         return;
       }
       document.getElementById('importUsersForm').reset();

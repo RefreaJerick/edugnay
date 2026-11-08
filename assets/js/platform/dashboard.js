@@ -133,7 +133,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
     async function savePlatformTodo(event) {
       event?.preventDefault();
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        setPlatformFeedback('platformTodoFeedback', 'The backend is required to save tasks.');
+        setPlatformFeedback('platformTodoFeedback', 'Tasks can’t be saved right now. Refresh and try again.');
         return false;
       }
       const todoId = document.getElementById('platformTodoId').value;
@@ -170,7 +170,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
 
     async function togglePlatformTodo(todoId, checkbox) {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        setPlatformFeedback('platformTodoListFeedback', 'The backend is required to update tasks.');
+        setPlatformFeedback('platformTodoListFeedback', 'Tasks can’t be updated right now. Refresh and try again.');
         renderPlatformTodos();
         return;
       }
@@ -215,7 +215,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
 
     async function confirmDeletePlatformTodo() {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        setPlatformFeedback('platformTodoDeleteFeedback', 'The backend is required to delete tasks.');
+        setPlatformFeedback('platformTodoDeleteFeedback', 'Tasks can’t be deleted right now. Refresh and try again.');
         return;
       }
       const todoId = document.getElementById('platformTodoDeleteId').value;
@@ -319,7 +319,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
           </article>`;
         }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'school', title: 'No school accounts yet', text: 'Registered schools will appear here for platform administration.' });
       } catch (error) {
-        const state = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'School records unavailable', text: error.message || 'Try again after the connection is restored.' });
+        const state = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'School records unavailable', text: error.message || 'Refresh and try again.' });
         summaryCards.innerHTML = state;
         schoolList.innerHTML = state;
       }
@@ -329,7 +329,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
         PLATFORM_ACTIVITY_ERROR = '';
       } catch (error) {
         PLATFORM_DASHBOARD_ACTIVITY = [];
-        PLATFORM_ACTIVITY_ERROR = error.message || 'Try again after the connection is restored.';
+        PLATFORM_ACTIVITY_ERROR = error.message || 'Refresh and try again.';
       }
       renderPlatformActivity();
 
@@ -337,7 +337,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
       document.getElementById('platform-quick-actions').innerHTML = quickActions.length
         ? quickActions.map(action => `
           <a class="qa-item" href="${action.href}"><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('')
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here when they are configured.' });
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here when they are ready.' });
 
       if (window.lucide) window.lucide.createIcons();
     }

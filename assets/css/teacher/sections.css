@@ -528,6 +528,7 @@ tbody tr:hover td.sticky-col {
 .student-num {
   font-size: 11px;
   color: var(--gray-400);
+  text-align: left;
 }
 
 /* ═══════════════════════════════

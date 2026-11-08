@@ -220,6 +220,24 @@ test('confirmed SHS placements are returned for students and linked parents whil
   });
 });
 
+test('SHS grade overview uses the saved passing grade for core sections and elective placements', async () => {
+  gradeCode = 'grade-11';
+  schoolLevelCode = 'shs';
+  savedRules = {
+    '4:2': { gradingMode: 'school_specific', passingGradeThreshold: '80.00' },
+    '4:3': { gradingMode: 'school_specific', passingGradeThreshold: '85.00' }
+  };
+  electiveClassRows = [confirmedElectiveClass(51, 'Creative Writing')];
+  await withShsSelectionEnabled(async () => {
+    const result = await callOverview();
+    assert.equal(result.error, null);
+    const year = result.data.overview.academicYears.find(item => item.id === '4');
+    assert.equal(result.data.overview.current.passingGradeThreshold, 80);
+    assert.equal(result.data.overview.publishedGrades[0].passingGradeThreshold, 80);
+    assert.equal(year.electiveClasses[0].passingGradeThreshold, 85);
+  });
+});
+
 test('pending choices without active class membership do not enter the grade overview', async () => {
   await withShsSelectionEnabled(async () => {
     const result = await callOverview();

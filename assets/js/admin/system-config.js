@@ -2,12 +2,14 @@ const NOTIFICATION_TRIGGER_LABELS = [
     { code: 'grade_below_threshold', icon: 'trending-down', color: 'var(--red)', background: 'var(--red-pale)', label: 'Grade Falls Below Threshold', description: 'After a final grade is published below the school level passing grade.' },
     { code: 'consecutive_absences', icon: 'calendar-x', color: '#d97706', background: 'var(--orange-pale)', label: 'Consecutive missed class dates', description: 'Notify parents after this many recorded class dates are missed in a row for the same subject.' },
     { code: 'assignment_not_completed', icon: 'clipboard-check', color: '#16a34a', background: 'var(--green-pale)', label: 'Assignment Not Completed', description: 'After this many consecutive due assignments are incomplete.', unit: 'tasks' },
-    { code: 'narrative_report_released', icon: 'file-text', color: '#92400e', background: 'var(--gold-pale)', label: 'Narrative Report Released', description: 'Notify linked parents when an adviser releases a weekly report.' },
+    { code: 'narrative_report_released', icon: 'file-text', color: '#92400e', background: 'var(--gold-pale)', label: 'Narrative Report Released', description: 'Send an in-app notification to linked parents when an adviser releases a weekly report.' },
     { code: 'journal_not_submitted', icon: 'notebook-pen', color: 'var(--gray-500)', background: 'var(--gray-100)', label: 'Journal Not Submitted', description: 'After this many consecutive closed journal prompts are missed.', unit: 'prompts' }
   ];
   let savedNotificationTriggers = null;
   let notificationDraft = null;
   let notificationAbsenceThreshold = 3;
+  let savedNarrativeReportSms = { enabled: false, configured: false, available: false, reason: 'semaphore_not_configured' };
+  let narrativeReportSmsEnabledDraft = false;
 
   function renderNotificationTriggers() {
     const list = document.getElementById('notification-trigger-list');
@@ -22,13 +24,34 @@ const NOTIFICATION_TRIGGER_LABELS = [
     lucide.createIcons();
   }
 
+  function renderNarrativeReportSmsSetting() {
+    const toggle = document.getElementById('narrative-report-sms-toggle');
+    const status = document.getElementById('narrative-report-sms-status');
+    if (!toggle || !status) return;
+    toggle.classList.toggle('on', narrativeReportSmsEnabledDraft);
+    toggle.setAttribute('aria-checked', String(narrativeReportSmsEnabledDraft));
+    toggle.disabled = !savedNarrativeReportSms.available && !narrativeReportSmsEnabledDraft;
+
+    const availabilityText = {
+      narrative_reports_disabled: 'Enable Narrative Reports for this school to send report SMS.',
+      report_release_disabled: 'Weekly reports can’t be sent right now. Contact your platform administrator.',
+      semaphore_not_configured: 'Semaphore SMS isn’t ready. Contact your platform administrator.'
+    };
+    status.textContent = !savedNarrativeReportSms.available
+      ? `${availabilityText[savedNarrativeReportSms.reason] || 'SMS is unavailable.'}${narrativeReportSmsEnabledDraft ? ' You can turn this setting off.' : ''}`
+      : `Semaphore SMS is ready. Sending is ${narrativeReportSmsEnabledDraft ? 'on' : 'off'} for this school. Full reports may use multiple SMS credits.`;
+  }
+
   async function loadNotificationTriggers() {
     try {
       const response = await window.EDUGNAY_API.getParentNotificationTriggers();
       notificationAbsenceThreshold = Number(response.absenceThreshold) || 3;
       savedNotificationTriggers = response.triggers;
       notificationDraft = structuredClone(savedNotificationTriggers);
+      savedNarrativeReportSms = response.narrativeReportSms || savedNarrativeReportSms;
+      narrativeReportSmsEnabledDraft = Boolean(savedNarrativeReportSms.enabled);
       renderNotificationTriggers();
+      renderNarrativeReportSmsSetting();
       document.getElementById('saveNotificationTriggers').disabled = false;
       document.getElementById('discardNotificationTriggers').disabled = false;
     } catch (error) {
@@ -46,9 +69,17 @@ const NOTIFICATION_TRIGGER_LABELS = [
     toggle.setAttribute('aria-checked', String(setting.enabled));
   });
 
+  document.getElementById('narrative-report-sms-toggle').addEventListener('click', event => {
+    if (event.currentTarget.disabled) return;
+    narrativeReportSmsEnabledDraft = !narrativeReportSmsEnabledDraft;
+    renderNarrativeReportSmsSetting();
+  });
+
   document.getElementById('discardNotificationTriggers').addEventListener('click', () => {
     notificationDraft = structuredClone(savedNotificationTriggers);
+    narrativeReportSmsEnabledDraft = Boolean(savedNarrativeReportSms.enabled);
     renderNotificationTriggers();
+    renderNarrativeReportSmsSetting();
   });
 
   document.getElementById('saveNotificationTriggers').addEventListener('click', async () => {
@@ -66,10 +97,13 @@ const NOTIFICATION_TRIGGER_LABELS = [
     button.textContent = 'Saving…';
     try {
       const values = notificationDraft.map(({ code, enabled, threshold }) => ({ code, enabled, threshold }));
-      const response = await window.EDUGNAY_API.updateParentNotificationTriggers(values);
+      const response = await window.EDUGNAY_API.updateParentNotificationTriggers(values, narrativeReportSmsEnabledDraft);
       savedNotificationTriggers = response.triggers;
       notificationDraft = structuredClone(savedNotificationTriggers);
+      savedNarrativeReportSms = response.narrativeReportSms || { ...savedNarrativeReportSms, enabled: narrativeReportSmsEnabledDraft };
+      narrativeReportSmsEnabledDraft = Boolean(savedNarrativeReportSms.enabled);
       renderNotificationTriggers();
+      renderNarrativeReportSmsSetting();
       showAppToast('Parent notification settings saved.', 'success');
     } catch (error) {
       showAppToast(error.message || 'Notification settings could not be saved.', 'error');
@@ -178,7 +212,7 @@ const NOTIFICATION_TRIGGER_LABELS = [
     if (!visible.length) {
       const emptyStates = {
         pending: { icon: 'unlock', title: 'No pending reopen requests', text: 'New requests to reopen locked grading periods will appear here.' },
-        active: { icon: 'clock', title: 'No active temporary access', text: 'Approved requests remain here until their editing deadline.' },
+        active: { icon: 'clock', title: 'No active editing access', text: 'Approved access appears here until the date shown.' },
         history: { icon: 'history', title: 'No reopen request history', text: 'Expired, rejected, and revoked requests will appear here.' }
       };
       listEl.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState(emptyStates[reopenFilter]);

@@ -78,6 +78,11 @@ button.timetable-event:focus-visible { outline: none; box-shadow: 0 0 0 3px var(
 .timetable-dialog-body::-webkit-scrollbar-track { background: var(--gray-50); }
 .timetable-dialog-body::-webkit-scrollbar-thumb { border-radius: 6px; background: var(--gray-300); }
 .timetable-dialog-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.timetable-term-summary { min-width: 0; padding: 11px 12px; border: 1px solid var(--blue-border); border-radius: var(--radius-sm); background: var(--surface-blue-soft); }
+.timetable-term-summary > span { display: block; margin-bottom: 4px; color: var(--theme-accent-text); font-size: 10px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
+.timetable-term-summary .timetable-term-range { margin: 0; color: var(--theme-text); font-size: 14px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
+.timetable-term-summary .timetable-term-note { margin: 4px 0 0; color: var(--gray-600); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.timetable-term-summary .timetable-term-range:empty, .timetable-term-summary .timetable-term-note:empty { display: none; }
 .timetable-dialog-body > [hidden] { display: none !important; }
 .timetable-error { min-height: 18px; color: var(--theme-danger-dark); font-size: 12px; }
 .timetable-dialog-actions, .timetable-confirm-actions { flex: 0 0 auto; flex-wrap: wrap; }

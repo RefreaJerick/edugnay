@@ -770,7 +770,7 @@ async function createAssignment(req, res, next) {
     }
     const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId, communicationComponentCode);
     if (!section) throw createError('You are not assigned to this section and subject.', 403);
-    if (section.legacyCommunication) throw createError('Legacy combined communication records are read-only. Assign a language component to create new records.', 409);
+    if (section.legacyCommunication) throw createError('This older combined Communication class is read-only. Use Effective Communication or Mabisang Komunikasyon for new assignments.', 409);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId);
     const gradingCategoryId = optionalId(req.body.gradingCategoryId, 'grading category ID');
     const subjectGradingComponentId = optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
@@ -882,8 +882,8 @@ async function updateAssignment(req, res, next) {
     }
     const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId,
       current.subjectId, current.communicationComponentCode);
-    if (!section) throw createError('The assignment section-subject relationship is no longer active.', 409);
-    if (section.legacyCommunication) throw createError('Legacy combined communication records are read-only.', 409);
+    if (!section) throw createError('This assignment is no longer available for this class. Refresh the page and try again.', 409);
+    if (section.legacyCommunication) throw createError('This older combined Communication class is read-only.', 409);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId === undefined ? current.academicTermId : req.body.academicTermId);
     const gradingCategoryId = req.body.gradingCategoryId === undefined ? current.gradingCategoryId : optionalId(req.body.gradingCategoryId, 'grading category ID');
     const subjectGradingComponentId = req.body.subjectGradingComponentId === undefined ? current.subjectGradingComponentId : optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
@@ -978,9 +978,9 @@ async function deleteAssignment(req, res, next) {
       const section = await getTeacherSectionSubject(connection, assignment.teacherUserId, assignment.sectionId,
         assignment.subjectId, assignment.communicationComponentCode);
       if (!section || Number(section.schoolId) !== Number(req.user.schoolId)) {
-        throw createError('The assignment section-subject relationship is no longer active.', 409);
+        throw createError('This assignment is no longer available for this class. Refresh the page and try again.', 409);
       }
-      if (section.legacyCommunication) throw createError('Legacy combined communication assignments are retained for review and cannot be deleted.', 409);
+      if (section.legacyCommunication) throw createError('This older assignment is kept with the class history and cannot be deleted.', 409);
       if (assignment.gradingItemId) await assertGradeWriteAccess(connection, req.user, assignment);
     }
     assignment = await getAssignmentForManagement(connection, req.user, assignmentId, true);

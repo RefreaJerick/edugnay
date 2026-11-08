@@ -87,7 +87,7 @@ async function lockYearSchedule(connection, schoolId, yearId) {
     "SELECT id, school_level_id AS schoolLevelId, sequence_number AS sequenceNumber, name, DATE_FORMAT(planned_start_date, '%Y-%m-%d') AS plannedStartDate, DATE_FORMAT(planned_end_date, '%Y-%m-%d') AS plannedEndDate, status FROM academic_terms WHERE academic_year_id = ? AND school_id = ? ORDER BY school_level_id, sequence_number FOR UPDATE",
     [yearId, schoolId]
   );
-  if (!levels.length) throw createError('Enable and configure at least one school level first.', 409);
+  if (!levels.length) throw createError('Select at least one school level in School Settings before continuing.', 409);
   const expectedCount = levels.reduce((total, level) => total + (PERIOD_COUNTS[level.gradingPeriodType] || 0), 0);
   if (!expectedCount || terms.length !== expectedCount) throw createError('Complete the term schedule for every enabled school level first.', 409);
   for (const level of levels) {
@@ -193,7 +193,7 @@ async function updateAcademicYear(req, res, next) {
     const [started] = await connection.execute("SELECT id FROM academic_terms WHERE academic_year_id = ? AND status <> 'upcoming' LIMIT 1 FOR UPDATE", [yearId]);
     if (started.length) throw createError('The school-year dates cannot change after a term has started.', 409);
     const [outside] = await connection.execute("SELECT id FROM academic_terms WHERE academic_year_id = ? AND (planned_start_date < ? OR planned_end_date > ?) LIMIT 1 FOR UPDATE", [yearId, startDate, endDate]);
-    if (outside.length) throw createError('School-year dates must contain all configured terms.', 409);
+    if (outside.length) throw createError('School-year dates must include every grading period.', 409);
     await connection.execute('UPDATE academic_years SET label = ?, start_date = ?, end_date = ? WHERE id = ? AND school_id = ?', [label, startDate, endDate, yearId, req.user.schoolId]);
     await writeAuditLog(connection, req, 'academic_year_updated', 'academic_year', yearId, { summary: label });
     await connection.commit();
@@ -408,7 +408,7 @@ function validateCategories(categories) {
     if (!Number.isFinite(weight) || weight <= 0 || weight > 100) throw createError('Each category weight must be between 0 and 100.');
     return { id: category.id === undefined ? null : parseId(category.id), code, name: requiredText(category.name, 100, 'Category name'), weight: Math.round(weight * 100) / 100 };
   });
-  if (normalized.some(category => category.id === null && categories.find(item => item.id !== undefined && !parseId(item.id)))) throw createError('A category identifier is invalid.');
+  if (normalized.some(category => category.id === null && categories.find(item => item.id !== undefined && !parseId(item.id)))) throw createError('Choose a valid grading category.');
   if (Math.round(normalized.reduce((sum, category) => sum + category.weight, 0) * 100) !== 10000) throw createError('Category weights must total 100%.');
   return normalized;
 }
@@ -453,7 +453,7 @@ async function listGradingCategories(req, res, next) {
       if (!scopeRows.length) throw createError('The section and subject are not assigned to your account.', 404);
       levelId = Number(scopeRows[0].schoolLevelId);
       schoolLevelCode = scopeRows[0].schoolLevelCode;
-      if (schoolLevelCode === 'shs') throw createError('Strengthened SHS grading is not available until the grading phase is complete.', 409);
+      if (schoolLevelCode === 'shs') throw createError('Manage Senior High School grades in the SHS Program.', 409);
       shsGradingGroup = scopeRows[0].shsGradingGroup;
       if (req.query.schoolLevelId && Number(req.query.schoolLevelId) !== levelId) {
         throw createError('The selected school level does not match this section.', 409);
@@ -516,7 +516,7 @@ async function updateGradingCategories(req, res, next) {
       [schoolLevelId, req.user.schoolId]
     );
     if (!level) throw createError('School level was not found.', 404);
-    if (level.levelCode === 'shs') throw createError('Strengthened SHS grading settings will be available in the grading phase.', 409);
+    if (level.levelCode === 'shs') throw createError('Manage Senior High School grading settings in the SHS Program.', 409);
     const [existing] = await connection.execute('SELECT id, code, weight FROM grading_categories WHERE school_id = ? AND school_level_id = ? FOR UPDATE', [req.user.schoolId, schoolLevelId]);
     const existingIds = new Set(existing.map(category => Number(category.id)));
     if (categories.some(category => category.id && !existingIds.has(category.id))) throw createError('A grading category was not found.', 404);

@@ -40,7 +40,9 @@ async function getSchoolGradeSummary(req, res, next) {
         AVG(published_final_grades.final_grade) AS averageGrade,
         COUNT(*) AS total,
         SUM(CASE WHEN published_final_grades.final_grade >= CASE
-          WHEN school_levels.level_code = 'shs' THEN 75
+          WHEN school_levels.level_code = 'shs' THEN CASE
+            WHEN final_grade_rules.grading_mode = 'school_specific'
+              THEN final_grade_rules.passing_grade_threshold ELSE 75 END
           WHEN school_levels.level_code IN ('elementary', 'jhs')
             AND (school_grade_levels.grade_code IN ('grade-4', 'grade-5', 'grade-6',
               'grade-7', 'grade-8', 'grade-9', 'grade-10')
@@ -95,7 +97,9 @@ async function getSchoolGradeSummary(req, res, next) {
           shs_offerings.subject_name AS subject,
           AVG(published_final_grades.final_grade) AS averageGrade,
           COUNT(*) AS total,
-          SUM(CASE WHEN published_final_grades.final_grade >= 75 THEN 1 ELSE 0 END) AS passing,
+          SUM(CASE WHEN published_final_grades.final_grade >= CASE
+            WHEN final_grade_rules.grading_mode = 'school_specific'
+              THEN final_grade_rules.passing_grade_threshold ELSE 75 END THEN 1 ELSE 0 END) AS passing,
           SUM(CASE WHEN published_final_grades.final_grade >= 90 THEN 1 ELSE 0 END) AS band90,
           SUM(CASE WHEN published_final_grades.final_grade >= 80 AND published_final_grades.final_grade < 90 THEN 1 ELSE 0 END) AS band80,
           SUM(CASE WHEN published_final_grades.final_grade >= 75 AND published_final_grades.final_grade < 80 THEN 1 ELSE 0 END) AS band75,
@@ -111,6 +115,10 @@ async function getSchoolGradeSummary(req, res, next) {
            AND school_levels.school_id = school_grade_levels.school_id
          INNER JOIN academic_years ON academic_years.id = shs_offerings.academic_year_id
            AND academic_years.school_id = shs_offerings.school_id
+         LEFT JOIN school_year_final_grade_rules AS final_grade_rules
+           ON final_grade_rules.school_id = published_final_grades.school_id
+           AND final_grade_rules.academic_year_id = academic_years.id
+           AND final_grade_rules.school_level_id = school_levels.id
          INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
            AND academic_terms.school_id = published_final_grades.school_id
            AND academic_terms.academic_year_id = academic_years.id

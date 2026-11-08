@@ -472,7 +472,7 @@ const SCHOOL_ACCENT_PALETTES = [
         <div class="school-pane school-academic-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicForm">
-            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">Strengthened SHS tracks</div><div class="track-options">${trackOptions.map(track => `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}</span></label>`).join('')}</div>` : ''}</div>
+            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels yet', text: 'Grade levels will appear here after they are added to the school.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">Strengthened SHS tracks</div><div class="track-options">${trackOptions.map(track => `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}</span></label>`).join('')}</div>` : ''}</div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic structure</button></div>
           </form>
         </div>`;
@@ -529,7 +529,7 @@ const SCHOOL_ACCENT_PALETTES = [
           </div>
         </div>`).join('');
 
-      let currentCard = '<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>Schedule not configured</strong><p>Complete and save the grading-period dates before starting the school year.</p></div>';
+      let currentCard = '<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>Schedule not set up</strong><p>Complete and save the grading-period dates before starting the school year.</p></div>';
       let currentActions = '';
       if (yearReadOnly) {
         currentCard = `<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(year.label)} is ${year.status === 'archived' ? 'archived' : 'closed'}</strong><p>Its records are read-only${year.status === 'closed' ? ' and remain available to archive' : ''}.</p></div>`;
@@ -727,7 +727,7 @@ const SCHOOL_ACCENT_PALETTES = [
         ? `<div class="school-k10-restore-exam-details">${examGroups.map(component => `<div><strong>${escapeHtml(component.name || 'Examinations')}</strong><ul>${component.examParts.map(part => `<li>${escapeHtml(part.name || 'Exam part')}: ${Number(part.weight) || 0}%</li>`).join('')}</ul></div>`).join('')}</div>`
         : '';
       const noteMarkup = note ? `<span class="school-k10-grading-row-note">${escapeHtml(note)}</span>` : '';
-      return `<div class="school-k10-grading-weights">${componentLabels || '<span class="school-k10-grading-no-weights">No components configured</span>'}</div>${customExamDetails}${examDetails}${noteMarkup}`;
+      return `<div class="school-k10-grading-weights">${componentLabels || '<span class="school-k10-grading-no-weights">No grading components yet</span>'}</div>${customExamDetails}${examDetails}${noteMarkup}`;
     }
 
     function getK10SubjectSetupState(subject) {
@@ -943,7 +943,7 @@ const SCHOOL_ACCENT_PALETTES = [
           : `<span class="school-k10-grading-no-match">${escapeHtml(getK10SubjectWeightNote(representative, false))}</span>`;
         const action = group.catalogKey
           ? `<div class="school-k10-grading-action"><button class="top-btn secondary" type="button" data-k10-configure-group="${escapeHtml(group.catalogKey)}">Configure</button></div>`
-          : `<div class="school-k10-grading-action"><button class="top-btn secondary" type="button" data-k10-edit-subject="${Number(representative.id)}" ${setup.allLocked ? 'disabled title="Published grades lock this school-year configuration."' : ''}>${setup.needsExamSetup ? 'Set up' : setup.needsReview ? 'Review' : setup.isSaved ? 'Edit' : 'Set up'}</button></div>`;
+          : `<div class="school-k10-grading-action"><button class="top-btn secondary" type="button" data-k10-edit-subject="${Number(representative.id)}" ${setup.allLocked ? 'disabled title="Published grades prevent changes to these school-year settings."' : ''}>${setup.needsExamSetup ? 'Set up' : setup.needsReview ? 'Review' : setup.isSaved ? 'Edit' : 'Set up'}</button></div>`;
         const note = getK10CatalogGroupNote(group, setup);
         return `<tr><td><span class="school-k10-grading-subject-name">${escapeHtml(group.name)}</span></td><td data-label="Grade levels"><span class="school-k10-grading-grade-list">${escapeHtml(gradeNames)}</span></td><td data-label="Components and weights">${summary}</td><td data-label="DepEd alignment"><span class="school-k10-grading-source badge ${depedAlignment.badgeClass}">${escapeHtml(depedAlignment.label)}</span></td><td data-label="Setup status"><span class="school-k10-grading-source badge ${setup.badgeClass}">${escapeHtml(setup.label)}</span>${note ? `<span class="school-k10-grading-row-note">${escapeHtml(note)}</span>` : ''}</td><td>${action}</td></tr>`;
       });
@@ -965,11 +965,11 @@ const SCHOOL_ACCENT_PALETTES = [
               <form id="k10FinalGradeRulesForm" class="school-k10-final-rules-form">
                 <div id="k10FinalGradeRulesError" class="school-k10-grading-warning" role="alert" hidden></div>
                 <div class="school-form-grid">
-                  <div class="school-field"><label for="k10GradingMode">Final grade method</label><select id="k10GradingMode" name="gradingMode" ${rulesLocked ? 'disabled' : ''}><option value="deped_policy" ${gradingMode === 'deped_policy' ? 'selected' : ''}>DepEd method (default)</option><option value="school_specific" ${customRules ? 'selected' : ''}>School-specific method</option></select><small id="k10GradingModeHelp">${escapeHtml(customRules ? "Reports the weighted initial grade directly and uses your school's configured academic periods." : 'DepEd default for SY 2026–27: adjusted transmutation.')}</small></div>
+                  <div class="school-field"><label for="k10GradingMode">Final grade method</label><select id="k10GradingMode" name="gradingMode" ${rulesLocked ? 'disabled' : ''}><option value="deped_policy" ${gradingMode === 'deped_policy' ? 'selected' : ''}>DepEd method (default)</option><option value="school_specific" ${customRules ? 'selected' : ''}>School-specific method</option></select><small id="k10GradingModeHelp">${escapeHtml(customRules ? "Reports the weighted initial grade directly and uses your school's grading periods." : 'DepEd default for SY 2026–27: adjusted transmutation.')}</small></div>
                   <div class="school-field"><label for="k10PassingGradeThreshold">Passing grade</label><input id="k10PassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="0.01" value="${Number(preview.passingGradeThreshold) || 75}" ${!customRules || rulesLocked ? 'disabled' : ''}><small id="k10PassingGradeHelp">${customRules ? 'Set the passing grade for your school.' : 'DepEd default: 75.'}</small></div>
                   <div class="school-field"><label for="k10GradeRounding">Final-grade rounding</label><select id="k10GradeRounding" name="gradeRounding" ${!customRules || rulesLocked ? 'disabled' : ''}><option value="round" ${preview.gradeRounding === 'round' ? 'selected' : ''}>Nearest whole number</option><option value="roundup" ${preview.gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${preview.gradeRounding === 'truncate' ? 'selected' : ''}>Truncate</option></select><small id="k10GradeRoundingHelp">${customRules ? 'Applied to the weighted initial grade.' : 'DepEd default: nearest whole number.'}</small></div>
                 </div>
-                ${rulesLocked ? '<div class="school-shs-review-notice" role="status">Final-grade rules are locked because numerical grades have been published for this school year.</div>' : ''}
+                ${rulesLocked ? '<div class="school-shs-review-notice" role="status">Final-grade rules can’t be changed because grades have been published for this school year.</div>' : ''}
                 <div class="school-form-footer"><button class="top-btn primary" type="submit" ${rulesLocked ? 'disabled' : ''}><i data-lucide="save"></i> Save final grade rules</button></div>
               </form>
             </section>
@@ -984,7 +984,7 @@ const SCHOOL_ACCENT_PALETTES = [
         const roundingInput = k10FinalRulesForm.elements.gradeRounding;
         const updateFinalGradeHelperText = (schoolSpecific) => {
           document.getElementById('k10GradingModeHelp').textContent = schoolSpecific
-            ? "Reports the weighted initial grade directly and uses your school's configured academic periods."
+            ? "Reports the weighted initial grade directly and uses your school's grading periods."
             : 'DepEd default for SY 2026–27: adjusted transmutation.';
           document.getElementById('k10PassingGradeHelp').textContent = schoolSpecific
             ? 'Set the passing grade for your school.'
@@ -1037,6 +1037,7 @@ const SCHOOL_ACCENT_PALETTES = [
       const button = form.querySelector('button[type="submit"]');
       const errorNode = document.getElementById('k10FinalGradeRulesError');
       if (!year || !apiLevel?.id) return;
+      const restoreFocusAfterLock = form.contains(document.activeElement);
       errorNode.hidden = true;
       button.disabled = true;
       try {
@@ -1053,8 +1054,39 @@ const SCHOOL_ACCENT_PALETTES = [
         renderGradingPane();
         showAppToast('Final grade rules saved.');
       } catch (error) {
+        const saveError = error.message || 'Final grade rules could not be saved.';
+        try {
+          const latest = await window.EDUGNAY_API.getDepedK10GradingPreview({
+            academicYearId: Number(year.id), schoolLevelId: Number(apiLevel.id)
+          });
+          if (!latest || typeof latest.locked !== 'boolean') {
+            throw new Error('The latest lock status was missing.');
+          }
+          if (latest.locked) {
+            state.k10GradingPreview = latest;
+            const currentDivision = activeDivision(activeSchool());
+            const currentYear = activeK10GradingYear();
+            if (state.tab === 'grading' && ['elementary', 'jhs'].includes(currentDivision.level)
+              && Number(getApiLevel(currentDivision.level)?.id) === Number(apiLevel.id)
+              && Number(currentYear?.id) === Number(year.id)) {
+              renderGradingPane();
+              const refreshedError = document.getElementById('k10FinalGradeRulesError');
+              refreshedError.textContent = saveError;
+              refreshedError.hidden = false;
+              if (restoreFocusAfterLock) {
+                const notice = document.querySelector('#k10FinalGradeRulesForm [role="status"]');
+                if (notice) { notice.tabIndex = -1; notice.focus(); }
+              }
+            }
+            return;
+          }
+        } catch (refreshError) {
+          errorNode.textContent = `${saveError} Lock status could not be refreshed. Reload this page to check whether the rules are locked.`;
+          errorNode.hidden = false;
+          return;
+        }
         errorNode.hidden = false;
-        errorNode.textContent = error.message || 'Final grade rules could not be saved.';
+        errorNode.textContent = saveError;
       } finally {
         button.disabled = false;
       }
@@ -1522,7 +1554,7 @@ const SCHOOL_ACCENT_PALETTES = [
       }).join('');
       const emptyEditorMessage = hasEditableStandard
         ? 'Add an Examinations component above to edit these exam parts.'
-        : 'These grade profiles are locked because grades have already been published.';
+        : 'These grade settings can’t be changed because grades have already been published.';
       const summary = renderK10GroupStandardExamSummary({ showCustom: true });
       return `<section class="school-k10-editor-section school-k10-standard-exam-setup" aria-labelledby="schoolK10StandardExamTitle"><div class="school-k10-section-heading"><div><h3 id="schoolK10StandardExamTitle">${standardExamTitle}</h3><p>DepEd-required exam parts</p></div></div>${summary}${editors || `<p class="school-k10-locked-note">${emptyEditorMessage}</p>`}</section>`;
     }
@@ -1713,7 +1745,7 @@ const SCHOOL_ACCENT_PALETTES = [
             subjectId: Number(item.id),
             components: mapK10ComponentsToProfile(state.k10EditorComponents, item, earlyParts, standardExamEdited)
           }));
-          if (!targets.length) throw new Error('All grade profiles in this subject group are locked by published grades.');
+          if (!targets.length) throw new Error('Published grades prevent changes to every subject in this group.');
           await window.EDUGNAY_API.saveK10CatalogSubjectGroupConfig({
             academicYearId: Number(year.id),
             schoolLevelId: Number(state.k10GradingPreview?.schoolLevelId),
@@ -1767,11 +1799,119 @@ const SCHOOL_ACCENT_PALETTES = [
       const shsTableRows = state.shsGradingLoading && !rows.length
         ? ''
         : tableRows || `<tr><td colspan="6">${empty}<div class="school-k10-empty-state-actions"><a class="top-btn secondary" href="edugnay-admin-management.html" data-page-click="g001e199e0427">Manage core subjects</a><a class="top-btn secondary" href="edugnay-admin-shs-program.html">Open SHS Program</a></div></td></tr>`;
-      body.innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${state.shsGradingError ? `<div class="school-k10-grading-warning" role="alert">${escape(state.shsGradingError)} <button class="top-btn secondary" type="button" id="shsGradingRetry">Retry</button></div>` : `<div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject</th><th>Grade level</th><th>Components and weights</th><th>DepEd alignment</th><th>Setup status</th><th>Action</th></tr></thead><tbody>${shsTableRows}</tbody></table></div>`}</div></div>`;
+      const finalRules = Number(state.shsGradingData?.year?.id) === Number(year.id)
+        ? state.shsGradingData.finalGradeRules : null;
+      const customRules = finalRules?.gradingMode === 'school_specific';
+      const rulesLocked = finalRules?.locked || !finalRules?.supported || year.status !== 'active';
+      const rulesForm = finalRules ? `<section class="school-section-block school-k10-final-rules">
+        <div class="school-section-block-title">Final grade rules</div>
+        <form id="shsFinalGradeRulesForm" class="school-k10-final-rules-form">
+          <div id="shsFinalGradeRulesError" class="school-k10-grading-warning" role="alert" hidden></div>
+          <div class="school-form-grid">
+            <div class="school-field"><label for="shsGradingMode">Final grade method</label><select id="shsGradingMode" name="gradingMode" ${rulesLocked ? 'disabled' : ''}><option value="deped_policy" ${customRules ? '' : 'selected'}>DepEd method (default)</option><option value="school_specific" ${customRules ? 'selected' : ''}>School-specific method</option></select><small id="shsGradingModeHelp">${customRules ? 'Use the weighted initial grade directly for each term.' : 'Use the DepEd term-grade method for this school year.'}</small></div>
+            <div class="school-field"><label for="shsPassingGradeThreshold">Passing grade</label><input id="shsPassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="0.01" value="${Number(finalRules.passingGradeThreshold)}" ${!customRules || rulesLocked ? 'disabled' : ''}><small id="shsPassingGradeHelp">${customRules ? 'Set the passing grade for your school.' : 'DepEd default: 75.'}</small></div>
+            <div class="school-field"><label for="shsGradeRounding">Final-grade rounding</label><select id="shsGradeRounding" name="gradeRounding" ${!customRules || rulesLocked ? 'disabled' : ''}><option value="round" ${finalRules.gradeRounding === 'round' ? 'selected' : ''}>Nearest whole number</option><option value="roundup" ${finalRules.gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${finalRules.gradeRounding === 'truncate' ? 'selected' : ''}>Truncate</option></select><small id="shsGradeRoundingHelp">${customRules ? 'Applied to each term grade and the final average.' : 'DepEd default: nearest whole number.'}</small></div>
+          </div>
+          ${rulesLocked ? `<div class="school-shs-review-notice" role="status">${!finalRules.supported ? 'SHS final-grade rules are available beginning in SY 2026–27.' : 'Final-grade rules cannot be changed after SHS grades are published or the school year is no longer active.'}</div>` : ''}
+          <div class="school-form-footer"><button class="top-btn primary" type="submit" ${rulesLocked ? 'disabled' : ''}><i data-lucide="save"></i> Save final grade rules</button></div>
+        </form>
+      </section>` : '';
+      body.innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${state.shsGradingError ? `<div class="school-k10-grading-warning" role="alert">${escape(state.shsGradingError)} <button class="top-btn secondary" type="button" id="shsGradingRetry">Retry</button></div>` : `<div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject</th><th>Grade level</th><th>Components and weights</th><th>DepEd alignment</th><th>Setup status</th><th>Action</th></tr></thead><tbody>${shsTableRows}</tbody></table></div>${rulesForm}`}</div></div>`;
       bindDivisionSwitcher();
       body.querySelector('#shsGradingRetry')?.addEventListener('click', () => { state.shsGradingError = ''; renderShsGradingPane(activeSchool()); });
       body.querySelectorAll('[data-shs-grade-edit]').forEach(button => button.addEventListener('click', () => openShsGradingEditor(button)));
+      const finalForm = body.querySelector('#shsFinalGradeRulesForm');
+      if (finalForm) {
+        finalForm.elements.gradingMode.addEventListener('change', () => {
+          const custom = finalForm.elements.gradingMode.value === 'school_specific';
+          finalForm.elements.passingGradeThreshold.disabled = !custom;
+          finalForm.elements.gradeRounding.disabled = !custom;
+          if (!custom) {
+            finalForm.elements.passingGradeThreshold.value = '75';
+            finalForm.elements.gradeRounding.value = 'round';
+          }
+          body.querySelector('#shsGradingModeHelp').textContent = custom
+            ? 'Use the weighted initial grade directly for each term.' : 'Use the DepEd term-grade method for this school year.';
+          body.querySelector('#shsPassingGradeHelp').textContent = custom
+            ? 'Set the passing grade for your school.' : 'DepEd default: 75.';
+          body.querySelector('#shsGradeRoundingHelp').textContent = custom
+            ? 'Applied to each term grade and the final average.' : 'DepEd default: nearest whole number.';
+        });
+        finalForm.addEventListener('submit', saveShsFinalGradeSettings);
+      }
       window.lucide?.createIcons();
+    }
+
+    async function saveShsFinalGradeSettings(event) {
+      event.preventDefault();
+      if (state.shsFinalRulesSaving) return;
+      const form = event.currentTarget;
+      const yearId = Number(state.shsGradingData?.year?.id);
+      if (!yearId) return;
+      const errorNode = form.querySelector('#shsFinalGradeRulesError');
+      const button = form.querySelector('button[type="submit"]');
+      state.shsFinalRulesSaving = true;
+      const restoreFocusAfterLock = form.contains(document.activeElement);
+      errorNode.hidden = true;
+      button.disabled = true;
+      const mode = form.elements.gradingMode.value;
+      form.elements.gradingMode.disabled = true;
+      form.elements.passingGradeThreshold.disabled = true;
+      form.elements.gradeRounding.disabled = true;
+      try {
+        await window.EDUGNAY_API.request('/shs-grading/final-grade-rules', {
+          method: 'PUT', body: JSON.stringify({ academicYearId: yearId, gradingMode: mode,
+            passingGradeThreshold: form.elements.passingGradeThreshold.value,
+            gradeRounding: form.elements.gradeRounding.value })
+        });
+        try {
+          state.shsGradingData = await window.EDUGNAY_API.request(`/shs-grading?academicYearId=${yearId}`);
+          renderShsGradingPane(activeSchool());
+          showAppToast('SHS final grade rules saved.');
+        } catch (refreshError) {
+          errorNode.textContent = 'Rules saved, but the grading page could not be refreshed. Reload to see them.';
+          errorNode.hidden = false;
+        }
+      } catch (error) {
+        const saveError = error.message || 'SHS final grade rules could not be saved.';
+        try {
+          const latest = await window.EDUGNAY_API.request(`/shs-grading?academicYearId=${yearId}`);
+          const latestRules = latest.finalGradeRules;
+          if (!latestRules || typeof latestRules.locked !== 'boolean'
+            || typeof latestRules.supported !== 'boolean' || typeof latest.year?.status !== 'string') {
+            throw new Error('The latest lock status was missing.');
+          }
+          const latestLocked = latestRules?.locked || !latestRules?.supported || latest.year?.status !== 'active';
+          if (latestLocked) {
+            state.shsGradingData = latest;
+            const currentYear = state.apiAcademicYear;
+            if (state.tab === 'grading' && activeDivision(activeSchool()).level === 'shs'
+              && Number(currentYear?.id) === yearId) {
+              renderShsGradingPane(activeSchool());
+              const refreshedError = document.getElementById('shsFinalGradeRulesError');
+              refreshedError.textContent = saveError;
+              refreshedError.hidden = false;
+              if (restoreFocusAfterLock) {
+                const notice = document.querySelector('#shsFinalGradeRulesForm [role="status"]');
+                if (notice) { notice.tabIndex = -1; notice.focus(); }
+              }
+            }
+            return;
+          }
+        } catch (refreshError) {
+          errorNode.textContent = `${saveError} Lock status could not be refreshed. Reload this page to check whether the rules are locked.`;
+          errorNode.hidden = false;
+          return;
+        }
+        errorNode.textContent = saveError;
+        errorNode.hidden = false;
+      } finally {
+        state.shsFinalRulesSaving = false;
+        form.elements.gradingMode.disabled = false;
+        form.elements.passingGradeThreshold.disabled = mode !== 'school_specific';
+        form.elements.gradeRounding.disabled = mode !== 'school_specific';
+        button.disabled = false;
+      }
     }
 
     function shsPartName(code) {
@@ -2064,7 +2204,7 @@ const SCHOOL_ACCENT_PALETTES = [
           ${renderDivisionSwitcher(school)}
           <form id="schoolGradingForm">
             ${isShs ? `${subjectWeightTable}${finalGradeRules}${saveButton}`
-              : `<div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="weight-${escapeHtml(rule.id)}">${escapeHtml(rule.label)}</label><input id="weight-${escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
+              : `<div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="weight-${escapeHtml(rule.id)}">${escapeHtml(rule.label)}</label><input id="weight-${escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components yet', text: 'Add grading components when the school sets its assessment rules.' })}</div>
               <div class="weight-total" id="weightTotal"></div>${finalGradeRules}${saveButton}`}
           </form>
         </div>`;
@@ -2402,7 +2542,7 @@ const SCHOOL_ACCENT_PALETTES = [
           window.EDUGNAY_API.request('/school/attendance-settings'),
           window.EDUGNAY_API.request('/reports/weekly-settings')
         ]);
-        if (!apiSchool?.id || !structure.length) throw new Error('The school settings response is incomplete.');
+        if (!apiSchool?.id || !structure.length) throw new Error('Some school settings couldn’t be loaded. Refresh and try again.');
         applyApiSchoolSettings(apiSchool);
         applyApiAcademicStructure(structure);
         state.apiGradingCategories = gradingSettings.gradingCategories;
@@ -2427,7 +2567,7 @@ const SCHOOL_ACCENT_PALETTES = [
         state.apiLoading = false;
         state.apiError = error.status === 401 || error.status === 403
           ? 'Sign in as a school administrator to manage school settings.'
-          : (error.message || 'The backend school settings could not be loaded.');
+          : (error.message || 'School settings couldn’t be loaded. Refresh and try again.');
         renderSettingsApiState();
         console.warn(state.apiError, error.message);
       }
@@ -2571,7 +2711,7 @@ const SCHOOL_ACCENT_PALETTES = [
       const { level } = activeDivision(school);
       if (state.apiActive && getApiTermsForLevel(level).length) {
         event.target.value = frontendPeriodType(getApiLevel(level)?.gradingPeriodType);
-        notify('The period structure cannot change after terms have been configured.');
+        notify('The period structure can’t change after grading periods have been added.');
         return;
       }
       const schoolYear = document.getElementById('termSchoolYear').value.trim();
@@ -2609,7 +2749,7 @@ const SCHOOL_ACCENT_PALETTES = [
       const existingTerms = state.rolloverSetup ? [] : getApiTermsForLevel(level);
       const currentPeriodType = frontendPeriodType(levelRecord.gradingPeriodType);
       if (existingTerms.length && values.gradingPeriodType !== currentPeriodType) {
-        throw new Error('The period structure cannot change after terms have been configured.');
+        throw new Error('The period structure can’t change after grading periods have been added.');
       }
 
       let year = state.apiAcademicYear;
@@ -2761,13 +2901,13 @@ const SCHOOL_ACCENT_PALETTES = [
         confirmButton.textContent = 'Start period';
       } else if (action === 'extend') {
         title.textContent = `Extend ${period.name}`;
-        subtitle.textContent = 'Update the planned end date while keeping an audit reason.';
+        subtitle.textContent = 'Choose a new end date for this grading period.';
         body.innerHTML = `<div class="term-modal-fields"><div class="form-group"><label class="form-label" for="currentPeriodEndDate">Current end date</label><input class="form-input" id="currentPeriodEndDate" value="${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(period.plannedEndDate))}" readonly></div><div class="form-group"><label class="form-label" for="extendedEndDate">New end date</label><input class="form-input" id="extendedEndDate" type="date" min="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" required></div><div class="form-group"><label class="form-label" for="extensionReason">Reason for extension</label><textarea class="form-textarea" id="extensionReason" rows="3" placeholder="Explain why the grading period needs more time." required></textarea></div></div>`;
         confirmButton.textContent = 'Extend period';
       } else {
         title.textContent = `Close ${period.name}`;
         subtitle.textContent = 'Review incomplete records before closing this grading period.';
-        body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p><div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>The backend will verify the active-period rule and record this action.</span></div>`;
+        body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p><div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>We’ll check that this grading period can be closed and save the change.</span></div>`;
         confirmButton.textContent = 'Close period';
       }
 
@@ -2798,7 +2938,7 @@ const SCHOOL_ACCENT_PALETTES = [
         }
         {
           const apiTermId = Number(periodId);
-          if (!Number.isInteger(apiTermId) || apiTermId < 1) throw new Error('The academic-term identifier is invalid.');
+          if (!Number.isInteger(apiTermId) || apiTermId < 1) throw new Error('The selected grading period is invalid. Refresh and try again.');
           if (action === 'start') await window.EDUGNAY_API.activateAcademicTerm(apiTermId);
           else if (action === 'close') await window.EDUGNAY_API.completeAcademicTerm(apiTermId);
           else await window.EDUGNAY_API.extendAcademicTerm(apiTermId, {

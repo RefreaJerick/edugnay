@@ -249,7 +249,7 @@ lucide.createIcons();
           return;
         }
         if (!subjects.length) {
-          showUnavailable('Current Journals are not configured.');
+          showUnavailable('Weekly journals are not available right now. Ask your teacher for details.');
           return;
         }
 

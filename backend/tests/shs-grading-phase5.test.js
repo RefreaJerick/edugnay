@@ -39,7 +39,7 @@ test('SHS grading periods work without a scheduled meeting while writes still re
   assert.equal(queries.length, 2, 'writing grades should lock only the selected period');
   await assert.rejects(context.checkTerm(db, { schoolId: 4, yearId: 7 }, 99), /does not belong to this class/);
   const lockedDb = { execute: async () => [[{ status: 'closed' }]] };
-  await assert.rejects(context.checkTerm(lockedDb, { schoolId: 4, yearId: 7 }, 12, true), /grading period is locked/);
+    await assert.rejects(context.checkTerm(lockedDb, { schoolId: 4, yearId: 7 }, 12, true), /Grades can only be changed during an active grading period/);
 });
 
 test('verified SHS policies are available while the release gate remains closed', () => {

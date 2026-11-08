@@ -118,7 +118,7 @@ function fullName(person, useMaidenLastName = false) {
 
 function requireTextIssue(issues, value, fieldKey, cellReference, label) {
   if (!String(value || '').trim()) {
-    issues.push({ severity: 'warning', fieldKey, cellReference, message: `${label} is not configured.` });
+    issues.push({ severity: 'warning', fieldKey, cellReference, message: `${label} is missing from the school record.` });
   }
 }
 
@@ -127,7 +127,7 @@ async function ensureFeatureEnabled(database, schoolId) {
     'SELECT sf_templates_enabled AS sfTemplatesEnabled FROM school_portal_features WHERE school_id = ? LIMIT 1',
     [schoolId]
   );
-  if (!features[0]?.sfTemplatesEnabled) throw createError('SF Templates are not enabled for this school.', 403);
+  if (!features[0]?.sfTemplatesEnabled) throw createError('School Form Templates are turned off for this school. Ask your school administrator to enable them in School Settings.', 403);
 }
 
 async function getTemplate(database, templateId) {

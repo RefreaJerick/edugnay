@@ -98,10 +98,12 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
     const startYear = Number(String(yearLabel).match(/20\d{2}/)?.[0] || 0);
     const olderNumericalGrade = /^grade-(?:[4-9]|10)$/.test(grade.gradeCode) &&
       startYear > 0 && startYear < 2026;
+    const shsGrade = grade.levelCode === 'shs' && startYear >= 2026
+      && ['grade-11', 'grade-12'].includes(grade.gradeCode);
     if (!studentMap.has(String(grade.studentId)) ||
-      !['elementary', 'jhs'].includes(grade.levelCode) ||
-      !(isDepedNumericalGradeCode(grade.gradeCode, yearLabel) || olderNumericalGrade)) continue;
-    const key = `${grade.studentId}:${grade.subjectId}`;
+      !(shsGrade || ['elementary', 'jhs'].includes(grade.levelCode)
+        && (isDepedNumericalGradeCode(grade.gradeCode, yearLabel) || olderNumericalGrade))) continue;
+    const key = `${grade.studentId}:${grade.electiveClassId ? `class:${grade.electiveClassId}` : `subject:${grade.subjectId}`}`;
     const previous = latestGrades.get(key);
     if (!previous || Number(grade.termSequence) > Number(previous.termSequence) ||
       Number(grade.termSequence) === Number(previous.termSequence) &&
@@ -109,7 +111,7 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
   }
   for (const grade of latestGrades.values()) {
     const rule = rules.find(item => String(item.schoolLevelId) === String(grade.schoolLevelId));
-    const threshold = isDepedNumericalGradeCode(grade.gradeCode, yearLabel)
+    const threshold = grade.levelCode === 'shs' || isDepedNumericalGradeCode(grade.gradeCode, yearLabel)
       ? rule?.gradingMode === 'school_specific' ? Number(rule.passingGradeThreshold) : 75
       : Number(grade.levelPassingGradeThreshold);
     if (Number(grade.finalGrade) < threshold) {

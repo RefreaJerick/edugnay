@@ -274,12 +274,12 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
         let token = '';
         try { token = sessionStorage.getItem('edugnay_registration_status_token') || ''; }
         catch {
-          const tokenError = new Error('This tab cannot access the registration token. Contact Platform Admin for help; do not register again.');
+          const tokenError = new Error('This browser could not open the saved application. Contact Platform Admin for help. Please do not submit again.');
           tokenError.retryable = false;
           throw tokenError;
         }
         if (!token) {
-          const tokenError = new Error('This tab does not have the registration token. Contact Platform Admin for help; do not register again.');
+          const tokenError = new Error('This browser does not have the saved application. If you already submitted, contact Platform Admin for help. Please do not submit again.');
           tokenError.retryable = false;
           throw tokenError;
         }
@@ -288,7 +288,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
           application = await window.EDUGNAY_API.getRegistrationDetails(token);
         } catch (requestError) {
           if (requestError?.status === 404) {
-            const tokenError = new Error('This saved application could not be found or its access token has expired. It may have been deleted. Contact Platform Admin for help; do not register again.');
+            const tokenError = new Error('This saved application link is missing or has expired. If you already submitted, contact Platform Admin for help. Please do not submit again.');
             tokenError.retryable = false;
             throw tokenError;
           }

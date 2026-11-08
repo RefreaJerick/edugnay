@@ -1,8 +1,24 @@
 lucide.createIcons();
     const STUDENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
-    const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
 
     let JOURNAL = [];
+
+    async function loadStudentDashboardPeriod() {
+      const periodElement = document.querySelector('[data-active-academic-period][data-period-only]');
+      if (!periodElement) return;
+
+      try {
+        const sections = await window.EDUGNAY_API.getSections();
+        const currentSection = Array.isArray(sections)
+          ? sections.find(section => section.status === 'active' && section.academicYearStatus === 'active')
+          : null;
+        periodElement.dataset.schoolLevel = currentSection?.level || '';
+      } catch (error) {
+        periodElement.dataset.schoolLevel = '';
+      }
+
+      window.refreshEdUgnayShellContext?.();
+    }
 
     function renderStudentJournal() {
       const card = document.getElementById('student-journal-card');
@@ -93,7 +109,7 @@ lucide.createIcons();
               icon: display.icon, tone: display.tone };
           });
         MATERIALS_ERROR = '';
-      } catch (error) { MATERIALS = []; MATERIALS_ERROR = error.message || 'Try again after the connection is restored.'; }
+      } catch (error) { MATERIALS = []; MATERIALS_ERROR = error.message || 'Refresh and try again.'; }
       finally { MATERIALS_LOADING = false; }
     }
 
@@ -187,7 +203,7 @@ lucide.createIcons();
         ASSIGNMENTS_ERROR = '';
       } catch (error) {
         UPCOMING_ASSIGNMENTS = [];
-        ASSIGNMENTS_ERROR = error.message || 'Try again after the connection is restored.';
+        ASSIGNMENTS_ERROR = error.message || 'Refresh and try again.';
       } finally {
         ASSIGNMENTS_LOADING = false;
       }
@@ -235,6 +251,7 @@ lucide.createIcons();
     document.addEventListener('DOMContentLoaded', async () => {
       renderWeekCalendar();
       let journalLoad = null;
+      let periodLoad = null;
       if (STUDENT_DASHBOARD_API_ENABLED) {
         document.getElementById('student-upcoming-assignments').innerHTML = '';
         document.getElementById('student-materials-list').innerHTML = '';
@@ -245,20 +262,15 @@ lucide.createIcons();
           if (session?.role !== 'student') throw new Error('This dashboard requires a student session.');
           const greeting = document.getElementById('greeting-time-label');
           if (greeting) greeting.textContent = `Welcome back, ${session.firstName || 'Student'}!`;
+          periodLoad = loadStudentDashboardPeriod();
           journalLoad = loadStudentJournalCard();
-          const sections = await window.EDUGNAY_API.getSections();
-          const currentSection = sections.find(section => section.academicYearStatus === 'active');
-          if (dashboardPeriod) {
-            dashboardPeriod.dataset.schoolLevel = currentSection?.level || '';
-            window.refreshEdUgnayShellContext?.();
-          }
         } catch (error) {
           ASSIGNMENTS_ERROR = error.message || 'Your account data could not be loaded.';
           MATERIALS_ERROR = ASSIGNMENTS_ERROR;
           MATERIALS_LOADING = false;
         }
       } else {
-        const message = 'The backend is required to load student dashboard data.';
+        const message = 'Dashboard information couldn’t be loaded. Refresh and try again.';
         ASSIGNMENTS_ERROR = message;
         MATERIALS_ERROR = message;
         ANNOUNCEMENTS_ERROR = message;
@@ -276,10 +288,11 @@ lucide.createIcons();
           ANNOUNCEMENTS_ERROR = error.message || 'Announcements could not be loaded.';
         }
       } else {
-        ANNOUNCEMENTS_ERROR = 'The backend is required to load announcements.';
+        ANNOUNCEMENTS_ERROR = 'Announcements couldn’t be loaded. Refresh and try again.';
       }
       ANNOUNCEMENTS_LOADING = false;
       await Promise.all([
+        periodLoad || Promise.resolve(),
         journalLoad || loadStudentJournalCard(),
         loadDashboardMaterials(),
         loadDashboardAssignments()

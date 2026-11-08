@@ -8,6 +8,7 @@ let triggerRows = [];
 let attendanceHistory = [];
 let assignmentRows = [];
 let journalRows = [];
+let smsSetting = { enabled: 0 };
 
 const database = {
   async execute(sql, values = []) {
@@ -16,11 +17,16 @@ const database = {
     if (sql.includes('FROM parent_notification_triggers WHERE')) return [triggerRows];
     if (sql.includes('FROM school_attendance_settings')) return [[{ absenceThreshold: 2, threshold: 2 }]];
     if (sql.includes('FROM school_portal_features')) return [[{ gradesEnabled: 1, attendanceEnabled: 0, journalsEnabled: 1, narrativeReportsEnabled: 1 }]];
+    if (sql.includes('FROM school_parent_notification_settings')) return [[{ ...smsSetting }]];
     if (sql.includes('FROM attendance_sessions AS sessions')) return [attendanceHistory];
     if (sql.includes('FROM assignments\n')) return [assignmentRows];
     if (sql.includes('FROM journal_prompts AS prompts')) return [journalRows];
     if (sql.includes('SELECT display_name AS name FROM users')) return [[{ name: 'Juan Dela Cruz' }]];
     if (sql.includes('SELECT name FROM subjects')) return [[{ name: 'English' }]];
+    if (sql.includes('INSERT INTO school_parent_notification_settings')) {
+      smsSetting = { enabled: values[1] ? 1 : 0 };
+      return [{ affectedRows: 1 }];
+    }
     if (sql.startsWith('INSERT INTO')) return [{ affectedRows: 1 }];
     throw new Error(`Unexpected query: ${sql}`);
   },
@@ -54,6 +60,7 @@ function reset() {
   attendanceHistory = [];
   assignmentRows = [];
   journalRows = [];
+  smsSetting = { enabled: 0 };
 }
 
 test('admin settings default off and use only the session school', async () => {
@@ -123,6 +130,81 @@ test('report-release notifications become configurable only when the release gat
   } finally {
     if (previous === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
     else process.env.AI_REPORTS_RELEASE_ENABLED = previous;
+  }
+});
+
+test('weekly report SMS setting is separate, tenant-scoped, and never exposes the key', async () => {
+  const previousRelease = process.env.AI_REPORTS_RELEASE_ENABLED;
+  const previousKey = process.env.SEMAPHORE_API_KEY;
+  try {
+    process.env.AI_REPORTS_RELEASE_ENABLED = 'true';
+    process.env.SEMAPHORE_API_KEY = 'secret-test-key';
+    reset();
+    const read = await call(settings.getSettings, {}, { id: 31, role: 'school_admin', schoolId: 42 });
+    assert.equal(read.responseData.narrativeReportSms.enabled, false);
+    assert.equal(read.responseData.narrativeReportSms.configured, true);
+    assert.equal(read.responseData.narrativeReportSms.available, true);
+    assert.doesNotMatch(JSON.stringify(read.responseData), /secret-test-key/);
+    assert.ok(calls.some(item => item.sql.includes('FROM school_parent_notification_settings') && item.values[0] === 42));
+
+    const triggers = [
+      { code: 'grade_below_threshold', enabled: false, threshold: null },
+      { code: 'consecutive_absences', enabled: false, threshold: null },
+      { code: 'assignment_not_completed', enabled: false, threshold: 2 },
+      { code: 'narrative_report_released', enabled: false, threshold: null },
+      { code: 'journal_not_submitted', enabled: false, threshold: 2 }
+    ];
+    reset();
+    const saved = await call(settings.updateSettings, { triggers, narrativeReportSmsEnabled: true, schoolId: 999 },
+      { id: 31, role: 'school_admin', schoolId: 42 });
+    assert.equal(saved.error, undefined);
+    assert.equal(saved.responseData.narrativeReportSms.enabled, true);
+    const upsert = calls.find(item => item.sql.includes('INSERT INTO school_parent_notification_settings'));
+    assert.deepEqual(upsert.values, [42, true, 31]);
+    assert.equal(smsSetting.enabled, 1);
+    assert.equal(triggers.find(item => item.code === 'narrative_report_released').enabled, false);
+
+    reset();
+    const disabled = await call(settings.updateSettings, { triggers, narrativeReportSmsEnabled: false },
+      { id: 31, role: 'school_admin', schoolId: 42 });
+    assert.equal(disabled.error, undefined);
+    assert.equal(disabled.responseData.narrativeReportSms.enabled, false);
+    assert.equal(calls.find(item => item.sql.includes('INSERT INTO school_parent_notification_settings')).values[0], 42);
+  } finally {
+    if (previousRelease === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
+    else process.env.AI_REPORTS_RELEASE_ENABLED = previousRelease;
+    if (previousKey === undefined) delete process.env.SEMAPHORE_API_KEY;
+    else process.env.SEMAPHORE_API_KEY = previousKey;
+  }
+});
+
+test('weekly report SMS cannot be enabled without service configuration or with invalid input', async () => {
+  const previousRelease = process.env.AI_REPORTS_RELEASE_ENABLED;
+  const previousKey = process.env.SEMAPHORE_API_KEY;
+  try {
+    process.env.AI_REPORTS_RELEASE_ENABLED = 'true';
+    delete process.env.SEMAPHORE_API_KEY;
+    const triggers = [
+      { code: 'grade_below_threshold', enabled: false, threshold: null },
+      { code: 'consecutive_absences', enabled: false, threshold: null },
+      { code: 'assignment_not_completed', enabled: false, threshold: 2 },
+      { code: 'narrative_report_released', enabled: false, threshold: null },
+      { code: 'journal_not_submitted', enabled: false, threshold: 2 }
+    ];
+    reset();
+    const unavailable = await call(settings.updateSettings, { triggers, narrativeReportSmsEnabled: true });
+    assert.equal(unavailable.error.status, 409);
+    assert.equal(committed, false);
+
+    reset();
+    const invalid = await call(settings.updateSettings, { triggers, narrativeReportSmsEnabled: 'true' });
+    assert.equal(invalid.error.status, 400);
+    assert.equal(committed, false);
+  } finally {
+    if (previousRelease === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
+    else process.env.AI_REPORTS_RELEASE_ENABLED = previousRelease;
+    if (previousKey === undefined) delete process.env.SEMAPHORE_API_KEY;
+    else process.env.SEMAPHORE_API_KEY = previousKey;
   }
 });
 

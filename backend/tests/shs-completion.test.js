@@ -41,6 +41,14 @@ test('elective completion uses only its assigned terms', () => {
   ]).finalGrade, 85);
 });
 
+test('SHS completion uses its school-year passing grade and final rounding', () => {
+  const terms = [{ id: 1, name: 'Term 1' }, { id: 2, name: 'Term 2' }];
+  const grades = [{ academicTermId: 1, finalGrade: 74 }, { academicTermId: 2, finalGrade: 75 }];
+  assert.equal(subjectGradeStatus(terms, grades, { passingGradeThreshold: 75, gradeRounding: 'round' }).passed, true);
+  assert.equal(subjectGradeStatus(terms, grades, { passingGradeThreshold: 75, gradeRounding: 'truncate' }).passed, false);
+  assert.equal(subjectGradeStatus(terms, grades, { passingGradeThreshold: 76, gradeRounding: 'roundup' }).passed, false);
+});
+
 test('a prior completion confirmation needs review when its evidence changes or is no longer ready', () => {
   const checklist = { ready: true, evidenceHash: 'new-evidence' };
   assert.equal(confirmationStatus(checklist, null), null);

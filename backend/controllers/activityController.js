@@ -31,7 +31,7 @@ const CATEGORIES = {
     'school_registration_submitted', 'school_registration_approved', 'school_registration_rejected', 'school_registration_resubmitted',
     'attendance_settings_updated', 'parent_notification_triggers_updated', 'calendar_notice_created',
     'calendar_notice_deleted', 'journal_prompt_deleted', 'deped_k10_grading_defaults_applied',
-    'k10_final_grade_rules_saved', 'subject_grading_config_updated', 'subject_grading_defaults_restored',
+    'k10_final_grade_rules_saved', 'shs_final_grade_rules_saved', 'subject_grading_config_updated', 'subject_grading_defaults_restored',
     'subject_grading_group_defaults_restored', 'ai_report_evidence_approved', 'ai_report_evidence_approval_revoked'
   ],
   narrative_reports: [
@@ -195,6 +195,7 @@ const ACTION_LABELS = {
   journal_prompt_deleted: ['deleted a journal prompt', 'notebook-pen', 'orange', 'school_configuration'],
   deped_k10_grading_defaults_applied: ['applied DepEd grading defaults', 'book-open-check', 'blue', 'school_configuration'],
   k10_final_grade_rules_saved: ['saved final-grade rules', 'settings-2', 'gold', 'school_configuration'],
+  shs_final_grade_rules_saved: ['saved SHS final-grade rules', 'settings-2', 'gold', 'school_configuration'],
   subject_grading_config_updated: ['updated subject grading settings', 'settings-2', 'gold', 'school_configuration'],
   subject_grading_defaults_restored: ['restored subject grading defaults', 'rotate-ccw', 'gold', 'school_configuration'],
   subject_grading_group_defaults_restored: ['restored grading defaults for a subject group', 'rotate-ccw', 'gold', 'school_configuration'],
@@ -586,7 +587,7 @@ function genericActivityContext(row, details) {
     const count = details.addedCount ?? details.added;
     return count != null ? `${count} subject profiles added` : '';
   }
-  if (action === 'k10_final_grade_rules_saved') {
+  if (action === 'k10_final_grade_rules_saved' || action === 'shs_final_grade_rules_saved') {
     return details.gradingMode ? `${String(details.gradingMode).replace(/_/g, ' ')} grading` : '';
   }
   if (action === 'subject_grading_group_defaults_restored') {

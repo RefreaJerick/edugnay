@@ -10,7 +10,8 @@ let database;
 databaseModule.getDatabase = () => database;
 const { getSchoolContext } = require('../controllers/schoolContextController');
 const calendar = require('../controllers/calendarNoticesController');
-const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
+const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8')
+  .replace(/\r\n/g, '\n');
 
 function response() {
   return {
@@ -37,6 +38,17 @@ test('school context returns only the authenticated school and its current perio
   assert.equal(res.data.school.accentPalette, 'deep-teal');
   assert.equal(res.data.school.divisions.jhs.academicPeriods[0].name, 'Quarter 1');
   assert.deepEqual(calls, [[7], [7], [7, '2026-2027']]);
+});
+
+test('missing school context gives a clear user-facing message', async () => {
+  const source = shell.slice(shell.indexOf('async function getApiSchoolContext() {'), shell.indexOf('\nasync function loadApiCalendarNotices()'));
+  const context = vm.createContext({
+    requestApi: async () => ({}),
+    resolveApiSchoolLogo: value => value,
+    setApiSchoolContext() {}
+  });
+  const result = vm.runInContext(`${source}\ngetApiSchoolContext()`, context);
+  await assert.rejects(result, /Your school information couldn’t be loaded\./);
 });
 
 test('shared shell omits a missing school-year suffix instead of displaying null', () => {
@@ -174,6 +186,9 @@ test('calendar create and delete commit school-scoped changes', async () => {
     async execute(sql, params) {
       queries.push([sql, params]);
       if (sql.includes('INSERT INTO holidays')) return [{ insertId: 53 }];
+      if (sql.includes('SELECT title') && sql.includes('FROM holidays')) {
+        return [[{ title: 'No classes', date: '2026-10-14' }]];
+      }
       if (sql.includes('DELETE FROM holidays')) return [{ affectedRows: 1 }];
       return [{}];
     },
@@ -192,6 +207,7 @@ test('calendar create and delete commit school-scoped changes', async () => {
     removed, error => { throw error; });
   assert.equal(removed.code, 204);
   assert.deepEqual(queries[2][1], [53, 7]);
+  assert.match(queries[4][0], /INSERT INTO audit_logs/);
   assert.equal(commits, 2);
 });
 
@@ -247,27 +263,114 @@ test('shared active-period label uses its explicit school level instead of the s
   assert.deepEqual(requestedLevels, [[7, 'shs']]);
 });
 
-test('only the student dashboard includes the active grading period card', () => {
+test('student dashboard period display uses its short label and keeps the school year separate', () => {
+  const source = shell.match(/function applyActiveSchoolToShell\(\) \{[\s\S]*?\n\}/)[0];
+  const activePeriod = { textContent: '', dataset: { schoolLevel: 'shs', periodOnly: 'true' } };
+  const yearElement = { textContent: '' };
+  const school = { id: 7, name: 'Test School', shortName: 'TS', schoolType: 'combined', schoolLevels: [], schoolYear: '2026-2027' };
+  const periodNames = { elem: 'Quarter 3', jhs: 'Semester 1', shs: 'Term 2' };
+  const context = {
+    cacheSchoolBrandSnapshot() {},
+    schoolBrandCacheSuppressed: false,
+    window: {
+      EDUGNAY_API_SCHOOL_CONTEXT: school,
+      EDUGNAY_CONFIG: {
+        getActiveSchool: () => school,
+        getSchoolTypeInfo: () => ({ label: 'Combined' }),
+        getCurrentAcademicPeriod: (schoolId, level) => periodNames[level] ? { name: periodNames[level] } : null,
+        isGradesPageEnabled: () => true
+      }
+    },
+    document: {
+      body: { dataset: {} },
+      querySelectorAll(selector) {
+        if (selector === '[data-active-academic-period]') return [activePeriod];
+        if (selector === '[data-school-year]') return [yearElement];
+        return [];
+      }
+    }
+  };
+
+  vm.runInNewContext(`${source}\napplyActiveSchoolToShell();`, context);
+  assert.equal(activePeriod.textContent, 'Term 2');
+  assert.equal(yearElement.textContent, '2026-2027');
+
+  for (const [level, expected] of Object.entries(periodNames)) {
+    activePeriod.dataset.schoolLevel = level;
+    vm.runInNewContext(`${source}\napplyActiveSchoolToShell();`, context);
+    assert.equal(activePeriod.textContent, expected, `${level} students see their level's active period`);
+  }
+
+  context.window.EDUGNAY_CONFIG.getCurrentAcademicPeriod = () => null;
+  vm.runInNewContext(`${source}\napplyActiveSchoolToShell();`, context);
+  assert.equal(activePeriod.textContent, 'No active period');
+  assert.equal(yearElement.textContent, '2026-2027');
+});
+
+test('student dashboard resolves its grading period from the active enrolled section', async () => {
+  const studentDashboardScript = pageFs.readFileSync(
+    path.join(__dirname, '../../assets/js/student/dashboard.js'), 'utf8');
+  const resolver = studentDashboardScript.match(/async function loadStudentDashboardPeriod\(\) \{[\s\S]*?\n    \}/)?.[0];
+  assert.ok(resolver, 'student dashboard should define its period resolver');
+
+  const run = async (sections, shouldFail = false) => {
+    const periodElement = { dataset: {} };
+    let refreshes = 0;
+    const context = {
+      document: { querySelector: () => periodElement },
+      window: {
+        EDUGNAY_API: {
+          async getSections() {
+            if (shouldFail) throw new Error('Section lookup failed');
+            return sections;
+          }
+        },
+        refreshEdUgnayShellContext() { refreshes += 1; }
+      }
+    };
+    vm.runInNewContext(`${resolver}\nwindow.__periodLoad = loadStudentDashboardPeriod();`, context);
+    await context.window.__periodLoad;
+    return { level: periodElement.dataset.schoolLevel, refreshes };
+  };
+
+  for (const level of ['elem', 'jhs', 'shs']) {
+    assert.deepEqual(await run([
+      { status: 'archived', academicYearStatus: 'closed', level: 'jhs' },
+      { status: 'active', academicYearStatus: 'active', level }
+    ]), { level, refreshes: 1 }, `${level} enrollment supplies its own level`);
+  }
+
+  assert.deepEqual(await run([{ status: 'active', academicYearStatus: 'closed', level: 'elem' }]),
+    { level: '', refreshes: 1 }, 'a student without an active-year section gets the short fallback');
+  assert.deepEqual(await run([], true),
+    { level: '', refreshes: 1 }, 'a failed section lookup gets the short fallback');
+});
+
+test('school dashboards show periods only for students and school year only for other school roles', () => {
   const dashboardHtml = role => fs.readFileSync(
     path.join(__dirname, '../../views', role, `edugnay-${role}-dashboard.html`), 'utf8');
 
-  const studentHtml = dashboardHtml('student');
-  assert.match(studentHtml, /class="grading-period-card"[\s\S]*?data-active-academic-period/);
+  for (const role of ['admin', 'teacher', 'parent']) {
+    const html = dashboardHtml(role);
+    const card = html.match(/<div class="grading-period-card"[\s\S]*?<\/div>\s*<\/div>/)?.[0] || '';
+    assert.ok(card, `${role} dashboard should include a school-year card`);
+    assert.match(card, /aria-label="School year"/);
+    assert.match(card, /S\.Y\.\s*<span data-school-year><\/span>/);
+    assert.doesNotMatch(card, /Active grading period|No active grading period|data-active-academic-period/);
+  }
+  const studentCard = dashboardHtml('student').match(/<div class="grading-period-card[\s\S]*?<\/div>\s*<\/div>/)?.[0] || '';
+  assert.ok(studentCard, 'student dashboard should include its period card');
+  assert.match(studentCard, /data-active-academic-period data-period-only="true"/);
+  assert.match(studentCard, /student-grading-period-year">S\.Y\.\s*<span data-school-year><\/span>/);
+  assert.match(studentCard, /aria-label="Current grading period and school year"/);
+  assert.match(dashboardHtml('platform'), /class="grading-period-card"[\s\S]*?All registered schools/,
+    'the platform dashboard keeps its platform-scope card');
+
   const studentDashboardScript = pageFs.readFileSync(
     path.join(__dirname, '../../assets/js/student/dashboard.js'), 'utf8');
   assert.match(studentDashboardScript,
-    /const sections = await window\.EDUGNAY_API\.getSections\(\);\s*const currentSection = sections\.find\(section => section\.academicYearStatus === 'active'\);\s*if \(dashboardPeriod\) \{\s*dashboardPeriod\.dataset\.schoolLevel = currentSection\?\.level \|\| '';\s*window\.refreshEdUgnayShellContext\?\.\(\);/,
-    'the student dashboard resolves the displayed period from the enrolled section in the active year');
-  for (const role of ['admin', 'teacher', 'parent']) {
-    const html = dashboardHtml(role);
-    assert.doesNotMatch(html, /data-active-academic-period/);
-    assert.doesNotMatch(html, /class="grading-period-card"/);
-  }
-  for (const role of ['teacher', 'parent']) {
-    const script = pageFs.readFileSync(path.join(__dirname, '../../assets/js', role, 'dashboard.js'), 'utf8');
-    assert.doesNotMatch(script, /dashboardPeriod|data-active-academic-period/,
-      `${role} dashboard must not update a removed period card`);
-  }
+    /section\.status === 'active' && section\.academicYearStatus === 'active'/,
+    'the student dashboard resolves the displayed period from its active section');
 });
 
 test('school-context events apply and cache the current short name without clearing a verified name during a missing context', () => {

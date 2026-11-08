@@ -38,13 +38,17 @@ test('custom SHS components and exam parts drive grade calculation while SHS def
   const standard = policyFor('core', '2027-2028', 'grade-11');
   const custom = validateRule({ components: customComponents }, { components: standard.components });
   const db = { async execute(sql, values) {
+    if (sql.includes('FROM school_year_final_grade_rules')) {
+      assert.deepEqual(values, [2, 8, 3]);
+      return [[]];
+    }
     assert.match(sql, /components_json AS componentsJson/);
     assert.match(sql, /school_id = \? AND academic_year_id = \? AND subject_id = \?/);
     assert.deepEqual(values, [2, 8, 5]);
     return [[{ written: 20, performance: 50, examination: 30,
       examParts: JSON.stringify(standard.examParts), componentsJson: JSON.stringify(custom.components) }]];
   } };
-  const policy = await loadShsPolicy(db, { kind: 'core', schoolId: 2, yearId: 8, subjectId: 5,
+  const policy = await loadShsPolicy(db, { kind: 'core', schoolId: 2, yearId: 8, levelId: 3, subjectId: 5,
     group: 'core', yearLabel: '2027-2028', gradeCode: 'grade-11' });
   const items = [
     { id: 1, title: 'Written', componentCode: 'written', maxScore: 100 },
@@ -58,10 +62,14 @@ test('custom SHS components and exam parts drive grade calculation while SHS def
   assert.deepEqual(standard.weights, { written: 20, performance: 50, examination: 30 });
   assert.equal(policy.components[3].name, 'Portfolio');
   const fallback = await loadShsPolicy({ async execute(sql, values) {
+    if (sql.includes('FROM school_year_final_grade_rules')) {
+      assert.deepEqual(values, [2, 8, 3]);
+      return [[]];
+    }
     assert.match(sql, /offering_id = \?/);
     assert.deepEqual(values, [2, 8, 4]);
     return [[]];
-  } }, { kind: 'elective', schoolId: 2, yearId: 8, offeringId: 4,
+  } }, { kind: 'elective', schoolId: 2, yearId: 8, levelId: 3, offeringId: 4,
     group: 'core', yearLabel: '2027-2028', gradeCode: 'grade-12' });
   assert.deepEqual(fallback.components.map(component => component.code), ['written', 'performance', 'examination']);
 });
@@ -194,7 +202,7 @@ test('SHS settings use additive component storage, retain school/year locks, and
   const migration = read('backend/database/migrations/056_flexible_shs_grading_components.sql');
   const schema = read('backend/database/schema.sql');
   assert.match(routes, /router\.put\('\/shs-grading', \.\.\.schoolAdminOnly/);
-  assert.match(controller, /Archived school years are read-only/);
+  assert.match(controller, /Closed or archived school years are read-only/);
   assert.match(controller, /Published grades lock this subject/);
   assert.match(controller, /writeAuditLog/);
   assert.match(controller, /usedItemsFor/);

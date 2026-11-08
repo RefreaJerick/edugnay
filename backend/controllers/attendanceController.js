@@ -341,7 +341,7 @@ async function saveSectionAttendance(req, res, next) {
 
     const section = await getTeachingSection(connection, req.user, sectionId, subjectId, componentCode);
     if (!section) throw createError('Section not found.', 404);
-    if (section.legacyCommunication) throw createError('Legacy combined communication attendance is read-only. Assign an English or Filipino component to record attendance.', 409);
+    if (section.legacyCommunication) throw createError('Attendance cannot be changed for this older combined Communication class. Use Effective Communication or Mabisang Komunikasyon to record attendance.', 409);
     const [[subject]] = await connection.execute('SELECT name AS subjectName FROM subjects WHERE id = ? AND school_id = ? LIMIT 1',
       [subjectId, section.schoolId]);
     await assertAttendanceCanBeEdited(connection, section, attendanceDate);

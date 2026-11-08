@@ -126,7 +126,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
     );
     const section = sectionRows[0];
     if (!section) throw createError('Advisory section not found.', 404);
-    if (Number(section.reportsEnabled) !== 1) throw createError('Narrative Reports are not enabled for this school.', 403);
+    if (Number(section.reportsEnabled) !== 1) throw createError('Weekly reports are turned off for this school. Ask your school administrator to enable them.', 403);
     const journalApplicable = section.schoolLevelCode === 'jhs' &&
       Number(section.journalsEnabled) === 1 && Boolean(section.journalSubjectId);
 

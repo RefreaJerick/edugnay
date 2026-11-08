@@ -490,20 +490,20 @@
     const sources = [
       { key: 'attendance', icon: 'user-round-check', label: 'Attendance', value: attendance.recordedSessions ? `${attendance.present}/${attendance.recordedSessions} present · ${attendance.absent} absent` : 'No confirmed records', detail: attendance.recordedSessions ? `${attendance.recordedSessions} recorded sessions across subjects` : 'Missing records are not treated as absences.' },
       { key: 'assignments', icon: 'clipboard-check', label: 'Assignment completion', value: assignments.total ? `${assignments.submitted}/${assignments.total} submitted` : 'No assignments due', detail: assignments.total ? 'Published assignments due in the selected week' : 'Across all subjects for this week' },
-      { key: 'academic', icon: 'chart-no-axes-column', label: 'Academic records', value: [student.academicRecords.length && `${student.academicRecords.length} published record(s)`, scoreCount && `${scoreCount} scored activities`].filter(Boolean).join(' · ') || 'No academic records', detail: student.academicScoresOmitted ? `${student.academicScoresOmitted} more scored activities not included; review before confirming.` : 'Recorded during the selected week' }
+      { key: 'academic', icon: 'chart-no-axes-column', label: 'Academic records', value: [student.academicRecords.length && `${student.academicRecords.length} published record(s)`, scoreCount && `${scoreCount} scored activities`].filter(Boolean).join(' · ') || 'No academic records', detail: student.academicScoresOmitted ? `${student.academicScoresOmitted} more scored activities are not shown here; review them before confirming.` : 'Recorded during the selected week' }
     ];
-    if (journalApplicable) sources.push({ key: 'journal', icon: 'notebook-pen', label: 'Journal · Values Education', value: `${student.journal.entries.length} relevant submission(s)`, detail: 'Reflection text is treated as untrusted input.' });
+    if (journalApplicable) sources.push({ key: 'journal', icon: 'notebook-pen', label: 'Journal · Values Education', value: `${student.journal.entries.length} relevant submission(s)`, detail: 'Student reflections may help describe the week. Review the report before sharing.' });
     $('review-evidence').classList.toggle('without-journal', !journalApplicable);
     $('review-evidence').innerHTML = sources.map(source => `<div class="data-source-card ds-${source.key}"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div><div class="ds-label">${escape(source.label)}</div></div></div>`).join('');
     window.lucide?.createIcons?.();
-    $('review-note').textContent = report.teacherNote || 'No teacher note provided.';
+    $('review-note').textContent = report.teacherNote || 'No classroom observation was added.';
     $('review-summary').value = report.editedSummary || report.generatedSummary;
     $('review-summary').disabled = !editable;
     $('review-actions').replaceChildren();
     report.parentActions.forEach(action => appendAction(action, !editable));
     const lowScores = (student.candidateReasons || []).filter(reason => reason.type === 'low_scores');
     $('follow-up-section').hidden = !report.followUpSuggestion && !lowScores.length;
-    $('follow-up-text').textContent = report.followUpSuggestion || 'No AI follow-up suggestion was provided. Review the recorded reasons below.';
+    $('follow-up-text').textContent = report.followUpSuggestion || 'No follow-up suggestion is available. Review the reasons below.';
     $('follow-up-help').hidden = !report.followUpSuggestion;
     $('follow-up-choices').hidden = !report.followUpSuggestion;
     const reasons = (student.candidateReasons || []).map(reason => ({ reason, text: candidateReasonText(reason) })).filter(item => item.text);
@@ -585,7 +585,7 @@
       const followUpDecision = report.followUpSuggestion
         ? document.querySelector('input[name="follow-up-decision"]:checked')?.value || null : null;
       if (confirm && report.followUpSuggestion && !followUpDecision) {
-        throw new Error('Accept or dismiss the internal follow-up suggestion before confirming.');
+        throw new Error('Choose whether to include or remove the suggested follow-up before confirming.');
       }
       await api.request(`/reports/weekly-drafts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
       if (confirm) await api.request(`/reports/weekly-drafts/${encodeURIComponent(id)}/confirm`, {

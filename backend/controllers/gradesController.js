@@ -58,7 +58,8 @@ async function loadPublishedElectiveGrades(database, user, { studentId, academic
       o.subject_name AS subjectName, p.academic_term_id AS academicTermId,
       term.name AS academicTermName, term.sequence_number AS academicTermSequenceNumber,
       year.id AS academicYearId, year.label AS academicYearLabel, year.status AS academicYearStatus,
-      grade.grade_code AS gradeCode, level.grading_period_type AS gradingPeriodType,
+      grade.grade_code AS gradeCode, level.id AS schoolLevelId,
+      level.level_code AS schoolLevelCode, level.grading_period_type AS gradingPeriodType,
       level.passing_grade_threshold AS passingGradeThreshold,
       p.final_grade AS finalGrade, p.published_at AS publishedAt
      FROM published_final_grades p
@@ -189,7 +190,7 @@ async function assertGradeWriteAccess(connection, user, scope) {
     [scope.sectionId, user.schoolId, scope.academicTermId]
   );
   if (!terms.length) throw createError('The grading period no longer matches this section.', 404);
-  if (terms[0].schoolLevelCode === 'shs') throw createError('Strengthened SHS grading is not available until its grading phase is complete.', 409);
+  if (terms[0].schoolLevelCode === 'shs') throw createError('Use the SHS Program to manage grades for this class.', 409);
   const gradeBlockReason = getDepedNumericalGradeBlockReason(terms[0].gradeCode, terms[0].academicYearLabel);
   if (gradeBlockReason) throw createError(gradeBlockReason, 409);
   const termStatus = terms[0].academicTermStatus;
@@ -214,7 +215,7 @@ async function assertGradeWriteAccess(connection, user, scope) {
 
   if (termStatus === 'active') return;
   if (termStatus !== 'closed' || user.role !== 'teacher') {
-    throw createError('This grading period is locked. An approved, unexpired teacher request is required.', 409);
+    throw createError('Grades can only be changed during an active grading period. If this period is closed, ask your school administrator whether it can be reopened.', 409);
   }
 
   const [approvals] = await connection.execute(
@@ -224,7 +225,7 @@ async function assertGradeWriteAccess(connection, user, scope) {
      LIMIT 1 FOR UPDATE`,
     [user.schoolId, scope.academicTermId, scope.sectionId, scope.subjectId, user.id]
   );
-  if (!approvals.length) throw createError('This grading period is locked. An approved, unexpired teacher request is required.', 409);
+  if (!approvals.length) throw createError('Grades can only be changed during an active grading period. If this period is closed, ask your school administrator whether it can be reopened.', 409);
 }
 
 async function validateGradeItemScope(connection, user, section, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId = null, subjectGradingExamPartId = null) {
@@ -247,12 +248,12 @@ async function validateGradeItemScope(connection, user, section, subjectId, acad
   );
   const usesDepedK10Rules = ['elementary', 'jhs'].includes(gradingYear?.levelCode)
     && isDepedNumericalGradeCode(gradingYear?.gradeCode, gradingYear?.academicYearLabel);
-  if (gradingYear?.levelCode === 'shs') throw createError('Strengthened SHS grading is not available until its grading phase is complete.', 409);
+  if (gradingYear?.levelCode === 'shs') throw createError('Use the SHS Program to manage grades for this class.', 409);
   if (usesDepedK10Rules && (!subjectGradingComponentId || gradingCategoryId)) {
-    throw createError('Use this subject’s saved school-year grading configuration for score recording.', 409);
+    throw createError('Use the grading periods already set for this subject when recording scores.', 409);
   }
   if (!usesDepedK10Rules && subjectGradingComponentId) {
-    throw createError('Subject-specific grading components are not available for this grading period.', 409);
+    throw createError('The grading options for this subject are not available right now. Refresh and try again.', 409);
   }
   if (subjectGradingComponentId) {
     const [components] = await connection.execute(
@@ -406,7 +407,7 @@ async function deleteGradingItem(req, res, next) {
     if (!item) throw createError('Score component was not found.', 404);
     const assignedTeacherId = req.user.role === 'teacher' ? req.user.id : item.teacherUserId;
     const section = await getTeacherSectionSubject(connection, assignedTeacherId, item.sectionId, item.subjectId, req.user.schoolId);
-    if (!section) throw createError('The score component section-subject relationship is no longer active.', 409);
+    if (!section) throw createError('This score component is no longer available for this class. Refresh the page and try again.', 409);
     await assertGradeWriteAccess(connection, req.user, item);
     const [locked] = await connection.execute(
       'SELECT id, used_in_published_grades AS usedInPublishedGrades FROM grading_items WHERE id = ? AND school_id = ? FOR UPDATE',
@@ -458,7 +459,7 @@ async function updateGradingItem(req, res, next) {
     if (!current) throw createError('Grading item was not found.', 404);
     const assignedTeacherId = req.user.role === 'teacher' ? req.user.id : current.teacherUserId;
     const section = await getTeacherSectionSubject(connection, assignedTeacherId, current.sectionId, current.subjectId, req.user.schoolId);
-    if (!section) throw createError('The grading item section-subject relationship is no longer active.', 409);
+    if (!section) throw createError('This grading item is no longer available for this class. Refresh the page and try again.', 409);
     await assertGradeWriteAccess(connection, req.user, {
       schoolId: section.schoolId,
       sectionId: current.sectionId,
@@ -511,10 +512,16 @@ function usesK10FinalGradeRules(row) {
     && isDepedNumericalGradeCode(row.gradeCode, row.academicYearLabel);
 }
 
-async function getOverviewK10PassingThresholds(connection, schoolId, rows) {
+function usesYearFinalGradeRules(row) {
+  return usesK10FinalGradeRules(row) || row.schoolLevelCode === 'shs'
+    && ['grade-11', 'grade-12'].includes(row.gradeCode)
+    && Number(String(row.academicYearLabel || '').match(/20\d{2}/)?.[0]) >= 2026;
+}
+
+async function getOverviewPassingThresholds(connection, schoolId, rows) {
   const scopes = new Map();
   rows.forEach(row => {
-    if (!usesK10FinalGradeRules(row)) return;
+    if (!usesYearFinalGradeRules(row)) return;
     const key = getOverviewRuleScopeKey(row);
     if (!scopes.has(key)) scopes.set(key, row);
   });
@@ -815,16 +822,22 @@ async function getFinalGradesOverview(req, res, next) {
       }
       year.electiveClasses.push(electiveClass);
     });
-    const k10PassingThresholds = await getOverviewK10PassingThresholds(database, schoolId, [
+    const passingThresholds = await getOverviewPassingThresholds(database, schoolId, [
       ...enrollmentRows,
-      ...gradeRows
+      ...gradeRows,
+      ...electiveGradeRows,
+      ...confirmedElectiveClasses.map(item => ({ ...item, schoolLevelCode: 'shs' }))
     ]);
     enrollmentRows.forEach(row => {
-      if (!usesK10FinalGradeRules(row)) return;
-      const threshold = k10PassingThresholds.get(getOverviewRuleScopeKey(row));
+      if (!usesYearFinalGradeRules(row)) return;
+      const threshold = passingThresholds.get(getOverviewRuleScopeKey(row));
       if (threshold === undefined) return;
       const section = sectionMap.get(String(row.sectionId));
       if (section) section.passingGradeThreshold = threshold;
+    });
+    confirmedElectiveClasses.forEach(item => {
+      const threshold = passingThresholds.get(getOverviewRuleScopeKey(item));
+      if (threshold !== undefined) item.passingGradeThreshold = threshold;
     });
 
     const currentYear = academicYears.find(year => year.status === 'active');
@@ -861,9 +874,9 @@ async function getFinalGradesOverview(req, res, next) {
             academicYearId: String(grade.academicYearId),
             academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
             finalGrade: Number(grade.finalGrade),
-            passingGradeThreshold: usesK10FinalGradeRules(grade)
-              && k10PassingThresholds.has(getOverviewRuleScopeKey(grade))
-              ? k10PassingThresholds.get(getOverviewRuleScopeKey(grade))
+            passingGradeThreshold: usesYearFinalGradeRules(grade)
+              && passingThresholds.has(getOverviewRuleScopeKey(grade))
+              ? passingThresholds.get(getOverviewRuleScopeKey(grade))
               : grade.passingGradeThreshold == null ? null : Number(grade.passingGradeThreshold)
           };
         }),
@@ -1090,7 +1103,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     issues.push({ code: 'incompatible_period_structure', message: finalGradeRules.periodStructureWarning });
   }
   if (usesDepedSubjectRules && !categories.length) {
-    issues.push({ code: 'unconfigured_subject_grading', message: 'Ask School Admin to apply or configure this subject’s grading components for the school year.' });
+    issues.push({ code: 'unconfigured_subject_grading', message: 'This subject’s grading parts are not set up for the school year. Ask your school administrator for help.' });
   }
   const isEarlyTransitionGrade = usesDepedSubjectRules
     && isDepedEarlyNumericalGradeCode(context.gradeCode)
@@ -1099,30 +1112,30 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     && !categories.some(category => category.componentType === 'examination' && category.examParts.length > 0)) {
     issues.push({
       code: 'early_grade_exam_setup_required',
-      message: 'Ask the school admin to configure at least one Grades 2–3 exam part before publishing.'
+      message: 'Set up at least one Grades 2–3 exam part before publishing, or ask your school administrator for help.'
     });
   }
   if (isEarlyTransitionGrade && categories.length
     && subjectConfigurationSource === 'deped_default' && !subjectHasPublishedGrades) {
     issues.push({
       code: 'early_grade_exam_setup_review_required',
-      message: 'This Grades 2–3 exam split came from the former suggested default. Ask the school admin to review and save the school-selected exam parts before publishing.'
+      message: 'The suggested Grades 2–3 exam split needs review. Ask your school administrator to review and save the exam parts before publishing.'
     });
   }
   const weightTotal = categories.reduce((sum, category) => sum + category.weight, 0);
 
-  if (!categories.length) issues.push({ code: 'no_grading_categories', message: 'Configure grading categories before publishing.' });
+  if (!categories.length) issues.push({ code: 'no_grading_categories', message: 'Set up grading categories before publishing.' });
   else if (categories.some(category => !Number.isFinite(category.weight) || category.weight < 0 || category.weight > 100)
     || Math.round(weightTotal * 100) !== 10000) {
     issues.push({ code: 'invalid_category_weights', message: 'Grading category weights must be valid and total 100%.' });
   }
   const effectiveRounding = usesDepedSubjectRules ? finalGradeRules.gradeRounding : context.gradeRounding;
   if (!['round', 'roundup', 'truncate'].includes(effectiveRounding)) {
-    issues.push({ code: 'invalid_rounding_rule', message: 'The school rounding rule is invalid.' });
+    issues.push({ code: 'invalid_rounding_rule', message: 'The grade-rounding setting is invalid. Check School Settings.' });
   }
   const passingGradeThreshold = usesDepedSubjectRules ? finalGradeRules.passingGradeThreshold : Number(context.passingGradeThreshold);
   if (!Number.isFinite(passingGradeThreshold) || passingGradeThreshold < 0 || passingGradeThreshold > 100) {
-    issues.push({ code: 'invalid_passing_threshold', message: 'The school passing-grade threshold must be between 0 and 100.' });
+    issues.push({ code: 'invalid_passing_threshold', message: 'The passing-grade setting must be between 0 and 100.' });
   }
 
   const [students] = await connection.execute(
@@ -1132,7 +1145,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     ORDER BY users.last_name, users.first_name, users.id${lock}`,
     [context.sectionId]
   );
-  if (!students.length) issues.push({ code: 'no_students', message: 'There are no actively enrolled students in this section.' });
+  if (!students.length) issues.push({ code: 'no_students', message: 'No active students are enrolled in this section.' });
   const priorWork = students.length ? await getTransferredWork(connection, user.schoolId, scope) : { scores: [], published: [] };
   const publishedByStudent = new Map();
   priorWork.published.forEach(grade => {
@@ -1140,7 +1153,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     publishedByStudent.set(key, [...(publishedByStudent.get(key) || []), grade]);
   });
   if ([...publishedByStudent.values()].some(grades => grades.length > 1)) {
-    issues.push({ code: 'duplicate_published_grade', message: 'A transferred student has multiple published grades for this subject and period. Ask School Admin to review them.' });
+    issues.push({ code: 'duplicate_published_grade', message: 'A student has more than one published grade for this subject and period. Ask your school administrator to review the records.' });
   }
   const priorScoreStudents = new Set(priorWork.scores.map(score => String(score.studentId)));
 
@@ -1178,15 +1191,15 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     if (!usesDepedSubjectRules && (!categoryById.has(item.gradingCategoryId)
       || Number(item.categorySchoolId) !== Number(context.schoolId)
       || Number(item.categorySchoolLevelId) !== Number(context.schoolLevelId))) {
-      issues.push({ code: 'invalid_item_category', message: `“${item.title}” is not linked to a grading category for this school level.` });
+      issues.push({ code: 'invalid_item_category', message: `Choose a grading category for “${item.title}” before publishing.` });
     }
     if (usesDepedSubjectRules) {
       const component = categoryById.get(item.subjectGradingComponentId);
       const part = component?.examParts.find(examPart => examPart.id === item.subjectGradingExamPartId);
       if (!component || Number(item.componentSchoolId) !== Number(context.schoolId)) {
-        issues.push({ code: 'invalid_item_component', message: `“${item.title}” is not linked to this subject’s school-year configuration.` });
+        issues.push({ code: 'invalid_item_component', message: `“${item.title}” is not included in this subject’s grading parts for the school year.` });
       } else if ((component.examParts.length && !part) || (!component.examParts.length && item.subjectGradingExamPartId)) {
-        issues.push({ code: 'invalid_item_exam_part', message: `“${item.title}” must use an exam part from its configured component.` });
+        issues.push({ code: 'invalid_item_exam_part', message: `“${item.title}” must use an exam part from the same grading section.` });
       }
     }
   }
@@ -1632,7 +1645,7 @@ async function upsertStudentScore(connection, user, gradingItemId, studentId, bo
   if (score !== null && score > Number(item.maxScore)) throw createError('Score cannot exceed the maximum score.');
   const remarks = optionalText(body.remarks, 500, 'Score remarks');
   const [students] = await connection.execute('SELECT student_user_id AS studentId FROM section_students WHERE section_id = ? AND student_user_id = ? AND withdrawn_at IS NULL LIMIT 1 FOR UPDATE', [item.sectionId, studentId]);
-  if (!students.length) throw createError('The student is not actively enrolled in this section.', 404);
+  if (!students.length) throw createError('This student is no longer enrolled in this section.', 404);
   await connection.execute(`INSERT INTO student_scores (school_id, grading_item_id, student_user_id, score, remarks, recorded_by_user_id, recorded_at) VALUES (?, ?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE score=VALUES(score), remarks=VALUES(remarks), recorded_by_user_id=VALUES(recorded_by_user_id), recorded_at=NOW()`, [user.schoolId, gradingItemId, studentId, score, remarks, user.id]);
   const [scores] = await connection.execute('SELECT id, grading_item_id AS gradingItemId, student_user_id AS studentId, score, remarks, recorded_at AS recordedAt FROM student_scores WHERE grading_item_id=? AND student_user_id=?', [gradingItemId, studentId]);
   return { ...scores[0], score: scores[0].score === null ? null : Number(scores[0].score) };

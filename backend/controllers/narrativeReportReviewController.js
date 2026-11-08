@@ -1,6 +1,7 @@
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
 const { notifyParents } = require('../utils/parentNotifications');
+const { queueReleasedReportSms } = require('../utils/narrativeReportSms');
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -20,7 +21,9 @@ async function lockAdviserReport(connection, req) {
       reports.ai_follow_up_suggestion AS followUpSuggestion,
       reports.student_user_id AS studentId, reports.section_id AS sectionId,
       reports.released_at AS releasedAt, reports.pending_correction AS pendingCorrection,
-      reports.report_week_start_date AS weekStartDate, reports.report_period_key AS periodKey
+      DATE_FORMAT(reports.report_week_start_date, '%Y-%m-%d') AS weekStartDate,
+      DATE_FORMAT(reports.report_week_end_date, '%Y-%m-%d') AS weekEndDate,
+      reports.report_period_key AS periodKey
     FROM narrative_reports AS reports
     INNER JOIN sections ON sections.id = reports.section_id AND sections.school_id = reports.school_id
     INNER JOIN school_portal_features AS features ON features.school_id = reports.school_id
@@ -147,7 +150,7 @@ async function confirmDraft(req, database = getDatabase()) {
     const report = await lockAdviserReport(connection, req);
     requireDraft(report);
     if (report.followUpSuggestion && !['accept', 'dismiss'].includes(choice)) {
-      throw createError('Accept or dismiss the internal follow-up suggestion before confirming.');
+      throw createError('Choose whether to include or remove the suggested follow-up before confirming.');
     }
     if (!report.followUpSuggestion && choice !== null) throw createError('This report has no follow-up suggestion.');
     await connection.execute(
@@ -202,7 +205,7 @@ async function reopenConfirmedReport(req, database = getDatabase()) {
 
 async function releaseConfirmedReport(req, database = getDatabase()) {
   if (process.env.AI_REPORTS_RELEASE_ENABLED !== 'true') {
-    throw createError('Report release is not enabled for this school.', 503);
+    throw createError('Weekly report release is currently unavailable. Ask your school administrator for help.', 503);
   }
   if (req.body != null && (!req.body || typeof req.body !== 'object' || Array.isArray(req.body) || Object.keys(req.body).length)) {
     throw createError('Report release does not accept additional data.');
@@ -250,7 +253,7 @@ async function releaseConfirmedReport(req, database = getDatabase()) {
       [Number(req.user.id), Number(req.user.schoolId)]
     );
     if (!adviser) throw createError('Releasing adviser not found.', 404);
-    await connection.execute(
+    const [releaseResult] = await connection.execute(
       `INSERT INTO narrative_report_releases
         (school_id, narrative_report_id, version_number, summary, parent_actions, released_at, released_by_user_id, released_by_name)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -262,6 +265,12 @@ async function releaseConfirmedReport(req, database = getDatabase()) {
       [Number(report.studentId), Number(req.user.schoolId)]
     );
     if (!student) throw createError('Report learner not found.', 404);
+    await queueReleasedReportSms(connection, {
+      schoolId: Number(req.user.schoolId), releaseId: releaseResult.insertId,
+      studentId: Number(report.studentId), studentName: student.displayName,
+      weekStartDate: report.weekStartDate, weekEndDate: report.weekEndDate,
+      summary: released.summary, parentActions: actions.map(action => action.text)
+    });
     const targetPath = `/views/parent/edugnay-parent-reports.html?studentId=${encodeURIComponent(report.studentId)}&reportId=${encodeURIComponent(report.id)}`;
     await writeAuditLog(connection, req, 'narrative_report_released_to_parents', 'narrative_reports', report.id,
       { sectionId: Number(report.sectionId), studentId: Number(report.studentId),

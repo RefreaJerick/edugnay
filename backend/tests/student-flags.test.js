@@ -117,6 +117,21 @@ test('JHS uses its own saved passing threshold and excludes future unsupported e
   assert.equal(jhs[0].reasons[0].threshold, 85);
 });
 
+test('SHS core and elective grade flags use the selected school-year passing grade', () => {
+  const shsGrades = [
+    grade(1, 5, 79, 1, { levelCode: 'shs', gradeCode: 'grade-11', schoolLevelId: 6 }),
+    grade(1, null, 80, 1, { electiveClassId: 41, subjectName: 'Creative Writing',
+      levelCode: 'shs', gradeCode: 'grade-11', schoolLevelId: 6 }),
+    grade(2, 5, 79, 1, { levelCode: 'shs', gradeCode: 'grade-11', schoolLevelId: 6 })
+  ];
+  const result = buildStudentFlags({ ...base, grades: shsGrades,
+    rules: [{ schoolLevelId: 6, gradingMode: 'school_specific', passingGradeThreshold: 80 }] });
+  assert.deepEqual(result.map(student => student.studentId), ['1', '2']);
+  assert.deepEqual(result[0].reasons.map(reason => reason.subject), ['English']);
+  assert.equal(result[0].reasons[0].threshold, 80);
+  assert.deepEqual(buildStudentFlags({ ...base, grades: shsGrades }).map(student => student.studentId), []);
+});
+
 test('a transfer does not leave a stale streak from an earlier section', () => {
   const result = buildStudentFlags({ ...base, attendance: [
     { ...record(1, '2026-10-01', 'absent'), sectionId: 9 },

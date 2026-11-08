@@ -103,7 +103,7 @@ let ACTIVE_ANNOUNCEMENT_ID = null;
     try {
       await window.EDUGNAY_SCHOOL_READY;
       const announcement = await window.EDUGNAY_API.createAnnouncement(values);
-      if (!announcement) throw new Error('The server did not confirm the announcement save.');
+      if (!announcement) throw new Error('The announcement could not be confirmed as saved. Refresh and check the announcements list.');
       announcementLoadError = '';
       ANNOUNCEMENTS = [announcement, ...ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcement.id))];
       if (window.EDUGNAY_COMMUNICATION) window.EDUGNAY_COMMUNICATION.announcements = ANNOUNCEMENTS;
@@ -363,7 +363,7 @@ let ACTIVE_ANNOUNCEMENT_ID = null;
       }
     } else {
       ANNOUNCEMENTS = [];
-      announcementLoadError = 'Connect to the backend and reload to view announcements.';
+      announcementLoadError = 'Announcements aren’t available right now. Refresh and try again.';
     }
     if (!window.EDUGNAY_COMMUNICATION) {
       window.EDUGNAY_COMMUNICATION = { backend: Boolean(api?.isBackendAvailable), notifications: [], announcements: [], tasks: [], error: announcementLoadError };

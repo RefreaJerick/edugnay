@@ -230,7 +230,9 @@
     method.hidden = false;
     document.getElementById('publishGradeMethodText').textContent = data.scope.policy?.method === 'adjusted_2026'
       ? 'The 2026–2027 adjusted conversion is used to calculate reported grades.'
-      : 'Grades use the verified weighted calculation for this class.';
+      : data.scope.policy?.method === 'school_direct'
+        ? `School-specific method: the weighted initial grade is reported directly. Rounding: ${{ round: 'nearest whole number', roundup: 'round up', truncate: 'truncate' }[data.scope.policy.gradeRounding] || 'nearest whole number'}. Passing grade: ${data.scope.policy.passingGradeThreshold}.`
+        : 'Grades use the verified weighted calculation for this class.';
     const list = document.getElementById('publishPreviewStudentList');
     list.hidden = false;
     window.TeacherClassViews.renderGradePreviewRows(list, preview.preview.students.map(row => {
@@ -239,7 +241,8 @@
       return {
         name: row.studentName || 'Student',
         value: row.problem || (hasGrade ? String(grade) : 'Incomplete'),
-        tone: row.problem || !hasGrade ? 'grade-warn' : grade >= 75 ? 'grade-pass' : 'grade-fail',
+        tone: row.problem || !hasGrade ? 'grade-warn'
+          : grade >= Number(data.scope.policy?.passingGradeThreshold ?? 75) ? 'grade-pass' : 'grade-fail',
         ariaLabel: row.problem ? `${row.studentName || 'Student'}: ${row.problem}`
           : hasGrade ? `Final grade ${grade}.` : 'Grade incomplete.'
       };
@@ -342,7 +345,7 @@
     host.querySelector('#quarterLockDesc').textContent = !policy
       ? data.scope.policyBlockReason || 'A verified grading rule is not available for this class.'
       : data.scope.yearStatus !== 'active' ? 'This school year is closed. Grades are read-only.'
-        : term?.status !== 'active' ? 'This grading period is closed. Scores are read-only.'
+        : term?.status !== 'active' ? 'This grading period is not active. Scores are read-only.'
           : 'This class is paused or is not assigned to you for editing.';
     const publishedBanner = document.getElementById('publishedGradesBanner');
     setVisible(publishedBanner, data.published.length > 0);

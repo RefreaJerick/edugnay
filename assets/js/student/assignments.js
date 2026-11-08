@@ -117,7 +117,7 @@ lucide.createIcons();
 
     async function loadBackendAssignments() {
       try {
-        if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('The school API is required to load assignments.');
+        if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('Assignments aren’t available right now. Refresh and try again.');
         await window.EDUGNAY_SCHOOL_READY;
         const session = await window.EDUGNAY_API.getCurrentUser();
         if (session?.role !== 'student') throw new Error('Sign in with a student account to view assignments.');
@@ -441,7 +441,7 @@ lucide.createIcons();
       button.textContent = 'Submitting...';
       const file = document.getElementById('assignmentSubmissionFile').files[0];
       try {
-        if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('The school API is required to submit assignments.');
+        if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('Assignments can’t be submitted right now. Refresh and try again.');
         await window.EDUGNAY_API.submitAssignment(activeSubmissionAssignmentId, file);
         const refreshed = await loadBackendAssignments();
         showAppToast(refreshed ? 'Assignment submitted.' : 'Your work was submitted, but the assignment list could not refresh. Reload the page to confirm.', refreshed ? 'success' : 'info');

@@ -37,7 +37,7 @@ let teacherApiUser = null;
     } catch (error) {
       console.warn('Unable to load the saved profile.', error.message);
       renderTeacherProfile({ displayName: 'Profile unavailable', schoolEmail: '', profile: {} });
-      setTeacherProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded from the school database. Refresh when the connection is restored.', true);
+      setTeacherProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded. Refresh and try again.', true);
     }
   }
 
@@ -46,7 +46,7 @@ let teacherApiUser = null;
       await window.EDUGNAY_SCHOOL_READY;
       teacherSections = await window.EDUGNAY_CONFIG.getMyTeachingSections();
     } catch (error) {
-      teacherSectionsError = error.message || 'Your assigned sections could not be loaded from the school database.';
+      teacherSectionsError = error.message || 'Your assigned sections could not be loaded. Refresh and try again.';
     } finally {
       teacherSectionsLoading = false;
       renderEmploymentDetails();

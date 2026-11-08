@@ -471,12 +471,12 @@ async function getAdminSubjectGradingConfig(req, res, next) {
     const schoolLevelId = req.query.schoolLevelId
       ? parseId(req.query.schoolLevelId, 'School level')
       : subjects[0].schoolLevelId == null ? null : Number(subjects[0].schoolLevelId);
-    if (!schoolLevelId) throw createError('Select a school level for this subject configuration.');
+    if (!schoolLevelId) throw createError('Select a school level for this subject.');
     const year = await getYearAndLevel(getDatabase(), req.user.schoolId, academicYearId, schoolLevelId);
     if (!year || !['elementary', 'jhs'].includes(year.levelCode)) throw createError('The academic year and school level do not match.', 404);
     const scopes = await getProfileGradeScopes(getDatabase(), req.user.schoolId, schoolLevelId, subjectId);
     if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
-      throw createError('The subject has no eligible numerical-grade scope in this school level and school year.', 404);
+      throw createError('This subject is not assigned to a grade in the selected school level and year.', 404);
     }
     const profile = await getProfile(getDatabase(), req.user.schoolId, academicYearId, schoolLevelId, subjectId);
     res.json({ profile: profile ? {
@@ -522,7 +522,7 @@ async function saveSubjectGradingConfig(req, res, next) {
     }
     const scopes = await getProfileGradeScopes(connection, req.user.schoolId, schoolLevelId, subjectId);
     if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
-      throw createError('The subject has no eligible numerical-grade scope in this school level and school year.', 404);
+      throw createError('This subject is not assigned to a grade in the selected school level and year.', 404);
     }
     if (getDepedK10GradeMethod(year.academicYearLabel) === 'standard') throw createError('Subject-specific DepEd rules apply beginning in SY 2026–27.', 409);
     let profile = await getProfile(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId, true);
@@ -542,7 +542,7 @@ async function saveSubjectGradingConfig(req, res, next) {
       [req.user.schoolId, profile.id]
     );
     const existingComponentIds = new Set(existingComponents.map(item => Number(item.id)));
-    if (components.some(component => component.id && !existingComponentIds.has(component.id))) throw createError('A grading component does not belong to this subject configuration.', 404);
+    if (components.some(component => component.id && !existingComponentIds.has(component.id))) throw createError('That grading component is not part of this subject. Refresh and try again.', 404);
     for (const existing of existingComponents) {
       if (components.some(component => component.id === Number(existing.id))) continue;
       const [[usage]] = await connection.execute(
@@ -666,7 +666,7 @@ async function saveK10CatalogSubjectGroupConfig(req, res, next) {
       }
       const scopes = await getProfileGradeScopes(connection, req.user.schoolId, schoolLevelId, target.subjectId);
       if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
-        throw createError('Every selected subject must have an eligible numerical-grade scope in this school year.', 404);
+        throw createError('Each selected subject must be assigned to a grade in this school year.', 404);
       }
       subjects.push(subject);
     }
@@ -701,7 +701,7 @@ async function getGradingItemUsage(connection, schoolId, column, id) {
     examPart: 'subject_grading_exam_part_id'
   };
   const field = supportedColumns[column];
-  if (!field) throw new Error('Unsupported grading configuration link type.');
+  if (!field) throw new Error('This grading component cannot be linked here.');
   const [[usage]] = await connection.execute(
     `SELECT (SELECT COUNT(*) FROM grading_items WHERE school_id = ? AND ${field} = ?)
       + (SELECT COUNT(*) FROM assignments WHERE school_id = ? AND ${field} = ?) AS total`,
@@ -744,7 +744,7 @@ async function restoreDepedSubjectDefaults(req, res, next) {
     }
     const scopes = await getProfileGradeScopes(connection, req.user.schoolId, schoolLevelId, subjectId);
     if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
-      throw createError('The subject has no eligible numerical-grade scope in this school level and school year.', 404);
+      throw createError('This subject is not assigned to a grade in the selected school level and year.', 404);
     }
     if (getDepedK10GradeMethod(year.academicYearLabel) === 'standard') {
       throw createError('Subject-specific DepEd rules apply beginning in SY 2026–27.', 409);
@@ -886,7 +886,7 @@ async function restoreDepedCatalogSubjectGroupDefaults(req, res, next) {
       throw createError('Select one or more saved subject profiles to restore.');
     }
     const subjectIds = req.body.subjectIds.map(id => parseId(id, 'Subject'));
-    if (new Set(subjectIds).size !== subjectIds.length) throw createError('A subject can only be restored once in a group request.');
+    if (new Set(subjectIds).size !== subjectIds.length) throw createError('A subject can only be selected once.');
 
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();

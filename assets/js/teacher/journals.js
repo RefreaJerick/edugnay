@@ -634,7 +634,7 @@ async function loadTeacherJournals() {
     ]);
     if (user?.role !== 'teacher') throw new Error('Only teacher accounts can review journal entries.');
     journalTeacherId = String(user.id);
-    if (!subjects.length) throw new Error('Journals are not configured for this school.');
+    if (!subjects.length) throw new Error('Weekly journals are not available for this school right now.');
 
     STUDENT_BY_ID = {};
     const sectionRecords = await Promise.all(sections.map(async section => {

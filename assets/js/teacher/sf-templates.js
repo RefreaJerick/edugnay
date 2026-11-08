@@ -118,7 +118,7 @@ function renderTemplateLibrary() {
     sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
       icon: hasTemplates ? 'search-x' : 'file-spreadsheet',
       title: hasTemplates ? 'No templates match your search or filters' : 'No SF templates available',
-      text: hasTemplates ? 'Try a different search or adjust the filters.' : 'Official templates will appear here when they are configured.'
+      text: hasTemplates ? 'Try a different search or adjust the filters.' : 'Official templates will appear here when they are available.'
     });
     return;
   }
@@ -947,7 +947,7 @@ async function downloadBlankTemplate(templateId, button) {
 async function initializeSfTemplatesPage() {
   if (!window.EDUGNAY_API?.isBackendAvailable) {
     document.querySelector('.sf-info-banner-title').textContent = 'School data unavailable';
-    document.querySelector('.sf-info-banner-text').textContent = 'Connect to the school API to use templates.';
+    document.querySelector('.sf-info-banner-text').textContent = 'School form templates are not available right now. Refresh and try again.';
     window.EDUGNAY_PAGE_LOADING.ready();
     return;
   }
@@ -966,7 +966,7 @@ async function initializeSfTemplatesPage() {
     sfState.templates = [];
     sfState.sections = [];
     const schoolFeatureDisabled = error.status === 403
-      && error.message === 'SF Templates are not enabled for this school.';
+      && error.message === 'School Form Templates are not available. Ask your school administrator to enable them in School Settings.';
     sfElements.count.textContent = 'Templates unavailable';
     sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
       icon: error.status === 403 ? 'shield-off' : 'cloud-off',

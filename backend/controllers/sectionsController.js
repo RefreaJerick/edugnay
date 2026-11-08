@@ -207,7 +207,7 @@ async function validateSectionData(connection, schoolId, values) {
 async function listSections(req, res, next) {
   try {
     const scope = String(req.query?.scope || '').trim();
-    if (scope && scope !== 'teaching') throw createError('Invalid section scope.');
+    if (scope && scope !== 'teaching') throw createError('Choose a valid section view.');
     if (scope === 'teaching' && req.user.role !== 'teacher') throw createError('Teaching sections are available to teachers only.', 403);
     const access = getAccessFilter(req, scope);
     const [sections] = await getDatabase().execute(`${sectionSelect()}${access.sql ? ` WHERE ${access.sql}` : ''}
@@ -389,7 +389,7 @@ async function listSectionStudents(req, res, next) {
 
 async function getSectionStudentDetails(req, res, next) {
   try {
-    if (req.user.role !== 'teacher') throw createError('You do not have access to this resource.', 403);
+    if (req.user.role !== 'teacher') throw createError('You don’t have permission to do that.', 403);
 
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const studentId = parseId(req.params.studentId, 'student ID');
@@ -793,7 +793,7 @@ async function removeTeacherAssignment(req, res, next) {
     if (assignments[0].subjectCode === 'shs-core-communication'
       && section.shsCurriculumCode === 'strengthened_2026' && section.gradeCode === 'grade-11'
       && !assignments[0].communicationComponentCode) {
-      throw createError('Legacy combined communication assignments are retained for review and cannot be removed.', 409);
+      throw createError('This older combined Communication assignment is kept with the class history and cannot be removed.', 409);
     }
     await connection.beginTransaction();
     transactionStarted = true;
@@ -836,7 +836,7 @@ async function updateTeacherAssignment(req, res, next) {
     if (currentRows[0].subjectCode === 'shs-core-communication'
       && section.shsCurriculumCode === 'strengthened_2026' && section.gradeCode === 'grade-11'
       && !currentRows[0].communicationComponentCode) {
-      throw createError('Legacy combined communication assignments are retained for review and cannot be changed.', 409);
+      throw createError('This older combined Communication assignment is kept with the class history and cannot be changed.', 409);
     }
     await connection.beginTransaction();
     transactionStarted = true;

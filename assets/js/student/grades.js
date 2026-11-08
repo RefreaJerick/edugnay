@@ -50,7 +50,7 @@ lucide.createIcons();
       tabs.innerHTML = STUDENT_GRADE_PERIODS.map(record => {
         const isActive = record.id === activeAcademicPeriodId;
         const isUpcoming = record.status === 'upcoming';
-        const stateLabel = record.status === 'unconfigured' ? 'Not configured' : '';
+        const stateLabel = record.status === 'unconfigured' ? 'Not set up' : '';
         return '<button class="grade-tab ' + (isActive ? 'active' : '') + '" type="button" role="tab" aria-selected="' + isActive + '"' +
           (isUpcoming ? ' aria-label="' + escapeHtml(record.label + ', not started') + '"' : '') +
           (record.disabled ? ' aria-disabled="true" disabled' : ' data-academic-period-id="' + escapeHtml(record.id) + '"') + '>' +
@@ -153,7 +153,7 @@ lucide.createIcons();
       }
       renderAcademicPeriodTabs();
       if (!STUDENT_GRADE_PERIODS.length) {
-        renderEmptyState(list, 'calendar', 'No grading periods available', 'The school has not configured grading periods for this school year.');
+        renderEmptyState(list, 'calendar', 'No grading periods available', 'No grading periods are set up for this school year.');
         note.textContent = '';
         return;
       }
@@ -164,7 +164,7 @@ lucide.createIcons();
           'No grading period is active yet',
           'The grading periods for ' + year.label + ' will be available after the school activates one.'
         );
-        note.textContent = 'Grading periods will appear here when they are configured.';
+        note.textContent = 'Grading periods will appear here after the school sets them up.';
         return;
       }
       renderSubjectGrades(record);
@@ -177,7 +177,7 @@ lucide.createIcons();
 
     async function loadStudentGradesFromApi() {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        throw new Error('The grades service is unavailable. Connect to the backend and reload this page.');
+        throw new Error('Grades aren’t available right now. Refresh and try again.');
       }
       const session = await window.EDUGNAY_API.getCurrentUser();
       if (session?.role !== 'student') {
@@ -187,7 +187,7 @@ lucide.createIcons();
 
       const portal = await window.EDUGNAY_API.getPortalFeatures();
       if (!portal?.features || !Object.hasOwn(portal.features, 'gradesEnabled')) {
-        throw new Error('Grade access could not be confirmed.');
+        throw new Error('Your grades could not be loaded. Refresh and try again.');
       }
       if (!portal.features.gradesEnabled) {
         gradeAccessRedirecting = true;

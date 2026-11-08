@@ -14,6 +14,7 @@ test('meeting validation preserves school-local dates and rejects invalid ranges
     startDate: '2026-06-01', endDate: '2026-12-31', room: 'Room 204'
   });
   assert.throws(() => controller.validateMeeting({ ...valid, endTime: '08:00' }, year), /after start/);
+  assert.throws(() => controller.validateMeeting({ ...valid, weekday: 8 }, year), /weekday/);
   assert.throws(() => controller.validateMeeting({ ...valid, endDate: '2027-04-01' }, year), /school year/);
   assert.throws(() => controller.validateMeeting({ ...valid, startDate: '2026-06-02', endDate: '2026-06-02' }, year), /weekday/);
   assert.throws(() => controller.validateMeeting({ ...valid, startDate: '2026-02-29' }, year), /valid date/);
@@ -92,6 +93,43 @@ test('timetable responses keep English and Filipino component assignments distin
   assert.deepEqual(body.meetings.map(item => [item.communicationComponentCode, item.communicationComponentName]), [
     ['english', 'Effective Communication'], ['filipino', 'Mabisang Komunikasyon']
   ]);
+});
+
+test('timetable response includes assigned term names and dates for SHS classes and meetings', async () => {
+  const elective = {
+    electiveClassId: 9, className: 'Calculus Class A', teacherId: 42,
+    startTermId: 11, endTermId: 12, startTermName: 'Term 1', startTermSequence: 1,
+    firstTermStartDate: '2026-11-06', endTermName: 'Term 2', endTermSequence: 2,
+    lastTermEndDate: '2027-03-31', classActive: 1, offeringActive: 1,
+    subjectName: 'Basic Calculus', gradeName: 'Grade 11', teacherName: 'Maria Ramirez',
+    scheduledClassId: 88, meetingId: 91, weekday: 3, startTime: '08:00', endTime: '09:00',
+    startDate: '2026-11-06', endDate: '2027-03-31', room: null
+  };
+  const queries = [];
+  database = { async execute(sql, values) {
+    queries.push({ sql, values });
+    if (sql.includes('FROM academic_years WHERE id =')) return [[{ id: 3, label: '2026-2027', status: 'active', ...year }]];
+    if (sql.includes('FROM shs_elective_classes ec')) return [[elective]];
+    return [[]];
+  } };
+  let body;
+  await controller.list({ user: { role: 'school_admin', schoolId: 2, id: 42 }, query: { academicYearId: '3' } },
+    { json(value) { body = value; } }, error => { throw error; });
+
+  assert.equal(body.electiveClasses.length, 1);
+  assert.deepEqual([
+    body.electiveClasses[0].startTermId, body.electiveClasses[0].endTermId,
+    body.electiveClasses[0].startTermName, body.electiveClasses[0].endTermName,
+    body.electiveClasses[0].firstTermStartDate, body.electiveClasses[0].lastTermEndDate
+  ], [11, 12, 'Term 1', 'Term 2', '2026-11-06', '2027-03-31']);
+  assert.equal(body.meetings[0].electiveClassId, 9);
+  assert.deepEqual([
+    body.meetings[0].startTermName, body.meetings[0].endTermName,
+    body.meetings[0].firstTermStartDate, body.meetings[0].lastTermEndDate
+  ], ['Term 1', 'Term 2', '2026-11-06', '2027-03-31']);
+  const electiveQuery = queries.find(query => query.sql.includes('FROM shs_elective_classes ec'));
+  assert.match(electiveQuery.sql, /planned_start_date/);
+  assert.match(electiveQuery.sql, /planned_end_date/);
 });
 
 test('school-year choices come from the timetable API for all three roles', async () => {

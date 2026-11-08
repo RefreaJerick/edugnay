@@ -265,8 +265,116 @@ test('admin meeting form retains native date and time values for existing picker
   assert.match(html, /academic-date-picker\.js/);
   assert.match(html, /name="startDate" type="date" required/);
   assert.match(html, /name="endDate" type="date" required/);
+  assert.match(html, /id="timetable-date-fields"/);
+  assert.match(html, /id="timetable-elective-term-summary" hidden aria-live="polite" aria-atomic="true"/);
+  assert.match(html, /<span>Class term<\/span>/);
+  assert.match(html, /id="timetable-elective-term-range"/);
+  assert.match(html, /id="timetable-elective-term-note"/);
   assert.match(html, /name="startTime" type="time" required/);
   assert.match(html, /name="endTime" type="time" required/);
+});
+
+test('SHS meeting dialog shows assigned term dates, preserves saved dates, and keeps regular dates editable', () => {
+  const script = read('assets/js/timetables.js');
+  const source = script.replace(
+    "  document.addEventListener('DOMContentLoaded', async () => {",
+    "  globalThis.updateElectiveTermSummary = updateElectiveTermSummary;\n  document.addEventListener('DOMContentLoaded', async () => {"
+  );
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, { value: '', textContent: '', hidden: false, disabled: false, required: false });
+    return elements.get(id);
+  };
+  const context = { Date, document: { addEventListener() {}, getElementById: element }, window: {} };
+  vm.runInNewContext(source, context);
+  const classes = [
+    {
+      electiveClassId: 10, startTermId: 1, endTermId: 1, startTermName: 'Term 1', endTermName: 'Term 1',
+      startTermSequence: 1, endTermSequence: 1, firstTermStartDate: '2026-11-06', lastTermEndDate: '2026-12-31',
+      startDate: null, endDate: null
+    },
+    {
+      electiveClassId: 20, startTermId: 1, endTermId: 3, startTermName: 'Term 1', endTermName: 'Term 3',
+      startTermSequence: 1, endTermSequence: 3, firstTermStartDate: '2026-11-06', lastTermEndDate: '2027-06-30',
+      startDate: '2026-11-11', endDate: '2026-12-02'
+    },
+    {
+      electiveClassId: 30, startTermId: 1, endTermId: 1, startTermName: 'Term 1', endTermName: 'Term 1',
+      startTermSequence: 1, endTermSequence: 1, firstTermStartDate: null, lastTermEndDate: null,
+      startDate: null, endDate: null
+    },
+    {
+      electiveClassId: 40, startTermId: 1, endTermId: 1, startTermName: 'Term 1', endTermName: 'Term 1',
+      startTermSequence: 1, endTermSequence: 1, firstTermStartDate: '2026-05-31', lastTermEndDate: '2026-12-31',
+      startDate: null, endDate: null
+    }
+  ];
+  const state = {
+    data: { year: { startDate: '2026-06-01', endDate: '2027-06-30' }, electiveClasses: classes },
+    editingMeeting: null
+  };
+  element('timetable-owner-type').value = 'elective';
+  element('timetable-elective-class').value = '10';
+  context.updateElectiveTermSummary(state);
+  assert.equal(element('timetable-date-fields').hidden, true);
+  assert.equal(element('timetable-elective-term-summary').hidden, false);
+  assert.equal(element('timetable-start-date').disabled, true);
+  assert.equal(element('timetable-end-date').disabled, true);
+  assert.match(element('timetable-elective-term-range').textContent, /Term 1 · Nov 6–Dec 31, 2026/);
+  assert.equal(element('timetable-elective-term-note').textContent, 'New meetings will cover the full term.');
+  assert.equal(element('timetable-save').disabled, false);
+
+  element('timetable-elective-class').value = '20';
+  context.updateElectiveTermSummary(state);
+  assert.match(element('timetable-elective-term-range').textContent, /Term 1–Term 3 · Nov 6, 2026–Jun 30, 2027/);
+  assert.equal(element('timetable-elective-term-note').textContent, 'New meetings will cover the full term.');
+  assert.equal(element('timetable-save').disabled, false);
+
+  element('timetable-elective-class').value = '30';
+  context.updateElectiveTermSummary(state);
+  assert.match(element('timetable-elective-term-range').textContent, /^$/);
+  assert.match(element('timetable-elective-term-note').textContent, /no valid assigned term dates/i);
+  assert.equal(element('timetable-save').disabled, true);
+
+  element('timetable-elective-class').value = '40';
+  context.updateElectiveTermSummary(state);
+  assert.match(element('timetable-elective-term-note').textContent, /no valid assigned term dates/i);
+  assert.equal(element('timetable-save').disabled, true);
+
+  element('timetable-elective-class').value = '20';
+  state.editingMeeting = { startDate: classes[1].startDate, endDate: classes[1].endDate };
+  context.updateElectiveTermSummary(state);
+  assert.match(element('timetable-elective-term-range').textContent, /Term 1–Term 3/);
+  assert.match(element('timetable-elective-term-note').textContent, /keep its saved dates: Nov 11.{1}Dec 2, 2026/i);
+  assert.equal(element('timetable-save').disabled, false);
+
+  element('timetable-elective-class').value = '10';
+  state.editingMeeting = { startDate: '2026-11-11', endDate: '2026-12-02' };
+  context.updateElectiveTermSummary(state);
+  assert.match(element('timetable-elective-term-note').textContent, /keep its saved dates: Nov 11.{1}Dec 2, 2026/i);
+  assert.equal(element('timetable-save').disabled, false);
+  state.editingMeeting = { startDate: '2026-10-01', endDate: '2026-12-02' };
+  context.updateElectiveTermSummary(state);
+  assert.match(element('timetable-elective-term-note').textContent, /outside this class term.*Review the class term/i);
+  assert.equal(element('timetable-save').disabled, true);
+
+  element('timetable-elective-class').value = '';
+  state.editingMeeting = null;
+  context.updateElectiveTermSummary(state);
+  assert.match(element('timetable-elective-term-range').textContent, /^$/);
+  assert.match(element('timetable-elective-term-note').textContent, /choose an SHS class/i);
+  assert.equal(element('timetable-save').disabled, true);
+
+  element('timetable-owner-type').value = 'section';
+  context.updateElectiveTermSummary(state);
+  assert.equal(element('timetable-date-fields').hidden, false);
+  assert.equal(element('timetable-elective-term-summary').hidden, true);
+  assert.equal(element('timetable-start-date').disabled, false);
+  assert.equal(element('timetable-end-date').disabled, false);
+  assert.equal(element('timetable-start-date').required, true);
+  assert.equal(element('timetable-end-date').required, true);
+  assert.equal(element('timetable-save').disabled, false);
+  assert.match(script, /timetable-elective-class'\)\.addEventListener\('change', \(\) => updateElectiveTermSummary\(state\)\)/);
 });
 
 test('meeting dialog separates section, subject, and assigned teacher without long dash labels', () => {

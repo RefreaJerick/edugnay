@@ -128,7 +128,7 @@ lucide.createIcons();
         <button class="grade-tab ${period.id === activeAcademicPeriodId ? 'active' : ''}" type="button" role="tab" aria-selected="${period.id === activeAcademicPeriodId}" ${period.status === 'upcoming' ? `aria-label="${window.EDUGNAY_CONFIG.escapeHtml(period.label + ', not started')}"` : ''} ${period.disabled ? 'aria-disabled="true" disabled' : `data-academic-period-id="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}"`}>
           <span>${window.EDUGNAY_CONFIG.escapeHtml(period.label)}</span>
           ${period.status === 'upcoming' ? '<i class="grade-tab-status-icon" data-lucide="lock" aria-hidden="true"></i>' : ''}
-          ${period.status === 'unconfigured' ? '<small class="grade-tab-status">Not configured</small>' : ''}
+          ${period.status === 'unconfigured' ? '<small class="grade-tab-status">Not set up</small>' : ''}
         </button>`).join('');
       tabs.querySelectorAll('[data-academic-period-id]').forEach(button => button.addEventListener('click', () => {
         activeAcademicPeriodId = button.dataset.academicPeriodId;
@@ -236,7 +236,7 @@ lucide.createIcons();
       }
       renderAcademicPeriodTabs();
       if (!PARENT_GRADE_PERIODS.length) {
-        renderEmptyState(list, 'calendar', 'No grading periods available', 'The school has not configured grading periods for ' + year.label + '.');
+        renderEmptyState(list, 'calendar', 'No grading periods available', 'No grading periods are set up for ' + year.label + '.');
         note.textContent = '';
         return;
       }
@@ -256,7 +256,7 @@ lucide.createIcons();
 
     async function loadBackendParentChildren() {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        childLoadError = 'The grades service is unavailable. Connect to the backend and reload this page.';
+        childLoadError = 'Grades aren’t available right now. Refresh and try again.';
         gradeLoadError = childLoadError;
         return;
       }
@@ -268,7 +268,7 @@ lucide.createIcons();
           return;
         }
       } catch (error) {
-        childLoadError = error.message || 'Grade access could not be confirmed.';
+        childLoadError = error.message || 'Grades could not be loaded. Refresh and try again.';
         gradeLoadError = childLoadError;
         return;
       }

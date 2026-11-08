@@ -70,7 +70,7 @@ test('teacher grading periods belong only to the selected section year and level
 
   vm.runInContext('CURRENT_BACKEND_SECTION.academicYearId = 12', context);
   assert.equal(await vm.runInContext('loadBackendGradeData()', context), false);
-  assert.match(vm.runInContext('BACKEND_GRADE_ERROR', context), /No grading periods are configured/);
+  assert.match(vm.runInContext('BACKEND_GRADE_ERROR', context), /No grading periods are set up/);
   assert.equal(vm.runInContext('ACADEMIC_PERIODS.length', context), 0);
   assert.equal(vm.runInContext('getBackendTermId(2)', context), null);
 });

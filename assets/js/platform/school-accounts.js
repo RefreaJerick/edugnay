@@ -190,7 +190,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
         const periodType = { quarterly: 'Quarterly', trimestral: 'Three-term', semestral: 'Semestral' }[level.gradingPeriodType];
         return {
           level: level.displayName,
-          structure: periodType || 'Not configured',
+          structure: periodType || 'Not set up',
           count
         };
       });
@@ -229,7 +229,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
           </div>
           <div class="account-review-feature-list">
             ${portalFeatures.map(feature => `<div class="account-review-feature-row"><span class="account-review-feature-label">${feature.label}</span><span class="account-review-feature-status ${feature.enabled ? 'enabled' : 'disabled'}"><i data-lucide="${feature.enabled ? 'circle-check' : 'circle-off'}" aria-hidden="true"></i>${feature.enabled ? 'Enabled' : 'Disabled'}</span></div>`).join('')}
-            <div class="account-review-feature-row"><span class="account-review-feature-label">Journal subject</span><span class="account-review-feature-value">${escapeHtml(journalSubject?.name || 'Not configured')}</span></div>
+            <div class="account-review-feature-row"><span class="account-review-feature-label">Journal subject</span><span class="account-review-feature-value">${escapeHtml(journalSubject?.name || 'Not set up')}</span></div>
           </div>
         </section>`;
 
@@ -244,13 +244,13 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
       const deliveryStatusLabel = {
         pending: 'Queued',
         sending: 'Sending',
-        sent: 'Accepted by Gmail SMTP — inbox delivery unconfirmed',
+        sent: 'Email service accepted it — inbox delivery is not confirmed',
         skipped: 'Skipped',
         failed: 'Failed'
       }[emailDelivery?.status] || 'No school account email queued';
       const emailSection = document.createElement('section');
       emailSection.className = 'account-review-section';
-      emailSection.innerHTML = '<div class="account-review-section-head"><div><div class="account-review-section-title">Latest school account email</div><div class="account-review-section-sub">SMTP acceptance does not confirm inbox delivery.</div></div></div><div class="account-review-feature-list"></div>';
+      emailSection.innerHTML = '<div class="account-review-section-head"><div><div class="account-review-section-title">Latest school account email</div><div class="account-review-section-sub">The email service accepted it, but we cannot confirm it reached the recipient’s inbox.</div></div></div><div class="account-review-feature-list"></div>';
       if (emailDelivery?.decision) {
         const emailTitles = {
           approved: 'Approval email',
@@ -275,7 +275,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
         if (emailDelivery.smtpMessageId) {
           const referenceRow = document.createElement('div');
           referenceRow.className = 'account-review-feature-row';
-          referenceRow.innerHTML = '<span class="account-review-feature-label">SMTP message reference</span><span class="account-review-feature-value"></span>';
+          referenceRow.innerHTML = '<span class="account-review-feature-label">Email delivery reference</span><span class="account-review-feature-value"></span>';
           referenceRow.querySelector('.account-review-feature-value').textContent = emailDelivery.smtpMessageId;
           emailList.appendChild(referenceRow);
         }
@@ -287,9 +287,9 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
         if (emailDelivery.lastError) {
           const errorRow = document.createElement('div');
           errorRow.className = 'account-review-feature-row';
-          errorRow.innerHTML = '<span class="account-review-feature-label">Last error</span><span class="account-review-feature-value"></span>';
+          errorRow.innerHTML = '<span class="account-review-feature-label">Delivery error details</span><span class="account-review-feature-value"></span>';
           errorRow.querySelector('.account-review-feature-value').textContent = emailDelivery.lastError === 'smtp_outcome_unknown'
-            ? 'SMTP outcome unknown; check the sender’s Sent folder before retrying.'
+            ? 'The delivery result is unclear. Check the sender’s Sent folder before retrying.'
             : emailDelivery.lastError;
           emailList.appendChild(errorRow);
         }
@@ -568,7 +568,7 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
         await refreshSchoolAccounts();
       } catch (error) {
         document.getElementById('schoolAccountResultCount').textContent = 'Unavailable';
-        document.getElementById('schoolAccountList').innerHTML = `<tr><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'School accounts unavailable', text: error?.message || 'Try again after the connection is restored.' })}</td></tr>`;
+        document.getElementById('schoolAccountList').innerHTML = `<tr><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'School accounts unavailable', text: error?.message || 'Refresh and try again.' })}</td></tr>`;
         showAppToast(error?.message || 'The school accounts could not be loaded.', 'error');
       }
       if (window.lucide) window.lucide.createIcons();

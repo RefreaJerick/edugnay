@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const { getDatabase } = require('../config/database');
 const { getCatalogEntry, matchesCatalogSnapshot } = require('../config/shsApprovedCatalog');
 const { confirmationStatus, evaluateCompletion, subjectGradeStatus } = require('../config/shsCompletion');
+const { loadShsFinalGradeRules } = require('../utils/shsFinalGradeRules');
 const { writeAuditLog } = require('../utils/auditLog');
 
 function fail(message, status = 400) { const error = new Error(message); error.status = status; throw error; }
@@ -83,7 +84,7 @@ async function termList(db, schoolId, yearId, levelId) {
   return rows;
 }
 
-async function loadCoreSubjects(db, schoolId, section, studentId, terms) {
+async function loadCoreSubjects(db, schoolId, section, studentId, terms, finalRules) {
   if (!section) return [];
   const [subjects] = await db.execute(
     `SELECT sub.id AS subjectId, sub.name AS subjectName,
@@ -111,12 +112,12 @@ async function loadCoreSubjects(db, schoolId, section, studentId, terms) {
       [section.academicYearId, schoolId, section.sectionId, subject.subjectId, studentId]
     );
     result.push({ ...subject, instructionalHours: Number(subject.instructionalHours || 0),
-      gradeStatus: subjectGradeStatus(terms, grades), evidence: grades.map(row => ({ ...row, finalGrade: Number(row.finalGrade) })) });
+      gradeStatus: subjectGradeStatus(terms, grades, finalRules), evidence: grades.map(row => ({ ...row, finalGrade: Number(row.finalGrade) })) });
   }
   return result;
 }
 
-async function loadRequest(db, schoolId, section, studentId) {
+async function loadRequest(db, schoolId, section, studentId, finalRules) {
   if (!section) return null;
   const [rows] = await db.execute(
     `SELECT id, pathway_code AS pathwayCode, status FROM shs_selection_requests
@@ -172,7 +173,7 @@ async function loadRequest(db, schoolId, section, studentId) {
     item.gradeStatus = subjectGradeStatus(terms.filter(term =>
       item.startTermSequence && item.endTermSequence
       && Number(term.sequenceNumber) >= Number(item.startTermSequence)
-      && Number(term.sequenceNumber) <= Number(item.endTermSequence)), grades);
+      && Number(term.sequenceNumber) <= Number(item.endTermSequence)), grades, finalRules);
     item.evidence = grades.map(row => ({ ...row, finalGrade: Number(row.finalGrade) }));
     const entry = getCatalogEntry(item.catalogCode);
     item.catalogMatched = matchesCatalogSnapshot(entry, {
@@ -212,14 +213,23 @@ async function loadPriorHistory(db, schoolId, studentId) {
   });
 }
 
-async function buildLearnerChecklist(db, schoolId, year, learner) {
+async function buildLearnerChecklist(db, schoolId, year, learner, rulesCache = new Map()) {
   const grade12 = learner;
   const grade11 = await findGrade11Section(db, schoolId, learner.studentId, year.startDate);
   const grade11Terms = grade11 ? await termList(db, schoolId, grade11.academicYearId, grade11.schoolLevelId) : [];
   const grade12Terms = await termList(db, schoolId, grade12.academicYearId, grade12.schoolLevelId);
-  const coreSubjects = await loadCoreSubjects(db, schoolId, grade11, learner.studentId, grade11Terms);
-  const grade11Request = await loadRequest(db, schoolId, grade11, learner.studentId);
-  const grade12Request = await loadRequest(db, schoolId, grade12, learner.studentId);
+  const rulesFor = async section => {
+    if (!section) return null;
+    const key = `${section.academicYearId}:${section.schoolLevelId}`;
+    if (!rulesCache.has(key)) rulesCache.set(key, await loadShsFinalGradeRules(db, { schoolId,
+      yearId: section.academicYearId, levelId: section.schoolLevelId, yearLabel: section.yearLabel }));
+    return rulesCache.get(key);
+  };
+  const grade11Rules = await rulesFor(grade11);
+  const grade12Rules = await rulesFor(grade12);
+  const coreSubjects = await loadCoreSubjects(db, schoolId, grade11, learner.studentId, grade11Terms, grade11Rules);
+  const grade11Request = await loadRequest(db, schoolId, grade11, learner.studentId, grade11Rules);
+  const grade12Request = await loadRequest(db, schoolId, grade12, learner.studentId, grade12Rules);
   const priorHistory = await loadPriorHistory(db, schoolId, learner.studentId);
   const result = evaluateCompletion({ grade12StartYear: Number(year.startYear),
     grade11TrackCode: grade11?.trackCode || null, grade12TrackCode: grade12.trackCode || null,
@@ -274,8 +284,9 @@ async function list(req, res, next) {
     const year = await getYear(db, schoolId, yearId);
     const learners = await findLearnerGrade12(db, schoolId, yearId);
     const candidates = [];
+    const rulesCache = new Map();
     for (const learner of learners) {
-      candidates.push(await attachConfirmation(db, schoolId, await buildLearnerChecklist(db, schoolId, year, learner)));
+      candidates.push(await attachConfirmation(db, schoolId, await buildLearnerChecklist(db, schoolId, year, learner, rulesCache)));
     }
     res.set('Cache-Control', 'no-store');
     res.json({ year: { id: String(year.id), label: year.label, status: year.status }, candidates });

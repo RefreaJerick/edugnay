@@ -58,6 +58,7 @@ test('school report uses published grades and the signed-in school year scope', 
   assert.match(gradeQuery.sql, /school_grade_levels\.grade_code IN \('grade-2', 'grade-3'\)/);
   assert.match(gradeQuery.sql, /final_grade_rules\.grading_mode = 'school_specific'/);
   assert.match(gradeQuery.sql, /THEN final_grade_rules\.passing_grade_threshold ELSE 75 END/);
+  assert.match(gradeQuery.sql, /WHEN school_levels\.level_code = 'shs' THEN CASE/);
   assert.match(gradeQuery.sql, /ELSE school_levels\.passing_grade_threshold/);
   assert.equal(result.headers['Cache-Control'], 'no-store');
 });
@@ -91,7 +92,9 @@ test('school report includes released Strengthened SHS elective grades with the 
   assert.match(electiveQuery.sql, /school_levels\.level_code = 'shs'/);
   assert.match(electiveQuery.sql, /grade_code IN \('grade-11', 'grade-12'\)/);
   assert.doesNotMatch(electiveQuery.sql, /strengthened_shs_grade12_pilot/);
-  assert.match(electiveQuery.sql, /final_grade >= 75/);
+  assert.match(electiveQuery.sql, /final_grade_rules\.grading_mode = 'school_specific'/);
+  assert.match(electiveQuery.sql, /final_grade_rules\.passing_grade_threshold ELSE 75 END/);
+  assert.deepEqual(electiveQuery.values, [3, 12]);
 });
 
 test('school report rejects an academic year that does not belong to the signed-in school', async () => {

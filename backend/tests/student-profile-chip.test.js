@@ -142,6 +142,12 @@ test('all portal roles restore the verified profile chip before account refresh'
   }
 });
 
+test('an incomplete account response gives a clear sign-in message', async () => {
+  const harness = createHarness(roles[0], snapshotFor(roles[0]));
+  harness.context.requestApi = async () => ({ user: {} });
+  await assert.rejects(harness.context.getCurrentUser(), /Your sign-in information couldn’t be loaded\. Sign in again\./);
+});
+
 test('legacy student display snapshots still restore and migrate to the shared key', () => {
   const account = roles[0];
   const harness = createHarness(account, snapshotFor(account), legacyKey);

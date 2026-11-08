@@ -89,7 +89,7 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
       }
 
       if (AUTH_CONFIG.frontendOnly) {
-        setAuthMessage('forgotMessage', 'Password recovery will be available after verified email delivery is configured.', true);
+        setAuthMessage('forgotMessage', 'Password recovery is not available right now. Contact your school administrator.', true);
         return;
       }
 
@@ -216,13 +216,13 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
       setSubmitting(submitButton, true, 'Signing in...');
       try {
         if (!AUTH_CONFIG.apiBaseUrl) {
-          throw new Error('The API address has not been configured.');
+          throw new Error('Sign-in isn’t available right now. Refresh and try again.');
         }
 
         const { user } = await postAuthData('/auth/login', { schoolEmail, password });
         clearPortalCachesForSignIn();
         const destination = destinationForUser(user);
-        if (!destination) throw new Error('This account does not have a portal route.');
+        if (!destination) throw new Error('This account cannot access a portal. Contact your school administrator.');
         window.location.href = destination;
       } catch (error) {
         setAuthMessage('signInMessage', error.message || 'Unable to sign in right now. Please try again.', true);

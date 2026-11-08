@@ -2,6 +2,7 @@ const { getDatabase } = require('../config/database');
 const { getCatalogEntry } = require('../config/shsApprovedCatalog');
 const { policyFor, defaultComponents, componentWeights, componentsEqual } = require('../config/shsGrading');
 const { writeAuditLog } = require('../utils/auditLog');
+const { GRADING_MODES, ROUNDING_RULES, loadShsFinalGradeRules } = require('../utils/shsFinalGradeRules');
 
 function fail(message, status = 400) { const error = new Error(message); error.status = status; throw error; }
 function id(value, label) {
@@ -16,6 +17,13 @@ async function yearFor(db, schoolId, yearId, lock = false) {
   );
   if (!rows.length) fail('School year not found.', 404);
   return rows[0];
+}
+async function shsLevelFor(db, schoolId) {
+  const [rows] = await db.execute(
+    "SELECT id FROM school_levels WHERE school_id = ? AND level_code = 'shs' LIMIT 1", [schoolId]
+  );
+  if (!rows.length) fail('Senior High School is not configured for this school.', 404);
+  return Number(rows[0].id);
 }
 async function subjectsFor(db, schoolId, yearId, yearLabel) {
   const [core] = await db.execute(
@@ -82,8 +90,62 @@ async function list(req, res, next) {
     const yearId = id(req.query.academicYearId, 'school year ID');
     const db = getDatabase();
     const year = await yearFor(db, req.user.schoolId, yearId);
-    res.json({ year, subjects: await subjectsFor(db, req.user.schoolId, yearId, year.label) });
+    const levelId = await shsLevelFor(db, req.user.schoolId);
+    const finalGradeRules = await loadShsFinalGradeRules(db, {
+      schoolId: req.user.schoolId, yearId, levelId, yearLabel: year.label, includeLock: true
+    });
+    res.json({ year, finalGradeRules, subjects: await subjectsFor(db, req.user.schoolId, yearId, year.label) });
   } catch (error) { next(error); }
+}
+async function saveFinalGradeRules(req, res, next) {
+  let connection;
+  let started = false;
+  try {
+    connection = await getDatabase().getConnection();
+    const input = req.body || {};
+    const schoolId = req.user.schoolId;
+    const yearId = id(input.academicYearId, 'school year ID');
+    const gradingMode = String(input.gradingMode || '');
+    if (!GRADING_MODES.has(gradingMode)) fail('Select a valid final-grade method.');
+    let passingGradeThreshold = 75;
+    let gradeRounding = 'round';
+    if (gradingMode === 'school_specific') {
+      if (input.passingGradeThreshold == null || input.passingGradeThreshold === '')
+        fail('Enter a passing grade.');
+      passingGradeThreshold = Number(input.passingGradeThreshold);
+      if (!Number.isFinite(passingGradeThreshold) || passingGradeThreshold < 0
+        || passingGradeThreshold > 100 || Math.abs(passingGradeThreshold * 100 - Math.round(passingGradeThreshold * 100)) > 1e-7)
+        fail('Passing grade must be between 0 and 100 with at most two decimal places.');
+      gradeRounding = String(input.gradeRounding || '');
+      if (!ROUNDING_RULES.has(gradeRounding)) fail('Select a valid grade-rounding rule.');
+    }
+    await connection.beginTransaction(); started = true;
+    const year = await yearFor(connection, schoolId, yearId, true);
+    if (year.status !== 'active') fail('Final-grade rules can only be changed for the active school year.', 409);
+    const startYear = Number(String(year.label || '').match(/20\d{2}/)?.[0]);
+    if (!Number.isInteger(startYear) || startYear < 2026)
+      fail('SHS final-grade rules are available beginning in SY 2026–27.', 409);
+    const levelId = await shsLevelFor(connection, schoolId);
+    const current = await loadShsFinalGradeRules(connection, {
+      schoolId, yearId, levelId, yearLabel: year.label, includeLock: true
+    });
+    if (current.locked) fail('Final-grade rules are locked because SHS grades have been published for this school year.', 409);
+    await connection.execute(
+      `INSERT INTO school_year_final_grade_rules
+        (school_id, academic_year_id, school_level_id, grading_mode, passing_grade_threshold, grade_rounding)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE grading_mode = VALUES(grading_mode),
+         passing_grade_threshold = VALUES(passing_grade_threshold), grade_rounding = VALUES(grade_rounding)`,
+      [schoolId, yearId, levelId, gradingMode, passingGradeThreshold, gradeRounding]
+    );
+    await writeAuditLog(connection, req, 'shs_final_grade_rules_saved', 'school_year_final_grade_rules', yearId, {
+      summary: `${year.label} Senior High School final-grade rules`, schoolYearLabel: year.label,
+      gradingMode, passingGradeThreshold, gradeRounding
+    });
+    await connection.commit(); started = false;
+    res.json({ saved: true });
+  } catch (error) { if (started) await connection.rollback(); next(error); }
+  finally { connection?.release(); }
 }
 function parseJson(value, fallback) {
   if (value == null || value === '') return fallback;
@@ -238,4 +300,4 @@ async function change(req, res, next, restore = false) {
   } catch (error) { if (started) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 module.exports = { list, save: (req, res, next) => change(req, res, next),
-  restore: (req, res, next) => change(req, res, next, true), validateRule };
+  restore: (req, res, next) => change(req, res, next, true), saveFinalGradeRules, validateRule };

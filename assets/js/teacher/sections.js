@@ -340,7 +340,7 @@ lucide.createIcons();
       closeScoreComponentMenu();
       if (wasOpen) return;
       if (!hasScoreEditingAccess(document.getElementById('academicPeriodSelect').value)) {
-        showAppToast('This grading period is locked. Request temporary access before deleting a component.', 'error');
+        showAppToast('This grading period is not active. Ask your school administrator to review access before deleting a component.', 'error');
         return;
       }
       const menu = document.getElementById('scoreComponentMenu');
@@ -482,7 +482,7 @@ lucide.createIcons();
 
     async function initializeTeacherSectionContext() {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        BACKEND_SECTION_ERROR = 'The school API is required to load assigned sections.';
+        BACKEND_SECTION_ERROR = 'Your assigned sections could not be loaded. Refresh and try again.';
         return false;
       }
 
@@ -618,7 +618,7 @@ lucide.createIcons();
         CURRENT_SUBJECT = 'Subject unavailable';
         STUDENTS = [];
         BACKEND_GRADE_CONTEXT = { sectionId: '', subjectId: '', students: [] };
-        BACKEND_SECTION_ERROR = error?.message || 'Assigned sections could not be loaded.';
+        BACKEND_SECTION_ERROR = 'Your assigned sections could not be loaded. Refresh and try again.';
         return false;
       }
     }
@@ -818,7 +818,7 @@ lucide.createIcons();
     async function loadBackendMaterials() {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
         TEACHER_MATERIALS = [];
-        backendMaterialsError = 'The materials API is unavailable.';
+        backendMaterialsError = 'Learning materials are not available right now. Refresh and try again.';
         renderTeacherMaterials();
         return;
       }
@@ -839,7 +839,7 @@ lucide.createIcons();
         }));
       } catch (error) {
         TEACHER_MATERIALS = [];
-        backendMaterialsError = error.message;
+        backendMaterialsError = 'Learning materials could not be loaded. Refresh and try again.';
       }
       renderTeacherMaterials();
     }
@@ -969,7 +969,7 @@ lucide.createIcons();
 
     async function loadBackendGradeData() {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        BACKEND_GRADE_ERROR = 'The grade service is unavailable. Connect to the backend and reload this page.';
+        BACKEND_GRADE_ERROR = 'Scores are not available right now. Refresh and try again.';
         return false;
       }
       if (!CURRENT_BACKEND_SECTION || !CURRENT_SUBJECT_ASSIGNMENT || !hasValidBackendSubjectAssignment()) {
@@ -1010,7 +1010,7 @@ lucide.createIcons();
             }))
             : []
           : gradingSettings.gradingCategories;
-        if (!terms.length) throw new Error('No grading periods are configured for this section’s academic year. Ask your administrator to set them up.');
+        if (!terms.length) throw new Error('No grading periods are set up for this school year. Ask your school administrator to add them.');
 
         const [gradingItems, scores, publishedGrades] = await Promise.all([
           window.EDUGNAY_API.getGradingItems({ sectionId: section.id,
@@ -1078,11 +1078,13 @@ lucide.createIcons();
         refreshAssignmentCategoryOptions();
         const addScoreButton = document.getElementById('addScoreComponentButton');
         addScoreButton.disabled = Boolean(subjectGradingConfig.applicable && !subjectGradingConfig.configured);
-        addScoreButton.title = addScoreButton.disabled ? 'Ask School Admin to configure this subject first.' : '';
+        addScoreButton.title = addScoreButton.disabled ? 'This subject’s grading rules are not set up yet. Ask your school administrator for help.' : '';
         return true;
       } catch (error) {
         console.warn('Assignments and scores API could not be loaded.', error.message);
-        BACKEND_GRADE_ERROR = error?.message || 'Grade data could not be loaded from the backend.';
+        BACKEND_GRADE_ERROR = error?.message?.startsWith('No grading periods are set up for this school year.')
+          ? error.message
+          : 'Grade data could not be loaded. Refresh and try again.';
         BACKEND_GRADE_CONTEXT = null;
         BACKEND_CATEGORIES = [];
         BACKEND_SUBJECT_GRADING_CONFIG = null;
@@ -1107,7 +1109,7 @@ lucide.createIcons();
 
     async function loadBackendAttendanceData() {
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        BACKEND_ATTENDANCE_ERROR = 'The attendance API is not available.';
+        BACKEND_ATTENDANCE_ERROR = 'Attendance is not available right now. Refresh and try again.';
         return false;
       }
 
@@ -1142,7 +1144,7 @@ lucide.createIcons();
         return true;
       } catch (error) {
         BACKEND_ATTENDANCE_CONTEXT = null;
-        BACKEND_ATTENDANCE_ERROR = error?.message || 'Attendance could not be loaded.';
+        BACKEND_ATTENDANCE_ERROR = 'Attendance could not be loaded. Refresh and try again.';
         BACKEND_ATTENDANCE_HISTORY_ERROR = BACKEND_ATTENDANCE_ERROR;
         console.warn('Attendance API could not be initialized.', BACKEND_ATTENDANCE_ERROR);
         return false;
@@ -1691,7 +1693,7 @@ lucide.createIcons();
       }
       const academicTermId = getBackendTermId(pendingReopenAcademicPeriodId);
       if (!isBackendGradeMode() || !academicTermId) {
-        feedback.textContent = 'The selected grading period is not available from the backend. Reload the page and try again.';
+        feedback.textContent = 'That grading period is not available. Refresh and try again.';
         feedback.hidden = false;
         return;
       }
@@ -1777,27 +1779,27 @@ lucide.createIcons();
         banner.style.background = 'var(--gray-100)';
         titleEl.style.color = 'var(--gray-700)';
         titleEl.textContent = 'Reopen Request Rejected';
-        descEl.textContent = req.adminNote ? 'Admin note: "' + req.adminNote + '"' : 'This grading period is closed. Scores are read-only.';
+        descEl.textContent = req.adminNote ? 'Administrator’s note: "' + req.adminNote + '"' : 'Your request was not approved. This grading period is read-only.';
         actionEl.innerHTML = '<button class="top-btn secondary" data-page-click="gc9daf67aebf2"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
       } else if (req && requestState === 'revoked') {
         banner.style.background = 'var(--gray-100)';
         titleEl.style.color = 'var(--gray-700)';
-        titleEl.textContent = 'Temporary Access Revoked';
-        descEl.textContent = req.revokeReason ? 'Admin reason: "' + req.revokeReason + '"' : 'Score editing has been locked by the school administrator.';
+        titleEl.textContent = 'Grade-editing access ended';
+        descEl.textContent = req.revokeReason ? 'School administrator’s note: "' + req.revokeReason + '"' : 'You can no longer change grades for this period.';
         actionEl.innerHTML = '<button class="top-btn secondary" data-page-click="gc9daf67aebf2"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
       } else if (req && requestState === 'expired') {
         banner.style.background = 'var(--gray-100)';
         titleEl.style.color = 'var(--gray-700)';
-        titleEl.textContent = 'Reopen Access Expired';
+        titleEl.textContent = 'Grade-editing access ended';
         descEl.textContent = req.expiresAt
-          ? 'Temporary editing access ended on ' + window.EDUGNAY_CONFIG.formatDateTime(req.expiresAt) + '.'
-          : 'This older approval has no expiration and is no longer valid.';
+          ? 'Your approved editing period ended on ' + window.EDUGNAY_CONFIG.formatDateTime(req.expiresAt) + '.'
+          : 'This approval is no longer active. Ask your school administrator if you still need to change grades.';
         actionEl.innerHTML = '<button class="top-btn secondary" data-page-click="gc9daf67aebf2"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
       } else {
         banner.style.background = 'var(--gray-100)';
         titleEl.style.color = 'var(--gray-700)';
-        titleEl.textContent = periodName + ' is locked';
-        descEl.textContent = 'This grading period is closed. Scores are read-only. You can request the admin to reopen it.';
+        titleEl.textContent = periodName + ' is closed';
+        descEl.textContent = 'Grades for this period cannot be changed right now. You can ask your school administrator to reopen it.';
         actionEl.innerHTML = '<button class="top-btn secondary" data-page-click="gc9daf67aebf2"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Reopen</button>';
       }
       lucide.createIcons();
@@ -1826,7 +1828,7 @@ lucide.createIcons();
             academicTermId
           });
         } catch (error) {
-          access = { canEdit: false, termStatus: period?.status, error: error.message || 'The server could not verify editing access.' };
+          access = { canEdit: false, termStatus: period?.status, error: 'We could not confirm that you can edit this item. Refresh and try again.' };
         }
         if (requestNumber !== gradeAccessRequestNumber) return;
         if (academicTermId) gradeEditAccessByTerm.set(String(academicTermId), access);
@@ -1891,7 +1893,7 @@ lucide.createIcons();
 
     function requireScoreEditingAccess(academicPeriodId, showAlert = true) {
       if (hasScoreEditingAccess(academicPeriodId)) return true;
-      const message = academicPeriodName(academicPeriodId) + ' is locked. Score changes were not saved.';
+      const message = academicPeriodName(academicPeriodId) + ' is not active. Your score changes were not saved.';
       Object.entries(scoreSaveTimers).forEach(([scoreId, timer]) => {
         const record = pendingBackendScoreValues.get(scoreId);
         if (record?.academicPeriodId !== academicPeriodId) return;
@@ -1902,7 +1904,7 @@ lucide.createIcons();
       });
       updateScoreFooter();
       void switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
-      if (showAlert) alert(academicPeriodName(academicPeriodId) + ' is locked. Request temporary access before changing scores.');
+      if (showAlert) alert(academicPeriodName(academicPeriodId) + ' is not active. Ask your school administrator to review access before changing grades.');
       return false;
     }
 
@@ -1998,7 +2000,7 @@ lucide.createIcons();
     function openScoreComponentModal() {
       if (new URLSearchParams(window.location.search).has('classId') || USE_SHS_CORE_GRADEBOOK) return;
       if (BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured) {
-        showAppToast('Ask School Admin to apply or configure this subject’s grading rules first.', 'error');
+        showAppToast('This subject’s grading rules are not set up yet. Ask your school administrator for help.', 'error');
         return;
       }
       renderScoreComponentChoices();
@@ -2045,7 +2047,7 @@ lucide.createIcons();
       const max = document.getElementById('compMaxInput').value.trim();
       if (!name || !max) { alert('Please fill in component name and highest score.'); return; }
       if (BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured) {
-        showAppToast('Ask School Admin to apply or configure this subject’s grading rules first.', 'error');
+        showAppToast('This subject’s grading rules are not set up yet. Ask your school administrator for help.', 'error');
         return;
       }
       if (isBackendGradeMode()) {
@@ -2053,7 +2055,7 @@ lucide.createIcons();
         const category = getBackendCategory(selectedCompCat);
         const examPartId = category?.examParts?.length ? Number(document.getElementById('scoreExamPartInput').value) : null;
         if (!academicTermId || !category) {
-          alert('The selected grading period or category is not available in the backend yet.');
+          alert('That grading period or score category is not available yet. Refresh and try again.');
           return;
         }
         if (category.examParts?.length && !examPartId) {
@@ -2079,7 +2081,7 @@ lucide.createIcons();
         return;
       }
 
-      showAppToast(BACKEND_GRADE_ERROR || 'Grade recording requires the API.', 'error');
+      showAppToast(BACKEND_GRADE_ERROR || 'Scores cannot be recorded right now. Refresh and try again.', 'error');
     }
 
     /* ── GRADE COMPUTATION ── */
@@ -2278,7 +2280,7 @@ lucide.createIcons();
       if (!isBackendGradeMode()) {
         window.TeacherClassViews.renderScoreTable({
           host: document.querySelector('#content-scores .panel'),
-          empty: { noItems: { icon: 'circle-alert', title: 'Grade data unavailable', text: BACKEND_GRADE_ERROR || 'Grade data could not be loaded from the backend.' } }
+          empty: { noItems: { icon: 'circle-alert', title: 'Grade data unavailable', text: BACKEND_GRADE_ERROR || 'Grade data could not be loaded. Refresh and try again.' } }
         });
         updateSectionHeader(academicPeriodId);
         updateScoreFooter();
@@ -2363,8 +2365,8 @@ lucide.createIcons();
         empty: {
           noItems: gradingRulesNeedConfiguration ? {
             icon: 'triangle-alert',
-            title: 'Grading rules need configuration',
-            text: 'Ask School Admin to apply DepEd defaults or configure this subject before recording scores.'
+            title: 'Grading rules need to be set up',
+            text: 'Ask your school administrator to apply DepEd defaults or set up this subject before recording scores.'
           } : undefined
         }
       });
@@ -2537,7 +2539,7 @@ lucide.createIcons();
         delete scoreSaveTimers[scoreId];
         if (!requireScoreEditingAccess(record.academicPeriodId, false)) {
           record.failed = true;
-          record.error = 'This grading period is locked. The score was not saved.';
+          record.error = 'This grading period is not active. The score was not saved.';
           updateScoreFooter();
           return;
         }
@@ -2864,8 +2866,8 @@ lucide.createIcons();
         lockBanner.style.display = locked ? 'flex' : 'none';
         lockBanner.style.background = 'var(--red-pale)';
         lockTitle.style.color = 'var(--red)';
-        lockTitle.textContent = 'Past Attendance Locked';
-        lockDescription.textContent = 'Editing is disabled for this date. Enable "Allow Teachers to Edit Past Attendance" in System Config to make changes.';
+        lockTitle.textContent = 'Past attendance is read-only';
+        lockDescription.textContent = 'To allow changes for this date, ask your school administrator to enable “Allow Teachers to Edit Past Attendance” in System Config.';
       }
 
       const recordByStudent = Object.fromEntries(getTeacherAttendanceRecords(dateStr).map(record => [record.studentId, record]));
@@ -3275,7 +3277,7 @@ lucide.createIcons();
           handleDetectedQrValue(codes[0]?.rawValue);
         }
       } catch {
-        setQrScannerStatus('The camera is active, but the QR image could not be read.', 'error');
+        setQrScannerStatus('The camera could not read that QR code. Try again.', 'error');
       }
 
       if (qrScannerActive) qrScannerFrameId = requestAnimationFrame(scanQrCameraFrame);
@@ -3483,9 +3485,9 @@ lucide.createIcons();
 
     function teacherFriendlyPreviewIssue(issue) {
       const guidance = {
-        incompatible_period_structure: 'The DepEd grading method needs three grading periods for this school year. Ask your school admin to check the academic terms.',
-        unconfigured_subject_grading: 'This subject’s grading setup is incomplete. Ask your school admin to configure it before publishing.',
-        early_grade_exam_setup_required: 'This Grade 2–3 subject has no configured exam parts. Ask your school admin to set them up before publishing.',
+        incompatible_period_structure: 'This grading method needs three grading periods for this school year. Ask your school administrator to check the grading-period schedule.',
+        unconfigured_subject_grading: 'This subject’s grading setup is incomplete. Ask your school administrator to finish it before publishing.',
+        early_grade_exam_setup_required: 'This Grade 2–3 subject has no exam parts yet. Ask your school administrator to add them before publishing.',
         early_grade_exam_setup_review_required: 'This Grades 2–3 exam split came from the former suggested setup. Ask your school admin to review and save the school-selected exam parts before publishing.',
         invalid_category_weights: 'The grading weights need to total 100%. Ask your school admin to review them.',
         invalid_rounding_rule: 'The grade rounding setting needs review. Ask your school admin to check it.',
@@ -3598,9 +3600,9 @@ lucide.createIcons();
       for (const record of queued) {
         if (!hasScoreEditingAccess(record.academicPeriodId)) {
           record.failed = true;
-          record.error = 'This grading period is locked. The score was not saved.';
+          record.error = 'This grading period is not active. The score was not saved.';
           updateScoreFooter();
-          throw new Error('This grading period is locked. The score changes could not be saved.');
+          throw new Error('This grading period is not active. The score changes could not be saved.');
         }
       }
 
@@ -3650,7 +3652,7 @@ lucide.createIcons();
 
       if (!isBackendGradeMode()) {
         confirmButton.disabled = true;
-        setPublishGradeFeedback(BACKEND_GRADE_ERROR || 'Grade publishing requires the API.', true);
+        setPublishGradeFeedback(BACKEND_GRADE_ERROR || 'Grades cannot be published right now. Refresh and try again.', true);
         return;
       }
 
@@ -3664,7 +3666,7 @@ lucide.createIcons();
 
     async function publishGrades() {
       if (!isBackendGradeMode()) {
-        setPublishGradeFeedback(BACKEND_GRADE_ERROR || 'Grade publishing requires the API.', true);
+        setPublishGradeFeedback(BACKEND_GRADE_ERROR || 'Grades cannot be published right now. Refresh and try again.', true);
         return;
       }
       if (publishInProgress) return;
@@ -3808,7 +3810,7 @@ lucide.createIcons();
         BACKEND_ASSIGNMENTS = [];
         window.TeacherClassViews.renderAssignments([], {
           icon: 'triangle-alert', title: 'Assignments unavailable',
-          text: BACKEND_GRADE_ERROR || 'An assigned subject is required to load this class assignments.'
+          text: BACKEND_GRADE_ERROR || 'An assigned subject is needed to show this class’s assignments.'
         });
         return;
       }
@@ -3989,7 +3991,7 @@ lucide.createIcons();
       if (isBackendGradeMode()) {
         const academicTermId = getBackendTermId(academicPeriodId);
         if (!academicTermId || (includeInScoreRecording && !category)) {
-          alert('The selected grading period or category is not available in the backend yet.');
+          alert('That grading period or score category is not available yet. Refresh and try again.');
           return;
         }
         try {
@@ -4030,7 +4032,7 @@ lucide.createIcons();
         return;
       }
 
-      showAppToast(BACKEND_GRADE_ERROR || 'Assignments require the API.', 'error');
+      showAppToast(BACKEND_GRADE_ERROR || 'Assignments are not available right now. Refresh and try again.', 'error');
     }
 
     function resetAssignmentForm() {
@@ -4153,7 +4155,7 @@ lucide.createIcons();
         const assignment = getTeacherAssignments().find(item => item.id === String(activeAssignmentId));
         const academicTermId = getBackendTermId(assignment?.academicPeriodId || document.getElementById('academicPeriodSelect').value);
         if (!assignment || !academicTermId || (includeInScoreRecording && !category)) {
-          alert('The selected grading period or category is not available in the backend yet.');
+          alert('That grading period or score category is not available yet. Refresh and try again.');
           return;
         }
         try {
@@ -4213,7 +4215,7 @@ lucide.createIcons();
         return;
       }
 
-      showAppToast(BACKEND_GRADE_ERROR || 'Assignments require the API.', 'error');
+      showAppToast(BACKEND_GRADE_ERROR || 'Assignments are not available right now. Refresh and try again.', 'error');
     }
 
     function openAssignmentSubmissionsModal(assignmentId) {
@@ -4279,7 +4281,7 @@ lucide.createIcons();
         const result = await window.EDUGNAY_API.getAssignmentSubmissionPreview(assignmentId, submissionId);
         if (requestId !== assignmentPreviewRequestId) return;
         if (!String(result.contentType || '').toLowerCase().startsWith('application/pdf')) {
-          throw new Error('The server did not return a PDF preview. Use Download to open the original file.');
+          throw new Error('A preview is not available for this file. Download it to open the original.');
         }
         assignmentPreviewObjectUrl = URL.createObjectURL(new Blob([result.buffer], { type: 'application/pdf' }));
         previewFrame.src = assignmentPreviewObjectUrl;
@@ -4297,7 +4299,7 @@ lucide.createIcons();
 
     async function saveAssignmentSubmissionScore(assignmentId, studentId, input) {
       if (!isBackendGradeMode()) {
-        alert(BACKEND_GRADE_ERROR || 'Connect to the backend before recording a score.');
+        alert(BACKEND_GRADE_ERROR || 'Scores cannot be recorded right now. Refresh and try again.');
         return;
       }
       const assignment = getTeacherAssignments().find(item => item.id === String(assignmentId));
@@ -4384,7 +4386,7 @@ lucide.createIcons();
       buttons.forEach(button => { button.disabled = true; });
 
       try {
-        if (!isBackendGradeMode()) throw new Error(BACKEND_GRADE_ERROR || 'Assignments require the API.');
+        if (!isBackendGradeMode()) throw new Error(BACKEND_GRADE_ERROR || 'Assignments are not available right now. Refresh and try again.');
         const saved = await window.EDUGNAY_API.updateAssignmentStudentStatus(activeAssignmentId, studentId, status);
         const records = BACKEND_SUBMISSIONS.get(String(activeAssignmentId)) || [];
         const existing = records.find(record => String(record.studentId) === String(studentId));

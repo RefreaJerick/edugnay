@@ -36,7 +36,7 @@ let adminApiUser = null;
       console.warn('Unable to load the saved profile.', error.message);
       renderAdminProfile({ displayName: 'Profile unavailable', schoolEmail: '', profile: {} });
       renderAdminAccessDetails();
-      setAdminProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded from the school database. Refresh when the connection is restored.', true);
+      setAdminProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded. Refresh and try again.', true);
     }
   }
 

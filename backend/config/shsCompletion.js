@@ -1,7 +1,7 @@
 const { validateSelection } = require('./shsSelection');
 const { calculateSubjectFinal } = require('./shsGrading');
 
-function subjectGradeStatus(terms = [], grades = []) {
+function subjectGradeStatus(terms = [], grades = [], rules = {}) {
   const expectedTermIds = new Set(terms.map(term => String(term.id)));
   if (grades.some(row => !expectedTermIds.has(String(row.academicTermId)))) {
     return { complete: false, passed: false, finalGrade: null, detail: 'A published grade belongs to a different school year or grading period.' };
@@ -13,9 +13,11 @@ function subjectGradeStatus(terms = [], grades = []) {
   const missing = terms.filter(term => !byTerm.has(String(term.id)));
   if (!terms.length || missing.length) return { complete: false, passed: false, finalGrade: null,
     detail: !terms.length ? 'No grading periods are configured.' : `Missing published grades for ${missing.map(term => term.name).join(', ')}.` };
-  const finalGrade = calculateSubjectFinal(terms.map(term => byTerm.get(String(term.id))));
-  return { complete: true, passed: finalGrade >= 75, finalGrade,
-    detail: finalGrade >= 75 ? `Final grade ${finalGrade} (passing).` : `Final grade ${finalGrade} is below 75.` };
+  const passingGrade = Number(rules.passingGradeThreshold ?? 75);
+  const finalGrade = calculateSubjectFinal(terms.map(term => byTerm.get(String(term.id))), rules.gradeRounding);
+  return { complete: true, passed: finalGrade >= passingGrade, finalGrade,
+    detail: finalGrade >= passingGrade ? `Final grade ${finalGrade} (passing).`
+      : `Final grade ${finalGrade} is below ${passingGrade}.` };
 }
 
 function confirmationStatus(checklist, prior) {

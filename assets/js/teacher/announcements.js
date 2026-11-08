@@ -62,13 +62,17 @@ let ANNOUNCEMENTS = [];
     const title   = card.querySelector('.ann-title')?.textContent.trim() || '';
     const content = card.querySelector('.ann-content')?.dataset.full
                  || card.querySelector('.ann-content')?.innerHTML || '';
-    const timeEl  = card.querySelector('.ann-meta-item');
-    const postedAt= timeEl ? timeEl.textContent.trim() : '—';
+    const metaItems = card.querySelectorAll('.ann-meta-item');
+    const postedAt = metaItems[0]?.textContent.trim() || '—';
+    const author = metaItems[1]?.textContent.trim() || '';
     const imgEl   = card.querySelector('.ann-image');
     const audTag  = card.querySelector('.aud-tag');
 
     // Title & meta
     document.getElementById('modalAnnTitle').textContent = title;
+    document.getElementById('modalAnnMeta').textContent = author
+      ? 'Posted by ' + author + ' · ' + postedAt
+      : 'Posted · ' + postedAt;
     document.getElementById('modalPostedAt').textContent = 'Posted · ' + postedAt;
     document.getElementById('modalAnnContent').textContent = content;
 
@@ -130,7 +134,7 @@ let ANNOUNCEMENTS = [];
 
   document.addEventListener('DOMContentLoaded', async () => {
     try {
-      if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('Connect to the backend and reload to view announcements.');
+      if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('Announcements aren’t available right now. Refresh and try again.');
       const announcements = window.EDUGNAY_COMMUNICATION_RESOURCES?.announcements;
       if (!announcements) throw new Error('Announcements could not be loaded.');
       ANNOUNCEMENTS = await announcements;

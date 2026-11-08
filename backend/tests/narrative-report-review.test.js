@@ -402,7 +402,7 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /detail\.textContent = .*score\.maxScore/);
   assert.match(script, /student\.candidateReasons/);
   assert.match(script, /item\.textContent = value/);
-  assert.match(script, /No AI follow-up suggestion was provided/);
+  assert.match(script, /No follow-up suggestion is available\. Review the reasons below\./);
   assert.doesNotMatch(page, /generation-control-help/);
   assert.doesNotMatch(script, /generation-control-help/);
   assert.match(script, /hasAttendanceRecords/);

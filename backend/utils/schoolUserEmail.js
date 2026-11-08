@@ -16,7 +16,7 @@ function schoolEmailBase(firstName, lastName, role) {
 function storedSchoolDomain(school) {
   const domain = String(school?.schoolEmailDomain || '').trim().toLowerCase();
   if (!domain) {
-    const error = new Error('School email domain is not configured. Contact the platform administrator.');
+    const error = new Error('School sign-in addresses are not available right now. Contact your platform administrator.');
     error.status = 503;
     throw error;
   }

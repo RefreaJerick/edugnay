@@ -717,52 +717,144 @@ test('elective conflicts include teacher, room, future members, dates, and adjac
 
 test('elective meeting writes lock the year before checking cross-class conflicts', async () => {
   const calls = [];
+  let insertedMeetingValues;
   const connection = {
     async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
     async rollback() { calls.push('ROLLBACK'); }, release() {},
-    async execute(sql) {
+    async execute(sql, values) {
       calls.push(sql);
       if (sql.includes('FROM shs_elective_classes c') && sql.includes('LIMIT 1')) return [[{
         id: 7, teacherId: 4, academicYearId: 3, yearStatus: 'active',
         classActive: 1, offeringActive: 1, teacherStatus: 'active',
         startDate: '2026-06-01', endDate: '2027-03-31',
-        firstTermStartDate: '2026-06-01', lastTermEndDate: '2027-03-31'
+        startTermId: 11, endTermId: 11, startTermName: 'Term 1', endTermName: 'Term 1',
+        startTermSequence: 1, endTermSequence: 1,
+        firstTermStartDate: '2026-11-06', lastTermEndDate: '2026-12-31'
       }]];
       if (sql.includes('m.start_time <')) return [[]];
       if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 11 }]];
-      if (sql.includes('INSERT INTO timetable_meetings')) return [{ insertId: 14 }];
+      if (sql.includes('INSERT INTO timetable_meetings')) { insertedMeetingValues = values; return [{ insertId: 14 }]; }
       return [[]];
     }
   };
   database = { getConnection: async () => connection };
   let error; const res = response();
   await timetable.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '7' }, body: {
-    weekday: 3, startTime: '08:00', endTime: '09:00', startDate: '2026-07-01', endDate: '2026-12-31'
+    weekday: 3, startTime: '08:00', endTime: '09:00', startDate: '2027-01-01', endDate: '2027-03-31'
   } }, res, value => { error = value; });
   assert.equal(error, undefined);
   assert.equal(res.body.id, 14);
+  assert.equal(insertedMeetingValues[5], '2026-11-06');
+  assert.equal(insertedMeetingValues[6], '2026-12-31');
   assert.ok(calls.findIndex(sql => typeof sql === 'string' && sql.includes('FOR UPDATE'))
     < calls.findIndex(sql => typeof sql === 'string' && sql.includes('m.start_time <')));
   assert.equal(calls.at(-1), 'COMMIT');
 });
 
-test('Grade 12 Strengthened elective meetings can be scheduled without a school-specific start setting', async () => {
+test('editing an SHS meeting preserves its saved date span and rejects dates outside reassigned terms', async () => {
+  const calls = [];
+  let updatedMeetingValues;
+  const classRow = {
+    id: 7, teacherId: 4, academicYearId: 3, yearStatus: 'active',
+    classActive: 1, offeringActive: 1, teacherStatus: 'active',
+    startDate: '2026-06-01', endDate: '2027-03-31',
+    startTermId: 11, endTermId: 11, startTermName: 'Term 1', endTermName: 'Term 1',
+    startTermSequence: 1, endTermSequence: 1,
+    firstTermStartDate: '2026-11-06', lastTermEndDate: '2026-12-31'
+  };
+  const savedMeeting = {
+    assignmentId: null, electiveClassId: 7, weekday: 3, startTime: '08:00', endTime: '09:00',
+    startDate: '2026-11-11', endDate: '2026-12-02', room: null
+  };
+  const connection = {
+    async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
+    async rollback() { calls.push('ROLLBACK'); }, release() {},
+    async execute(sql, values) {
+      calls.push(sql);
+      if (sql.includes('FROM shs_elective_classes c') && sql.includes('LIMIT 1')) return [[classRow]];
+      if (sql.includes('FROM timetable_meetings m') && sql.includes('m.id = ?')) return [[savedMeeting]];
+      if (sql.includes('m.start_time <')) return [[]];
+      if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 11 }]];
+      if (sql.includes('UPDATE timetable_meetings SET')) { updatedMeetingValues = values; return [{ affectedRows: 1 }]; }
+      return [[]];
+    }
+  };
+  database = { getConnection: async () => connection };
+  let error; const res = response();
+  await timetable.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '7', meetingId: '14' }, body: {
+    weekday: 3, startTime: '08:00', endTime: '09:00', startDate: '2026-06-01', endDate: '2026-12-31'
+  } }, res, value => { error = value; });
+  assert.equal(error, undefined);
+  assert.equal(updatedMeetingValues[3], '2026-11-11');
+  assert.equal(updatedMeetingValues[4], '2026-12-02');
+
+  calls.length = 0;
+  updatedMeetingValues = undefined;
+  savedMeeting.startDate = '2026-10-01';
+  error = undefined;
+  await timetable.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '7', meetingId: '14' }, body: {
+    weekday: 3, startTime: '08:00', endTime: '09:00'
+  } }, response(), value => { error = value; });
+  assert.equal(error.status, 409);
+  assert.match(error.message, /saved meeting dates.*assigned terms.*Review its term assignment/i);
+  assert.equal(updatedMeetingValues, undefined);
+  assert.equal(calls.at(-1), 'ROLLBACK');
+});
+
+test('SHS meetings cannot be saved when assigned term dates are missing or invalid', async () => {
+  for (const termFields of [
+    { startTermId: null, endTermId: null, startTermName: null, endTermName: null,
+      startTermSequence: null, endTermSequence: null, firstTermStartDate: null, lastTermEndDate: null },
+    { startTermId: 11, endTermId: 11, startTermName: 'Term 1', endTermName: 'Term 1',
+      startTermSequence: 1, endTermSequence: 1, firstTermStartDate: '2026-11-06', lastTermEndDate: null }
+  ]) {
+    const calls = [];
+    database = { getConnection: async () => ({
+      async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
+      async rollback() { calls.push('ROLLBACK'); }, release() {},
+      async execute(sql) {
+        calls.push(sql);
+        if (sql.includes('FROM shs_elective_classes c') && sql.includes('LIMIT 1')) return [[{
+          id: 7, teacherId: 4, academicYearId: 3, yearStatus: 'active', classActive: 1, offeringActive: 1,
+          teacherStatus: 'active', startDate: '2026-06-01', endDate: '2027-03-31', ...termFields
+        }]];
+        return [[]];
+      }
+    }) };
+    let error;
+    await timetable.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '7' }, body: {
+      weekday: 3, startTime: '08:00', endTime: '09:00', startDate: '2026-11-06', endDate: '2026-12-31'
+    } }, response(), value => { error = value; });
+    assert.equal(error.status, 409);
+    assert.match(error.message, /valid assigned term dates.*Review its term assignment/i);
+    assert.equal(calls.some(sql => typeof sql === 'string' && sql.includes('INSERT INTO timetable_meetings')), false);
+    assert.equal(calls.at(-1), 'ROLLBACK');
+  }
+});
+
+test('year-long Grade 12 Strengthened elective meetings use the assigned term span', async () => {
   const queries = [];
+  let insertedMeetingValues;
   const classRow = {
     id: 7, teacherId: 4, academicYearId: 3, yearStatus: 'active',
     startDate: '2027-06-01', endDate: '2028-03-31', classActive: 1,
+    startTermId: 21, endTermId: 23, startTermName: 'Term 1', endTermName: 'Term 3',
+    startTermSequence: 1, endTermSequence: 3,
     firstTermStartDate: '2027-06-01', lastTermEndDate: '2028-03-31',
     offeringActive: 1, teacherStatus: 'active'
   };
   database = { getConnection: async () => ({
     async beginTransaction() {}, async commit() {}, async rollback() {}, release() {},
-    async execute(sql) {
+    async execute(sql, values) {
       queries.push(sql);
       if (sql.includes('FROM shs_elective_classes c') && sql.includes('LIMIT 1')) return [[classRow]];
       if (sql.trim().startsWith('SELECT id FROM scheduled_classes') && sql.includes('LIMIT 1')) return [[]];
       if (sql.trim().startsWith('SELECT id FROM scheduled_classes')) return [[{ id: 8 }]];
       if (sql.includes('SELECT m.id, m.weekday')) return [[]];
-      if (sql.includes('INSERT INTO timetable_meetings')) return [{ insertId: 14 }];
+      if (sql.includes('INSERT INTO timetable_meetings')) {
+        insertedMeetingValues = values;
+        return [{ insertId: 14 }];
+      }
       return [[]];
     }
   }) };
@@ -773,6 +865,8 @@ test('Grade 12 Strengthened elective meetings can be scheduled without a school-
   } }, res, value => { error = value; });
   assert.equal(error, undefined);
   assert.equal(res.body.id, 14);
+  assert.equal(insertedMeetingValues[5], '2027-06-01');
+  assert.equal(insertedMeetingValues[6], '2028-03-31');
   assert.ok(queries.some(sql => sql.includes('INSERT INTO timetable_meetings')));
   assert.ok(!queries.some(sql => /strengthened_shs_grade12_pilot|grade12PilotEnabled/i.test(sql)));
 

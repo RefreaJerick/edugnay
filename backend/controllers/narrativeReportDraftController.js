@@ -37,7 +37,7 @@ function selectedStudents(body, evidence) {
   const roster = new Map(evidence.students.map(student => [student.id, student]));
   const ids = body.studentIds === undefined ? [...roster.keys()] : body.studentIds;
   if (!Array.isArray(ids) || !ids.length || ids.length > MAX_GENERATION_BATCH) {
-    throw createError(`Select between one and ${MAX_GENERATION_BATCH} learners for each generation request.`);
+    throw createError(`Select 1 to ${MAX_GENERATION_BATCH} learners at a time.`);
   }
   const normalizedIds = ids.map(id => positiveId(id));
   if (normalizedIds.some(id => !id) || new Set(normalizedIds).size !== normalizedIds.length ||
@@ -216,8 +216,9 @@ async function processWeeklyGeneration(req, {
 
 async function generateWeeklyDrafts(req, res, next) {
   try {
-    if (process.env.AI_REPORTS_GENERATION_ENABLED !== 'true') throw createError('AI report generation is not enabled.', 503);
-    if (!process.env.OPENAI_API_KEY) throw createError('AI generation is not configured.', 503);
+    if (process.env.AI_REPORTS_GENERATION_ENABLED !== 'true' || !process.env.OPENAI_API_KEY) {
+      throw createError('AI report generation is unavailable right now. Contact your school administrator.', 503);
+    }
     const database = getDatabase();
     await requireAiEvidenceApproval(database, Number(req.user.schoolId));
     const result = await processWeeklyGeneration(req, { database });
@@ -294,7 +295,7 @@ async function loadWeeklyDrafts({ database, schoolId, teacherId, sectionId, star
   );
   const section = sections[0];
   if (!section) throw createError('Advisory section not found.', 404);
-  if (Number(section.reportsEnabled) !== 1) throw createError('Narrative Reports are not enabled for this school.', 403);
+  if (Number(section.reportsEnabled) !== 1) throw createError('Weekly reports are turned off for this school. Ask your school administrator to enable them.', 403);
   const reports = await readWeeklyDrafts(database, { section: { id: String(section.id) }, reportWeek: { startDate } }, { schoolId });
   return {
     section: {
@@ -323,7 +324,7 @@ async function countPendingDrafts({ database, schoolId, teacherId }) {
     [Number(schoolId)]
   );
   if (Number(features[0]?.reportsEnabled) !== 1) {
-    throw createError('Narrative Reports are not enabled for this school.', 403);
+    throw createError('Weekly reports are turned off for this school. Ask your school administrator to enable them.', 403);
   }
 
   const [rows] = await database.execute(

@@ -167,7 +167,7 @@ function renderTopbarNotifs() {
       <div class="tb-notif-empty" id="tbNotifEmpty">
         <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
         <div class="tb-notif-empty-title">${window.EDUGNAY_COMMUNICATION?.error ? 'Notifications unavailable' : 'No notifications yet'}</div>
-        <div class="tb-notif-empty-text">${window.EDUGNAY_COMMUNICATION?.error ? 'Please try again when the connection is ready.' : "You're all caught up. New alerts will show up here."}</div>
+        <div class="tb-notif-empty-text">${window.EDUGNAY_COMMUNICATION?.error ? 'Refresh the page and try again.' : "You're all caught up. New alerts will show up here."}</div>
       </div>
     `;
     if (dot) dot.style.display = 'none';

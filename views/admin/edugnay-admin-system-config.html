@@ -206,11 +206,13 @@
           </div>
           <div class="config-panel-body">
             <div class="trigger-rows" id="notification-trigger-list" aria-live="polite"></div>
-            <div class="divider"></div>
-            <div class="form-group">
-              <label class="form-label">Notification Delivery Method</label>
-              <input class="form-input" type="text" value="In-app notification (Academix parent dashboard)" readonly style="color:var(--gray-500);cursor:not-allowed;"/>
-              <span class="form-hint">Notifications appear in linked parents' portal. SMS is not enabled.</span>
+            <div class="trigger-row" id="narrative-report-sms-row">
+              <div class="trigger-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="message-square-text" style="width:16px;height:16px;"></i></div>
+              <div class="trigger-info">
+                <div class="trigger-label">Send released weekly reports by SMS</div>
+                <div class="trigger-desc" id="narrative-report-sms-status" aria-live="polite">Loading SMS settings…</div>
+              </div>
+              <button class="toggle" id="narrative-report-sms-toggle" type="button" role="switch" aria-label="Send released weekly reports by SMS" aria-checked="false" disabled></button>
             </div>
           </div>
           <div class="config-panel-foot">
@@ -289,8 +291,8 @@
       <div class="modal-heading">
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="calendar-plus"></i></div>
         <div class="modal-heading-copy">
-          <div class="modal-title" id="extendReopenTitle">Extend temporary access</div>
-          <div class="modal-sub">Move the editing deadline while keeping an audit reason.</div>
+          <div class="modal-title" id="extendReopenTitle">Extend grade-editing access</div>
+          <div class="modal-sub">Choose a later date and explain why the teacher needs more time.</div>
         </div>
       </div>
       <button class="modal-close" type="button" data-page-click="pf570948409c3" aria-label="Close"><i data-lucide="x"></i></button>
@@ -320,8 +322,8 @@
       <div class="modal-heading">
         <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="lock"></i></div>
         <div class="modal-heading-copy">
-          <div class="modal-title" id="revokeReopenTitle">Revoke temporary access</div>
-          <div class="modal-sub">Score editing will be locked immediately.</div>
+          <div class="modal-title" id="revokeReopenTitle">End grade-editing access</div>
+          <div class="modal-sub">The teacher will no longer be able to change grades for this period.</div>
         </div>
       </div>
       <button class="modal-close" type="button" data-page-click="p16820d0aaf5b" aria-label="Close"><i data-lucide="x"></i></button>

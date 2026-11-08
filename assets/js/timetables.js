@@ -10,6 +10,24 @@
   const weekMonday = value => addDays(value, 1 - weekday(value));
   const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
   const shortDate = value => dateAtUtc(value).toLocaleDateString('en-PH', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+  const fullDate = value => dateAtUtc(value).toLocaleDateString('en-PH', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+  const isIsoDate = value => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+    const parsed = dateAtUtc(value);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  };
+  function dateRangeLabel(startDate, endDate) {
+    const startYear = startDate.slice(0, 4);
+    const endYear = endDate.slice(0, 4);
+    return startYear === endYear
+      ? `${shortDate(startDate)}–${fullDate(endDate)}`
+      : `${fullDate(startDate)}–${fullDate(endDate)}`;
+  }
+  function assignedTermsLabel(item) {
+    return item.startTermName === item.endTermName
+      ? item.startTermName
+      : `${item.startTermName}–${item.endTermName}`;
+  }
   const timeLabel = value => { const [hour, minute] = String(value || '').split(':').map(Number); return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`; };
   const activeOn = (meeting, date) => meeting.weekday === weekday(date) && date >= meeting.startDate && date <= meeting.endDate;
   const displaySubjectName = item => item.communicationComponentName || item.subjectName;
@@ -176,6 +194,71 @@
     select.value = String(classId || '');
     select.required = elective;
     select.disabled = !elective || Boolean(state.editingId);
+    updateElectiveTermSummary(state);
+  }
+
+  function updateElectiveTermSummary(state) {
+    const dateRow = document.getElementById('timetable-date-fields');
+    const summary = document.getElementById('timetable-elective-term-summary');
+    const summaryRange = document.getElementById('timetable-elective-term-range');
+    const summaryNote = document.getElementById('timetable-elective-term-note');
+    const startDate = document.getElementById('timetable-start-date');
+    const endDate = document.getElementById('timetable-end-date');
+    const save = document.getElementById('timetable-save');
+    const isElective = document.getElementById('timetable-owner-type').value === 'elective';
+    if (!isElective) {
+      dateRow.hidden = false;
+      summary.hidden = true;
+      startDate.disabled = endDate.disabled = false;
+      startDate.required = endDate.required = true;
+      save.disabled = false;
+      return;
+    }
+
+    dateRow.hidden = true;
+    summary.hidden = false;
+    startDate.disabled = endDate.disabled = true;
+    startDate.required = endDate.required = false;
+    const classId = document.getElementById('timetable-elective-class').value;
+    const elective = (state.data.electiveClasses || []).find(item => String(item.electiveClassId) === String(classId));
+    const startSequence = Number(elective?.startTermSequence);
+    const endSequence = Number(elective?.endTermSequence);
+    const validRange = elective && Number(elective.startTermId) > 0 && Number(elective.endTermId) > 0
+      && Number.isInteger(startSequence) && startSequence > 0
+      && Number.isInteger(endSequence) && endSequence >= startSequence
+      && elective.startTermName && elective.endTermName
+      && isIsoDate(elective.firstTermStartDate) && isIsoDate(elective.lastTermEndDate)
+      && isIsoDate(state.data.year?.startDate) && isIsoDate(state.data.year?.endDate)
+      && state.data.year.startDate <= state.data.year.endDate
+      && elective.firstTermStartDate >= state.data.year.startDate
+      && elective.lastTermEndDate <= state.data.year.endDate
+      && elective.firstTermStartDate <= elective.lastTermEndDate;
+    if (!validRange) {
+      summaryRange.textContent = '';
+      summaryNote.textContent = elective
+        ? 'This class has no valid assigned term dates. Review its term assignment before scheduling.'
+        : 'Choose an SHS class to view its assigned term dates.';
+      save.disabled = true;
+      return;
+    }
+
+    const assignedRangeText = `${assignedTermsLabel(elective)} · ${dateRangeLabel(elective.firstTermStartDate, elective.lastTermEndDate)}`;
+    summaryRange.textContent = assignedRangeText;
+    const savedMeeting = state.editingMeeting;
+    if (savedMeeting) {
+      const savedDatesValid = isIsoDate(savedMeeting.startDate)
+        && isIsoDate(savedMeeting.endDate)
+        && savedMeeting.startDate <= savedMeeting.endDate
+        && savedMeeting.startDate >= elective.firstTermStartDate
+        && savedMeeting.endDate <= elective.lastTermEndDate;
+      summaryNote.textContent = savedDatesValid
+        ? `This meeting will keep its saved dates: ${dateRangeLabel(savedMeeting.startDate, savedMeeting.endDate)}.`
+        : 'The saved meeting dates are outside this class term. Review the class term before saving.';
+      save.disabled = !savedDatesValid;
+      return;
+    }
+    summaryNote.textContent = 'New meetings will cover the full term.';
+    save.disabled = false;
   }
 
   function openDialog(state, assignmentId = '', meeting = null, electiveClassId = '') {
@@ -199,6 +282,7 @@
     form.elements.startDate.min = form.elements.endDate.min = state.data.year.startDate;
     form.elements.startDate.max = form.elements.endDate.max = state.data.year.endDate;
     state.editingId = meeting?.id || null;
+    state.editingMeeting = meeting;
     state.editingAssignmentId = meeting?.assignmentId || null;
     state.editingElectiveClassId = meeting?.electiveClassId || null;
     selectOwnerType(state, meeting?.electiveClassId || electiveClassId ? 'elective' : 'section', meeting?.electiveClassId || electiveClassId);
@@ -273,7 +357,10 @@
       const message = error.message || 'The meeting could not be saved.';
       document.getElementById('timetable-error').textContent = message;
       showAppToast(message, 'error');
-    } finally { submit.disabled = false; }
+    } finally {
+      submit.disabled = false;
+      updateElectiveTermSummary(state);
+    }
   }
 
   async function deleteMeeting(state) {
@@ -384,6 +471,7 @@
     }
     if (role === 'admin') {
       document.getElementById('timetable-owner-type').addEventListener('change', event => selectOwnerType(state, event.target.value));
+      document.getElementById('timetable-elective-class').addEventListener('change', () => updateElectiveTermSummary(state));
       document.getElementById('timetable-dialog-section').addEventListener('change', event => {
         renderDialogSubjects(state, event.currentTarget.value);
       });

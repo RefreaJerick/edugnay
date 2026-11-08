@@ -408,7 +408,7 @@ async function getUser(req, res, next) {
       isLinkedChild = Number(link.linkCount) > 0;
     }
     if (!isOwnProfile && !isLinkedChild && req.user.role !== 'school_admin') {
-      throw createError('You do not have access to this resource.', 403);
+      throw createError('You don’t have permission to do that.', 403);
     }
 
     const scope = isOwnProfile || isLinkedChild
@@ -437,7 +437,7 @@ async function getMyProfile(req, res, next) {
 
 async function getMyParents(req, res, next) {
   try {
-    if (req.user.role !== 'student') throw createError('You do not have access to this resource.', 403);
+    if (req.user.role !== 'student') throw createError('You don’t have permission to do that.', 403);
 
     const database = getDatabase();
     const [parents] = await database.execute(
@@ -555,12 +555,12 @@ async function updateMyProfile(req, res, next) {
 }
 
 function getManagedSchoolId(req) {
-  if (req.user.role !== 'school_admin') throw createError('You do not have access to this resource.', 403);
+  if (req.user.role !== 'school_admin') throw createError('You don’t have permission to do that.', 403);
   return req.user.schoolId;
 }
 
 async function findManagedUser(req, userId) {
-  if (req.user.role !== 'school_admin') throw createError('You do not have access to this resource.', 403);
+  if (req.user.role !== 'school_admin') throw createError('You don’t have permission to do that.', 403);
   const scope = { clause: 'users.school_id = ?', values: [req.user.schoolId] };
   const user = await findUserById(userId, scope);
   if (!user) throw createError('User not found.', 404);
@@ -673,7 +673,7 @@ async function createUser(req, res, next) {
         const studentId = parsePositiveInteger(link?.studentId, null, Number.MAX_SAFE_INTEGER);
         const relationship = String(link?.relationship || '').trim().toLowerCase();
         if (!studentId || !['mother', 'father', 'guardian'].includes(relationship)) {
-          throw createError('Each parent link needs a valid student and relationship.');
+          throw createError('Choose a student and select Mother, Father, or Guardian.');
         }
         const [students] = await connection.execute(
           `SELECT id FROM users WHERE id = ? AND school_id = ? AND role = 'student' LIMIT 1`,
@@ -772,7 +772,7 @@ async function updateUser(req, res, next) {
         const studentId = parsePositiveInteger(link?.studentId, null, Number.MAX_SAFE_INTEGER);
         const relationship = String(link?.relationship || '').trim().toLowerCase();
         if (!studentId || seen.has(studentId) || !['mother', 'father', 'guardian'].includes(relationship)) {
-          throw createError('Each parent link needs a distinct student and a valid relationship.');
+          throw createError('Choose Mother, Father, or Guardian for each student, and select each student only once.');
         }
         seen.add(studentId);
         const [students] = await connection.execute(

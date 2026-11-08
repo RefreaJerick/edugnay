@@ -79,7 +79,7 @@ const REGISTRATION_STATUS_TOKEN_KEY = 'edugnay_registration_status_token';
         pendingRegistrationTokenInvalid = true;
         stopPendingRegistrationPolling();
         resubmitButton.hidden = true;
-        showRegistrationError('This tab does not have a registration status token. If you already submitted a registration, contact Platform Admin; do not submit it again.', false);
+        showRegistrationError('This browser does not have the saved application. If you already submitted, contact Platform Admin for help. Please do not submit again.', false);
         retryButton.disabled = false;
         return;
       }
@@ -119,9 +119,9 @@ const REGISTRATION_STATUS_TOKEN_KEY = 'edugnay_registration_status_token';
           stopPendingRegistrationPolling();
         }
         const message = requestError?.status === 404
-          ? 'Registration status could not be found or the access token has expired. If you already submitted, contact Platform Admin; do not submit again.'
+          ? 'This saved application link is missing or has expired. If you already submitted, contact Platform Admin for help. Please do not submit again.'
           : requestError?.status === 429
-            ? requestError.message || 'Too many status checks. Please try again later.'
+            ? 'Please wait a moment before checking again.'
           : 'Registration status could not be loaded. Check your connection and try again.';
         showRegistrationError(message, requestError?.status !== 404);
       } finally {

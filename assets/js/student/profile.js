@@ -11,10 +11,10 @@ let studentApiUser = null;
 let studentProfileLoading = STUDENT_PROFILE_API_ENABLED;
 let studentClassSection = null;
 let studentClassLoading = STUDENT_PROFILE_API_ENABLED;
-let studentClassError = STUDENT_PROFILE_API_ENABLED ? '' : 'The school API is unavailable.';
+let studentClassError = STUDENT_PROFILE_API_ENABLED ? '' : 'School information isn’t available right now. Refresh and try again.';
 let studentLinkedParents = [];
 let studentLinkedParentsLoading = STUDENT_PROFILE_API_ENABLED;
-let studentLinkedParentsError = STUDENT_PROFILE_API_ENABLED ? '' : 'The school API is unavailable.';
+let studentLinkedParentsError = STUDENT_PROFILE_API_ENABLED ? '' : 'School information isn’t available right now. Refresh and try again.';
 
 function setStudentText(id, value, fallback = 'Not provided') {
   const element = document.getElementById(id);
@@ -403,7 +403,7 @@ async function submitPasswordChange(event) {
     return false;
   }
   if (!STUDENT_PROFILE_API_ENABLED) {
-    alert('Password updates require a configured API connection.');
+    alert('Password changes aren’t available right now. Refresh and try again.');
     return false;
   }
   try {
@@ -472,7 +472,7 @@ async function submitProfile(event) {
   };
 
   try {
-    if (!STUDENT_PROFILE_API_ENABLED) throw new Error('Profile updates require a configured API connection.');
+    if (!STUDENT_PROFILE_API_ENABLED) throw new Error('Profile changes aren’t available right now. Refresh and try again.');
     const endpoint = wasSetupRequired ? '/account-setup/student' : '/users/me/profile';
     await window.EDUGNAY_API.request(endpoint, {
       method: 'PATCH',

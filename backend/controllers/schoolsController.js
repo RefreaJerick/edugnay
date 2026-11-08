@@ -80,7 +80,7 @@ function normalizeLevels(values) {
   if (!Array.isArray(values) || !values.length) throw createError('Select at least one school level.');
   const levelCodes = values.map(value => typeof value === 'string' ? value : value.levelCode);
   if (new Set(levelCodes).size !== levelCodes.length || levelCodes.some(code => !LEVEL_DEFAULTS[code])) {
-    throw createError('The school-level configuration is invalid.');
+    throw createError('Review the selected school levels and try again.');
   }
   return levelCodes;
 }
@@ -101,15 +101,15 @@ function registrationTerms(body, levelCodes) {
   const seen = new Set();
   for (const config of configs) {
     if (!config || !levelCodes.includes(config.schoolLevel) || seen.has(config.schoolLevel) || !periodTypes[config.gradingPeriodType]) {
-      throw createError('The school grading structure is invalid.');
+      throw createError('Review the grading-period setup for each school level.');
     }
     seen.add(config.schoolLevel);
     if (!Array.isArray(config.academicPeriods) || config.academicPeriods.length !== periodTypes[config.gradingPeriodType]) {
-      throw createError('The number of grading periods is invalid.');
+      throw createError('Choose the correct number of grading periods for each school level.');
     }
     let previousEnd = '';
     for (const period of config.academicPeriods) {
-      if (!period || typeof period !== 'object') throw createError('A grading period is invalid.');
+      if (!period || typeof period !== 'object') throw createError('Check the grading-period details and try again.');
       text(period.name, 80, true);
       if (!validDate(period.plannedStartDate) || !validDate(period.plannedEndDate)
         || period.plannedStartDate < start || period.plannedEndDate > end
@@ -251,7 +251,7 @@ async function getJournalSubjectEligibility(database, schoolId, subjectId) {
 }
 
 function requireSchoolAdminSchool(req) {
-  if (req.user.role !== 'school_admin' || !req.user.schoolId) throw createError('You do not have access to this resource.', 403);
+  if (req.user.role !== 'school_admin' || !req.user.schoolId) throw createError('You don’t have permission to do that.', 403);
   return req.user.schoolId;
 }
 
@@ -1211,7 +1211,7 @@ async function updatePortalFeatures(req, res, next) {
     const journalSubjectStatus = await getJournalSubjectEligibility(connection, schoolId, journalSubjectId);
     if (journalSubjectId && (current.journalsEnabled || selectionChanged)) {
       if (!journalSubjectStatus.subject) throw createError('Select an active subject from this school.');
-      if (!journalSubjectStatus.eligible) throw createError('Choose an active subject scoped only to this school’s enabled JHS grades.');
+      if (!journalSubjectStatus.eligible) throw createError('Choose an active subject assigned only to this school’s enabled Junior High School grades.');
       await connection.execute(`INSERT INTO journal_subjects (school_id, subject_id, name, is_active)
         VALUES (?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE name = VALUES(name), is_active = TRUE`, [schoolId, journalSubjectId, journalSubjectStatus.subject.name]);
     }
@@ -1255,7 +1255,7 @@ async function updateAcademicStructure(req, res, next) {
     const levels = Array.isArray(req.body?.levels) ? req.body.levels : null;
     if (!levels?.length) throw createError('Provide at least one school level.');
     const codes = levels.map(level => level?.levelCode);
-    if (new Set(codes).size !== codes.length || codes.some(code => !LEVEL_DEFAULTS[code])) throw createError('The school-level configuration is invalid.');
+    if (new Set(codes).size !== codes.length || codes.some(code => !LEVEL_DEFAULTS[code])) throw createError('Review the selected school levels and try again.');
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
     for (const level of levels) {
@@ -1266,7 +1266,7 @@ async function updateAcademicStructure(req, res, next) {
       if (Array.isArray(level.gradeLevels)) {
         const gradeCodes = level.gradeLevels.map(grade => grade?.gradeCode);
         if (new Set(gradeCodes).size !== gradeCodes.length || gradeCodes.some(code => !definition.grades.includes(code))) {
-          throw createError('The grade-level configuration is invalid.');
+          throw createError('Review the selected grade levels and try again.');
         }
         for (const grade of level.gradeLevels) {
           await connection.execute(`INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), sort_order=VALUES(sort_order), is_enabled=VALUES(is_enabled)`, [schoolId, storedLevel.id, grade.gradeCode, text(grade.displayName, 80) || gradeLabel(grade.gradeCode), Number(grade.sortOrder) || Number(grade.gradeCode.replace('grade-', '')), boolean(grade.isEnabled)]);
@@ -1280,7 +1280,7 @@ async function updateAcademicStructure(req, res, next) {
       if (level.levelCode === 'shs' && Array.isArray(level.tracks)) {
         const trackCodes = level.tracks.map(track => track?.trackCode);
         if (new Set(trackCodes).size !== trackCodes.length || trackCodes.some(code => !TRACK_DEFAULTS.includes(code))) {
-          throw createError('The SHS track configuration is invalid.');
+          throw createError('Review the selected Senior High School tracks and try again.');
         }
         if (level.tracks.some(track => track?.strands?.length || track?.strandCode || track?.strandId)) {
           throw createError('SHS strands are not part of the Strengthened SHS curriculum.');

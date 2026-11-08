@@ -61,7 +61,7 @@ async function authorizeUpload(req, res, next) {
     if (!assignment) {
       fail('You are not assigned to this section and subject.', 403);
     }
-    if (assignment.legacyCommunication) fail('Legacy combined communication materials are read-only. Assign an English or Filipino component to upload new materials.', 409);
+    if (assignment.legacyCommunication) fail('This older combined Communication class is read-only. Use Effective Communication or Mabisang Komunikasyon to add materials.', 409);
     next();
   } catch (error) { next(error); }
 }
@@ -257,7 +257,7 @@ async function createMaterial(req, res, next) {
     } else {
       const assignment = await teacherAssignment(connection, req.user, sectionId, subjectId, componentCode);
       if (!assignment) fail('You are not assigned to this section and subject.', 403);
-      if (assignment.legacyCommunication) fail('Legacy combined communication materials are read-only. Assign an English or Filipino component to upload new materials.', 409);
+      if (assignment.legacyCommunication) fail('This older combined Communication class is read-only. Use Effective Communication or Mabisang Komunikasyon to add materials.', 409);
       const [terms] = await connection.execute(
         `SELECT academic_terms.id FROM academic_terms
          INNER JOIN sections ON sections.academic_year_id = academic_terms.academic_year_id
@@ -356,7 +356,7 @@ async function updateMaterial(req, res, next) {
     const status = String(req.body.status || '');
     if (!['draft', 'published'].includes(status)) fail('Choose draft or published visibility.');
     if (req.user.role !== 'teacher') fail('Only the uploading teacher can change this material.', 403);
-    if (material.legacyCommunication) fail('Legacy combined communication materials are read-only.', 409);
+    if (material.legacyCommunication) fail('This material belongs to an older combined Communication class and cannot be changed.', 409);
     if (material.electiveClassId) await assertElectiveTeacher(connection, req.user, material.electiveClassId, { write: true });
     let updatedMaterial = material;
     if (status !== material.status) {
@@ -389,7 +389,7 @@ async function deleteMaterial(req, res, next) {
     transactionStarted = true;
     const material = await findMaterial(req, connection, true);
     if (req.user.role !== 'teacher') fail('Only the uploading teacher can remove this material.', 403);
-    if (material.legacyCommunication) fail('Legacy combined communication materials are read-only.', 409);
+    if (material.legacyCommunication) fail('This material belongs to an older combined Communication class and cannot be deleted.', 409);
     if (material.electiveClassId) await assertElectiveTeacher(connection, req.user, material.electiveClassId, { write: true });
     if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|ppt|pptx|xls|xlsx|jpg|png|mp4)$/.test(material.storedFileName)) {
       fail('The stored file is invalid.', 500);

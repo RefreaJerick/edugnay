@@ -10,7 +10,7 @@ function manilaDate(now = new Date()) {
 function dailyLimit() {
   const value = Number(process.env.AI_REPORTS_DAILY_CALL_LIMIT || 100);
   if (!Number.isSafeInteger(value) || value < 1) {
-    const error = new Error('The AI report daily limit is not configured correctly.');
+    const error = new Error('AI report generation is temporarily unavailable. Contact your school administrator.');
     error.status = 503;
     throw error;
   }

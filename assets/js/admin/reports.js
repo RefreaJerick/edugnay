@@ -101,7 +101,7 @@ let gradeSummaryError = '';
       const passingRate = reportsLoading ? '' : gradeSummaryError ? 'Unavailable' : outcome?.total ? `${Math.round((outcome.passing / outcome.total) * 100)}%` : '—';
       const attendanceRate = reportsLoading ? '' : attendanceSummaryError ? 'Unavailable' : data.attendanceRate == null ? '—' : `${data.attendanceRate}%`;
       return [
-        { tone: 'green', icon: 'check-circle', value: passingRate, label: 'Published grades meeting threshold', sub: reportsLoading ? '' : outcome ? `${outcome.passing} of ${outcome.total} published subject marks met the configured threshold` : 'No published subject grades for this school year' },
+        { tone: 'green', icon: 'check-circle', value: passingRate, label: 'Published grades meeting threshold', sub: reportsLoading ? '' : outcome ? `${outcome.passing} of ${outcome.total} published subject marks met the school’s passing requirement` : 'No published subject grades for this school year' },
         { tone: 'blue', icon: 'user-check', value: attendanceRate, label: 'Subject attendance rate', sub: reportsLoading ? '' : attendanceSummaryError ? 'Attendance summary is unavailable' : `${Number(data.attendanceRecordCount) || 0} confirmed subject records` }
       ];
     }
@@ -285,12 +285,12 @@ let gradeSummaryError = '';
       renderReportPanels();
 
       if (!window.EDUGNAY_API?.isBackendAvailable) {
-        selector.replaceChildren(new Option('Backend unavailable', ''));
+        selector.replaceChildren(new Option('Reports aren’t available right now.', ''));
         reportsLoading = false;
         gradeSummaryError = 'Published grade data could not be loaded.';
         attendanceSummaryError = 'Confirmed subject attendance could not be loaded.';
         renderReportPanels();
-        document.getElementById('school-release-list').textContent = 'Backend unavailable.';
+        document.getElementById('school-release-list').textContent = 'Reports aren’t available right now. Refresh and try again.';
         window.EDUGNAY_PAGE_LOADING.ready();
         return;
       }
@@ -300,7 +300,7 @@ let gradeSummaryError = '';
       try {
         const years = await window.EDUGNAY_API.getAcademicYears();
         if (!years.length) {
-          selector.replaceChildren(new Option('No school years configured', ''));
+          selector.replaceChildren(new Option('No school years are set up yet', ''));
           selector.disabled = true;
           reportsLoading = false;
           updateReportPeriodLabel('');

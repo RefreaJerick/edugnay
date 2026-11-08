@@ -174,7 +174,7 @@ test('invalid school date does not fall back to the device date', async () => {
     getParentAttendance: async () => ({ currentDate: '2026-02-30', records: [] })
   });
   await page.load();
-  assert.match(page.elements.get('attendance-load-message').textContent, /response is incomplete/);
+  assert.match(page.elements.get('attendance-load-message').textContent, /Attendance information could not be loaded/);
   assert.equal(page.elements.get('attendance-retry').hidden, false);
 });
 
@@ -197,7 +197,7 @@ test('parent with no linked children sees the empty state', async () => {
 test('missing API configuration shows an error instead of demo attendance', async () => {
   const page = createPage({ isBackendAvailable: false });
   await page.load();
-  assert.match(page.elements.get('attendance-load-message').textContent, /not configured/);
+  assert.match(page.elements.get('attendance-load-message').textContent, /isn.t available right now/);
   assert.equal(page.elements.get('attendance-retry').hidden, false);
   assert.equal(page.elements.get('child-switcher').innerHTML, '');
 });

@@ -137,7 +137,7 @@ test('missing, deleted, expired, and no-longer-revisable registrations never exp
   assert.equal(missingToken.elements.get('registrationFormFields').hidden, true);
   assert.equal(missingToken.elements.get('registrationResubmitNotice').hidden, true);
   assert.equal(missingToken.elements.get('registrationLoadRetry').hidden, true);
-  assert.match(missingToken.elements.get('registrationLoadError').textContent, /contact Platform Admin.*do not register again/i);
+  assert.match(missingToken.elements.get('registrationLoadError').textContent, /does not have the saved application.*contact Platform Admin.*do not submit again/i);
 
   for (const status of [404, 409]) {
     const context = createRejectedRegistrationContext(async () => {
@@ -270,8 +270,8 @@ test('rejected status links to token-backed resubmission without putting the tok
   assert.doesNotMatch(pending, /location\.href\s*=.*registrationStatusToken|location\.href\s*=.*\?token=/);
   assert.match(platformSchoolAccounts, /Administrator login/);
   assert.match(platformSchoolAccounts, /Notification email \(delivery address\)/);
-  assert.match(platformSchoolAccounts, /Accepted by Gmail SMTP — inbox delivery unconfirmed/);
-  assert.match(platformSchoolAccounts, /SMTP message reference/);
+  assert.match(platformSchoolAccounts, /Email service accepted it — inbox delivery is not confirmed/);
+  assert.match(platformSchoolAccounts, /Email delivery reference/);
   assert.match(platformSchoolAccounts, /suspended: 'Suspension email'/);
   assert.match(platformSchoolAccounts, /reactivated: 'Reactivation email'/);
   assert.match(platformSchoolAccounts, /Retry email/);
@@ -288,7 +288,7 @@ test('pending registration does not use stale browser details when the token is 
   const context = createPendingPageContext({ token: '' });
   await vm.runInNewContext('renderPendingRegistration()', context);
   assert.equal(context.calls.statusToken, null);
-  assert.match(context.elements.get('pendingRegistrationError').textContent, /do not submit it again/);
+  assert.match(context.elements.get('pendingRegistrationError').textContent, /does not have the saved application.*do not submit again/i);
   assert.equal(context.elements.get('pendingRegistrationRetry').hidden, true);
 });
 
@@ -322,7 +322,7 @@ test('pending status keeps its last known state on failure and respects rate-lim
   await vm.runInNewContext('renderPendingRegistration()', context);
   await vm.runInNewContext('renderPendingRegistration()', context);
   assert.equal(context.elements.get('pendingRegistrationTitle').textContent, 'Registration submitted');
-  assert.match(context.elements.get('pendingRegistrationError').textContent, /Wait before checking again/);
+  assert.match(context.elements.get('pendingRegistrationError').textContent, /Please wait a moment before checking again/i);
   await vm.runInNewContext('renderPendingRegistration()', context);
   assert.equal(context.calls.statusRequests, 2);
 });
@@ -450,11 +450,12 @@ test('platform rejection submits an empty optional reason without a validation t
 test('report dashboards do not present unavailable reports as empty backend counts', () => {
   const teacherDashboard = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
   const parentDashboard = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
+  const parentDashboardScript = pageFs.readFileSync(path.join(__dirname, '../../assets/js/parent/dashboard.js'), 'utf8');
   const parentReports = pageFs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
   assert.match(teacherDashboard, /EDUGNAY_API\.request\('\/reports\/weekly-drafts\/pending-count'\)/);
   assert.match(teacherDashboard, /label: 'Reports to Confirm'/);
   assert.match(teacherDashboard, /value: TEACHER_PENDING_REPORTS_ERROR \? '—' : TEACHER_PENDING_REPORTS/);
-  assert.match(parentDashboard, /showReportState\('error', 'Reports unavailable'/);
-  assert.match(parentDashboard, /No shared report yet/);
+  assert.match(parentDashboardScript, /Weekly report could not be loaded\. Try again later\./);
+  assert.match(parentDashboard, /data-current-report-available="false"/);
   assert.doesNotMatch(parentReports, /reports\[\]|frontend report generation|frontend report array/);
 });

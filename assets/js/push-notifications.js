@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const config = await request('/notifications/push-key');
       publicKey = config.enabled ? config.publicKey : null;
-      if (!publicKey) return render('Not configured yet');
+      if (!publicKey) return render('Device notifications are not available right now');
       registration = await navigator.serviceWorker.register(workerUrl.href, { scope: appRoot.pathname });
       const subscription = await registration.pushManager.getSubscription();
       enabled = Boolean(subscription && (await request('/notifications/push-subscriptions/status', {

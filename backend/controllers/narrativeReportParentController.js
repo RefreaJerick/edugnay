@@ -29,7 +29,7 @@ async function linkedChild(database, req) {
     [Number(req.user.schoolId), Number(req.user.id), studentId]
   );
   if (!rows.length) throw createError('Linked student not found.', 404);
-  if (!rows[0].reportsEnabled) throw createError('Narrative Reports are not enabled for this school.', 403);
+  if (!rows[0].reportsEnabled) throw createError('Weekly reports are turned off for this school. Ask your school administrator to enable them.', 403);
   return { studentId: String(rows[0].studentId), displayName: rows[0].displayName };
 }
 

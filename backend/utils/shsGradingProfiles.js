@@ -1,4 +1,5 @@
 const { policyFor, defaultComponents, componentWeights, componentsEqual } = require('../config/shsGrading');
+const { loadShsFinalGradeRules } = require('./shsFinalGradeRules');
 
 function parseParts(value) {
   if (!value) return {};
@@ -17,13 +18,19 @@ function parseComponents(value) {
 async function loadShsPolicy(db, scope) {
   const policy = policyFor(scope.group, scope.yearLabel, scope.gradeCode);
   if (!policy) return null;
+  const finalRules = await loadShsFinalGradeRules(db, {
+    schoolId: scope.schoolId, yearId: scope.yearId, levelId: scope.levelId, yearLabel: scope.yearLabel
+  });
+  const effectivePolicy = { ...policy, method: finalRules.gradingMethod,
+    gradingMode: finalRules.gradingMode, passingGradeThreshold: finalRules.passingGradeThreshold,
+    gradeRounding: finalRules.gradeRounding };
   const [rows] = await db.execute(
     `SELECT written_weight AS written, performance_weight AS performance,
       examination_weight AS examination, exam_parts AS examParts, components_json AS componentsJson
      FROM shs_grading_profiles WHERE school_id = ? AND academic_year_id = ? AND ${scope.kind === 'core' ? 'subject_id = ?' : 'offering_id = ?'} LIMIT 1`,
     [scope.schoolId, scope.yearId, scope.kind === 'core' ? scope.subjectId : scope.offeringId]
   );
-  if (!rows.length) return policy;
+  if (!rows.length) return effectivePolicy;
   const row = rows[0];
   const legacyWeights = { ...policy.weights, written: Number(row.written),
     performance: Number(row.performance), examination: Number(row.examination) };
@@ -36,7 +43,7 @@ async function loadShsPolicy(db, scope) {
     }
   }
   const customized = !componentsEqual(components, policy.components);
-  return { ...policy, weights: componentWeights(components), components,
+  return { ...effectivePolicy, weights: componentWeights(components), components,
     examParts: legacyParts, source: customized ? 'School-customized rule' : policy.source };
 }
 

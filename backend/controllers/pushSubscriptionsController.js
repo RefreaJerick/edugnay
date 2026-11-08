@@ -55,7 +55,7 @@ async function status(req, res, next, database = getDatabase()) {
 
 async function subscribe(req, res, next, database = getDatabase()) {
   try {
-    if (!pushConfigured()) return res.status(503).json({ message: 'Device notifications are not configured yet.' });
+    if (!pushConfigured()) return res.status(503).json({ message: 'Device notifications are not available right now. Contact your administrator.' });
     const subscription = parseSubscription(req.body);
     const hash = createHash('sha256').update(req.sessionToken).digest('hex');
     const [[session]] = await database.execute(

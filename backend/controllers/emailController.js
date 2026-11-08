@@ -10,7 +10,7 @@ async function sendTestEmail(req, res, next) {
     }
     const connection = await verifyEmailConnection();
     if (connection.status !== 'ready') {
-      const error = new Error('Email delivery is not configured or the SMTP server is unavailable.');
+      const error = new Error('Email could not be sent right now. Contact your platform administrator.');
       error.status = 503;
       throw error;
     }
@@ -18,7 +18,7 @@ async function sendTestEmail(req, res, next) {
     const result = await sendEmail({
       to: recipient,
       subject: 'Academix email delivery test',
-      text: `Hello ${req.user.displayName},\n\nThis confirms that your Academix SMTP email configuration is working.`
+      text: `Hello ${req.user.displayName},\n\nThis confirms that AcadeMix email sending is working.`
     });
     if (result.status !== 'sent') {
       const error = new Error('The test email could not be delivered.');

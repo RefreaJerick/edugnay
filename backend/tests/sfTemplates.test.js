@@ -405,7 +405,7 @@ test('SF Templates remain blocked for disabled schools without reading the share
     featureGateSchoolId = null;
     const result = await call(controller.listTemplates, 'GET', {}, {}, '1', { id: 3, schoolId: 42 });
     assert.equal(result.error?.status, 403);
-    assert.equal(result.error?.message, 'SF Templates are not enabled for this school.');
+    assert.equal(result.error?.message, 'School Form Templates are turned off for this school. Ask your school administrator to enable them in School Settings.');
     assert.equal(featureGateSchoolId, 42);
     assert.equal(templateCatalogReads, 0);
   } finally {

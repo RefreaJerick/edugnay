@@ -323,7 +323,7 @@ function apiResponseError(response, data, fallback) {
 }
 
 async function requestApi(path, options = {}) {
-  if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
+  if (!EDUGNAY_API_BASE_URL) throw new Error('This service isn’t available right now. Refresh and try again.');
 
   const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
     ...options,
@@ -343,7 +343,7 @@ async function requestApi(path, options = {}) {
 }
 
 async function requestApiFile(path, options = {}) {
-  if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
+  if (!EDUGNAY_API_BASE_URL) throw new Error('This service isn’t available right now. Refresh and try again.');
 
   const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
     ...options,
@@ -362,7 +362,7 @@ async function requestApiFile(path, options = {}) {
 }
 
 async function requestApiMultipart(path, formData, options = {}) {
-  if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
+  if (!EDUGNAY_API_BASE_URL) throw new Error('This service isn’t available right now. Refresh and try again.');
 
   const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
     ...options,
@@ -555,9 +555,11 @@ async function getApiParentNotificationTriggers() {
   return requestApi('/school/parent-notification-triggers');
 }
 
-async function updateApiParentNotificationTriggers(triggers) {
+async function updateApiParentNotificationTriggers(triggers, narrativeReportSmsEnabled) {
+  const body = { triggers };
+  if (typeof narrativeReportSmsEnabled === 'boolean') body.narrativeReportSmsEnabled = narrativeReportSmsEnabled;
   return requestApi('/school/parent-notification-triggers', {
-    method: 'PATCH', body: JSON.stringify({ triggers })
+    method: 'PATCH', body: JSON.stringify(body)
   });
 }
 
@@ -2071,7 +2073,7 @@ function getTodayCalendarNotifications() {
 }
 
 async function loadApiCommunication(role) {
-  if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
+  if (!EDUGNAY_API_BASE_URL) throw new Error('This service isn’t available right now. Refresh and try again.');
   const schoolReady = role === 'platform_admin'
     ? Promise.resolve()
     : Promise.resolve(window.EDUGNAY_SCHOOL_READY);
@@ -2171,7 +2173,7 @@ function setApiPortalFeatures(features) {
 
 async function getApiSchoolContext() {
   const response = await requestApi('/school/context');
-  if (!response?.school?.id) throw new Error('School context is unavailable.');
+  if (!response?.school?.id) throw new Error('Your school information couldn’t be loaded.');
   const school = { ...response.school, logoUrl: resolveApiSchoolLogo(response.school.logoUrl) };
   setApiSchoolContext(school, {
     gradesEnabled: response.school.gradesPageEnabled,
@@ -2492,7 +2494,7 @@ async function getCurrentUser() {
   currentUserRequest = (async () => {
     const response = await requestApi('/auth/me');
     const user = response?.user;
-    if (!user?.id || !user.role) throw new Error('The session response is invalid.');
+    if (!user?.id || !user.role) throw new Error('Your sign-in information couldn’t be loaded. Sign in again.');
     const session = {
       apiUserId: user.id,
       apiSchoolId: user.schoolId,
@@ -3539,11 +3541,11 @@ function applyCurrentDateToGradingBanners() {
       };
     }
 
-    throw new Error('School form generation requires the live school database.');
+    throw new Error('School form generation is not available right now. Refresh and try again.');
   }
 
   async function generateCombinedSfForms(values = {}) {
-    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined school-form generation requires the live school database.');
+    if (!EDUGNAY_API_BASE_URL) throw new Error('School form generation is not available right now. Refresh and try again.');
     const requestedIds = (Array.isArray(values.templateIds) ? values.templateIds : []).map(String);
     const templateIds = [...new Set(requestedIds)];
     if (templateIds.length !== requestedIds.length) throw new Error('A school form can only be selected once.');
@@ -3609,7 +3611,7 @@ function applyCurrentDateToGradingBanners() {
   }
 
   async function exportCombinedSfForms(values = {}) {
-    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined school-form downloads require the live school database.');
+    if (!EDUGNAY_API_BASE_URL) throw new Error('School form downloads are not available right now. Refresh and try again.');
     const templates = await getSfTemplates();
     const apiTemplateIds = (values.templateIds || []).map(id => {
       const template = templates.find(record => record.id === String(id));
@@ -3665,7 +3667,7 @@ function applyCurrentDateToGradingBanners() {
       return { buffer: file.buffer, fileName: file.fileName || String(values.fileName || template.fileName), exportId };
     }
 
-    throw new Error('School form downloads require the live school database.');
+    throw new Error('School form downloads are not available right now. Refresh and try again.');
   }
 
   function getAttendanceQrPayload(token) {
@@ -4142,7 +4144,8 @@ function applyCurrentDateToGradingBanners() {
     const menu = document.createElement('div');
     const baseId = select.id || `searchable-select-${Math.random().toString(36).slice(2)}`;
 
-    const people = Boolean(settings.people || settings.avatar || settings.searchPlaceholder || select.id === 'teacherSelect');
+    const people = Boolean(settings.people || settings.avatar || settings.searchPlaceholder
+      || select.dataset.searchableType === 'people' || select.id === 'teacherSelect');
     wrapper.className = `searchable-select ${people ? 'searchable-select-people' : 'searchable-select-plain'}`;
     wrapper.dataset.searchableSelect = 'true';
     control.className = 'searchable-select-control';
@@ -4183,8 +4186,8 @@ function applyCurrentDateToGradingBanners() {
       input,
       menu,
       placeholder: settings.placeholder || select.options[0]?.textContent.trim() || 'Select an option',
-      searchPlaceholder: settings.searchPlaceholder || 'Search options...',
-      emptyText: settings.emptyText || 'No matching options',
+      searchPlaceholder: settings.searchPlaceholder || select.dataset.searchPlaceholder || 'Search options...',
+      emptyText: settings.emptyText || select.dataset.searchEmptyText || 'No matching options',
       required: select.required,
       people,
       open: false,
@@ -4408,6 +4411,10 @@ function applyActiveSchoolToShell() {
   document.querySelectorAll('[data-active-academic-period]').forEach(element => {
     const schoolLevel = String(element.dataset.schoolLevel || '').trim();
     const activePeriod = schoolLevel ? config.getCurrentAcademicPeriod(school.id, schoolLevel) : null;
+    if (element.dataset.periodOnly === 'true') {
+      element.textContent = activePeriod?.name || 'No active period';
+      return;
+    }
     const schoolYearSuffix = schoolYear ? ` · S.Y. ${schoolYear}` : '';
     const activePeriodLabel = activePeriod
       ? `${activePeriod.name}${schoolYearSuffix}`
@@ -4788,13 +4795,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error.status === 401 || !document.documentElement.classList.contains('profile-chip-restored')) {
         setCurrentUserShellStatus('Account unavailable', 'Connection issue');
       }
-      showAppToast('Your account could not be loaded from the school database. Refresh when the connection is restored.', 'error');
+      showAppToast('Your account couldn’t be loaded. Refresh and try again.', 'error');
     }
     if (apiSession?.apiSchoolId) {
       try {
         await window.EDUGNAY_SCHOOL_READY;
       } catch (error) {
-        showAppToast('School information could not be loaded. Refresh when the connection is restored.', 'error');
+        showAppToast('School information couldn’t be loaded. Refresh and try again.', 'error');
       }
     }
   } else if (!isPublicPage()) {

@@ -43,7 +43,7 @@ function normalizeQrToken(value) {
   const prefixes = ['academix:attendance:', 'edugnay:attendance:'];
   const prefix = prefixes.find(item => token.startsWith(item));
   const result = prefix ? token.slice(prefix.length) : token;
-  if (!result || result.length > 500) throw createError('QR data is invalid.');
+  if (!result || result.length > 500) throw createError('This QR code is not valid. Try scanning it again.');
   return result;
 }
 
@@ -113,7 +113,7 @@ async function getTeachingSection(database, teacher, sectionId, subjectId, compo
 
 function assertQrAttendanceDate(section, attendanceDate) {
   if (attendanceDate < section.academicYearStartDate || attendanceDate > section.academicYearEndDate) {
-    throw createError('QR attendance must be recorded within the section academic year.');
+    throw createError('QR attendance can only be recorded within this section’s school-year dates.');
   }
 }
 
@@ -231,7 +231,7 @@ async function startQrAttendance(req, res, next) {
 
     const section = await getTeachingSection(connection, req.user, sectionId, subjectId, componentCode);
     if (!section) throw createError('Section not found.', 404);
-    if (section.legacyCommunication) throw createError('Legacy combined communication attendance is read-only. Assign an English or Filipino component to record attendance.', 409);
+    if (section.legacyCommunication) throw createError('Attendance cannot be changed for this older combined Communication class. Use Effective Communication or Mabisang Komunikasyon to record attendance.', 409);
     assertQrAttendanceDate(section, attendanceDate);
 
     const [sessions] = await connection.execute(
@@ -247,7 +247,7 @@ async function startQrAttendance(req, res, next) {
       throw createError('Attendance has already been confirmed for today.', 409);
     }
     if (existingSession && existingSession.method !== 'qr') {
-      throw createError('Today\'s attendance session was started manually.', 409);
+      throw createError('Attendance has already been recorded manually for today. Review it in the attendance list.', 409);
     }
     const [credentials] = await connection.execute(
       `SELECT c.id, c.student_user_id AS studentId, c.credential_status AS credentialStatus,
@@ -257,7 +257,7 @@ async function startQrAttendance(req, res, next) {
        WHERE c.token_hash = ? LIMIT 1`, [hashQrToken(qrToken)]);
     const credential = credentials[0];
     if (!credential || credential.credentialStatus !== 'active' || Number(credential.schoolId) !== Number(section.schoolId)) {
-      throw createError('This attendance QR is unknown or no longer valid.', 422);
+      throw createError('This attendance QR code is no longer valid. Ask your school administrator for a current code.', 422);
     }
     const [enrollments] = await connection.execute(
       `SELECT 1 FROM section_students WHERE school_id = ? AND section_id = ?
@@ -292,7 +292,7 @@ async function startQrAttendance(req, res, next) {
           ...avatarFields({ ...credential, id: credential.studentId }) } } });
   } catch (error) {
     if (connection) await connection.rollback();
-    if (error.code === 'ER_DUP_ENTRY') error = createError('A QR session already exists for this subject today. Reload attendance.', 409);
+    if (error.code === 'ER_DUP_ENTRY') error = createError('QR attendance has already started for this subject today. Reload the page.', 409);
     next(error);
   } finally {
     connection?.release();
@@ -354,7 +354,7 @@ async function scanQrAttendance(req, res, next) {
     connection = await database.getConnection();
     await connection.beginTransaction();
     const session = await getActiveQrSession(connection, req.user, sessionId, true);
-    if (!session) throw createError('QR attendance session not found.', 404);
+    if (!session) throw createError('This QR attendance is no longer active. Close this window and open QR Attendance again.', 404);
 
     const [credentials] = await connection.execute(
       `SELECT
@@ -380,7 +380,7 @@ async function scanQrAttendance(req, res, next) {
         [session.schoolId, sessionId, matchingCredential?.id || null, matchingCredential?.studentId || null, req.user.id, matchingCredential ? 'revoked' : 'unknown']
       );
       await connection.commit();
-      return res.status(422).json({ message: 'This attendance QR is unknown or no longer valid.' });
+      return res.status(422).json({ message: 'This attendance QR code is no longer valid. Ask your school administrator for a current code.' });
     }
 
     const [enrollments] = await connection.execute(
@@ -437,7 +437,7 @@ async function confirmQrAttendance(req, res, next) {
     await connection.beginTransaction();
 
     const session = await getActiveQrSession(connection, req.user, sessionId, true);
-    if (!session) throw createError('QR attendance session not found.', 404);
+    if (!session) throw createError('This QR attendance is no longer active. Close this window and open QR Attendance again.', 404);
 
     const studentIds = await getActiveStudentIds(connection, session.schoolId, session.sectionId);
     const submittedIds = records.map(record => record.studentId).sort((a, b) => a - b);
@@ -494,7 +494,7 @@ async function confirmQrAttendance(req, res, next) {
 
 function assertElectiveQrDate(electiveClass, date) {
   if (date < electiveClass.yearStartDate || date > electiveClass.yearEndDate) {
-    throw createError('QR attendance must be recorded within the class school year.');
+    throw createError('QR attendance can only be recorded within this class’s school-year dates.');
   }
 }
 
@@ -575,7 +575,7 @@ async function startElectiveQrAttendance(req, res, next) {
        WHERE c.token_hash = ? LIMIT 1`, [hashQrToken(qrToken)]);
     const credential = credentials[0];
     if (!credential || credential.credentialStatus !== 'active' || Number(credential.schoolId) !== Number(electiveClass.schoolId)) {
-      throw createError('This attendance QR is unknown or no longer valid.', 422);
+      throw createError('This attendance QR code is no longer valid. Ask your school administrator for a current code.', 422);
     }
     const [members] = await connection.execute(
       `SELECT 1 FROM shs_elective_class_students WHERE school_id = ? AND elective_class_id = ?
@@ -605,7 +605,7 @@ async function startElectiveQrAttendance(req, res, next) {
           initials: credential.initials, ...avatarFields({ ...credential, id: credential.studentId }) } } });
   } catch (error) {
     if (connection) await connection.rollback();
-    if (error.code === 'ER_DUP_ENTRY') error = createError('A QR session already exists for this class today. Reload attendance.', 409);
+    if (error.code === 'ER_DUP_ENTRY') error = createError('QR attendance has already started for this class today. Reload the page.', 409);
     next(error);
   } finally { connection?.release(); }
 }
@@ -631,7 +631,7 @@ async function scanElectiveQrAttendance(req, res, next) {
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
     const session = await getActiveElectiveQrSession(connection, req.user, sessionId, true);
-    if (!session) throw createError('QR attendance session not found.', 404);
+    if (!session) throw createError('This QR attendance is no longer active. Close this window and open QR Attendance again.', 404);
     const [credentials] = await connection.execute(
       `SELECT c.id, c.student_user_id AS studentId, c.credential_status AS credentialStatus,
         u.school_id AS schoolId, u.display_name AS displayName, u.initials,
@@ -647,7 +647,7 @@ async function scanElectiveQrAttendance(req, res, next) {
         [session.schoolId, sessionId, sameSchool?.id || null, sameSchool?.studentId || null, req.user.id,
           sameSchool ? 'revoked' : 'unknown']);
       await connection.commit();
-      return res.status(422).json({ message: 'This attendance QR is unknown or no longer valid.' });
+      return res.status(422).json({ message: 'This attendance QR code is no longer valid. Ask your school administrator for a current code.' });
     }
     const [members] = await connection.execute(
       `SELECT 1 FROM shs_elective_class_students WHERE school_id = ? AND elective_class_id = ?
@@ -688,7 +688,7 @@ async function confirmElectiveQrAttendance(req, res, next) {
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
     const session = await getActiveElectiveQrSession(connection, req.user, sessionId, true);
-    if (!session) throw createError('QR attendance session not found.', 404);
+    if (!session) throw createError('This QR attendance is no longer active. Close this window and open QR Attendance again.', 404);
     const members = await getElectiveRoster(connection, session.schoolId, session.electiveClassId);
     const expected = members.map(member => Number(member.studentId)).sort((a, b) => a - b);
     const submitted = records.map(record => record.studentId).sort((a, b) => a - b);
@@ -717,8 +717,8 @@ async function confirmElectiveQrAttendance(req, res, next) {
 }
 
 async function findQrStudent(connection, user, studentId) {
-  if (user.role === 'student' && user.id !== studentId) throw createError('You do not have access to this QR credential.', 403);
-  if (!['student', 'school_admin'].includes(user.role)) throw createError('You do not have access to this QR credential.', 403);
+  if (user.role === 'student' && user.id !== studentId) throw createError('You do not have permission to view this student’s attendance QR code.', 403);
+  if (!['student', 'school_admin'].includes(user.role)) throw createError('You do not have permission to view this student’s attendance QR code.', 403);
   const [students] = await connection.execute("SELECT users.id, users.school_id AS schoolId, users.display_name AS displayName FROM users WHERE users.id = ? AND users.school_id = ? AND users.role = 'student' AND users.account_status = 'active' LIMIT 1", [studentId, user.schoolId]);
   if (!students.length) throw createError('Student was not found.', 404);
   return students[0];

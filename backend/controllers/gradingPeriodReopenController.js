@@ -325,7 +325,7 @@ async function getLockedScopeForRequest(connection, request, requireAssignment =
     true
   );
   if (!scope || scope.sectionStatus !== 'active' || scope.termStatus !== 'closed') {
-    throw createError('This request no longer matches a closed grading period.', 409);
+    throw createError('This grading period or class is no longer available to reopen. Refresh and try again.', 409);
   }
   if (scope.academicYearStatus !== 'active') throw createError('Only terms in the active school year can be reopened.', 409);
   if (requireAssignment) {
@@ -381,7 +381,7 @@ async function respondToRequest(req, res, next, action) {
     if (action === 'approve') {
       if (current.status !== 'pending') throw createError('Only pending requests can be approved.', 409);
       if (await hasConflictingRequest(connection, scope, current.id)) {
-        throw createError('Another pending request or active approval already exists for this scope.', 409);
+        throw createError('A pending request or active approval already exists for this section, subject, and grading period.', 409);
       }
       expiresAt = dateTime(req.body.expiresAt);
       const adminNote = optionalText(req.body.adminNote, 2000, 'Admin note');

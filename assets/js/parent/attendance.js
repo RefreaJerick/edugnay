@@ -30,14 +30,14 @@ lucide.createIcons();
       attendanceHistory.setLoading();
       document.getElementById('child-switcher').innerHTML = '';
       try {
-        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The attendance API is not configured.');
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('Attendance isn’t available right now. Refresh and try again.');
         const children = await window.EDUGNAY_API.getParentChildren();
         const data = await window.EDUGNAY_API.getParentAttendance();
         const date = data?.currentDate;
         const parsed = new Date(date + 'T00:00:00Z');
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime())
           || parsed.toISOString().slice(0, 10) !== date || !Array.isArray(data.records)) {
-          throw new Error('The attendance response is incomplete. Please try again.');
+          throw new Error('Attendance information could not be loaded. Refresh and try again.');
         }
         parentChildren = children.map(child => ({ ...child, studentId: String(child.studentId) }));
         attendanceRecords = data.records.map(record => ({ ...record, studentId: String(record.studentId) }));

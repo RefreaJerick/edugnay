@@ -20,19 +20,22 @@ function releaseRequest(reportId = '101') {
   };
 }
 
-function releaseDatabase({ report = null, notify = true, failNotification = false } = {}) {
+function releaseDatabase({ report = null, notify = true, failNotification = false, smsEnabled = false, parents = [] } = {}) {
   const calls = [];
   const record = report || {
     id: 101, status: 'confirmed', followUpSuggestion: 'Check in.', studentId: 4,
-    sectionId: 22, releasedAt: null, weekStartDate: '2026-10-12'
+    sectionId: 22, releasedAt: null, pendingCorrection: false,
+    weekStartDate: '2026-10-12', weekEndDate: '2026-10-17'
   };
+  let releaseId = 501;
   const connection = {
     async beginTransaction() { calls.push('BEGIN'); },
     async execute(sql, values = []) {
       calls.push({ sql, values });
       if (sql.includes('FROM narrative_reports AS reports')) return [[record]];
       if (sql.includes('FROM narrative_report_releases') && sql.includes('version_number AS versionNumber')) {
-        return [[record.releasedAt ? { versionNumber: 1 } : undefined].filter(Boolean)];
+        const versionNumber = record.pendingCorrection ? 1 : Number(record.existingVersionNumber || (record.releasedAt ? 1 : 0));
+        return [[versionNumber ? { versionNumber } : undefined].filter(Boolean)];
       }
       if (sql.startsWith('UPDATE narrative_reports SET released_at')) {
         record.releasedAt = new Date();
@@ -42,8 +45,15 @@ function releaseDatabase({ report = null, notify = true, failNotification = fals
         return [[{ summary: 'Approved summary.', releasedAt: record.releasedAt }]];
       }
       if (sql.includes('FROM report_recommendations')) return [[{ text: 'Read together.' }]];
+      if (sql.startsWith('SELECT display_name AS displayName FROM users') && sql.includes("role = 'student'")) {
+        return [[{ displayName: 'Synthetic Learner' }]];
+      }
       if (sql.includes('SELECT display_name AS displayName FROM users WHERE id = ?')) return [[{ displayName: 'Adviser' }]];
       if (sql.includes('SELECT display_name AS displayName FROM users')) return [[{ displayName: 'Synthetic Learner' }]];
+      if (sql.includes('FROM school_parent_notification_settings')) return [[{ enabled: smsEnabled ? 1 : 0 }]];
+      if (sql.startsWith('SELECT DISTINCT parents.id')) return [parents];
+      if (sql.startsWith('INSERT INTO narrative_report_releases')) return [{ affectedRows: 1, insertId: releaseId++ }];
+      if (sql.startsWith('INSERT INTO narrative_report_sms_outbox')) return [{ affectedRows: 1 }];
       if (sql.includes('FROM parent_notification_triggers AS triggers')) return [[{ enabled: notify ? 1 : 0 }]];
       if (sql.startsWith('INSERT INTO notifications')) {
         if (failNotification) throw new Error('notification insert failed');
@@ -115,6 +125,88 @@ test('release is idempotent, respects disabled notices, and rolls back on notifi
   } finally {
     if (previous === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
     else process.env.AI_REPORTS_RELEASE_ENABLED = previous;
+  }
+});
+
+test('release queues the full parent-facing SMS once per linked parent and release version', async () => {
+  const previousReleaseFlag = process.env.AI_REPORTS_RELEASE_ENABLED;
+  const previousKey = process.env.SEMAPHORE_API_KEY;
+  process.env.AI_REPORTS_RELEASE_ENABLED = 'true';
+  process.env.SEMAPHORE_API_KEY = 'mock-semaphore-key';
+  try {
+    const database = releaseDatabase({ smsEnabled: true, parents: [
+      { parentUserId: 8, contactNumber: '+63 917 123 4567' },
+      { parentUserId: 9, contactNumber: null },
+      { parentUserId: 10, contactNumber: '12345' }
+    ] });
+    await releaseConfirmedReport(releaseRequest(), database);
+    const queued = database.calls.filter(call => call.sql?.startsWith('INSERT INTO narrative_report_sms_outbox'));
+    assert.equal(queued.length, 3);
+    assert.ok(queued.every(call => call.values[0] === 1 && call.values[1] === 501));
+    assert.equal(queued[0].values[2], 8);
+    assert.equal(queued[0].values[3], '639171234567');
+    assert.equal(queued[0].values[4], '4567');
+    assert.match(queued[0].values[5], /Weekly Narrative Report for Synthetic Learner/);
+    assert.match(queued[0].values[5], /Reporting week: 2026-10-12 to 2026-10-17/);
+    assert.match(queued[0].values[5], /Approved summary\./);
+    assert.match(queued[0].values[5], /Recommended actions:\n- Read together\./);
+    assert.doesNotMatch(queued[0].values[5], /teacher note|source details|Check in\./i);
+    assert.equal(queued[0].values[6], 'pending');
+    assert.equal(queued[1].values[6], 'skipped');
+    assert.equal(queued[1].values[8], 'missing_phone');
+    assert.equal(queued[2].values[6], 'skipped');
+    assert.equal(queued[2].values[8], 'invalid_phone');
+    assert.match(queued[0].sql, /ON DUPLICATE KEY UPDATE id = id/);
+    assert.match(queued[0].sql, /school_id, report_release_id, parent_user_id/);
+    assert.ok(queued[0].sql.includes('ON DUPLICATE KEY UPDATE'));
+    const sendIndex = database.calls.findIndex(call => call.sql?.startsWith('INSERT INTO narrative_report_sms_outbox'));
+    const commitIndex = database.calls.indexOf('COMMIT');
+    assert.ok(sendIndex >= 0 && commitIndex > sendIndex);
+    assert.equal(database.calls.some(call => call.sql?.includes('INSERT INTO notifications')), true);
+
+    const correction = releaseDatabase({ smsEnabled: true, report: {
+      id: 101, status: 'confirmed', followUpSuggestion: null, studentId: 4, sectionId: 22,
+      releasedAt: new Date('2026-10-18T10:00:00Z'), pendingCorrection: true, existingVersionNumber: 1,
+      weekStartDate: '2026-10-12', weekEndDate: '2026-10-17'
+    }, parents: [{ parentUserId: 8, contactNumber: '09171234567' }] });
+    const corrected = await releaseConfirmedReport(releaseRequest(), correction);
+    assert.equal(corrected.versionNumber, 2);
+    const correctionOutbox = correction.calls.find(call => call.sql?.startsWith('INSERT INTO narrative_report_sms_outbox'));
+    assert.equal(correctionOutbox.values[1], 501);
+    assert.equal(correctionOutbox.values[6], 'pending');
+
+    const disabled = releaseDatabase({ smsEnabled: false, parents: [{ parentUserId: 8, contactNumber: '09171234567' }] });
+    await releaseConfirmedReport(releaseRequest(), disabled);
+    assert.equal(disabled.calls.some(call => call.sql?.startsWith('SELECT DISTINCT parents.id')), false);
+    assert.equal(disabled.calls.some(call => call.sql?.startsWith('INSERT INTO narrative_report_sms_outbox')), false);
+    assert.equal(disabled.calls.some(call => call.sql?.startsWith('INSERT INTO notifications')), true);
+  } finally {
+    if (previousReleaseFlag === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
+    else process.env.AI_REPORTS_RELEASE_ENABLED = previousReleaseFlag;
+    if (previousKey === undefined) delete process.env.SEMAPHORE_API_KEY;
+    else process.env.SEMAPHORE_API_KEY = previousKey;
+  }
+});
+
+test('draft reports awaiting confirmation cannot create SMS releases or outbox messages', async () => {
+  const previousReleaseFlag = process.env.AI_REPORTS_RELEASE_ENABLED;
+  const previousKey = process.env.SEMAPHORE_API_KEY;
+  process.env.AI_REPORTS_RELEASE_ENABLED = 'true';
+  process.env.SEMAPHORE_API_KEY = 'mock-semaphore-key';
+  try {
+    const database = releaseDatabase({
+      smsEnabled: true,
+      report: { id: 101, status: 'draft', studentId: 4, sectionId: 22, releasedAt: null, pendingCorrection: false,
+        weekStartDate: '2026-10-12', weekEndDate: '2026-10-17' }
+    });
+    await assert.rejects(releaseConfirmedReport(releaseRequest(), database), error => error.status === 409);
+    assert.equal(database.calls.some(call => call.sql?.startsWith('INSERT INTO narrative_report_releases')), false);
+    assert.equal(database.calls.some(call => call.sql?.startsWith('INSERT INTO narrative_report_sms_outbox')), false);
+  } finally {
+    if (previousReleaseFlag === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
+    else process.env.AI_REPORTS_RELEASE_ENABLED = previousReleaseFlag;
+    if (previousKey === undefined) delete process.env.SEMAPHORE_API_KEY;
+    else process.env.SEMAPHORE_API_KEY = previousKey;
   }
 });
 
@@ -206,6 +298,7 @@ test('release flag defaults off and parent routes require parent authorization',
   const routes = pageFs.readFileSync(path.join(__dirname, '../routes/reports.js'), 'utf8');
   const parentPage = pageFs.readFileSync(path.join(root, 'views/parent/edugnay-parent-reports.html'), 'utf8');
   const parentScript = pageFs.readFileSync(path.join(root, 'assets/js/parent/narrative-reports.js'), 'utf8');
+  const privacyPage = pageFs.readFileSync(path.join(root, 'views/onboarding/edugnay-privacy-policy.html'), 'utf8');
   assert.match(envExample, /^AI_REPORTS_RELEASE_ENABLED=false$/m);
   assert.ok(routes.includes("router.post('/weekly-drafts/:reportId/release', requireSchoolUser, requireRoles('teacher')"));
   assert.ok(routes.includes("router.get('/parent/children/:studentId', requireSchoolUser, requireRoles('parent')"));
@@ -220,6 +313,10 @@ test('release flag defaults off and parent routes require parent authorization',
   assert.match(parentScript, /openReport\(linkedReport, null, false\)/);
   assert.doesNotMatch(parentScript, /teacherNote|followUpSuggestion|isAtRisk|reflectionText/);
   assert.ok(fs.existsSync(path.join(root, 'assets/js/parent/narrative-reports.js')));
+  assert.match(privacyPage, /Semaphore/);
+  assert.match(privacyPage, /saved phone number/i);
+  assert.match(privacyPage, /complete parent-facing report and recommendations/i);
+  assert.match(privacyPage, /Teacher-only notes and internal source details are not sent by SMS/);
 });
 
 test('parent page features the latest report and shows every past report without exposing private fields', async () => {

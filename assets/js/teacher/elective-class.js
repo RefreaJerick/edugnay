@@ -352,7 +352,7 @@
       updateAttCount();
       document.getElementById('qrAttendanceSection').textContent = `${electiveClass.className} Â· ${electiveClass.subjectName}`;
       document.getElementById('qrAttendanceDate').textContent = today;
-      document.getElementById('qrAttendanceRuleText').textContent = 'Scanned students are marked present. Review the roster before confirming attendance.';
+      document.getElementById('qrAttendanceRuleText').textContent = 'Scanned students are marked present. Review or change each student’s status before confirming attendance.';
       document.querySelector('#qrAttendanceModal .modal-sub').textContent = 'Scan and review this class roster.';
       document.getElementById('qrScannerStartButton').onclick = startQrCamera;
       document.getElementById('qrScannerStopButton').onclick = stopQrCamera;

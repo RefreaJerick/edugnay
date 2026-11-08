@@ -224,7 +224,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
         return;
       }
       if (attendanceLoadError) {
-        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Attendance could not be loaded', text: 'Try again after the connection is restored.' });
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Attendance could not be loaded', text: 'Refresh and try again.' });
         lucide.createIcons();
         return;
       }
@@ -295,7 +295,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
         tasks = await getParentAssignments(selectedChild, selectedDay);
       } catch {
         if (requestId !== assignmentsRequestId || selectedChild !== currentChild || selectedDay !== currentDay) return;
-        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Assignments could not be loaded', text: 'Try again after the connection is restored.' });
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Assignments could not be loaded', text: 'Refresh and try again.' });
         lucide.createIcons();
         return;
       }
@@ -391,8 +391,8 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
         document.getElementById('assignments-detail').innerHTML = '';
       } else {
         PARENT_CHILDREN_LOADING = false;
-        PARENT_CHILDREN_ERROR = 'The backend is required to load linked children.';
-        attendanceLoadError = 'The backend is required to load attendance.';
+        PARENT_CHILDREN_ERROR = 'Linked students couldn’t be loaded. Refresh and try again.';
+        attendanceLoadError = 'Attendance couldn’t be loaded. Refresh and try again.';
       }
       if (window.EDUGNAY_API?.isBackendAvailable) {
         try {
@@ -450,7 +450,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
           DASHBOARD_ANNOUNCEMENTS_ERROR = error.message || 'Announcements could not be loaded.';
         }
       } else {
-        DASHBOARD_ANNOUNCEMENTS_ERROR = 'The backend is required to load announcements.';
+        DASHBOARD_ANNOUNCEMENTS_ERROR = 'Announcements couldn’t be loaded. Refresh and try again.';
       }
       DASHBOARD_ANNOUNCEMENTS_LOADING = false;
       renderDashboardAnnouncements();
