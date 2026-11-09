@@ -2,6 +2,9 @@ let archiveCandidates = [];
   let selectedArchiveCandidate = null;
   let currentConfirmCandidate = null;
   let archiveActionPending = false;
+  let currentViewedArchiveId = null;
+  let archiveExportPending = false;
+  let viewArchiveRequest = 0;
 
   function escapeArchiveHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -65,7 +68,7 @@ let archiveCandidates = [];
     list.innerHTML = years.map((year, index) => `
       <div class="archive-year-card ${index ? 'collapsed' : ''}" data-year="${Number(year.id)}">
         <div class="ayc-head" data-page-click="g0a2eca9145b1"><div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div><div class="ayc-info"><div class="ayc-title">S.Y. ${escapeArchiveHtml(year.label)}</div><div class="ayc-meta">Archived on ${escapeArchiveHtml(formatArchiveDate(year.archivedAt))} · By ${escapeArchiveHtml(year.archivedBy || 'Unavailable')}</div></div><div class="ayc-right">${index === 0 ? '<span class="badge badge-blue">Latest</span>' : ''}${index === years.length - 1 ? '<span class="badge badge-gray">Oldest</span>' : ''}<span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Complete</span><div class="collapse-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></div></div></div>
-        <div class="ayc-body"><div class="ayc-stats"><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.students)}</div><div class="ayc-stat-label">Students</div></div><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.sections)}</div><div class="ayc-stat-label">Sections</div></div><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.teachers)}</div><div class="ayc-stat-label">Teachers</div></div></div><div class="ayc-quarters"><div class="ayc-quarters-title">Grading-period Pass Rates</div><div class="quarter-rows">${renderArchivePeriodRows(year.academicPeriods || [])}</div></div><div class="ayc-footer"><div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div><div class="ayc-footer-actions"><button class="footer-btn export" type="button" disabled title="Archive exports are not available yet."><i data-lucide="download" style="width:11px;height:11px;"></i> Export unavailable</button><button class="footer-btn view" type="button" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { openViewModal((Number(year.id))) })}"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button></div></div></div>
+        <div class="ayc-body"><div class="ayc-stats"><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.students)}</div><div class="ayc-stat-label">Students</div></div><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.sections)}</div><div class="ayc-stat-label">Sections</div></div><div class="ayc-stat"><div class="ayc-stat-num">${formatArchiveCount(year.teachers)}</div><div class="ayc-stat-label">Teachers</div></div></div><div class="ayc-quarters"><div class="ayc-quarters-title">Grading-period Pass Rates</div><div class="quarter-rows">${renderArchivePeriodRows(year.academicPeriods || [])}</div></div><div class="ayc-footer"><div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div><div class="ayc-footer-actions"><button class="footer-btn export" type="button" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { exportArchivePdf(Number(year.id), this) })}"><i data-lucide="download" style="width:11px;height:11px;"></i> Export PDF</button><button class="footer-btn view" type="button" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { openViewModal((Number(year.id))) })}"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button></div></div></div>
       </div>`).join('');
   }
 
@@ -163,7 +166,10 @@ let archiveCandidates = [];
   function toggleCard(head) { head.closest('.archive-year-card')?.classList.toggle('collapsed'); }
 
   async function openViewModal(yearId) {
+    const requestId = ++viewArchiveRequest;
     const errorBox = document.getElementById('viewArchiveError');
+    currentViewedArchiveId = null;
+    document.getElementById('viewArchiveExportButton').disabled = true;
     errorBox.textContent = '';
     errorBox.style.display = 'none';
     document.getElementById('viewModalTitle').textContent = 'Archived school year';
@@ -172,7 +178,10 @@ let archiveCandidates = [];
     openModal('viewModal');
     try {
       const response = await window.EDUGNAY_API.getArchivedYear(yearId);
+      if (requestId !== viewArchiveRequest) return;
       const archive = response.archive;
+      currentViewedArchiveId = Number(archive.id);
+      document.getElementById('viewArchiveExportButton').disabled = archiveExportPending;
       document.getElementById('viewModalTitle').textContent = `S.Y. ${archive.label}: Archive`;
       document.getElementById('viewStatStudents').textContent = formatArchiveCount(archive.students);
       document.getElementById('viewStatTeachers').textContent = formatArchiveCount(archive.teachers);
@@ -185,8 +194,43 @@ let archiveCandidates = [];
       document.getElementById('viewQuartersBody').innerHTML = periods.length ? periods.map(period => `<tr><td>${escapeArchiveHtml(period.label)}</td><td>${escapeArchiveHtml(period.period)}</td><td>${escapeArchiveHtml(formatArchivePercent(period.passRate))}</td></tr>`).join('') : '<tr><td colspan="3">No grading-period records.</td></tr>';
       if (window.lucide) window.lucide.createIcons();
     } catch (error) {
+      if (requestId !== viewArchiveRequest) return;
       errorBox.textContent = error.message || 'Could not load this archived school year.';
       errorBox.style.display = 'block';
+    }
+  }
+
+  async function exportArchivePdf(yearId, button) {
+    if (archiveExportPending || !Number.isSafeInteger(Number(yearId)) || Number(yearId) < 1) return;
+    archiveExportPending = true;
+    if (button) button.disabled = true;
+    const errorBox = document.getElementById('viewArchiveError');
+    if (button?.id === 'viewArchiveExportButton') {
+      errorBox.textContent = '';
+      errorBox.style.display = 'none';
+    }
+    try {
+      const file = await window.EDUGNAY_API.requestFile(`/archive/academic-years/${Number(yearId)}/export.pdf`);
+      const url = URL.createObjectURL(new Blob([file.buffer], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.fileName || `school-year-archive-${Number(yearId)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      const message = error.message || 'The archive PDF could not be downloaded.';
+      if (button?.id === 'viewArchiveExportButton') {
+        errorBox.textContent = message;
+        errorBox.style.display = 'block';
+      } else {
+        showAppToast(message, 'error');
+      }
+    } finally {
+      archiveExportPending = false;
+      if (button) button.disabled = false;
+      document.getElementById('viewArchiveExportButton').disabled = !currentViewedArchiveId;
     }
   }
 
@@ -265,6 +309,7 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p7f0e398ceb90: function(event) { finalizeArchive() },
     p9641ec64fb46: function(event) { toggleArchive() },
     pa5aab93fb529: function(event) { closeModal('viewModal') },
+    p_archive_export: function(event) { exportArchivePdf(currentViewedArchiveId, this) },
     pa990e6d2fd54: function(event) { closeModal('confirmModal') },
     pd55546e4bf69: function(event) { openConfirmModal() },
   },

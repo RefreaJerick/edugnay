@@ -11,6 +11,7 @@ const { loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
 const { getTrigger, notifyParents } = require('../utils/parentNotifications');
 const { isCommunicationComponentCode } = require('../config/shsCommunication');
 const { classHasStartedSql } = require('../utils/shsClassTerms');
+const { buildStudentGradeCopy, createStudentGradePdf, loadStudentGradeLogo } = require('../utils/studentGradePdf');
 
 function createError(message, status = 400) { const error = new Error(message); error.status = status; return error; }
 function parseId(value, label) { const id = Number.parseInt(value, 10); if (!Number.isSafeInteger(id) || id < 1) throw createError(`Invalid ${label}.`); return id; }
@@ -76,7 +77,7 @@ async function loadPublishedElectiveGrades(database, user, { studentId, academic
      ORDER BY year.start_date DESC, term.sequence_number DESC, o.subject_name, students.last_name, students.first_name`,
     values
   );
-  return rows.map(row => ({ ...row, scopeType: 'elective', sectionId: null, subjectId: null,
+  return rows.map(row => ({ ...row, subjectCode: row.catalogCode, scopeType: 'elective', sectionId: null, subjectId: null,
     sectionName: row.className }));
 }
 
@@ -90,6 +91,7 @@ async function loadConfirmedElectiveClasses(database, schoolId, studentId) {
       school_levels.id AS schoolLevelId, school_levels.grading_period_type AS gradingPeriodType,
       school_levels.passing_grade_threshold AS passingGradeThreshold,
       grade_levels.grade_code AS gradeCode, offerings.subject_name AS subjectName,
+      offerings.catalog_code AS subjectCode,
       classes.class_name AS className, terms.id AS academicTermId,
       terms.name AS academicTermName, terms.sequence_number AS academicTermSequenceNumber,
       terms.status AS academicTermStatus
@@ -137,6 +139,7 @@ async function loadConfirmedElectiveClasses(database, schoolId, studentId) {
         passingGradeThreshold: row.passingGradeThreshold == null ? null : Number(row.passingGradeThreshold),
         gradeCode: row.gradeCode,
         subjectName: row.subjectName,
+        subjectCode: row.subjectCode,
         className: row.className,
         terms: []
       });
@@ -550,18 +553,16 @@ async function getOverviewPassingThresholds(connection, schoolId, rows) {
   return thresholds;
 }
 
-async function getFinalGradesOverview(req, res, next) {
-  try {
-    const user = req.user;
+async function buildFinalGradesOverview(user, query = {}) {
     const schoolId = parseGradeScopeId(user.schoolId, 'school ID');
     const userId = parseGradeScopeId(user.id, 'user ID');
-    if (Object.keys(req.query || {}).some(key => key !== 'studentId')) {
+    if (Object.keys(query).some(key => key !== 'studentId')) {
       throw createError('Unsupported grade filter.');
     }
 
-    const requestedStudentId = req.query?.studentId === undefined
+    const requestedStudentId = query.studentId === undefined
       ? null
-      : parseGradeScopeId(req.query.studentId, 'student ID');
+      : parseGradeScopeId(query.studentId, 'student ID');
     let studentId = userId;
     if (user.role === 'parent') {
       if (!requestedStudentId) throw createError('A linked student must be selected.', 400);
@@ -854,9 +855,7 @@ async function getFinalGradesOverview(req, res, next) {
       subjects: currentSection.subjects
     } : null;
 
-    res.set('Cache-Control', 'no-store');
-    res.json({
-      overview: {
+    return {
         student: { id: String(student.id), displayName: student.displayName },
         academicYears,
         current,
@@ -888,8 +887,39 @@ async function getFinalGradesOverview(req, res, next) {
           finalGrade: Number(component.finalGrade),
           publishedAt: component.publishedAt
         }))
-      }
+    };
+}
+
+async function getFinalGradesOverview(req, res, next) {
+  try {
+    const overview = await buildFinalGradesOverview(req.user, req.query || {});
+    res.set('Cache-Control', 'no-store');
+    res.json({ overview });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function downloadStudentGradeCopy(req, res, next) {
+  try {
+    const academicYearId = parseGradeScopeId(req.query?.academicYearId, 'academic year ID');
+    if (Object.keys(req.query || {}).some(key => key !== 'academicYearId')) {
+      throw createError('Unsupported grade filter.');
+    }
+    const overview = await buildFinalGradesOverview(req.user);
+    const copy = buildStudentGradeCopy(overview, academicYearId);
+    if (!copy) throw createError('School year was not found in your grade records.', 404);
+    const [[school]] = await getDatabase().execute('SELECT name, logo_path AS logoPath FROM schools WHERE id = ? LIMIT 1', [req.user.schoolId]);
+    if (!school) throw createError('School was not found.', 404);
+    const pdf = await createStudentGradePdf(copy, {
+      schoolName: school.name,
+      schoolLogo: await loadStudentGradeLogo(school.logoPath),
+      studentName: overview.student.displayName
     });
+    res.set('Cache-Control', 'no-store');
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="student-grades-${academicYearId}.pdf"`);
+    res.send(pdf);
   } catch (error) {
     next(error);
   }
@@ -1691,6 +1721,7 @@ module.exports = {
   createGradingItem,
   deleteGradingItem,
   getFinalGradesOverview,
+  downloadStudentGradeCopy,
   getTransferReview,
   listGradingItems,
   loadPublishedElectiveGrades,

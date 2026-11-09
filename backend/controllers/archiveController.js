@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { createArchiveSummaryPdf } = require('../utils/archiveSummaryPdf');
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -235,6 +236,24 @@ async function getArchiveYear(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function exportArchiveYearPdf(req, res, next) {
+  try {
+    const yearId = parseId(req.params.yearId, 'academic year ID');
+    const database = getDatabase();
+    const archive = await getArchiveDetails(database, req.user.schoolId, yearId);
+    const [[school] = []] = await database.execute(
+      'SELECT name FROM schools WHERE id = ? LIMIT 1', [req.user.schoolId]
+    );
+    if (!school) throw createError('School was not found.', 404);
+    const pdf = await createArchiveSummaryPdf(archive, school.name);
+    const fileYear = String(archive.label).replace(/[^A-Za-z0-9._-]+/g, '-');
+    res.set('Cache-Control', 'private, no-store');
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="school-year-archive-${fileYear}.pdf"`);
+    res.send(pdf);
+  } catch (error) { next(error); }
+}
+
 async function archiveAcademicYear(req, res, next) {
   let connection;
   let transactionStarted = false;
@@ -290,4 +309,4 @@ async function archiveAcademicYear(req, res, next) {
   }
 }
 
-module.exports = { archiveAcademicYear, getArchiveYear, listArchives };
+module.exports = { archiveAcademicYear, exportArchiveYearPdf, getArchiveYear, listArchives };

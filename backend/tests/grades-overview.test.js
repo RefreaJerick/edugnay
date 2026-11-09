@@ -86,6 +86,7 @@ const database = {
   async execute(sql, params = []) {
     if (sql.includes('FROM student_parent_links')) return [[linked ? { linked: 1 } : undefined].filter(Boolean)];
     if (sql.includes('FROM school_portal_features')) return [[{ gradesEnabled }]];
+    if (sql.includes('FROM schools WHERE id')) return [[{ name: 'Saint Columban School' }]];
     if (sql.includes('FROM users WHERE')) return [[student]];
     if (sql.includes('FROM school_year_final_grade_rules')) {
       const rows = [];
@@ -166,6 +167,7 @@ function confirmedElectiveClass(classId, className, termId = 40, termName = 'Sem
     classId, academicYearId: 4, academicYearLabel: '2026-2027', academicYearStatus: 'active',
     academicYearStartDate: '2026-06-01', schoolLevelId: 3, gradingPeriodType: 'semestral',
     passingGradeThreshold: '75.00', gradeCode: 'grade-11', subjectName: 'Contemporary Literature 1',
+    subjectCode: 'HUM101',
     className, academicTermId: termId, academicTermName: termName,
     academicTermSequenceNumber: sequenceNumber, academicTermStatus: termStatus
   };
@@ -215,6 +217,7 @@ test('confirmed SHS placements are returned for students and linked parents whil
       ['52', 'Contemporary Literature 1', 'Capstone QA AE012']
     ]);
     assert.deepEqual(parentClasses.map(item => item.classId), ['51', '52']);
+    assert.equal(studentClasses[0].subjectCode, 'HUM101');
     assert.deepEqual(studentClasses[0].terms.map(term => [term.id, term.name, term.status]), [['40', 'Semester 1', 'active']]);
     assert.doesNotMatch(electiveClassQuery, /classes\.is_active\s*=\s*1/i);
   });
@@ -288,6 +291,46 @@ test('overview is blocked when the school Grades portal is disabled', async () =
   assert.equal(result.error?.status, 403);
   assert.equal(result.data, null);
   gradesEnabled = 1;
+});
+
+test('student PDF download uses the selected year and blocks unavailable or disabled records', async () => {
+  async function download(query) {
+    const result = { headers: {}, body: null, error: null };
+    await grades.downloadStudentGradeCopy(
+      { user: { id: 101, schoolId: 1, role: 'student' }, query },
+      {
+        set(name, value) { result.headers[name] = value; return this; },
+        send(body) { result.body = body; return this; }
+      },
+      error => { result.error = error; }
+    );
+    return result;
+  }
+
+  const valid = await download({ academicYearId: '4' });
+  assert.equal(valid.error, null);
+  assert.equal(valid.headers['Content-Type'], 'application/pdf');
+  assert.equal(valid.headers['Cache-Control'], 'no-store');
+  assert.equal(valid.body.subarray(0, 5).toString(), '%PDF-');
+  assert.equal((await download({ academicYearId: '999' })).error?.status, 404);
+  assert.equal((await download({ academicYearId: '4', studentId: '102' })).error?.status, 400);
+
+  gradesEnabled = 0;
+  assert.equal((await download({ academicYearId: '4' })).error?.status, 403);
+});
+
+test('student PDF route rejects parent access', () => {
+  const router = require('../routes/grades');
+  const route = router.stack.find(layer => layer.route?.path === '/final-grades/student-copy.pdf').route;
+  const roleGuard = route.stack[1].handle;
+  let status;
+  let allowed = false;
+  roleGuard({ user: { id: 7, schoolId: 1, role: 'parent' } }, {
+    status(code) { status = code; return this; },
+    json() { return this; }
+  }, () => { allowed = true; });
+  assert.equal(status, 403);
+  assert.equal(allowed, false);
 });
 
 test('school-specific threshold applies to current, historical, and published K-10 grades', async () => {

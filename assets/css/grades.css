@@ -41,6 +41,45 @@
   margin: 0;
 }
 
+.grade-download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--button-gap);
+  min-height: var(--button-height);
+  padding: 9px var(--button-pad-x);
+  border: 1px solid var(--blue);
+  border-radius: var(--button-radius);
+  background: var(--blue);
+  color: var(--white);
+  box-shadow: var(--button-primary-shadow);
+  font: 700 12.5px/1.2 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+.grade-download-button:hover:not(:disabled) { border-color: var(--theme-accent-text); background: var(--blue-mid); }
+.grade-download-button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--button-focus-ring); }
+.grade-download-button:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+.grade-download-button svg { flex: 0 0 auto; width: 14px; height: 14px; }
+.grade-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.grade-preview-backdrop[hidden],
+.grade-preview-frame[hidden],
+.grade-preview-message[hidden] { display: none !important; }
+
+.grade-preview-modal { width: min(900px, 100%); }
+.grade-preview-modal .modal-close { display: grid; place-items: center; }
+.grade-preview-body { display: flex; min-height: min(68vh, 680px); background: var(--gray-50); }
+.grade-preview-frame { flex: 1 1 auto; width: 100%; min-height: 62vh; border: 1px solid var(--gray-200); background: var(--white); }
+.grade-preview-message { align-self: center; width: 100%; color: var(--gray-600); font-size: 13px; text-align: center; }
+body.grade-preview-open { overflow: hidden; }
+
 .grades-page .grade-tabs:empty {
   display: none;
 }
@@ -275,12 +314,14 @@
     align-items: stretch;
     flex-direction: column;
     gap: 14px;
-    padding: 16px;
+    padding: 12px;
     border: 1px solid var(--panel-border);
     border-radius: var(--panel-radius);
     background: var(--panel-bg);
     box-shadow: var(--panel-shadow);
   }
+
+  .grade-download-button { width: 100%; }
 
   .grade-year-control {
     grid-template-columns: minmax(0, 1fr);
@@ -348,6 +389,8 @@
     gap: 10px;
   }
 
+  .grade-download-button { width: 100%; }
+
   .grade-year-control {
     grid-template-columns: max-content max-content;
     justify-content: start;
@@ -378,6 +421,8 @@
 }
 
 @media (max-width: 520px) {
+  .grade-preview-body { min-height: 52vh; padding: 8px !important; }
+  .grade-preview-frame { min-height: 52vh; }
   .grade-subject-row {
     gap: 10px;
     padding: 13px 14px;

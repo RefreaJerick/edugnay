@@ -173,6 +173,10 @@
             <select id="gradeYearSelect" aria-label="School year" disabled></select>
           </label>
           <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Grading period"></div>
+          <button class="grade-download-button" id="gradeDownloadButton" type="button" disabled>
+            <i data-lucide="download" aria-hidden="true"></i>
+            <span>Download grades</span>
+          </button>
         </div>
 
         <section class="panel grades-subject-panel" aria-labelledby="subjectGradesTitle">
@@ -194,6 +198,29 @@
         <div class="grades-note-copy" id="gradesNoteCopy">These are the final marks available for the selected grading period. Contact your subject teacher for score details.</div>
       </div>
     </main>
+  </div>
+
+  <div class="modal-backdrop grade-preview-backdrop" id="gradePreviewModal" hidden>
+    <section class="modal grade-preview-modal" role="dialog" aria-modal="true" aria-labelledby="gradePreviewTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <span class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-text"></i></span>
+          <div class="modal-heading-copy">
+            <h2 class="modal-title" id="gradePreviewTitle">Preview grades</h2>
+            <p class="modal-sub" id="gradePreviewYear"></p>
+          </div>
+        </div>
+        <button class="modal-close" id="gradePreviewClose" type="button" aria-label="Close grade preview"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body grade-preview-body">
+        <p class="grade-preview-message" id="gradePreviewMessage" role="status" aria-live="polite">Preparing preview...</p>
+        <iframe class="grade-preview-frame" id="gradePreviewFrame" title="Student copy of grades PDF preview" referrerpolicy="no-referrer" hidden></iframe>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="gradePreviewDone" type="button">Close</button>
+        <button class="btn btn-save" id="gradePreviewDownload" type="button" disabled>Download PDF</button>
+      </div>
+    </section>
   </div>
 
   <script src="../../assets/js/student/grades.js"></script>

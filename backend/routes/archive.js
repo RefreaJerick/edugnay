@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.use(requireAuth, requireSchoolAdmin);
 router.get('/', controller.listArchives);
+router.get('/academic-years/:yearId/export.pdf', controller.exportArchiveYearPdf);
 router.get('/academic-years/:yearId', controller.getArchiveYear);
 router.post('/academic-years/:yearId', controller.archiveAcademicYear);
 
