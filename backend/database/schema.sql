@@ -1,6 +1,7 @@
 -- =========================================================
 -- Academix Database Schema
--- Final schema through migration 066. Import on a new database only.
+-- Final schema through migration 066; built-in template records through 068 are
+-- in reference-data.sql. Import on a new database only.
 -- Then import reference-data.sql; for a demo, import demo-data.sql first.
 -- Do not run historical migrations after importing this file.
 -- =========================================================
@@ -869,6 +870,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_assignments_section_subject (section_id, subject_id),
   KEY idx_assignments_elective_class (school_id, shs_elective_class_id),
+  KEY idx_assignments_communication_component
+    (school_id, section_id, subject_id, communication_component_code),
   UNIQUE KEY uq_assignments_tenant_grading_item (school_id, grading_item_id),
   UNIQUE KEY uq_assignments_school_id (school_id, id),
   CONSTRAINT fk_assignments_school
@@ -940,6 +943,8 @@ CREATE TABLE IF NOT EXISTS grading_items (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_grading_items_school_id (school_id, id),
   KEY idx_grading_item_elective (school_id, shs_elective_class_id, academic_term_id),
+  KEY idx_grading_item_communication_component
+    (school_id, section_id, subject_id, communication_component_code, academic_term_id),
   CONSTRAINT fk_grading_items_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,

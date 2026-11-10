@@ -53,10 +53,22 @@ test('fresh schema has the final SHS teaching and grading structures', () => {
   assert.doesNotMatch(schema, /Apply migrations\/021|Run this file, migrations 021/);
 });
 
+test('fresh schema retains the communication indexes added by migration 060', () => {
+  const migration = readMigration('060');
+  for (const name of ['idx_grading_item_communication_component', 'idx_assignments_communication_component']) {
+    assert.match(migration, new RegExp(`ADD KEY ${name}\\b`));
+    assert.match(schema, new RegExp(`KEY ${name}\\s*\\(`));
+  }
+});
+
 test('fresh install keeps built-in form metadata separate from demo records', () => {
   const reference = fs.readFileSync(path.join(databaseDir, 'reference-data.sql'), 'utf8');
-  for (const form of ['SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9']) {
+  for (const form of ['SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9', 'SF10']) {
     assert.match(reference, new RegExp(`'${form}'`));
+  }
+  for (const version of ['g11-academic-2026-2027', 'g11-techpro-2026-2027',
+    'jhs-2025', 'g12-academic-2026-2027']) {
+    assert.match(reference, new RegExp(`'${version}'`));
   }
   assert.match(reference, /'finalGrade', default_sheet_name, 'I32'/);
   assert.doesNotMatch(reference, /INSERT INTO (?:schools|users|sections)\b/i);
