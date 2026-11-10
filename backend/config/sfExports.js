@@ -5,7 +5,8 @@ const JSZip = require('jszip');
 const ExcelJS = require('exceljs');
 const { getFormEntryType, isFormEntryCell, isFormEntryPlaceholder } = require('./sfEntryCells');
 const { getPrivateStorageDirectory } = require('./privateStorage');
-const { SF9, isGrade11AcademicSf9, isGrade11TechProSf9 } = require('./sf9');
+const { SF9, isGrade11AcademicSf9, isGrade11TechProSf9, isGrade12AcademicSf9 } = require('./sf9');
+const { SF10, isSf10EntryCell } = require('./sf10');
 
 const templateDirectory = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
 const exportDirectory = getPrivateStorageDirectory('SF_EXPORT_DIRECTORY', 'sf-exports');
@@ -225,7 +226,8 @@ async function getWorksheetPath(zip, sheetName) {
 function getOfficialTemplatePath(filePath, formCode) {
   const fileName = path.basename(String(filePath || ''));
   const allowedNames = { SF1: ['sf1.xlsx'], SF2: ['sf2.xlsx'], SF3: ['sf3.xlsx'], SF5: ['sf5.xlsx'],
-    SF8: ['sf8.xlsx'], SF9: ['sf9.xlsx', 'sf9-g11-academic.xlsx', 'sf9-g11-techpro.xlsx'] }[formCode] || [];
+    SF8: ['sf8.xlsx'], SF9: ['sf9.xlsx', 'sf9-g11-academic.xlsx', 'sf9-g11-techpro.xlsx', 'sf9-g12-academic.xlsx'],
+    SF10: ['sf10.xlsx'] }[formCode] || [];
   if (!allowedNames.includes(fileName)) {
     throw createError('The official SF template file is unavailable.', 500);
   }
@@ -251,12 +253,30 @@ async function loadEditableTemplate(formCode, filePath, sheetName) {
 
 async function getEditableCells(template, mappedCells = []) {
   const workbook = await loadEditableTemplate(template.formCode, template.filePath, template.sheetName);
+  if (template.formCode === 'SF10') {
+    const entries = [];
+    SF10.sheets.forEach((sheetName, pageIndex) => {
+      const sheet = workbook.getWorksheet(sheetName);
+      if (!sheet) throw createError(`The SF10 ${sheetName} worksheet is unavailable.`, 500);
+      for (let row = 1; row <= sheet.rowCount; row += 1) {
+        for (let column = 1; column <= sheet.columnCount; column += 1) {
+          const cell = sheet.getCell(row, column);
+          if (!isSf10EntryCell(sheetName, cell.address)) continue;
+          if (cell.isMerged && cell.master.address !== cell.address) continue;
+          if (cell.value && typeof cell.value === 'object' && (cell.value.formula || cell.value.sharedFormula)) continue;
+          if (cell.value !== null && cell.value !== undefined && String(cell.text || cell.value).trim()) continue;
+          entries.push({ pageIndex, cellAddress: cell.address, type: getFormEntryType('SF10', cell.address, cell) });
+        }
+      }
+    });
+    return entries;
+  }
   const worksheet = workbook.getWorksheet(template.sheetName);
   if (!worksheet) throw createError('The official SF template worksheet is unavailable.', 500);
   const mappedAddresses = new Set(mappedCells.map(cell => String(cell.cellAddress || '').toUpperCase()));
   const editableCells = [];
   const lastRelevantRow = template.formCode === 'SF9'
-    ? (isGrade11AcademicSf9(template) || isGrade11TechProSf9(template) ? 53 : 51) : worksheet.rowCount;
+    ? (isGrade11AcademicSf9(template) || isGrade11TechProSf9(template) || isGrade12AcademicSf9(template) ? 53 : 51) : worksheet.rowCount;
   const lastRelevantColumn = template.formCode === 'SF9' ? 29 : worksheet.columnCount;
   for (let rowNumber = 1; rowNumber <= lastRelevantRow; rowNumber += 1) {
     for (let columnNumber = 1; columnNumber <= lastRelevantColumn; columnNumber += 1) {
@@ -271,7 +291,8 @@ async function getEditableCells(template, mappedCells = []) {
       editableCells.push({ cellAddress: address, type: getFormEntryType(template.formCode, address, cell, template.version) });
     }
   }
-  if (template.formCode === 'SF9' && !isGrade11AcademicSf9(template) && !isGrade11TechProSf9(template)) {
+  if (template.formCode === 'SF9' && !isGrade11AcademicSf9(template) && !isGrade11TechProSf9(template)
+    && !isGrade12AcademicSf9(template)) {
     const subjectRows = new Set(mappedCells.map(cell => /^B(\d+)$/.exec(String(cell.cellAddress || '').toUpperCase()))
       .filter(match => match && Number(match[1]) >= 32)
       .map(match => Number(match[1])));
@@ -499,6 +520,17 @@ async function createExportWorkbook(template, cells) {
   const templatePath = getOfficialTemplatePath(template.filePath, template.formCode || 'SF1');
   const source = await fs.promises.readFile(templatePath);
   const zip = await JSZip.loadAsync(source);
+  if (template.formCode === 'SF10') {
+    if (!Array.isArray(cells) || cells.length !== 2 || cells.some(page => !Array.isArray(page))) {
+      throw createError('SF10 requires Front and Back worksheet data.', 500);
+    }
+    for (const [pageIndex, sheetName] of SF10.sheets.entries()) {
+      const worksheetPath = await getWorksheetPath(zip, sheetName);
+      const xml = await zip.file(worksheetPath).async('string');
+      zip.file(worksheetPath, applyCells(xml, cells[pageIndex]));
+    }
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  }
   const stylesFile = zip.file('xl/styles.xml');
   if (!stylesFile) throw createError('The official SF template is missing its styles.', 500);
 
@@ -509,7 +541,8 @@ async function createExportWorkbook(template, cells) {
   if (!Array.isArray(pages) || !pages.length || pages.length > 100) throw createError('Invalid school form pages.', 500);
   if (template.formCode === 'SF1' && pages.length !== 1) throw createError('SF1 supports one worksheet page per export.', 500);
   if (template.formCode === 'SF9' && pages.length !== 1) throw createError('SF9 supports one learner per workbook.', 500);
-  if (template.formCode === 'SF9' && !isGrade11AcademicSf9(template) && !isGrade11TechProSf9(template)) {
+  if (template.formCode === 'SF9' && !isGrade11AcademicSf9(template) && !isGrade11TechProSf9(template)
+    && !isGrade12AcademicSf9(template)) {
     await extendSf9SubjectRows(zip, worksheetPath, subjectCountFromCells(pages[0]));
     sourceWorksheet = await zip.file(worksheetPath).async('string');
   }
@@ -579,7 +612,7 @@ async function saveExport(buffer, formCode) {
 
 function getExportFilePath(publicPath) {
   const fileName = path.basename(String(publicPath || ''));
-  if (!/^sf(?:1|2|3|5|8|9)-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
+  if (!/^sf(?:1|2|3|5|8|9|10)-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
   const legacy = String(publicPath).replace(/^\/+/, '').startsWith('uploads/sf-exports/');
   const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'sf-exports') : exportDirectory;
   const filePath = path.resolve(directory, fileName);

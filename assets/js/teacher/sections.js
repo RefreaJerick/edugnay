@@ -387,7 +387,7 @@ lucide.createIcons();
         return window.AcademixElectiveClass?.loadTab(name);
       }
       if (name === 'scores' && USE_SHS_CORE_GRADEBOOK) {
-        void window.AcademixShsGradebook?.mount(document.querySelector('#content-scores .panel'), {
+        return window.AcademixShsGradebook?.mount(document.querySelector('#content-scores .panel'), {
           sectionId: CURRENT_SECTION_ID,
           subjectId: CURRENT_SUBJECT_ID,
           communicationComponentCode: CURRENT_SUBJECT_ASSIGNMENT?.communicationComponentCode || ''
@@ -4633,7 +4633,8 @@ lucide.createIcons();
       renderTeacherStudentList();
       const pageParams = new URLSearchParams(window.location.search);
       const requestedTab = pageParams.get('tab');
-      if (['students', 'scores', 'attendance', 'assignments', 'materials'].includes(requestedTab)) switchTab(requestedTab);
+      const initialTabLoad = ['students', 'scores', 'attendance', 'assignments', 'materials'].includes(requestedTab)
+        ? switchTab(requestedTab) : null;
 
       const sectionTermsPromise = window.EDUGNAY_API.getAcademicTerms({
         academicYearId: CURRENT_BACKEND_SECTION.academicYearId,
@@ -4749,13 +4750,20 @@ lucide.createIcons();
       });
       const materialsLoad = loadBackendMaterials();
       const assignmentsLoad = loadBackendAssignments();
-      const activeTabLoad = requestedTab === 'scores' ? gradeLoad
-        : requestedTab === 'attendance' ? attendanceLoad
-          : requestedTab === 'assignments' ? assignmentsLoad
-            : requestedTab === 'materials' ? materialsLoad : Promise.resolve();
-      await Promise.allSettled([activeTabLoad]);
+      const visibleLoads = [periodLoad, gradeLoad];
+      if (requestedTab === 'scores' && USE_SHS_CORE_GRADEBOOK && initialTabLoad) {
+        visibleLoads.push(initialTabLoad);
+      } else if (requestedTab === 'assignments') {
+        visibleLoads.push(assignmentsLoad);
+      } else if (requestedTab === 'materials') {
+        visibleLoads.push(materialsLoad);
+      } else if (requestedTab !== 'scores') {
+        visibleLoads.push(attendanceLoad);
+      }
+      const allLoads = Promise.allSettled([periodLoad, gradeLoad, attendanceLoad, assignmentsLoad, materialsLoad]);
+      await Promise.allSettled(visibleLoads);
       window.EDUGNAY_PAGE_LOADING.ready();
-      await Promise.allSettled([periodLoad, gradeLoad, attendanceLoad, assignmentsLoad, materialsLoad]);
+      await allLoads;
     });
 
     document.addEventListener('visibilitychange', () => {

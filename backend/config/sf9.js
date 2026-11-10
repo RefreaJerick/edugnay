@@ -95,6 +95,16 @@ const SF9_GRADE11_TECHPRO = {
   communicationComponents: SF9_GRADE11_ACADEMIC.communicationComponents
 };
 
+const SF9_GRADE12_ACADEMIC = {
+  formCode: 'SF9',
+  version: 'g12-academic-2026-2027',
+  sheetName: 'SF9 - GRADE 12 ACADEMIC',
+  periodColumns: ['F', 'G', 'H'],
+  electiveRowsByTerm: [[33, 34, 35], [36, 37, 38], [39, 40, 41]],
+  generalAverageRow: 43,
+  headers: SF9_GRADE11_ACADEMIC.headers
+};
+
 function displayName(learner) {
   return [learner.lastName, learner.firstName, learner.middleName]
     .map(value => String(value || '').trim())
@@ -110,6 +120,11 @@ function isGrade11AcademicSf9(template) {
 function isGrade11TechProSf9(template) {
   return template?.formCode === SF9_GRADE11_TECHPRO.formCode
     && template?.version === SF9_GRADE11_TECHPRO.version;
+}
+
+function isGrade12AcademicSf9(template) {
+  return template?.formCode === SF9_GRADE12_ACADEMIC.formCode
+    && template?.version === SF9_GRADE12_ACADEMIC.version;
 }
 
 function learnerAge(birthDate, schoolYear) {
@@ -544,6 +559,116 @@ function buildSf9Grade11TechProPages(school, section, adviser, learner, subjects
     averageCellAddress: `I${SF9_GRADE11_TECHPRO.generalAverageRow}` };
 }
 
-module.exports = { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, buildSf9Pages,
-  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages,
-  displayName, isGrade11AcademicSf9, isGrade11TechProSf9, learnerAge };
+function buildSf9Grade12AcademicPages(school, section, adviser, learner, terms, electiveClasses, electiveGrades) {
+  const definition = SF9_GRADE12_ACADEMIC;
+  const issues = [{ severity: 'warning', fieldKey: 'draft', cellReference: null,
+    message: 'SF9 is a draft. The general average, attendance, comments, signatures, transfer details, and school head information require adviser review from verified records.' }];
+  const cells = [];
+  const header = { ...displayGrade11SectionName(school, section, adviser, learner), gradeLevel: 12 };
+  Object.entries(definition.headers).forEach(([fieldKey, cellAddress]) => {
+    cells.push({ cellAddress, value: header[fieldKey] ?? '',
+      type: ['age', 'gradeLevel'].includes(fieldKey) ? 'number' : 'text' });
+    if (['region', 'division', 'district', 'address', 'schoolName', 'learnerName', 'lrn', 'track'].includes(fieldKey)
+      && !String(header[fieldKey] ?? '').trim()) {
+      issues.push({ severity: 'warning', fieldKey, cellReference: cellAddress,
+        message: `${fieldKey} is missing from the verified school or learner record.` });
+    }
+  });
+  if (header.age === null) issues.push({ severity: 'warning', fieldKey: 'birthDate',
+    cellReference: definition.headers.age, message: 'The learner has no verified birthdate for the age field.' });
+
+  const termBySequence = new Map();
+  terms.forEach(term => {
+    const sequence = Number(term.sequenceNumber);
+    if (Number.isInteger(sequence) && sequence >= 1 && sequence <= 3 && !termBySequence.has(sequence)) {
+      termBySequence.set(sequence, term);
+    }
+  });
+  if (terms.length !== 3 || termBySequence.size !== 3) issues.push({ severity: 'error',
+    fieldKey: 'terms', cellReference: null,
+    message: 'The Grade 12 Academic SF9 requires exactly three ordered terms numbered 1–3.' });
+
+  const uniqueClasses = new Map(electiveClasses.map(record => [String(record.electiveClassId), record]));
+  const electives = [...uniqueClasses.values()];
+  if (electives.some(elective => elective.trackCode && elective.trackCode !== 'academic'
+    || elective.subjectType && elective.subjectType !== 'academic_elective')) {
+    issues.push({ severity: 'error', fieldKey: 'electives', cellReference: null,
+      message: 'This learner has an approved cross-track or unsupported elective that cannot be shown on the Grade 12 Academic SF9.' });
+  }
+  if (electives.length > 9) issues.push({ severity: 'error', fieldKey: 'electives', cellReference: null,
+    message: `This learner has ${electives.length} approved electives, but the Grade 12 Academic SF9 has only nine rows.` });
+  if (!electives.length) issues.push({ severity: 'warning', fieldKey: 'electives', cellReference: 'B33',
+    message: 'No approved Grade 12 Academic electives are recorded for this learner.' });
+
+  const byStartTerm = [[], [], []];
+  for (const elective of electives) {
+    const start = Number(elective.startTermSequenceNumber);
+    const end = Number(elective.endTermSequenceNumber);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end > 3 || end < start
+      || Number(elective.startTermId) !== Number(termBySequence.get(start)?.id)
+      || Number(elective.endTermId) !== Number(termBySequence.get(end)?.id)) {
+      issues.push({ severity: 'error', fieldKey: 'electiveTerms', cellReference: null,
+        message: `${elective.electiveName || 'An approved elective'} has no valid Term 1–3 assignment for this school year.` });
+      continue;
+    }
+    byStartTerm[start - 1].push(elective);
+  }
+  byStartTerm.forEach((group, index) => {
+    group.sort((left, right) => String(left.electiveName || '').localeCompare(String(right.electiveName || ''))
+      || Number(left.electiveClassId) - Number(right.electiveClassId));
+    if (group.length > 3) issues.push({ severity: 'error', fieldKey: 'electives', cellReference: null,
+      message: `Term ${index + 1} has ${group.length} approved electives, but the form has only three rows for that term.` });
+  });
+
+  const validGrade = value => value !== null && value !== undefined && value !== ''
+    && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
+  definition.electiveRowsByTerm.forEach((rows, termIndex) => rows.forEach((row, index) => {
+    const elective = byStartTerm[termIndex][index];
+    const label = String(elective?.electiveName || '').trim();
+    cells.push({ cellAddress: `B${row}`, value: label, type: 'text' });
+    const classGrades = electiveGrades.filter(grade => String(grade.electiveClassId) === String(elective?.electiveClassId));
+    const start = Number(elective?.startTermSequenceNumber);
+    const end = Number(elective?.endTermSequenceNumber);
+    let complete = Boolean(elective);
+    const validGrades = [];
+    for (let sequence = 1; sequence <= 3; sequence += 1) {
+      const address = `${definition.periodColumns[sequence - 1]}${row}`;
+      const expected = elective && sequence >= start && sequence <= end;
+      const matches = classGrades.filter(grade => Number(grade.academicTermId) === Number(termBySequence.get(sequence)?.id));
+      if (!expected) {
+        cells.push({ cellAddress: address, value: '', type: 'number' });
+        if (matches.length) complete = false;
+        continue;
+      }
+      if (matches.length !== 1 || !validGrade(matches[0].finalGrade)) {
+        complete = false;
+        issues.push({ severity: 'warning', fieldKey: 'electiveGrade', cellReference: address,
+          message: `${label}, Term ${sequence}: ${matches.length > 1 ? 'conflicting' : matches.length ? 'invalid' : 'missing'} published grade.` });
+        cells.push({ cellAddress: address, value: '', type: 'number' });
+      } else {
+        const grade = Number(matches[0].finalGrade);
+        validGrades.push(grade);
+        cells.push({ cellAddress: address, value: grade, type: 'number' });
+      }
+    }
+    if (elective && classGrades.some(grade => ![1, 2, 3].includes(Number(grade.termSequenceNumber))
+      || Number(grade.academicTermId) !== Number(termBySequence.get(Number(grade.termSequenceNumber))?.id)
+      || Number(grade.termSequenceNumber) < start || Number(grade.termSequenceNumber) > end)) {
+      complete = false;
+      issues.push({ severity: 'warning', fieldKey: 'electiveGrade', cellReference: `I${row}`,
+        message: `${label} has a grade outside its verified term assignment.` });
+    }
+    const finalGrade = complete && validGrades.length === end - start + 1
+      ? calculateSubjectFinal(validGrades) : null;
+    cells.push({ cellAddress: `I${row}`, value: finalGrade ?? '', type: 'number' });
+    cells.push({ cellAddress: `J${row}`, value: '', type: 'text' });
+  }));
+  cells.push({ cellAddress: 'I43', value: '', type: 'number' });
+  issues.push({ severity: 'warning', fieldKey: 'generalAverage', cellReference: 'I43',
+    message: 'The general average is left blank for adviser review.' });
+  return { pages: [cells], issues, generalAverage: null, averageCellAddress: 'I43' };
+}
+
+module.exports = { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, SF9_GRADE12_ACADEMIC, buildSf9Pages,
+  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages, buildSf9Grade12AcademicPages,
+  displayName, isGrade11AcademicSf9, isGrade11TechProSf9, isGrade12AcademicSf9, learnerAge };

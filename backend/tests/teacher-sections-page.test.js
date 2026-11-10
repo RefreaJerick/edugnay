@@ -10,6 +10,7 @@ const dashboardSource = pageFs.readFileSync(path.join(__dirname, '../../views/te
 const sectionsSource = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
 const sectionsStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/teacher/sections.css'), 'utf8');
 const sectionsScript = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sections.js'), 'utf8');
+const shsGradebookScript = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shs-gradebook.js'), 'utf8');
 const modalStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
 const sharedStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
 const sfSource = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
@@ -164,6 +165,167 @@ test('teacher tabs begin loading independently and assignments are not nested in
   assert.match(sectionsSource, /async function loadBackendAssignments\(\)/);
   assert.doesNotMatch(sectionsSource.split('async function loadBackendGradeData(termsPromise) {')[1]
     .split('async function loadBackendAttendanceData()')[0], /getAssignments\(/);
+});
+
+test('Students loader waits for period, grades, and attendance while hidden tabs continue loading', async () => {
+  const readinessSource = extractSourceBetween(sectionsScript,
+    'const visibleLoads = [periodLoad, gradeLoad];', '\n    });');
+  assert.ok(readinessSource);
+
+  const pending = () => {
+    let resolve;
+    const promise = new Promise(done => { resolve = done; });
+    return { promise, resolve };
+  };
+  const period = pending();
+  const grades = pending();
+  const attendance = pending();
+  const assignments = pending();
+  const materials = pending();
+  const rendered = [];
+  const context = vm.createContext({
+    requestedTab: null,
+    USE_SHS_CORE_GRADEBOOK: false,
+    initialTabLoad: null,
+    periodLoad: period.promise.then(() => rendered.push('period')),
+    gradeLoad: grades.promise.then(() => rendered.push('grades')),
+    attendanceLoad: attendance.promise.then(() => rendered.push('attendance')),
+    assignmentsLoad: assignments.promise,
+    materialsLoad: materials.promise,
+    window: { EDUGNAY_PAGE_LOADING: { ready: () => rendered.push('ready') } }
+  });
+  vm.runInContext(`globalThis.finishStartup = async () => { ${readinessSource} };`, context);
+  const completion = context.finishStartup();
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+
+  period.resolve();
+  grades.resolve();
+  await flush();
+  assert.deepEqual(rendered, ['period', 'grades'], 'Students must remain hidden until attendance is rendered');
+
+  attendance.resolve();
+  await flush();
+  assert.deepEqual(rendered, ['period', 'grades', 'attendance', 'ready']);
+
+  assignments.resolve();
+  materials.resolve();
+  await completion;
+});
+
+test('other tabs wait for their visible data and the class header', async () => {
+  const readinessSource = extractSourceBetween(sectionsScript,
+    'const visibleLoads = [periodLoad, gradeLoad];', '\n    });');
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+
+  for (const tab of ['scores', 'attendance', 'assignments', 'materials']) {
+    let resolvePeriod;
+    let resolveGrades;
+    let resolveTab;
+    const periodLoad = new Promise(resolve => { resolvePeriod = resolve; });
+    const gradeLoad = new Promise(resolve => { resolveGrades = resolve; });
+    const tabLoad = new Promise(resolve => { resolveTab = resolve; });
+    const readyCalls = [];
+    const context = vm.createContext({
+      requestedTab: tab,
+      USE_SHS_CORE_GRADEBOOK: false,
+      initialTabLoad: null,
+      periodLoad,
+      gradeLoad,
+      attendanceLoad: tab === 'attendance' ? tabLoad : Promise.resolve(),
+      assignmentsLoad: tab === 'assignments' ? tabLoad : Promise.resolve(),
+      materialsLoad: tab === 'materials' ? tabLoad : Promise.resolve(),
+      window: { EDUGNAY_PAGE_LOADING: { ready: () => readyCalls.push(tab) } }
+    });
+    vm.runInContext(`globalThis.finishStartup = async () => { ${readinessSource} };`, context);
+    const completion = context.finishStartup();
+
+    resolvePeriod();
+    await flush();
+    assert.equal(readyCalls.length, 0, `${tab} must wait for the class header`);
+    resolveGrades();
+    await flush();
+    assert.equal(readyCalls.length, tab === 'scores' ? 1 : 0, `${tab} must wait for visible data`);
+    resolveTab();
+    await completion;
+    assert.deepEqual(readyCalls, [tab]);
+  }
+});
+
+test('SHS core Score Recording stays loading until the gradebook renders or shows its error', async () => {
+  const switchTabSource = sectionsScript.match(/function switchTab\(name\) \{[\s\S]*?\n    \}/)?.[0];
+  const initialTabSource = extractSourceBetween(sectionsScript,
+    'const initialTabLoad =', '\n      const sectionTermsPromise =');
+  const readinessSource = extractSourceBetween(sectionsScript,
+    'const visibleLoads = [periodLoad, gradeLoad];', '\n    });');
+  const mountSource = extractSourceBetween(shsGradebookScript,
+    'async function mount(host, initialScope) {', '\n  function close(host) {');
+  assert.ok(switchTabSource && initialTabSource && readinessSource && mountSource);
+
+  for (const shouldFail of [false, true]) {
+    let finishWorkspace;
+    let failWorkspace;
+    const workspace = new Promise((resolve, reject) => { finishWorkspace = resolve; failWorkspace = reject; });
+    const events = [];
+    const controls = new Map();
+    const host = {
+      isConnected: true,
+      querySelector: selector => {
+        if (!controls.has(selector)) controls.set(selector, {});
+        return controls.get(selector);
+      }
+    };
+    const context = vm.createContext({
+      URL,
+      document: {
+        querySelector: () => host,
+        querySelectorAll: () => [],
+        getElementById: () => ({ classList: { add() {} } })
+      },
+      window: {
+        location: { href: 'http://localhost/sections?sectionId=1&tab=scores' },
+        history: { replaceState() {} },
+        EDUGNAY_PAGE_LOADING: { ready: () => events.push('ready') },
+        TeacherClassViews: { renderScoreTable: ({ loading, empty }) => {
+          if (loading) events.push('loading');
+          if (empty) events.push('gradebook error');
+        } }
+      },
+      CURRENT_SECTION_ID: '1',
+      CURRENT_SUBJECT_ID: '2',
+      CURRENT_SUBJECT_ASSIGNMENT: { communicationComponentCode: '' },
+      USE_SHS_CORE_GRADEBOOK: true,
+      versions: new Map(),
+      close() {},
+      renderCategoryTabs() {},
+      setVisible() {},
+      setFeedback: () => events.push('error shown'),
+      render: () => events.push('gradebook rendered'),
+      api: () => ({ getShsGradeWorkspace: () => workspace })
+    });
+    vm.runInContext(`${switchTabSource}\n${mountSource}\n`
+      + 'window.AcademixShsGradebook = { mount };\n'
+      + `globalThis.startup = async () => {
+        const requestedTab = 'scores';
+        ${initialTabSource}
+        const periodLoad = Promise.resolve();
+        const gradeLoad = Promise.resolve();
+        const attendanceLoad = Promise.resolve();
+        const assignmentsLoad = Promise.resolve();
+        const materialsLoad = Promise.resolve();
+        ${readinessSource}
+      };`, context);
+
+    const completion = context.startup();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(events, ['loading'], 'the page loader stays open while the workspace request is pending');
+
+    if (shouldFail) failWorkspace(new Error('Workspace unavailable'));
+    else finishWorkspace({});
+    await completion;
+    assert.deepEqual(events, shouldFail
+      ? ['loading', 'gradebook error', 'error shown', 'ready']
+      : ['loading', 'gradebook rendered', 'ready']);
+  }
 });
 
 function createSectionContext(search, section) {

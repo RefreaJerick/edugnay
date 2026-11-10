@@ -2,7 +2,8 @@ const { SF2 } = require('./sf2');
 const { SF3 } = require('./sf3');
 const { SF5 } = require('./sf5');
 const { SF8 } = require('./sf8');
-const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO } = require('./sf9');
+const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, SF9_GRADE12_ACADEMIC } = require('./sf9');
+const { SF10 } = require('./sf10');
 
 function range(startRow, endRow, startColumn, endColumn) {
   return { startRow, endRow, startColumn, endColumn };
@@ -84,6 +85,16 @@ const entries = {
       range(34, 42, columnNumber('Q'), columnNumber('AC')),
       range(46, 51, columnNumber('Q'), columnNumber('AC'))]
   },
+  SF9_GRADE12_ACADEMIC: {
+    addresses: [...Object.values(SF9_GRADE12_ACADEMIC.headers), 'B27', 'I43',
+      ...Array.from({ length: 9 }, (_, index) => [`B${33 + index}`, `F${33 + index}`,
+        `G${33 + index}`, `H${33 + index}`, `I${33 + index}`, `J${33 + index}`]).flat()],
+    ranges: [range(5, 10, columnNumber('R'), columnNumber('AC')),
+      range(15, 26, columnNumber('Q'), columnNumber('AC')),
+      range(29, 32, columnNumber('Q'), columnNumber('AC')),
+      range(34, 42, columnNumber('Q'), columnNumber('AC')),
+      range(46, 51, columnNumber('Q'), columnNumber('AC'))]
+  },
   SF9_GRADE11_TECHPRO: {
     addresses: [...Object.values(SF9_GRADE11_TECHPRO.headers), `I${SF9_GRADE11_TECHPRO.generalAverageRow}`],
     ranges: [range(33, 39, columnNumber('B'), columnNumber('K')),
@@ -98,6 +109,7 @@ const entries = {
 };
 
 function entryDefinition(formCode, version) {
+  if (formCode === 'SF9' && version === SF9_GRADE12_ACADEMIC.version) return entries.SF9_GRADE12_ACADEMIC;
   if (formCode === 'SF9' && version === SF9_GRADE11_ACADEMIC.version) return entries.SF9_GRADE11_ACADEMIC;
   if (formCode === 'SF9' && version === SF9_GRADE11_TECHPRO.version) return entries.SF9_GRADE11_TECHPRO;
   return entries[formCode];
@@ -130,6 +142,13 @@ function getFormEntryType(formCode, address, cell, version = '') {
     if (/^H(?:1\d|[2-5]\d)$/.test(normalized)) return 'date';
     if (/^I(?:1\d|[2-5]\d)$/.test(normalized) || /^[TU]6[1-4]$/.test(normalized)) return 'number';
   }
+  if (formCode === 'SF10') {
+    if (normalized === 'M8' || SF10.blocks.some(block => normalized === `U${block.header}`)) return 'text';
+    if (normalized === 'AH8') return 'date';
+    if (parts && SF10.blocks.some(block => parts.row === block.average && parts.column === columnNumber('AJ')
+      || parts.row >= block.grades && parts.row < block.grades + 10
+      && [columnNumber('U'), columnNumber('Y'), columnNumber('AC'), columnNumber('AG'), columnNumber('AJ')].includes(parts.column))) return 'number';
+  }
   if (formCode === 'SF2' && parts?.row === 11 && parts.column >= columnNumber('D') && parts.column <= columnNumber('AB')) return 'dateText';
   if (formCode === 'SF2' && parts && [34, 60, 61].includes(parts.row)
     && parts.column >= columnNumber('D') && parts.column <= columnNumber('AB')) return 'number';
@@ -149,6 +168,12 @@ function getFormEntryType(formCode, address, cell, version = '') {
   if (formCode === 'SF9' && version === SF9_GRADE11_ACADEMIC.version && parts
     && parts.row >= 33 && parts.row <= 43
     && [columnNumber('B'), columnNumber('J')].includes(parts.column)) return 'text';
+  if (formCode === 'SF9' && version === SF9_GRADE12_ACADEMIC.version && parts
+    && parts.row >= 33 && parts.row <= 41
+    && [columnNumber('B'), columnNumber('J')].includes(parts.column)) return 'text';
+  if (formCode === 'SF9' && version === SF9_GRADE12_ACADEMIC.version
+    && (normalized === 'I43' || parts && parts.row >= 33 && parts.row <= 41
+      && parts.column >= columnNumber('F') && parts.column <= columnNumber('I'))) return 'number';
   if (formCode === 'SF9' && parts?.row === 17 && parts.column === columnNumber('I')) return 'number';
   if (formCode === 'SF9' && parts?.row === 18 && parts.column === columnNumber('I')) return 'number';
   if (formCode === 'SF9' && parts && parts.row >= 5 && parts.row <= 10

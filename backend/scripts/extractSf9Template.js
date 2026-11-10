@@ -24,6 +24,15 @@ const variants = {
       B39: 'Pag-aaral ng Kasaysayan at Lipunang Pilipino'
     }
   },
+  'grade12-academic': {
+    sheetName: 'SF9 - GRADE 12 ACADEMIC',
+    outputFile: 'sf9-g12-academic.xlsx',
+    sourceSheetName: 'SF9 - GRADE 12 ACADEMIC',
+    clearAddresses: ['B7', 'B8', 'B9', 'B10', 'B12', 'B15', 'C17', 'I17', 'K17', 'C18', 'I18', 'K18',
+      'E19', 'B27', 'H27', ...Array.from({ length: 9 }, (_, index) => `B${33 + index}`),
+      ...['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC']
+        .flatMap(column => Array.from({ length: 6 }, (_, index) => `${column}${5 + index}`))]
+  },
   'grade11-techpro': {
     sheetName: 'SF9 - GRADE 11 TECHPRO',
     outputFile: 'sf9-g11-techpro.xlsx',
@@ -126,6 +135,29 @@ function transformSf9Worksheet(xml, options) {
   return nextXml;
 }
 
+async function removeUnusedSharedStrings(output, worksheetPath) {
+  const stringsFile = output.file('xl/sharedStrings.xml');
+  if (!stringsFile) return;
+  const worksheet = await output.file(worksheetPath).async('string');
+  const stringsXml = await stringsFile.async('string');
+  const items = [...stringsXml.matchAll(/<si(?:\s[^>]*)?>[\s\S]*?<\/si>/g)].map(match => match[0]);
+  const used = new Map();
+  const updatedWorksheet = worksheet.replace(/<c\b(?=[^>]*\bt="s")[^>]*>[\s\S]*?<\/c>/g, cell =>
+    cell.replace(/<v>(\d+)<\/v>/, (_, index) => {
+      const sourceIndex = Number(index);
+      if (!items[sourceIndex]) throw new Error(`Invalid shared string ${index} in SF9 worksheet.`);
+      if (!used.has(sourceIndex)) used.set(sourceIndex, used.size);
+      return `<v>${used.get(sourceIndex)}</v>`;
+    }));
+  const kept = [...used.keys()].map(index => items[index]);
+  output.file(worksheetPath, updatedWorksheet);
+  output.file('xl/sharedStrings.xml', stringsXml.replace(/<sst\b[^>]*>[\s\S]*<\/sst>/,
+    block => block.replace(/count="\d+"/, `count="${used.size}"`)
+      .replace(/uniqueCount="\d+"/, `uniqueCount="${used.size}"`)
+      .replace(/<si(?:\s[^>]*)?>[\s\S]*?<\/si>/g, '')
+      .replace('</sst>', `${kept.join('')}</sst>`)));
+}
+
 function updateSelectedSheet(workbookXml, sourceSheet, selectedSheet, sourceSheetIndex, targetSheetName) {
   let result = workbookXml.replace(/<mc:AlternateContent\b[\s\S]*?<\/mc:AlternateContent>/, '')
     .replace(/firstSheet="\d+"/, 'firstSheet="0"')
@@ -143,7 +175,7 @@ function updateSelectedSheet(workbookXml, sourceSheet, selectedSheet, sourceShee
 
 async function main() {
   if (!sourcePath) throw new Error('Pass the path to the teacher-supplied SF9 workbook.');
-  if (!variant) throw new Error(`Unknown SF9 workbook variant "${variantName}". Choose grade4-10, grade11-academic, or grade11-techpro.`);
+  if (!variant) throw new Error(`Unknown SF9 workbook variant "${variantName}".`);
   const source = await JSZip.loadAsync(await fs.readFile(path.resolve(sourcePath)));
   const output = new JSZip();
   const workbookPath = 'xl/workbook.xml';
@@ -231,6 +263,8 @@ async function main() {
   output.file('[Content_Types].xml', retainedParts.has(`/${drawingSourcePath}`) ? printSettings
     : printSettings.replace('</Types>',
       `<Override PartName="/${drawingSourcePath}" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`));
+
+  if (variantName === 'grade12-academic') await removeUnusedSharedStrings(output, outputWorksheetPath);
 
   await fs.writeFile(outputPath, await output.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
   process.stdout.write(`Extracted ${outputPath}\n`);

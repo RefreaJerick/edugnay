@@ -83,6 +83,10 @@ function isGrade11TechProSf9Template(template) {
   return template?.formCode === 'SF9' && template.version === 'g11-techpro-2026-2027';
 }
 
+function isGrade12AcademicSf9Template(template) {
+  return template?.formCode === 'SF9' && template.version === 'g12-academic-2026-2027';
+}
+
 function formatTemplateDate(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -177,22 +181,29 @@ function availableSections() {
   const includesSf5 = templates.some(template => template.formCode === 'SF5');
   const sf5Only = templates.length === 1 && includesSf5;
   const includesSf9 = templates.some(template => template.formCode === 'SF9');
+  const includesSf10 = templates.some(template => template.formCode === 'SF10');
   const sf9Only = templates.length === 1 && includesSf9;
+  const sf10Only = templates.length === 1 && includesSf10;
   const grade11AcademicSf9 = sf9Only && isGrade11AcademicSf9Template(templates[0]);
   const grade11TechProSf9 = sf9Only && isGrade11TechProSf9Template(templates[0]);
+  const grade12AcademicSf9 = sf9Only && isGrade12AcademicSf9Template(templates[0]);
   return sfState.sections.filter(section => {
     const currentSection = section.status === 'active' && section.academicYearStatus === 'active';
-    const closedSection = (sf5Only || sf9Only)
+    const closedSection = (sf5Only || sf9Only || sf10Only)
       && section.status === 'archived' && section.academicYearStatus === 'closed';
     return (currentSection || closedSection)
       && (!includesSf5 || /^grade-(?:[2-9]|10)$/.test(section.gradeCode))
       && (!includesSf9 || (grade11AcademicSf9
         ? section.gradeCode === 'grade-11' && section.trackCode === 'academic'
           && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
+        : grade12AcademicSf9
+          ? section.gradeCode === 'grade-12' && section.trackCode === 'academic'
+            && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
         : grade11TechProSf9
           ? section.gradeCode === 'grade-11' && section.trackCode === 'techpro'
             && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
-          : /^grade-(?:[4-9]|10)$/.test(section.gradeCode)));
+          : /^grade-(?:[4-9]|10)$/.test(section.gradeCode)))
+      && (!includesSf10 || /^grade-(?:[7-9]|10)$/.test(section.gradeCode));
   });
 }
 
@@ -211,7 +222,7 @@ function renderSectionOptions() {
 
 async function updateSf9LearnerOptions(force = false) {
   const templates = selectedTemplates();
-  const sf9Template = templates.length === 1 && templates[0].formCode === 'SF9' ? templates[0] : null;
+  const sf9Template = templates.length === 1 && ['SF9', 'SF10'].includes(templates[0].formCode) ? templates[0] : null;
   sfElements.learnerField.hidden = !sf9Template;
   if (!sf9Template) {
     sfState.sf9Learners = [];
@@ -342,7 +353,7 @@ function setGenerationInputsBusy(isBusy) {
   sfElements.templateDone.disabled = isBusy;
   sfElements.blankCombinedDownloadButton.disabled = isBusy || sfState.blankDownloadInProgress;
   sfElements.sectionSelect.disabled = isBusy || !templateInputs.length || !availableSections().length;
-  const needsSf9Learner = selectedTemplates().length === 1 && selectedTemplates()[0]?.formCode === 'SF9';
+  const needsSf9Learner = selectedTemplates().length === 1 && ['SF9', 'SF10'].includes(selectedTemplates()[0]?.formCode);
   sfElements.learnerSelect.disabled = isBusy || !needsSf9Learner || sfState.sf9LearnersLoading
     || (!sfState.sf9Learners.length && !sfState.sf9LearnersFailed);
   sfElements.month.disabled = isBusy || sfElements.monthField.hidden;
@@ -354,7 +365,7 @@ function updateGenerateButton() {
     supportsGeneratedSelection(templates) &&
     (window.EDUGNAY_API?.isBackendAvailable || (templates.length === 1 && templates[0].formCode === 'SF1')) &&
     sfElements.sectionSelect.value &&
-    (!templates.some(template => template.formCode === 'SF9')
+    (!templates.some(template => ['SF9', 'SF10'].includes(template.formCode))
       || (sfElements.learnerSelect.value && !sfState.sf9LearnersLoading)) &&
     sfElements.schoolYear.value &&
     (sfElements.monthField.hidden || sfElements.month.value)
@@ -673,8 +684,8 @@ function setGeneratedForm(form) {
   form.selectedPage = 0;
   form.renderedPageIndex = 0;
   form.pageEdits = Array.from({ length: form.pages?.length || 1 }, () => []);
-  form.pageBaseCellTexts = Array.from({ length: form.pages?.length || 1 }, () => ({}));
-  form.pageBaseCellTexts[0] = form.baseCellTexts || Object.fromEntries(
+  form.pageBaseCellTexts = form.pageBaseCellTexts || Array.from({ length: form.pages?.length || 1 }, () => ({}));
+  form.pageBaseCellTexts[0] ||= form.baseCellTexts || Object.fromEntries(
     form.preview.rows.flatMap(row => row.cells.filter(cell => cell.editable).map(cell => [cell.address, cell.text]))
   );
   form.baseCellTexts = form.pageBaseCellTexts[0];
@@ -714,10 +725,10 @@ function renderGeneratedPreview() {
       <button class="sf-sheet-tab ${item === form ? 'active' : ''}" type="button" role="tab"
         aria-selected="${item === form}" data-combined-form-index="${index}">${escapeHtml(item.formCode)}</button>
     `).join('') : '';
-  const pageTabs = ['SF2', 'SF3', 'SF5', 'SF8'].includes(form.formCode) && form.pages.length > 1
+  const pageTabs = ['SF2', 'SF3', 'SF5', 'SF8', 'SF10'].includes(form.formCode) && form.pages.length > 1
     ? `<div class="sf-main-sheet-tabs" role="tablist" aria-label="${escapeHtml(form.formCode)} pages">${form.pages.map((_, index) => `
       <button class="sf-sheet-tab ${index === form.selectedPage ? 'active' : ''}" type="button" role="tab"
-        aria-selected="${index === form.selectedPage}" data-form-page="${index}">Page ${index + 1}</button>
+        aria-selected="${index === form.selectedPage}" data-form-page="${index}">${form.formCode === 'SF10' ? ['Front', 'Back'][index] : `Page ${index + 1}`}</button>
     `).join('')}</div>` : '';
   const issues = generatedValidationIssues();
   const issuesAreBlocking = issues.some(issue => issue.severity === 'error' && !issue.canBeCorrectedInDownload);
@@ -743,6 +754,8 @@ function renderGeneratedPreview() {
     ? 'Review the learner roster and complete health measurements and assessment details in the downloaded draft.'
     : form.formCode === 'SF9'
     ? 'Review this learner’s performance report. Class-day attendance, comments, signatures, and transfer details remain for adviser completion.'
+    : form.formCode === 'SF10'
+    ? 'Review this learner’s cumulative draft. Complete eligibility, remedial, certification, and signature details from official records.'
     : 'Review the selected form previews before downloading the XLSX file.';
   sfElements.editButton.textContent = sfState.editing ? 'Done editing' : 'Edit generated form';
   sfElements.editButton.disabled = !form.editableCells?.length;
@@ -986,12 +999,12 @@ sfElements.generatorForm.addEventListener('submit', generateForm);
 sfElements.templateList.addEventListener('change', event => {
   if (!event.target.matches('input[type="checkbox"]')) return;
   const checkedTemplates = selectedTemplates();
-  if (checkedTemplates.some(template => template.formCode === 'SF9') && checkedTemplates.length > 1) {
+  if (checkedTemplates.some(template => ['SF9', 'SF10'].includes(template.formCode)) && checkedTemplates.length > 1) {
     const selected = checkedTemplates.find(template => template.id === event.target.value);
     const switchingSf9Version = event.target.checked && selected?.formCode === 'SF9'
       && checkedTemplates.every(template => template.formCode === 'SF9');
     if (!switchingSf9Version) showAppToast('The selected form cannot be combined with other forms.', 'error');
-    if (event.target.checked && selected?.formCode === 'SF9') {
+    if (event.target.checked && ['SF9', 'SF10'].includes(selected?.formCode)) {
       sfElements.templateList.querySelectorAll('input[type="checkbox"]').forEach(input => {
         if (input.value !== selected.id) input.checked = false;
       });
@@ -1150,7 +1163,7 @@ sfElements.previewContent.addEventListener('click', event => {
       sfState.selectedTemplate,
       sfState.generated.pages[pageIndex],
       generated.pageEdits?.[pageIndex] || [],
-      generated.editableCells || []
+      generated.editableCells || [], pageIndex
     )
       .then(result => {
         if (sfState.generated !== generated || generated.pageLoadToken !== pageLoadToken) return;

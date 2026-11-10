@@ -397,6 +397,10 @@
   cursor: pointer;
 }
 
+.searchable-select-plain.is-search-opt-in .searchable-select-input {
+  cursor: text;
+}
+
 .searchable-select-option-copy {
   flex: 1;
 }

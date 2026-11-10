@@ -64,8 +64,8 @@
         <div class="form-row-2 modal-final-row">
           <div class="form-group">
             <label class="form-label" for="createAdviser">Assigned Adviser</label>
-            <select class="form-select dropdown" name="adviserId" id="createAdviser">
-              <option value="">Select faculty</option>
+            <select class="form-select dropdown" name="adviserId" id="createAdviser" data-searchable="true" data-show-empty-option="true" data-search-placeholder="Search faculty…" data-search-empty-text="No matching faculty">
+              <option value="">No adviser</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
@@ -77,7 +77,7 @@
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-cancel" data-page-click="p104d763fb19f">Cancel</button>
-      <button type="submit" form="createSectionForm" class="btn btn-save">Create Section</button>
+      <button type="submit" form="createSectionForm" id="createSectionSubmit" class="btn btn-save">Create Section</button>
     </div>
   </div>
 </div>
@@ -123,9 +123,9 @@
         </div>
         <div class="form-row-2 modal-final-row">
           <div class="form-group">
-            <label class="form-label">Assigned Adviser</label>
-            <select class="form-select dropdown" name="adviserId" id="editAdviser">
-              <option value="">Select faculty</option>
+            <label class="form-label" for="editAdviser">Assigned Adviser</label>
+            <select class="form-select dropdown" name="adviserId" id="editAdviser" data-searchable="true" data-show-empty-option="true" data-search-placeholder="Search faculty…" data-search-empty-text="No matching faculty">
+              <option value="">No adviser</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
@@ -137,7 +137,7 @@
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-cancel" data-page-click="p4a49ac32633d">Cancel</button>
-      <button type="submit" form="editSectionForm" class="btn btn-save">Save Changes</button>
+      <button type="submit" form="editSectionForm" id="editSectionSubmit" class="btn btn-save">Save Changes</button>
     </div>
   </div>
 </div>

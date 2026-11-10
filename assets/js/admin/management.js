@@ -14,6 +14,7 @@ const mgmtTitles = {
 };
 
 let managementDataLoading = false;
+let sectionSavePending = false;
 
 const MANAGEMENT_LOADING_REGIONS = [
   '#sections-summary-cards', '#sectionCardView', '#sectionTableView tbody',
@@ -117,7 +118,10 @@ function openSectionAddModal() {
   updateSectionFormFields('create');
   document.getElementById('sectionAddModalBackdrop').classList.add('open');
 }
-function closeSectionAddModal() { document.getElementById('sectionAddModalBackdrop').classList.remove('open'); }
+function closeSectionAddModal() {
+  if (sectionSavePending) return;
+  document.getElementById('sectionAddModalBackdrop').classList.remove('open');
+}
 document.getElementById('sectionAddModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionAddModal(); });
 
 function teacherAccounts() {
@@ -141,7 +145,7 @@ function renderTeacherOptions() {
   adviserOptions.forEach(select => {
     const selected = select.value;
     select.innerHTML = '';
-    select.appendChild(new Option('Select faculty', ''));
+    select.appendChild(new Option('No adviser', ''));
     teachers.forEach(teacher => select.appendChild(new Option(teacher.displayName, teacher.id)));
     select.value = teachers.some(teacher => teacher.id === selected) ? selected : '';
   });
@@ -342,6 +346,8 @@ function managementApiSectionPayload(sectionData, sectionId = '') {
 
 async function saveSectionForm(event, mode) {
   event.preventDefault();
+  if (sectionSavePending) return;
+
   const form = event.currentTarget;
   const level = mode === 'create' ? form.elements.level?.value || '' : '';
   const grade = mode === 'create' ? form.elements.grade?.value || '' : '';
@@ -364,30 +370,42 @@ async function saveSectionForm(event, mode) {
     adviserId
   };
 
-  {
-    const submitButton = event.submitter;
-    if (submitButton) submitButton.disabled = true;
-    let saved = false;
-    try {
-      const sectionId = form.elements.sectionId?.value || '';
-      const payload = managementApiSectionPayload(sectionData, sectionId);
-      const savedSection = mode === 'edit'
-        ? await window.EDUGNAY_API.updateSection(sectionId, payload)
-        : await window.EDUGNAY_API.createSection(payload);
-      if (!savedSection) throw new Error('The section could not be saved.');
-      saved = true;
-      if (mode === 'edit') closeSectionEditModal();
-      else closeSectionAddModal();
-      await refreshManagementViews();
-      showAppToast(mode === 'edit' ? 'Section updated.' : 'Section created.');
-    } catch (error) {
-      showAppToast(saved ? 'Section saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The section could not be saved.', saved ? 'info' : 'error');
-    } finally {
-      if (submitButton) submitButton.disabled = false;
-    }
-    return;
+  const submitButton = event.submitter || document.getElementById(mode === 'edit' ? 'editSectionSubmit' : 'createSectionSubmit');
+  const originalLabel = submitButton?.textContent || (mode === 'edit' ? 'Save Changes' : 'Create Section');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = mode === 'edit' ? 'Saving…' : 'Creating…';
   }
 
+  sectionSavePending = true;
+  let saved = false;
+  try {
+    const sectionId = form.elements.sectionId?.value || '';
+    const payload = managementApiSectionPayload(sectionData, sectionId);
+    const savedSection = mode === 'edit'
+      ? await window.EDUGNAY_API.updateSection(sectionId, payload)
+      : await window.EDUGNAY_API.createSection(payload);
+    if (!savedSection) throw new Error('The section could not be saved.');
+    saved = true;
+    await refreshManagementViews();
+    sectionSavePending = false;
+    if (mode === 'edit') closeSectionEditModal();
+    else closeSectionAddModal();
+    showAppToast(mode === 'edit' ? 'Section updated.' : 'Section created.');
+  } catch (error) {
+    if (saved) {
+      sectionSavePending = false;
+      if (mode === 'edit') closeSectionEditModal();
+      else closeSectionAddModal();
+    }
+    showAppToast(saved ? 'Section saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The section could not be saved.', saved ? 'info' : 'error');
+  } finally {
+    sectionSavePending = false;
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalLabel;
+    }
+  }
 }
 
 document.getElementById('createSectionForm').addEventListener('submit', event => saveSectionForm(event, 'create'));
@@ -1208,7 +1226,10 @@ function renderStudentsTab() {
   applyStudentFilters();
 }
 
-function closeSectionEditModal() { document.getElementById('sectionEditModalBackdrop').classList.remove('open'); }
+function closeSectionEditModal() {
+  if (sectionSavePending) return;
+  document.getElementById('sectionEditModalBackdrop').classList.remove('open');
+}
 document.getElementById('sectionEditModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionEditModal(); });
 
 function closeSectionStudentsModal() {

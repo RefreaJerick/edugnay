@@ -3414,31 +3414,39 @@ function applyCurrentDateToGradingBanners() {
     return (response.templates || []).map(record => {
       const grade11AcademicSf9 = record.formCode === 'SF9' && record.version === 'g11-academic-2026-2027';
       const grade11TechProSf9 = record.formCode === 'SF9' && record.version === 'g11-techpro-2026-2027';
+      const grade12AcademicSf9 = record.formCode === 'SF9' && record.version === 'g12-academic-2026-2027';
       return {
         id: grade11AcademicSf9 ? 'sf9-g11-academic-v1'
           : grade11TechProSf9 ? 'sf9-g11-techpro-v1'
+          : grade12AcademicSf9 ? 'sf9-g12-academic-v1'
           : record.formCode === 'SF1' ? 'sf1-school-register-v1'
             : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1'
               : record.formCode === 'SF3' ? 'sf3-books-issued-returned-v1'
                 : record.formCode === 'SF5' ? 'sf5-promotion-proficiency-v1'
                   : record.formCode === 'SF8' ? 'sf8-health-nutrition-v1'
-                    : record.formCode === 'SF9' ? 'sf9-learner-performance-v1' : `sf-${record.id}`,
+                : record.formCode === 'SF9' ? 'sf9-learner-performance-v1'
+                  : record.formCode === 'SF10' ? 'sf10-jhs-permanent-record-v1' : `sf-${record.id}`,
         apiId: String(record.id),
         formCode: record.formCode,
         formName: record.formName,
         version: record.version,
-        schoolLevels: grade11AcademicSf9 || grade11TechProSf9 ? ['shs']
-          : ['SF5', 'SF9'].includes(record.formCode) ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
+        schoolLevels: grade11AcademicSf9 || grade11TechProSf9 || grade12AcademicSf9 ? ['shs']
+          : record.formCode === 'SF10' ? ['jhs']
+            : ['SF5', 'SF9'].includes(record.formCode) ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
         source: 'official',
         status: record.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : 'draft',
         mappingStatus: record.mappingStatus,
         fileName: grade11AcademicSf9 ? 'SF9-G11-Academic.xlsx'
-          : grade11TechProSf9 ? 'SF9-G11-TechPro.xlsx' : `${record.formCode}.xlsx`,
+          : grade11TechProSf9 ? 'SF9-G11-TechPro.xlsx'
+            : grade12AcademicSf9 ? 'SF9-G12-Academic.xlsx' : `${record.formCode}.xlsx`,
         templateFileUrl: `../../assets/templates/school-forms/${grade11AcademicSf9 ? 'sf9-g11-academic'
-          : grade11TechProSf9 ? 'sf9-g11-techpro' : record.formCode.toLowerCase()}.xlsx`,
+          : grade11TechProSf9 ? 'sf9-g11-techpro'
+            : grade12AcademicSf9 ? 'sf9-g12-academic' : record.formCode.toLowerCase()}.xlsx`,
         sheetName: record.sheetName,
         requiresAcademicPeriod: Boolean(record.requiresAcademicTerm),
-        sheets: [{ name: record.sheetName, hidden: false }],
+        sheets: record.formCode === 'SF10'
+          ? [{ name: 'Front', hidden: false }, { name: 'Back', hidden: false }]
+          : [{ name: record.sheetName, hidden: false }],
         updatedAt: null,
         updatedBy: null
       };
@@ -3447,7 +3455,7 @@ function applyCurrentDateToGradingBanners() {
 
   async function getSfTemplateLearners(templateId, sectionId) {
     const template = (await getSfTemplates()).find(record => record.id === String(templateId));
-    if (!template || template.formCode !== 'SF9') throw new Error('Learner selection is available only for SF9.');
+    if (!template || !['SF9', 'SF10'].includes(template.formCode)) throw new Error('Learner selection is available only for SF9 and SF10.');
     const response = await requestApi(`/sf-templates/${template.apiId}/learners?sectionId=${encodeURIComponent(sectionId)}`);
     return (response.learners || []).map(learner => ({
       id: String(learner.id),
@@ -3479,6 +3487,7 @@ function applyCurrentDateToGradingBanners() {
     const buffer = await window.EDUGNAY_SF_WORKBOOK.getOfficialTemplateFile(template);
     const fileName = template.id === 'sf9-g11-academic-v1' ? 'SF9-G11-Academic-blank-template.xlsx'
       : template.id === 'sf9-g11-techpro-v1' ? 'SF9-G11-TechPro-blank-template.xlsx'
+        : template.id === 'sf9-g12-academic-v1' ? 'SF9-G12-Academic-blank-template.xlsx'
         : `${template.formCode}-blank-template.xlsx`;
     return { buffer, fileName };
   }
@@ -3503,7 +3512,7 @@ function applyCurrentDateToGradingBanners() {
       throw new Error('Select an active template with a verified mapping.');
     }
 
-    const section = (await getMyAdvisorySections(['SF5', 'SF9'].includes(template.formCode))).find(record => record.id === String(values.sectionId));
+    const section = (await getMyAdvisorySections(['SF5', 'SF9', 'SF10'].includes(template.formCode))).find(record => record.id === String(values.sectionId));
     if (!section) throw new Error('You do not have access to the selected class.');
 
     const schoolYear = String(values.schoolYear || '').trim();
@@ -3511,27 +3520,32 @@ function applyCurrentDateToGradingBanners() {
 
     if (EDUGNAY_API_BASE_URL) {
       const monthQuery = template.formCode === 'SF2' ? `&month=${encodeURIComponent(values.month || '')}` : '';
-      const studentQuery = template.formCode === 'SF9' ? `&studentId=${encodeURIComponent(values.studentId || '')}` : '';
-      if (template.formCode === 'SF9' && !values.studentId) throw new Error('Select a learner for SF9.');
+      const studentQuery = ['SF9', 'SF10'].includes(template.formCode) ? `&studentId=${encodeURIComponent(values.studentId || '')}` : '';
+      if (['SF9', 'SF10'].includes(template.formCode) && !values.studentId) throw new Error(`Select a learner for ${template.formCode}.`);
       const response = await requestApi(`/sf-templates/${template.apiId}/preview?sectionId=${encodeURIComponent(section.id)}${monthQuery}${studentQuery}`);
       const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
-        template,
-        response.mappedCells || [],
-        [],
-        response.editableCells || []
+        template, response.mappedCells || [], [], response.editableCells || []
       );
+      if (template.formCode === 'SF10') {
+        const back = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
+          template, response.pages?.[1] || [], [], response.editableCells || [], 1
+        );
+        generated.previews = [generated.preview, back.preview];
+        generated.pageBaseCellTexts = [generated.baseCellTexts, back.baseCellTexts];
+        generated.editableCells = response.editableCells || [];
+      }
       const issues = response.issues || [];
       return {
         templateId: template.id,
         apiTemplateId: template.apiId,
         sectionId: section.id,
-        studentId: template.formCode === 'SF9' ? String(values.studentId) : null,
+        studentId: ['SF9', 'SF10'].includes(template.formCode) ? String(values.studentId) : null,
         month: template.formCode === 'SF2' ? values.month : null,
         pages: response.pages || [response.mappedCells || []],
         editableCells: response.editableCells || [],
         breakdown: response.breakdown || [],
         schoolYear,
-        fileName: `${template.formCode}_${section.grade}-${section.name}_${template.formCode === 'SF9' ? `${values.studentName || 'learner'}_` : ''}${template.formCode === 'SF2' ? `${values.month}_` : ''}${schoolYear}${template.formCode === 'SF9' ? '-draft' : ''}.xlsx`
+        fileName: `${template.formCode}_${section.grade}-${section.name}_${['SF9', 'SF10'].includes(template.formCode) ? `${values.studentName || 'learner'}_` : ''}${template.formCode === 'SF2' ? `${values.month}_` : ''}${schoolYear}${['SF9', 'SF10'].includes(template.formCode) ? '-draft' : ''}.xlsx`
           .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
         issues,
         previewFingerprint: response.previewFingerprint,
@@ -3640,7 +3654,7 @@ function applyCurrentDateToGradingBanners() {
     if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
       throw new Error('The selected SF template is not available for download.');
     }
-    const section = (await getMyAdvisorySections(['SF5', 'SF9'].includes(template.formCode))).find(record => record.id === String(values.sectionId));
+    const section = (await getMyAdvisorySections(['SF5', 'SF9', 'SF10'].includes(template.formCode))).find(record => record.id === String(values.sectionId));
     if (!section) throw new Error('You do not have access to the selected class.');
     if (EDUGNAY_API_BASE_URL) {
       let exportId = values.exportId;
@@ -3649,7 +3663,7 @@ function applyCurrentDateToGradingBanners() {
           method: 'POST',
           body: JSON.stringify({
             sectionId: Number(section.id),
-            studentId: template.formCode === 'SF9' ? Number(values.studentId) : undefined,
+            studentId: ['SF9', 'SF10'].includes(template.formCode) ? Number(values.studentId) : undefined,
             month: template.formCode === 'SF2' ? values.month : undefined,
             previewFingerprint: values.previewFingerprint,
             edits: Array.isArray(values.edits) ? values.edits : []
@@ -3944,7 +3958,9 @@ function applyCurrentDateToGradingBanners() {
     state.input.setAttribute('aria-required', String(state.select.required));
     state.wrapper.classList.toggle('is-disabled', state.select.disabled);
     state.wrapper.classList.toggle('is-invalid', state.select.required && !state.select.value && state.wrapper.classList.contains('is-invalid'));
-    state.searchable = state.people || getOptionRecords(state).filter(option => option.value).length > 10;
+    state.searchable = state.people || state.select.dataset.searchable === 'true'
+      || getOptionRecords(state).filter(option => option.value).length > 10;
+    state.wrapper.classList.toggle('is-search-opt-in', state.select.dataset.searchable === 'true');
     state.input.readOnly = !state.searchable;
     state.input.setAttribute('aria-autocomplete', state.searchable ? 'list' : 'none');
 
@@ -3976,7 +3992,8 @@ function applyCurrentDateToGradingBanners() {
   function renderOptions(state, query = '') {
     const term = normalize(query);
     const options = getOptionRecords(state).filter(option =>
-      (option.value || option.value === state.select.value) &&
+      (option.value || option.value === state.select.value
+        || (state.select.dataset.showEmptyOption === 'true' && option.value === '')) &&
       (!term || normalize(option.label).includes(term)));
 
     state.visibleOptions = options;

@@ -6,9 +6,11 @@ const { SF2, monthInYear, buildSf2Pages } = require('../config/sf2');
 const { SF3, buildSf3Pages } = require('../config/sf3');
 const { SF5, buildSf5Pages } = require('../config/sf5');
 const { SF8, buildSf8Pages } = require('../config/sf8');
-const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, buildSf9Pages,
-  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages,
-  displayName: sf9DisplayName, isGrade11AcademicSf9, isGrade11TechProSf9 } = require('../config/sf9');
+const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, SF9_GRADE12_ACADEMIC, buildSf9Pages,
+  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages, buildSf9Grade12AcademicPages,
+  displayName: sf9DisplayName, isGrade11AcademicSf9, isGrade11TechProSf9,
+  isGrade12AcademicSf9 } = require('../config/sf9');
+const { SF10, buildSf10Pages, nameOf: sf10NameOf } = require('../config/sf10');
 
 const SF1_TEMPLATE = {
   formCode: 'SF1',
@@ -136,10 +138,10 @@ async function getTemplate(database, templateId) {
       mapping_status AS mappingStatus, file_path AS filePath,
       default_sheet_name AS sheetName, requires_academic_term AS requiresAcademicTerm
     FROM school_form_templates
-    WHERE id = ? AND form_code IN (?, ?, ?, ?, ?, ?) AND source_type = 'official'
+    WHERE id = ? AND form_code IN (?, ?, ?, ?, ?, ?, ?) AND source_type = 'official'
       AND template_status = 'active' AND mapping_status = 'ready'
     LIMIT 1`,
-    [templateId, 'SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9']
+    [templateId, 'SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9', 'SF10']
   );
   if (!templates[0]) throw createError('This SF template is unavailable.', 404);
   return templates[0];
@@ -296,11 +298,11 @@ async function getSf2Learners(database, schoolId, sectionId, month) {
   return { learners, historical: !isCurrent };
 }
 
-async function getSf5GradeData(database, schoolId, section, learners) {
+async function getSf5GradeData(database, schoolId, section, learners, includeInactive = false) {
   const [subjects] = await database.execute(
     `SELECT DISTINCT subjects.id, subjects.name, subjects.subject_code AS code FROM section_teachers
     INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = section_teachers.school_id
-      AND subjects.is_active = TRUE
+      ${includeInactive ? '' : 'AND subjects.is_active = TRUE'}
     WHERE section_teachers.school_id = ? AND section_teachers.section_id = ?
     ORDER BY subjects.name, subjects.id`, [schoolId, section.id]
   );
@@ -334,6 +336,48 @@ async function getSf5GradeData(database, schoolId, section, learners) {
       ...ids, ...subjects.map(subject => subject.id), ...terms.map(term => term.id)]
   );
   return { subjects, terms, grades };
+}
+
+async function getSf10History(database, schoolId, learner, selectedSection) {
+  const [sections] = await database.execute(
+    `SELECT sections.id, sections.name, sections.school_level_id AS schoolLevelId,
+      sections.grade_level_id AS gradeLevelId,
+      sections.academic_year_id AS academicYearId, sections.track_id AS trackId,
+      sections.strand_id AS strandId, years.label AS academicYear,
+      levels.grade_code AS gradeCode, adviser.display_name AS adviserName
+    FROM section_students AS enrollment
+    INNER JOIN sections ON sections.id = enrollment.section_id AND sections.school_id = enrollment.school_id
+    INNER JOIN academic_years AS years ON years.id = sections.academic_year_id AND years.school_id = sections.school_id
+    INNER JOIN school_grade_levels AS levels ON levels.id = sections.grade_level_id
+    LEFT JOIN users AS adviser ON adviser.id = sections.adviser_user_id AND adviser.school_id = sections.school_id
+    WHERE enrollment.school_id = ? AND enrollment.student_user_id = ?
+      AND levels.grade_code IN ('grade-7', 'grade-8', 'grade-9', 'grade-10')
+      AND years.start_date <= (SELECT start_date FROM academic_years WHERE id = ? AND school_id = ?)
+    ORDER BY years.start_date, sections.id`,
+    [schoolId, learner.userId, selectedSection.academicYearId, schoolId]
+  );
+  const years = new Map();
+  const issues = [];
+  for (const section of sections) {
+    const key = section.academicYear;
+    if (!years.has(key)) years.set(key, []);
+    years.get(key).push(section);
+  }
+  const histories = [];
+  for (const [year, records] of years) {
+    const section = records.length === 1 ? records[0]
+      : records.find(record => Number(record.id) === Number(selectedSection.id));
+    if (!section) {
+      issues.push({ severity: 'warning', fieldKey: 'enrollment', cellReference: null,
+        message: `${year}: multiple class records were found. This year was left blank for review.` });
+      continue;
+    }
+    if (records.length > 1) issues.push({ severity: 'warning', fieldKey: 'enrollment', cellReference: null,
+      message: `${year}: multiple class records were found. Only the selected advisory class was used.` });
+    const gradeData = await getSf5GradeData(database, schoolId, section, [learner], true);
+    histories.push({ section, ...gradeData });
+  }
+  return { histories, issues };
 }
 
 async function getSf9Grade11CommunicationGrades(database, schoolId, section, learner, terms, subjectId) {
@@ -421,6 +465,10 @@ async function getSf9Grade11ElectiveData(database, schoolId, section, learner, f
 }
 
 function sf9SectionIsEligible(template, section) {
+  if (isGrade12AcademicSf9(template)) {
+    return section.gradeCode === 'grade-12' && section.trackCode === 'academic'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
+  }
   if (isGrade11AcademicSf9(template)) {
     return section.gradeCode === 'grade-11' && section.trackCode === 'academic'
       && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
@@ -433,6 +481,9 @@ function sf9SectionIsEligible(template, section) {
 }
 
 function sf9EligibilityMessage(template) {
+  if (isGrade12AcademicSf9(template)) {
+    return 'The Grade 12 Academic SF9 is available only for Strengthened SHS Academic sections in school year 2026-2027.';
+  }
   if (isGrade11TechProSf9(template)) {
     return 'The Grade 11 TechPro SF9 is available only for Strengthened SHS TechPro sections in school year 2026-2027.';
   }
@@ -555,15 +606,18 @@ function buildMappedCells(data) {
 function normalizeEdits(value, editableCells, pageCount) {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > 5000) throw createError('Edits must contain no more than 5,000 cells.');
-  const allowed = new Map(editableCells.map(cell => [String(cell.cellAddress).toUpperCase(), cell.type]));
+  const allowed = new Map(editableCells.map(cell => [
+    `${cell.pageIndex === undefined ? '*' : cell.pageIndex}:${String(cell.cellAddress).toUpperCase()}`, cell.type
+  ]));
   const edits = new Map();
   value.forEach(edit => {
     const cellAddress = String(edit?.cellAddress || '').toUpperCase();
-    if (!allowed.has(cellAddress)) throw createError('One or more edited cells are not allowed for this school form.');
     const pageIndex = edit?.pageIndex === undefined || edit.pageIndex === null || edit.pageIndex === '' ? 0 : Number(edit.pageIndex);
     if (!Number.isSafeInteger(pageIndex) || pageIndex < 0 || pageIndex >= pageCount) {
       throw createError('One or more edited cells refer to an unavailable form page.');
     }
+    const allowedKey = allowed.has(`${pageIndex}:${cellAddress}`) ? `${pageIndex}:${cellAddress}` : `*:${cellAddress}`;
+    if (!allowed.has(allowedKey)) throw createError('One or more edited cells are not allowed for this school form.');
     if (edit?.value !== null && edit?.value !== undefined
       && !['string', 'number'].includes(typeof edit.value)) {
       throw createError(`Enter a valid value for ${cellAddress}.`);
@@ -573,7 +627,7 @@ function normalizeEdits(value, editableCells, pageCount) {
     }
     const cellValue = edit?.value === null || edit?.value === undefined ? '' : String(edit.value);
     if (cellValue.length > 500) throw createError('An edited cell value is too long.');
-    const type = allowed.get(cellAddress);
+    const type = allowed.get(allowedKey);
     const blank = cellValue.trim() === '';
     let normalizedValue = type === 'text' ? cellValue : (blank ? '' : cellValue.trim());
     if (['date', 'dateText'].includes(type) && !blank) {
@@ -687,9 +741,9 @@ async function listTemplates(req, res, next) {
         default_sheet_name AS sheetName, requires_academic_term AS requiresAcademicTerm,
         mapping_status AS mappingStatus
       FROM school_form_templates
-      WHERE form_code IN (?, ?, ?, ?, ?, ?) AND source_type = 'official' AND template_status = 'active' AND mapping_status = 'ready'
+      WHERE form_code IN (?, ?, ?, ?, ?, ?, ?) AND source_type = 'official' AND template_status = 'active' AND mapping_status = 'ready'
       ORDER BY form_code, version DESC`,
-      ['SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9']
+      ['SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9', 'SF10']
     );
     res.json({ templates: templates.map(formatTemplate) });
   } catch (error) {
@@ -702,20 +756,36 @@ async function getTemplateDetails(req, res, next) {
     const database = getDatabase();
     await ensureFeatureEnabled(database, req.user.schoolId);
     const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
-    const grade11Sf9Definition = isGrade11AcademicSf9(template) ? SF9_GRADE11_ACADEMIC
-      : isGrade11TechProSf9(template) ? SF9_GRADE11_TECHPRO : null;
-    const grade11Sf9Fields = isGrade11TechProSf9(template)
+    const shsSf9Definition = isGrade11AcademicSf9(template) ? SF9_GRADE11_ACADEMIC
+      : isGrade11TechProSf9(template) ? SF9_GRADE11_TECHPRO
+        : isGrade12AcademicSf9(template) ? SF9_GRADE12_ACADEMIC : null;
+    const shsSf9Fields = isGrade12AcademicSf9(template)
+      ? [['electiveSubject1', 'B33'], ['firstTermGrade', 'F33'], ['secondTermGrade', 'G36'],
+        ['thirdTermGrade', 'H39'], ['finalGrade', 'I33'], ['generalAverage', 'I43']]
+      : isGrade11TechProSf9(template)
       ? [['subjectName', 'B33'], ['englishComponentGrade', 'F34'], ['filipinoComponentGrade', 'F35'],
         ['firstPeriodGrade', 'F33'], ['techproElective', 'B41'], ['techproElectiveFirstTermGrade', 'F41'],
         ['generalAverage', 'I43']]
       : [['subjectName', 'B33'], ['englishComponentGrade', 'F34'], ['filipinoComponentGrade', 'F35'],
         ['firstPeriodGrade', 'F33'], ['electiveSubject1', 'B41'], ['electiveSubject2', 'B42'],
         ['electiveSubject3', 'B43'], ['generalAverage', 'I44']];
-    const mappings = grade11Sf9Definition
-      ? [...Object.entries(grade11Sf9Definition.headers).map(([fieldKey, cellReference]) => ({
-        fieldKey, worksheetName: grade11Sf9Definition.sheetName, cellReference
-      })), ...grade11Sf9Fields.map(([fieldKey, cellReference]) => ({
-        fieldKey, worksheetName: grade11Sf9Definition.sheetName, cellReference
+    const mappings = template.formCode === 'SF10'
+      ? [
+        ...[['lastName', 'G7'], ['firstName', 'W7'], ['middleName', 'AX7'],
+          ['lrn', 'M8'], ['birthDate', 'AH8'], ['sex', 'AV8']]
+          .map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: 'Front', cellReference })),
+        ...SF10.blocks.flatMap((block, index) => [
+          ['schoolName', `E${block.header}`], ['schoolId', `U${block.header}`],
+          ['gradeLevel', `I${block.header + 1}`], ['section', `N${block.header + 1}`],
+          ['schoolYear', `V${block.header + 1}`], ['adviser', `AI${block.header + 1}`],
+          ['firstQuarterGrade', `U${block.grades}`], ['finalRating', `AJ${block.grades}`]
+        ].map(([fieldKey, cellReference]) => ({ fieldKey: `year${index + 1}${fieldKey[0].toUpperCase()}${fieldKey.slice(1)}`,
+          worksheetName: block.sheet, cellReference })))
+      ] : shsSf9Definition
+      ? [...Object.entries(shsSf9Definition.headers).map(([fieldKey, cellReference]) => ({
+        fieldKey, worksheetName: shsSf9Definition.sheetName, cellReference
+      })), ...shsSf9Fields.map(([fieldKey, cellReference]) => ({
+        fieldKey, worksheetName: shsSf9Definition.sheetName, cellReference
       }))]
       : template.formCode === 'SF9'
       ? [...Object.entries(SF9.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9.sheetName, cellReference })),
@@ -754,9 +824,9 @@ async function getTemplateDetails(req, res, next) {
       }))
     ];
     const sections = await getAdvisorySections(database, req.user.id, req.user.schoolId,
-      ['SF5', 'SF9'].includes(template.formCode));
+      ['SF5', 'SF9', 'SF10'].includes(template.formCode));
     res.json({ template: formatTemplate(template), mappings, sections,
-      maxLearners: template.formCode === 'SF1' ? 49 : template.formCode === 'SF9' ? 1 : null });
+      maxLearners: template.formCode === 'SF1' ? 49 : ['SF9', 'SF10'].includes(template.formCode) ? 1 : null });
   } catch (error) {
     next(error);
   }
@@ -767,17 +837,20 @@ async function listSf9Learners(req, res, next) {
     const database = getDatabase();
     await ensureFeatureEnabled(database, req.user.schoolId);
     const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
-    if (template.formCode !== 'SF9') throw createError('Learner selection is available only for SF9.', 404);
+    if (!['SF9', 'SF10'].includes(template.formCode)) throw createError('Learner selection is available only for SF9 and SF10.', 404);
     const sectionId = parseId(req.query.sectionId, 'section ID');
     const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId, true);
-    if (!sf9SectionIsEligible(template, section)) {
+    if (template.formCode === 'SF10' && !/^grade-(?:[7-9]|10)$/.test(section.gradeCode)) {
+      throw createError('SF10 is available only for Grades 7–10.', 403);
+    }
+    if (template.formCode === 'SF9' && !sf9SectionIsEligible(template, section)) {
       throw createError(sf9EligibilityMessage(template), 403);
     }
     const learners = await getSectionLearners(database, req.user.schoolId, section.id,
       section.academicYearStatus === 'closed' ? section.endDate : null);
     res.json({ learners: learners.map(learner => ({
       id: String(learner.userId),
-      displayName: sf9DisplayName(learner),
+      displayName: template.formCode === 'SF10' ? sf10NameOf(learner) : sf9DisplayName(learner),
       lrn: learner.lrn || ''
     })) });
   } catch (error) {
@@ -793,12 +866,15 @@ async function preparePreview(req, database) {
   const requestedTermId = termValue === undefined || termValue === null || termValue === ''
     ? null : parseId(termValue, 'academic term ID');
   const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId,
-    ['SF5', 'SF9'].includes(template.formCode));
+    ['SF5', 'SF9', 'SF10'].includes(template.formCode));
   if (template.formCode === 'SF5' && !/^grade-(?:[2-9]|10)$/.test(section.gradeCode)) {
     throw createError('SF5 is available only for Grades 2–10.', 403);
   }
   if (template.formCode === 'SF9' && !sf9SectionIsEligible(template, section)) {
     throw createError(sf9EligibilityMessage(template), 403);
+  }
+  if (template.formCode === 'SF10' && !/^grade-(?:[7-9]|10)$/.test(section.gradeCode)) {
+    throw createError('SF10 is available only for Grades 7–10.', 403);
   }
   const term = await validateTerm(database, req.user.schoolId, section, requestedTermId, Boolean(template.requiresAcademicTerm));
   const [schools] = await database.execute(
@@ -811,6 +887,7 @@ async function preparePreview(req, database) {
   const month = req.method === 'GET' ? req.query.month : req.body.month;
   let data;
   let pages;
+  let sourceRecords = null;
   if (template.formCode === 'SF5') {
     const learners = await getSectionLearners(database, req.user.schoolId, section.id,
       section.academicYearStatus === 'closed' ? section.endDate : null);
@@ -836,6 +913,19 @@ async function preparePreview(req, database) {
     const learners = await getSectionLearners(database, req.user.schoolId, section.id);
     data = buildSf8Pages(schools[0], section, learners);
     pages = data.pages;
+  } else if (template.formCode === 'SF10') {
+    const studentId = parseId(req.method === 'GET' ? req.query.studentId : req.body.studentId, 'learner ID');
+    const learners = await getSectionLearners(database, req.user.schoolId, section.id,
+      section.academicYearStatus === 'closed' ? section.endDate : null);
+    const learner = learners.find(record => Number(record.userId) === studentId);
+    if (!learner) throw createError('Select a learner currently or historically enrolled in this advisory class.', 403);
+    const history = await getSf10History(database, req.user.schoolId, learner, section);
+    data = buildSf10Pages(schools[0], learner, history.histories);
+    data.issues.push(...history.issues);
+    sourceRecords = history.histories.map(({ section: sourceSection, subjects, terms, grades }) => ({
+      section: sourceSection, subjects, terms, grades
+    }));
+    pages = data.pages;
   } else if (template.formCode === 'SF9') {
     const studentId = parseId(req.method === 'GET' ? req.query.studentId : req.body.studentId, 'learner ID');
     const learners = await getSectionLearners(database, req.user.schoolId, section.id,
@@ -848,7 +938,13 @@ async function preparePreview(req, database) {
       WHERE id = ? AND school_id = ? AND role = 'teacher' LIMIT 1`,
       [req.user.id, req.user.schoolId]
     );
-    if (isGrade11AcademicSf9(template)) {
+    if (isGrade12AcademicSf9(template)) {
+      const electiveData = await getSf9Grade11ElectiveData(database, req.user.schoolId, section, learner);
+      data = buildSf9Grade12AcademicPages(schools[0], section, advisers[0]?.displayName || '', learner,
+        gradeData.terms, electiveData.electiveClasses, electiveData.electiveGrades);
+      sourceRecords = { terms: gradeData.terms, electiveClasses: electiveData.electiveClasses,
+        electiveGrades: electiveData.electiveGrades };
+    } else if (isGrade11AcademicSf9(template)) {
       const communicationSubject = gradeData.subjects.find(subject => subject.code === 'shs-core-communication');
       const communicationGrades = await getSf9Grade11CommunicationGrades(database, req.user.schoolId,
         section, learner, gradeData.terms, communicationSubject?.id);
@@ -876,7 +972,13 @@ async function preparePreview(req, database) {
     pages = [buildMappedCells(data)];
   }
   const mappedCells = pages[0];
-  const editableCells = await getEditableCells(template, mappedCells);
+  let editableCells = await getEditableCells(template, mappedCells);
+  if (template.formCode === 'SF10' && data.restrictedCells?.length) {
+    const restricted = new Set(data.restrictedCells.map(cell =>
+      `${cell.pageIndex}:${String(cell.cellAddress).toUpperCase()}`));
+    editableCells = editableCells.filter(cell =>
+      !restricted.has(`${cell.pageIndex}:${String(cell.cellAddress).toUpperCase()}`));
+  }
   const editableAddresses = new Set(editableCells.map(cell => cell.cellAddress));
   const issues = data.issues.map(issue => {
     const canBeCorrectedInDownload = issue.severity === 'error'
@@ -893,8 +995,8 @@ async function preparePreview(req, database) {
   const fingerprint = crypto.createHash('sha256').update(JSON.stringify({
     templateId: template.id, version: template.version, schoolId: req.user.schoolId,
     sectionId: section.id, termId: term?.id || null, month: template.formCode === 'SF2' ? month : null,
-    studentId: template.formCode === 'SF9' ? Number(req.method === 'GET' ? req.query.studentId : req.body.studentId) : null,
-    pages, issues, editableCells, breakdown: data.breakdown || null
+    studentId: ['SF9', 'SF10'].includes(template.formCode) ? Number(req.method === 'GET' ? req.query.studentId : req.body.studentId) : null,
+    pages, issues, editableCells, breakdown: data.breakdown || null, sourceRecords
   })).digest('hex');
   return { template, section, term, month, pages, mappedCells, editableCells, issues,
     breakdown: data.breakdown || [], fingerprint };
@@ -1123,7 +1225,7 @@ async function downloadExport(req, res, next) {
     if (!exports[0]) throw createError('This SF export is unavailable.', 404);
     const filePath = getExportFilePath(exports[0].filePath);
     if (!fs.existsSync(filePath)) throw createError('This SF export file is unavailable.', 404);
-    const draft = ['SF5', 'SF8', 'SF9'].includes(exports[0].formCode) ? '-draft' : '';
+    const draft = ['SF5', 'SF8', 'SF9', 'SF10'].includes(exports[0].formCode) ? '-draft' : '';
     res.download(filePath, `${exports[0].formCode.toLowerCase()}${draft}-export-${exportId}.xlsx`, { dotfiles: 'allow' });
   } catch (error) {
     next(error);

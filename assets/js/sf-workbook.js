@@ -3,6 +3,17 @@
   const SF1_TEMPLATE_ID = 'sf1-school-register-v1';
 
   const SF_TEMPLATE_DEFINITIONS = Object.freeze({
+    'sf10-jhs-permanent-record-v1': {
+      templateId: 'sf10-jhs-permanent-record-v1',
+      sheetName: 'Front',
+      requiredSheets: ['Front', 'SirWedz Guides', 'Back'],
+      previewRows: 95,
+      previewColumns: 56,
+      mergeCount: 387,
+      anchors: { B4: 'Learner Permanent Academic Record for Junior High School', B19: 'SCHOLASTIC RECORD' },
+      fields: {},
+      rows: []
+    },
     'sf8-health-nutrition-v1': {
       templateId: 'sf8-health-nutrition-v1',
       sheetName: 'School Form 8 (SF8)',
@@ -107,6 +118,42 @@
         track: { cellAddress: 'E19', source: 'header.track', type: 'text' },
         adviser: { cellAddress: 'H27', source: 'header.adviser', type: 'text' },
         generalAverage: { cellAddress: 'I44', source: 'calculation.generalAverage', type: 'number' }
+      },
+      rows: []
+    },
+    'sf9-g12-academic-v1': {
+      templateId: 'sf9-g12-academic-v1',
+      sheetName: 'SF9 - GRADE 12 ACADEMIC',
+      requiredSheets: ['SF9 - GRADE 12 ACADEMIC'],
+      previewRows: 53,
+      previewColumns: 30,
+      excludeTrailingRows: true,
+      excludeTrailingColumns: true,
+      mergeCount: 127,
+      anchors: {
+        B14: "LEARNER'S PERFORMANCE REPORT",
+        B29: 'LEARNING PROGRESS AND ACHIEVEMENT',
+        B32: 'Elective Subjects',
+        F31: 'T1', G31: 'T2', H31: 'T3',
+        I30: 'Final Grade', J30: 'Remarks'
+      },
+      fields: {
+        region: { cellAddress: 'B7', source: 'header.region', type: 'text' },
+        division: { cellAddress: 'B8', source: 'header.division', type: 'text' },
+        district: { cellAddress: 'B9', source: 'header.district', type: 'text' },
+        address: { cellAddress: 'B10', source: 'header.address', type: 'text' },
+        schoolName: { cellAddress: 'B12', source: 'header.schoolName', type: 'text' },
+        schoolYear: { cellAddress: 'B15', source: 'header.schoolYear', type: 'text' },
+        learnerName: { cellAddress: 'C17', source: 'header.learnerName', type: 'text' },
+        age: { cellAddress: 'I17', source: 'header.age', type: 'number' },
+        sex: { cellAddress: 'K17', source: 'header.sex', type: 'text' },
+        lrn: { cellAddress: 'C18', source: 'header.lrn', type: 'text' },
+        gradeLevel: { cellAddress: 'I18', source: 'header.gradeLevel', type: 'number' },
+        section: { cellAddress: 'K18', source: 'header.section', type: 'text' },
+        track: { cellAddress: 'E19', source: 'header.track', type: 'text' },
+        adviser: { cellAddress: 'H27', source: 'header.adviser', type: 'text' },
+        electiveSubject1: { cellAddress: 'B33', source: 'approved Grade 12 Academic elective', type: 'text' },
+        generalAverage: { cellAddress: 'I43', source: 'adviser review', type: 'number' }
       },
       rows: []
     },
@@ -770,14 +817,14 @@
     };
   }
 
-  async function generatePreviewFromMappedCells(template, mappedCells = [], edits = [], editableCells = null) {
+  async function generatePreviewFromMappedCells(template, mappedCells = [], edits = [], editableCells = null, pageIndex = 0) {
     const source = await fetchTemplate(template.templateFileUrl);
     await validateTemplatePackage(source, template);
     const workbook = await loadWorkbook(source);
     const mapping = validateDefinition(workbook, template);
     if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF template mapping is invalid.');
 
-    const worksheet = workbook.getWorksheet(template.sheetName);
+    const worksheet = workbook.getWorksheet(template.formCode === 'SF10' && pageIndex === 1 ? 'Back' : template.sheetName);
     const sf9SubjectCount = template.formCode === 'SF9' && template.id === 'sf9-learner-performance-v1'
       ? new Set(mappedCells.map(record => /^B(\d+)$/.exec(String(record.cellAddress || '').toUpperCase()))
         .filter(match => match && Number(match[1]) >= 32).map(match => Number(match[1]))).size
@@ -785,7 +832,7 @@
     const sf9ExtraRows = sf9SubjectCount ? extendSf9PreviewRows(worksheet, sf9SubjectCount) : 0;
     const previewTemplate = sf9ExtraRows ? { ...template, previewRows: 52 + sf9ExtraRows } : template;
     const types = new Map(mappedCells.map(record => [String(record.cellAddress || '').toUpperCase(), record.type || 'text']));
-    const entryCells = Array.isArray(editableCells) ? editableCells : editableAddresses(template).map(cellAddress => ({
+    const entryCells = Array.isArray(editableCells) ? editableCells.filter(cell => cell.pageIndex === undefined || cell.pageIndex === pageIndex) : editableAddresses(template).map(cellAddress => ({
       cellAddress,
       type: types.get(String(cellAddress).toUpperCase()) || 'text'
     }));

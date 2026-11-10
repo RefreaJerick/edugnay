@@ -65,6 +65,8 @@ test('edit payload contains mutable fields only; create payload retains configur
   const section = { level: 'jhs', grade: 'Grade 7', name: 'St. Mark', capacity: 40, adviserId: '12' };
   const edit = context.managementApiSectionPayload(section, '22');
   assert.deepEqual(JSON.parse(JSON.stringify(edit)), { name: 'St. Mark', capacity: 40, adviserUserId: 12 });
+  const cleared = context.managementApiSectionPayload({ ...section, adviserId: '' }, '22');
+  assert.equal(cleared.adviserUserId, null);
   const create = context.managementApiSectionPayload(section);
   assert.equal(create.academicYearId, 9);
   assert.equal(create.schoolLevelId, 2);

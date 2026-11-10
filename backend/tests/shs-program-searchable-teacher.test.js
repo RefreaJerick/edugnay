@@ -131,7 +131,7 @@ test('shared searchable select reads people mode and search messages from select
   assert.match(searchableSelectSource, /select\.dataset\.searchableType === 'people'/);
   assert.match(searchableSelectSource, /settings\.searchPlaceholder \|\| select\.dataset\.searchPlaceholder \|\| 'Search options\.\.\.'/);
   assert.match(searchableSelectSource, /settings\.emptyText \|\| select\.dataset\.searchEmptyText \|\| 'No matching options'/);
-  assert.match(searchableSelectSource, /state\.searchable = state\.people \|\| getOptionRecords\(state\)\.filter\(option => option\.value\)\.length > 10/);
+  assert.match(searchableSelectSource, /state\.searchable = state\.people \|\| state\.select\.dataset\.searchable === 'true'[\s\S]*?getOptionRecords\(state\)\.filter\(option => option\.value\)\.length > 10/);
   assert.match(searchableSelectSource, /people \? 'searchable-select-people' : 'searchable-select-plain'/);
   assert.match(searchableSelectSource, /if \(!state\.searchable\) return;[\s\S]*?renderOptions\(state, input\.value\)/);
   assert.match(searchableSelectSource, /if \(event\.key === 'Enter' && state\.open\)[\s\S]*?chooseOption\(state, option\.value\)/);
