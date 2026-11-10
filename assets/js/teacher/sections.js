@@ -18,9 +18,12 @@ lucide.createIcons();
       if (id === 'teacherDeleteConfirmModal' && teacherDeletePending) return;
       if (id === 'uploadModal' && materialUploadInProgress) return;
       if (id === 'assignmentSubmissionPreviewModal') {
+        if (assignmentPreviewState?.saving) return;
+        if (assignmentPreviewHasUnsavedScore() && !window.confirm('Discard the unsaved score?')) return;
         assignmentPreviewRequestId += 1;
         if (assignmentPreviewObjectUrl) URL.revokeObjectURL(assignmentPreviewObjectUrl);
         assignmentPreviewObjectUrl = null;
+        assignmentPreviewState = null;
         const previewFrame = document.getElementById('assignmentSubmissionPreviewFrame');
         previewFrame.removeAttribute('src');
         previewFrame.hidden = true;
@@ -3782,7 +3785,8 @@ lucide.createIcons();
       const scoreMenuTrigger = document.querySelector('.score-comp-menu-trigger[aria-expanded="true"]');
       closeScoreComponentMenu();
       scoreMenuTrigger?.focus();
-      const openModalBackdrop = document.querySelector('.modal-backdrop.open');
+      const openModalBackdrop = document.querySelector('#assignmentSubmissionPreviewModal.open')
+        || document.querySelector('.modal-backdrop.open');
       if (openModalBackdrop?.id === 'teacherStudentDetailsModal') closeTeacherStudentDetailsModal();
       else if (openModalBackdrop) closeModal(openModalBackdrop.id);
     });
@@ -4072,6 +4076,7 @@ lucide.createIcons();
     let activeAssignmentId = null;
     let assignmentPreviewObjectUrl = null;
     let assignmentPreviewRequestId = 0;
+    let assignmentPreviewState = null;
 
     function openEditAssignmentModal(assignmentId) {
       const electiveClassId = new URLSearchParams(window.location.search).get('classId');
@@ -4263,9 +4268,9 @@ lucide.createIcons();
           { key: 'submitted', label: 'Submitted at', render: submission => window.EDUGNAY_CONFIG.formatDateTime(submission.submittedAt) },
           {
             key: 'score', label: 'Score', render: submission => {
-              const score = scores.find(record => record.studentId === submission.studentId)?.score ?? '';
+              const score = scores.find(record => String(record.studentId) === String(submission.studentId))?.score ?? '';
               return (assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0
-                ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${Number(assignment.maxScore)}" value="${window.EDUGNAY_CONFIG.escapeHtml(score)}" ${hasScoreEditingAccess(assignment.academicPeriodId) ? '' : 'disabled'} data-page-change="${window.EDUGNAY_PAGE_EVENTS.register('change', function(event) { saveAssignmentSubmissionScore(String(Number(assignment.id)), String(Number(submission.studentId)), this) })}"><span>/ ${Number(assignment.maxScore)}</span></div>`
+                ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${Number(assignment.maxScore)}" value="${window.EDUGNAY_CONFIG.escapeHtml(score)}" data-submission-student-id="${Number(submission.studentId)}" ${hasScoreEditingAccess(assignment.academicPeriodId) ? '' : 'disabled'} data-page-change="${window.EDUGNAY_PAGE_EVENTS.register('change', function(event) { saveAssignmentSubmissionScore(String(Number(assignment.id)), String(Number(submission.studentId)), this) })}"><span>/ ${Number(assignment.maxScore)}</span></div>`
                 : '<span class="assignment-file-unavailable">Not graded</span>';
             }
           },
@@ -4284,25 +4289,82 @@ lucide.createIcons();
       lucide.createIcons();
     }
 
-    async function openAssignmentSubmissionPreview(assignmentId, submissionId) {
-      const assignment = getTeacherAssignments().find(item => Number(item.id) === Number(assignmentId));
-      const submission = (BACKEND_SUBMISSIONS.get(String(assignmentId)) || []).find(item => Number(item.id) === Number(submissionId));
-      if (!assignment || !submission?.fileUrl) return;
+    function assignmentPreviewHasUnsavedScore() {
+      const input = document.getElementById('assignmentSubmissionPreviewScoreInput');
+      return Boolean(assignmentPreviewState?.scoreAvailable && input
+        && (input.validity?.badInput || input.value !== assignmentPreviewState.savedScore));
+    }
+
+    function setAssignmentPreviewFeedback(message, isError = false) {
+      const feedback = document.getElementById('assignmentSubmissionPreviewScoreFeedback');
+      feedback.textContent = message;
+      feedback.hidden = !message;
+      feedback.classList.toggle('is-error', isError);
+      feedback.setAttribute('role', isError ? 'alert' : 'status');
+    }
+
+    function updateAssignmentPreviewControls() {
+      const state = assignmentPreviewState;
+      if (!state) return;
+      const input = document.getElementById('assignmentSubmissionPreviewScoreInput');
+      const saveButton = document.getElementById('assignmentSubmissionPreviewSave');
+      const previousButton = document.getElementById('assignmentSubmissionPreviewPrevious');
+      const nextButton = document.getElementById('assignmentSubmissionPreviewNext');
+      input.disabled = !state.canEditScore || state.saving;
+      saveButton.hidden = !state.canEditScore;
+      saveButton.disabled = state.saving || state.loading || state.advancing || !assignmentPreviewHasUnsavedScore();
+      previousButton.disabled = state.index === 0 || state.saving || state.loading || state.advancing;
+      nextButton.disabled = state.saving || state.loading || state.advancing;
+      nextButton.textContent = state.index === state.submissions.length - 1
+        ? (state.canEditScore ? 'Save & finish' : 'Finish') : 'Next submission';
+      document.getElementById('assignmentSubmissionPreviewCloseTop').disabled = state.saving;
+    }
+
+    async function showAssignmentSubmissionPreview() {
+      const state = assignmentPreviewState;
+      const submission = state.submissions[state.index];
+      const assignmentId = Number(state.assignment.id);
+      const student = getGradeStudents().find(item => String(item.id) === String(submission.studentId));
+      const studentName = student?.displayName || submission.studentName || 'Student';
+      const scoreRecord = getAssignmentScoreRecords(state.assignment.id)
+        .find(record => String(record.studentId) === String(submission.studentId));
+      const maxScore = Number(state.assignment.maxScore);
+      const gradebookAvailable = isBackendGradeMode();
+      state.scoreAvailable = Boolean((state.assignment.categoryId || state.assignment.subjectGradingComponentId) && maxScore > 0);
+      state.canEditScore = state.scoreAvailable && gradebookAvailable && hasScoreEditingAccess(state.assignment.academicPeriodId);
+      state.savedScore = scoreRecord?.score == null ? '' : String(scoreRecord.score);
+
+      document.getElementById('assignmentSubmissionPreviewStudent').textContent = studentName;
+      document.getElementById('assignmentSubmissionPreviewFileName').textContent = submission.fileName || 'Submitted file';
+      document.getElementById('assignmentSubmissionPreviewPosition').textContent = `${state.index + 1} of ${state.submissions.length}`;
+      const scoreInput = document.getElementById('assignmentSubmissionPreviewScoreInput');
+      scoreInput.value = state.savedScore;
+      scoreInput.max = String(maxScore);
+      document.getElementById('assignmentSubmissionPreviewMaxScore').textContent = `/ ${maxScore}`;
+      document.getElementById('assignmentSubmissionPreviewScoreRow').hidden = !state.scoreAvailable;
+      document.getElementById('assignmentSubmissionPreviewScoreUnavailable').hidden = state.scoreAvailable;
+      setAssignmentPreviewFeedback(state.scoreAvailable && !state.canEditScore
+        ? (gradebookAvailable ? 'Scoring is read-only for this grading period.'
+          : BACKEND_GRADE_ERROR || 'Scoring is unavailable right now.') : '');
 
       const requestId = ++assignmentPreviewRequestId;
       if (assignmentPreviewObjectUrl) URL.revokeObjectURL(assignmentPreviewObjectUrl);
       assignmentPreviewObjectUrl = null;
       const previewFrame = document.getElementById('assignmentSubmissionPreviewFrame');
       const previewMessage = document.getElementById('assignmentSubmissionPreviewMessage');
+      const previewDownload = document.getElementById('assignmentSubmissionPreviewDownload');
       previewFrame.removeAttribute('src');
+      previewFrame.title = `${studentName} assignment submission preview`;
       previewFrame.hidden = true;
       previewMessage.hidden = false;
-      previewMessage.textContent = 'Preparing preview…';
-      document.getElementById('assignmentSubmissionPreviewFileName').textContent = submission.fileName || 'Submitted file';
-      openModal('assignmentSubmissionPreviewModal');
+      document.getElementById('assignmentSubmissionPreviewMessageText').textContent = 'Preparing preview…';
+      previewDownload.href = window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignmentId, submission.id);
+      previewDownload.hidden = true;
+      state.loading = true;
+      updateAssignmentPreviewControls();
 
       try {
-        const result = await window.EDUGNAY_API.getAssignmentSubmissionPreview(assignmentId, submissionId);
+        const result = await window.EDUGNAY_API.getAssignmentSubmissionPreview(assignmentId, submission.id);
         if (requestId !== assignmentPreviewRequestId) return;
         if (!String(result.contentType || '').toLowerCase().startsWith('application/pdf')) {
           throw new Error('A preview is not available for this file. Download it to open the original.');
@@ -4313,8 +4375,111 @@ lucide.createIcons();
         previewMessage.hidden = true;
       } catch (error) {
         if (requestId !== assignmentPreviewRequestId) return;
-        previewMessage.textContent = error.message || 'The file preview could not be loaded. Use Download to open the original file.';
+        document.getElementById('assignmentSubmissionPreviewMessageText').textContent = error.message
+          || 'The file preview could not be loaded. Download the original file.';
+        previewDownload.hidden = false;
+      } finally {
+        if (requestId === assignmentPreviewRequestId && assignmentPreviewState === state) {
+          state.loading = false;
+          updateAssignmentPreviewControls();
+        }
       }
+    }
+
+    async function openAssignmentSubmissionPreview(assignmentId, submissionId) {
+      const assignment = getTeacherAssignments().find(item => Number(item.id) === Number(assignmentId));
+      const submissions = (BACKEND_SUBMISSIONS.get(String(assignmentId)) || [])
+        .filter(item => item.fileName && item.fileUrl);
+      const index = submissions.findIndex(item => Number(item.id) === Number(submissionId));
+      if (!assignment || index < 0) return;
+      assignmentPreviewState = { assignment, submissions, index, savedScore: '', scoreAvailable: false,
+        canEditScore: false, saving: false, loading: false, advancing: false };
+      const scoreInput = document.getElementById('assignmentSubmissionPreviewScoreInput');
+      scoreInput.oninput = () => { setAssignmentPreviewFeedback(''); updateAssignmentPreviewControls(); };
+      openModal('assignmentSubmissionPreviewModal');
+      await showAssignmentSubmissionPreview();
+    }
+
+    async function persistAssignmentSubmissionScore(assignment, studentId, score) {
+      const item = getBackendGradingItemForAssignment(assignment);
+      if (!item) throw new Error('This assignment is not linked to a score component yet.');
+      const saved = await window.EDUGNAY_API.saveStudentScore({ gradingItemId: item.id, studentId, score });
+      const index = BACKEND_STUDENT_SCORES.findIndex(record =>
+        String(record.gradingItemId) === String(item.id) && String(record.studentId) === String(studentId)
+      );
+      if (index >= 0) BACKEND_STUDENT_SCORES[index] = saved;
+      else BACKEND_STUDENT_SCORES.push(saved);
+      const listInput = document.querySelector(`#assignmentSubmissionsTbody .score-input[data-submission-student-id="${Number(studentId)}"]`);
+      if (listInput) listInput.value = saved.score == null ? '' : String(saved.score);
+      renderScoreTable(document.getElementById('academicPeriodSelect').value);
+      return saved;
+    }
+
+    async function saveAssignmentPreviewScore() {
+      const state = assignmentPreviewState;
+      if (!state || state.saving || state.loading) return false;
+      if (!assignmentPreviewHasUnsavedScore()) return true;
+      if (!state.canEditScore) {
+        setAssignmentPreviewFeedback('Scoring is no longer available for this grading period.', true);
+        return false;
+      }
+      const input = document.getElementById('assignmentSubmissionPreviewScoreInput');
+      const score = input.value === '' ? null : Number(input.value);
+      const maxScore = Number(state.assignment.maxScore);
+      if (input.validity?.badInput || (score !== null && (!Number.isFinite(score) || score < 0 || score > maxScore))) {
+        setAssignmentPreviewFeedback(`Enter a score from 0 to ${maxScore}.`, true);
+        return false;
+      }
+      state.saving = true;
+      setAssignmentPreviewFeedback('Saving score…');
+      updateAssignmentPreviewControls();
+      try {
+        const submission = state.submissions[state.index];
+        const saved = await persistAssignmentSubmissionScore(state.assignment, submission.studentId, score);
+        state.savedScore = saved.score == null ? '' : String(saved.score);
+        input.value = state.savedScore;
+        setAssignmentPreviewFeedback('Score saved.');
+        return true;
+      } catch (error) {
+        if ([403, 409].includes(error.status)) {
+          try { await switchAcademicPeriod(state.assignment.academicPeriodId); } catch (_) { /* Show the save error below. */ }
+          state.canEditScore = hasScoreEditingAccess(state.assignment.academicPeriodId);
+        }
+        setAssignmentPreviewFeedback(error.message || 'The score could not be saved.', true);
+        return false;
+      } finally {
+        state.saving = false;
+        updateAssignmentPreviewControls();
+      }
+    }
+
+    async function navigateAssignmentSubmissionPreview(direction) {
+      const state = assignmentPreviewState;
+      if (!state || state.saving || state.loading || state.advancing || (direction < 0 && state.index === 0)) return;
+      state.advancing = true;
+      updateAssignmentPreviewControls();
+      try {
+        if (!await saveAssignmentPreviewScore() || assignmentPreviewState !== state) return;
+        if (direction > 0 && state.index === state.submissions.length - 1) {
+          closeModal('assignmentSubmissionPreviewModal');
+          return;
+        }
+        state.index += direction;
+        await showAssignmentSubmissionPreview();
+      } finally {
+        if (assignmentPreviewState === state) {
+          state.advancing = false;
+          updateAssignmentPreviewControls();
+        }
+      }
+    }
+
+    function advanceAssignmentSubmissionPreview() {
+      return navigateAssignmentSubmissionPreview(1);
+    }
+
+    function previousAssignmentSubmissionPreview() {
+      return navigateAssignmentSubmissionPreview(-1);
     }
 
     function closeAssignmentSubmissionPreview() {
@@ -4333,30 +4498,17 @@ lucide.createIcons();
       }
       const score = input.value === '' ? null : Number(input.value);
       const maxScore = Number(input.max);
-      if (score !== null && (!Number.isFinite(score) || score < 0 || score > maxScore)) {
+      if (input.validity?.badInput || (score !== null && (!Number.isFinite(score) || score < 0 || score > maxScore))) {
         alert(`Enter a score from 0 to ${maxScore}.`);
         openAssignmentSubmissionsModal(assignmentId);
         return;
       }
-
-      const item = getBackendGradingItemForAssignment(assignment);
-      if (!item) {
-        alert('This assignment is not linked to a score component yet.');
-        return;
-      }
       try {
-        const saved = await window.EDUGNAY_API.saveStudentScore({ gradingItemId: item.id, studentId, score });
-        const index = BACKEND_STUDENT_SCORES.findIndex(record =>
-          String(record.gradingItemId) === String(item.id) && String(record.studentId) === String(studentId)
-        );
-        if (index >= 0) BACKEND_STUDENT_SCORES[index] = saved;
-        else BACKEND_STUDENT_SCORES.push(saved);
+        await persistAssignmentSubmissionScore(assignment, studentId, score);
       } catch (error) {
         if ([403, 409].includes(error.status)) await switchAcademicPeriod(assignment.academicPeriodId);
         alert(error.message);
-        return;
       }
-      renderScoreTable(document.getElementById('academicPeriodSelect').value);
     }
 
     function openStatusModal(id) {
@@ -4654,6 +4806,9 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p461bf01c621c: function(event) { switchCatTab(this,'all') },
     p495242f87541: function(event) { stopQrScanner() },
     p49e266a62e30: function(event) { closeAssignmentSubmissionPreview() },
+    p6ee5ce9e437d: function(event) { void previousAssignmentSubmissionPreview() },
+    p7aa907733a81: function(event) { void saveAssignmentPreviewScore() },
+    p9ca9e80540bc: function(event) { void advanceAssignmentSubmissionPreview() },
     p5026ce80c219: function(event) { markAll('P') },
     p5adc771cd24c: function(event) { openPublishGradesModal() },
     p6875bf9d15fb: function(event) { publishGrades() },

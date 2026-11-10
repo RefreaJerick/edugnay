@@ -330,7 +330,7 @@
     </div>
   </div>
 
-  <!-- ══════ PUBLISH CONFIRM MODAL ══════ -->
+  <!-- ══════ SUBMISSION PREVIEW MODAL ══════ -->
   <div class="modal-backdrop" id="assignmentSubmissionPreviewModal">
     <div class="modal assignment-submission-preview-modal" role="dialog" aria-modal="true"
       aria-labelledby="assignmentSubmissionPreviewTitle">
@@ -339,22 +339,51 @@
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-text"></i></div>
           <div class="modal-heading-copy">
             <div class="modal-title" id="assignmentSubmissionPreviewTitle">Submission preview</div>
+            <div class="modal-sub" id="assignmentSubmissionPreviewStudent"></div>
             <div class="modal-sub" id="assignmentSubmissionPreviewFileName"></div>
           </div>
         </div>
-        <button class="modal-close" type="button" data-page-click="p49e266a62e30"
-          aria-label="Close preview">
-          <i data-lucide="x" style="width:14px;height:14px;"></i>
-        </button>
+        <div class="assignment-submission-preview-header-actions">
+          <span class="assignment-submission-preview-position" id="assignmentSubmissionPreviewPosition"></span>
+          <button class="modal-close" id="assignmentSubmissionPreviewCloseTop" type="button"
+            data-page-click="p49e266a62e30" aria-label="Close preview">
+            <i data-lucide="x" style="width:14px;height:14px;"></i>
+          </button>
+        </div>
       </div>
       <div class="modal-body assignment-submission-preview-body">
-        <div class="assignment-submission-preview-message" id="assignmentSubmissionPreviewMessage" role="status"
-          aria-live="polite">Preparing preview…</div>
-        <iframe id="assignmentSubmissionPreviewFrame" class="assignment-submission-preview-frame"
-          title="Submitted assignment preview" referrerpolicy="no-referrer" hidden></iframe>
+        <div class="assignment-submission-preview-document">
+          <div class="assignment-submission-preview-message" id="assignmentSubmissionPreviewMessage" role="status"
+            aria-live="polite"><span id="assignmentSubmissionPreviewMessageText">Preparing preview…</span>
+            <a class="row-btn view assignment-submission-preview-download" id="assignmentSubmissionPreviewDownload"
+              href="#" hidden><i data-lucide="download" aria-hidden="true"></i> Download file</a>
+          </div>
+          <iframe id="assignmentSubmissionPreviewFrame" class="assignment-submission-preview-frame"
+            title="Submitted assignment preview" referrerpolicy="no-referrer" hidden></iframe>
+        </div>
+        <aside class="assignment-submission-preview-scoring" aria-label="Submission scoring">
+          <h3 class="assignment-submission-preview-scoring-title">Scoring</h3>
+          <div class="assignment-submission-preview-score-row" id="assignmentSubmissionPreviewScoreRow">
+            <label for="assignmentSubmissionPreviewScoreInput">Score</label>
+            <div class="assignment-submission-preview-score-value">
+              <input class="score-input" id="assignmentSubmissionPreviewScoreInput" type="number" min="0" step="any">
+              <span id="assignmentSubmissionPreviewMaxScore"></span>
+            </div>
+            <button class="btn btn-cancel" id="assignmentSubmissionPreviewSave" type="button"
+              data-page-click="p7aa907733a81">Save score</button>
+          </div>
+          <span class="assignment-submission-preview-unavailable" id="assignmentSubmissionPreviewScoreUnavailable" hidden>Not graded</span>
+          <span class="assignment-submission-preview-feedback" id="assignmentSubmissionPreviewScoreFeedback"
+            role="status" aria-live="polite" hidden></span>
+        </aside>
       </div>
-      <div class="modal-foot">
-        <button class="btn btn-save" type="button" data-page-click="p49e266a62e30">Close</button>
+      <div class="modal-foot assignment-submission-preview-footer">
+        <div class="assignment-submission-preview-footer-actions">
+          <button class="btn btn-cancel" id="assignmentSubmissionPreviewPrevious" type="button"
+            data-page-click="p6ee5ce9e437d">Previous submission</button>
+          <button class="btn btn-save" id="assignmentSubmissionPreviewNext" type="button"
+            data-page-click="p9ca9e80540bc">Next submission</button>
+        </div>
       </div>
     </div>
   </div>
@@ -823,10 +852,6 @@
               </div>
             </div>
             <div class="section-header-status" aria-label="Grade recording status">
-              <div class="section-status-item is-published" data-publication-status="published" hidden>
-                <i data-lucide="check-circle"></i>
-                <span id="sectionPublicationStatus">Grades published</span>
-              </div>
               <div class="section-status-item">
                 <i data-lucide="clipboard-check"></i>
                 <span id="sectionEncodingStatus">Encoding not started</span>
@@ -841,6 +866,10 @@
                 <strong id="sectionSubjectName">Values Education</strong>
                 <select id="sectionSubjectSelect" class="section-subject-select"
                   aria-label="Choose a subject for this section" hidden></select>
+                <div class="section-status-item is-published" data-publication-status="published" hidden>
+                  <i data-lucide="check-circle"></i>
+                  <span id="sectionPublicationStatus">Grades published</span>
+                </div>
               </div>
             </div>
             <div class="section-detail section-meta-item">

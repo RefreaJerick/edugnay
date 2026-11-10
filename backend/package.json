@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "check:env-example": "node scripts/checkEnvExample.js",
     "audit:tenant": "node scripts/auditTenantIsolation.js",
     "test:tenant:two-school": "node scripts/testTwoSchoolIsolation.js",
     "verify:tenant": "node scripts/verifyTenantConstraints.js",

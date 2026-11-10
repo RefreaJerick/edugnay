@@ -295,7 +295,7 @@ test('missing DepEd confirmation lists only eligible subjects and grade scopes',
   vm.runInNewContext(`englishSetup = getK10CatalogGroupState(englishGroups); savedSetup = getK10CatalogGroupState({ subjects: [preview.subjects[0]] }); divergentSetup = getK10CatalogGroupState({ subjects: [preview.subjects[0], preview.subjects[1]] });`, context);
   assert.equal(context.englishSetup.label, 'Review exam setup');
   assert.equal(context.englishSetup.isSaved, false);
-  assert.equal(context.savedSetup.label, 'Saved');
+  assert.equal(context.savedSetup.label, 'Configured');
   assert.equal(context.divergentSetup.label, 'Different setups');
   assert.equal(context.divergentSetup.isSaved, false);
   vm.runInNewContext(`missingSetup = getK10CatalogGroupState({ subjects: [preview.subjects[0], preview.subjects[4]] }); lockedSetup = getK10CatalogGroupState({ subjects: [preview.subjects[6]] });`, context);
@@ -452,7 +452,7 @@ test('missing DepEd confirmation lists only eligible subjects and grade scopes',
   assert.match(page, /<td data-label="DepEd alignment">/);
   assert.match(page, /<td data-label="Setup status">/);
   assert.match(styles, /\.school-k10-grading-table tbody\s*\{\s*display:\s*grid;\s*\}/);
-  assert.match(styles, /\.school-k10-grading-table tbody tr\s*\{[^}]*gap:\s*0 18px;[^}]*padding:\s*16px 12px;[^}]*border-bottom:\s*1px solid var\(--gray-100, #edf1f7\);/s);
+  assert.match(styles, /\.school-k10-grading-table tbody tr\s*\{[^}]*gap:\s*0 18px;[^}]*padding:\s*16px 12px;[^}]*border-bottom:\s*1px solid var\(--panel-divider, #edf1f7\);/s);
   assert.match(styles, /\.school-k10-grading-table tbody tr:last-child\s*\{\s*border-bottom:\s*0;/);
   assert.doesNotMatch(styles, /\.school-k10-grading-table tbody tr\s*\{[^}]*(?:border-radius:|background:)/s);
   assert.match(styles, /\.school-k10-grading-table tbody tr > td:nth-child\(n\)\s*\{[^}]*width:\s*auto;[^}]*max-width:\s*none;[^}]*padding:\s*0;/s);

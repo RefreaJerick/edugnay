@@ -5,6 +5,15 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../../assets/js/admin/schools.js'), 'utf8');
+const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
+
+test('K10 published-grade notice has an accessible lock icon and wrapping layout', () => {
+  assert.match(source, /school-shs-review-notice school-k10-final-rules-notice" role="status"><span class="school-k10-final-rules-notice-icon" aria-hidden="true"><i data-lucide="lock"><\/i><\/span><span>Final-grade rules can’t be changed because grades have been published for this school year\.<\/span><\/div>/);
+  assert.match(source, /bindDivisionSwitcher\(\);\s*if \(window\.lucide\) lucide\.createIcons\(\);/);
+  assert.match(styles, /\.school-k10-final-rules-notice\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;[^}]*gap:\s*10px;/s);
+  assert.match(styles, /\.school-k10-final-rules-notice-icon svg\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px;/s);
+  assert.match(styles, /\.school-k10-final-rules-notice\s*>\s*span:last-child\s*\{[^}]*min-width:\s*0;[^}]*overflow-wrap:\s*anywhere;/s);
+});
 
 function extractFunction(name, nextMarker, context) {
   const start = source.indexOf(`async function ${name}(`);

@@ -740,7 +740,7 @@ const SCHOOL_ACCENT_PALETTES = [
         isLocked,
         needsPolicyReview,
         needsExamSetup,
-        label: isLocked ? 'Published' : needsExamSetup ? 'Needs exam setup' : needsPolicyReview ? 'Review exam setup' : isSaved ? 'Saved' : 'Not saved',
+        label: isLocked ? 'Published' : needsExamSetup ? 'Needs exam setup' : needsPolicyReview ? 'Review exam setup' : isSaved ? 'Configured' : 'Not saved',
         badgeClass: needsPolicyReview || needsExamSetup ? 'badge-orange' : isSaved ? 'badge-green' : 'badge-blue'
       };
     }
@@ -804,7 +804,7 @@ const SCHOOL_ACCENT_PALETTES = [
             : differentSetups ? { label: 'Different setups', badgeClass: 'badge-orange' }
             : allLocked ? { label: 'Published', badgeClass: 'badge-green' }
               : states.some(item => item.isLocked) ? { label: 'Some grades published', badgeClass: 'badge-orange' }
-              : { label: 'Saved', badgeClass: 'badge-green' };
+              : { label: 'Configured', badgeClass: 'badge-green' };
       return { ...status, isSaved, allLocked, needsReview, needsExamSetup, hasMissing, weightsDiffer, earlyExamDiffers, standardExamDiffers, differentSetups };
     }
 
@@ -969,7 +969,7 @@ const SCHOOL_ACCENT_PALETTES = [
                   <div class="school-field"><label for="k10PassingGradeThreshold">Passing grade</label><input id="k10PassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="0.01" value="${Number(preview.passingGradeThreshold) || 75}" ${!customRules || rulesLocked ? 'disabled' : ''}><small id="k10PassingGradeHelp">${customRules ? 'Set the passing grade for your school.' : 'DepEd default: 75.'}</small></div>
                   <div class="school-field"><label for="k10GradeRounding">Final-grade rounding</label><select id="k10GradeRounding" name="gradeRounding" ${!customRules || rulesLocked ? 'disabled' : ''}><option value="round" ${preview.gradeRounding === 'round' ? 'selected' : ''}>Nearest whole number</option><option value="roundup" ${preview.gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${preview.gradeRounding === 'truncate' ? 'selected' : ''}>Truncate</option></select><small id="k10GradeRoundingHelp">${customRules ? 'Applied to the weighted initial grade.' : 'DepEd default: nearest whole number.'}</small></div>
                 </div>
-                ${rulesLocked ? '<div class="school-shs-review-notice" role="status">Final-grade rules can’t be changed because grades have been published for this school year.</div>' : ''}
+                ${rulesLocked ? '<div class="school-shs-review-notice school-k10-final-rules-notice" role="status"><span class="school-k10-final-rules-notice-icon" aria-hidden="true"><i data-lucide="lock"></i></span><span>Final-grade rules can’t be changed because grades have been published for this school year.</span></div>' : ''}
                 <div class="school-form-footer"><button class="top-btn primary" type="submit" ${rulesLocked ? 'disabled' : ''}><i data-lucide="save"></i> Save final grade rules</button></div>
               </form>
             </section>
@@ -1509,6 +1509,28 @@ const SCHOOL_ACCENT_PALETTES = [
       return `<div class="school-k10-exam-info-banner" role="note"><span class="school-k10-exam-info-icon"><i data-lucide="info"></i></span><span>${message}</span></div>`;
     }
 
+    function renderK10PublishedGroupSummary() {
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const setups = new Map();
+      for (const subject of state.k10EditorGroup.allSubjects) {
+        const components = subject.components || [];
+        const signature = JSON.stringify(components.map(component => [component.code, component.name,
+          component.componentType, Number(component.weight), (component.examParts || []).map(part =>
+            [part.code, part.name, Number(part.weight)])]));
+        if (!setups.has(signature)) setups.set(signature, { gradeCodes: new Set(), components });
+        (subject.gradeCodes || []).forEach(code => setups.get(signature).gradeCodes.add(code));
+      }
+      const cards = [...setups.values()].map(setup => {
+        const grades = formatK10GradeNames([...setup.gradeCodes], 'Grade scope not set');
+        const weights = setup.components.map(component => `<div class="school-k10-published-weight"><span>${escapeHtml(component.name || 'Component')}</span><strong>${Number(component.weight) || 0}%</strong></div>`).join('');
+        const exams = setup.components.filter(component => component.examParts?.length).map(component =>
+          `<div class="school-k10-published-exam"><strong>${escapeHtml(component.name || 'Examinations')} split</strong><div>${component.examParts.map(part =>
+            `<span>${escapeHtml(part.name || 'Exam part')} <strong>${Number(part.weight) || 0}%</strong></span>`).join('')}</div></div>`).join('');
+        return `<div class="school-k10-published-card"><div class="school-k10-published-card-head"><strong>${escapeHtml(grades)}</strong><span class="school-k10-grading-source badge badge-green">Published</span></div><div class="school-k10-published-weights">${weights || '<span>No saved grading components.</span>'}</div>${exams}</div>`;
+      }).join('');
+      return `<div class="school-k10-published-summary"><div class="school-k10-exam-info-banner" role="note"><span class="school-k10-exam-info-icon"><i data-lucide="info" aria-hidden="true"></i></span><span>Published grades lock these settings. The saved weights and exam parts are shown below.</span></div><section class="school-k10-editor-section" aria-labelledby="schoolK10PublishedTitle"><h3 id="schoolK10PublishedTitle">Published grading setup</h3><div class="school-k10-published-list">${cards}</div></section></div>`;
+    }
+
     function renderK10GroupStandardExamSummary({ showCustom = true } = {}) {
       const group = state.k10EditorGroup;
       if (!group) return '';
@@ -1601,16 +1623,20 @@ const SCHOOL_ACCENT_PALETTES = [
       const syncPrompt = state.k10GroupDiverged
         ? `<div class="school-k10-grading-warning">Editable grades have different saved setups. Shared weights and any exam-part changes will apply to the affected editable grades.</div><label class="school-k10-sync-confirm"><input id="k10GroupSyncConfirmation" type="checkbox" ${state.k10GroupSyncConfirmed ? 'checked' : ''}> Apply shared setup to editable grades</label>` : '';
       const readOnly = state.k10EditorGroup && !state.k10EditorGroup.subjects.length;
+      document.getElementById('subjectGradingEditorModal').classList.toggle('school-k10-readonly-modal', Boolean(readOnly));
       if (state.k10EditorGroup) {
         const hasAnyStandard = (state.k10EditorGroup.allSubjects || []).some(subject => !isK10EarlyGradeSubject(subject));
         const groupContent = `${renderK10GroupExamInfoBanner()}<div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>`;
         body.innerHTML = readOnly
-          ? `${groupContent}${hasAnyStandard ? renderK10GroupStandardExamSection(displayComponents, false) : ''}${exceptions}`
+          ? renderK10PublishedGroupSummary()
           : `${groupContent}<section class="school-k10-editor-section school-k10-components-section" aria-labelledby="schoolK10ComponentsTitle"><div class="school-k10-section-heading"><div><h3 id="schoolK10ComponentsTitle">Component weights</h3><p>Set the weight for each grading component.</p></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div class="school-k10-component-table"><div class="school-k10-component-columns" aria-hidden="true"><span>Code</span><span>Component</span><span>Type</span><span>Weight (%)</span><span></span></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}</div><div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div></section>${hasAnyStandard ? renderK10GroupStandardExamSection(displayComponents, hasEditableStandard) : ''}${earlyExamNote}${exceptions}${syncPrompt}`;
       } else {
         body.innerHTML = `<div class="subject-grading-editor-toolbar"><div><strong>Subject components</strong><div class="subject-grading-editor-total">Total must be 100%.</div></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}<div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div>${earlyExamNote}`;
       }
-      if (readOnly) return;
+      if (readOnly) {
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
       body.querySelectorAll('[data-k10-edit-exception]').forEach(button => button.addEventListener('click', () => {
         if (!window.confirm('Open this grade separately? Unsaved shared changes will be discarded.')) return;
         const subject = state.k10EditorGroup.allSubjects.find(item => Number(item.id) === Number(button.dataset.k10EditException));
@@ -1792,7 +1818,7 @@ const SCHOOL_ACCENT_PALETTES = [
         const alignment = item.alignmentStatus === 'unavailable'
           ? '<span class="badge badge-gray">No verified rule</span>'
           : `<span class="badge ${item.configured ? 'badge-blue' : 'badge-green'}">${item.configured ? 'School-customized' : 'DepEd default'}</span>`;
-        const setupStatus = !item.ruleAvailable ? 'Rule unavailable' : item.locked ? 'Locked' : item.isActive ? 'Ready' : 'Inactive';
+        const setupStatus = !item.ruleAvailable ? 'Rule unavailable' : item.locked ? 'Locked' : item.isActive ? 'Configured' : 'Inactive';
         return `<tr><td><span class="school-k10-grading-subject-name">${escape(item.name)}</span></td><td data-label="Grade level"><span class="school-k10-grading-grade-list">${escape(item.gradeCode.replace('grade-', 'Grade '))}</span></td><td data-label="Components and weights">${weightList}</td><td data-label="DepEd alignment">${alignment}</td><td data-label="Setup status"><span class="badge ${item.locked ? 'badge-gray' : item.ruleAvailable ? 'badge-green' : 'badge-gray'}">${setupStatus}</span></td><td>${action}</td></tr>`;
       }).join('');
       const empty = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No SHS subjects yet', text: 'Add Grade 11 core subjects in Class Management, or add approved electives in SHS Program.' });

@@ -110,8 +110,7 @@
     document.getElementById('sectionSubjectName').textContent = electiveClass.subjectName;
     document.getElementById('sectionSubjectSelect').hidden = true;
     document.getElementById('sectionStudentCount').textContent = String(Number(electiveClass.enrolledCount || 0));
-    document.getElementById('sectionAdviserMeta').innerHTML = `<i data-lucide="user-round" aria-hidden="true"></i>${escapeHtml(electiveClass.teacherName || 'Assigned teacher')}`;
-    document.getElementById('sectionAdviserMeta').removeAttribute('hidden');
+    document.getElementById('sectionAdviserMeta').hidden = true;
     if (electiveClass.activePeriodName) {
       document.getElementById('sectionPeriodName').textContent = electiveClass.activePeriodName;
       document.getElementById('sectionPeriodMeta').removeAttribute('hidden');

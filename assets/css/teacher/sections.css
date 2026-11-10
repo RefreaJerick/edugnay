@@ -50,6 +50,28 @@
   min-width: 0;
 }
 
+.section-subject .section-detail-value {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.section-subject .section-detail-value strong {
+  min-width: 0;
+}
+
+.section-subject .section-status-item.is-published {
+  flex: 0 0 auto;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid rgba(187, 247, 208, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(187, 247, 208, 0.1);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .section-detail-label svg,
 .section-status-item svg {
   width: 15px;
@@ -188,7 +210,7 @@
 
 .section-meta {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, .7fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, .7fr) minmax(0, 1fr) minmax(0, 1.2fr);
   border-top: 1px solid rgba(255, 255, 255, 0.13);
 }
 
@@ -2696,23 +2718,57 @@ thead tr:hover .comp-delete-btn {
 }
 
 .assignment-submission-preview-modal {
-  width: min(980px, 100%);
-  max-width: 980px;
+  width: min(1280px, 100%);
+  max-width: 1280px;
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+
+.assignment-submission-preview-header-actions,
+.assignment-submission-preview-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.assignment-submission-preview-position {
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#assignmentSubmissionPreviewFileName {
+  overflow-wrap: anywhere;
 }
 
 .assignment-submission-preview-body {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 14px;
   flex: 1 1 auto;
-  min-height: min(68vh, 720px);
+  min-height: 0;
+  height: min(68vh, 720px);
+  overflow: hidden;
   padding: 12px !important;
   background: var(--gray-50);
+}
+
+.assignment-submission-preview-document {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
 }
 
 .assignment-submission-preview-message {
   display: grid;
   flex: 1 1 auto;
+  min-width: 0;
   place-items: center;
-  min-height: 220px;
+  align-content: center;
+  gap: 12px;
   color: var(--gray-500);
   text-align: center;
 }
@@ -2725,7 +2781,7 @@ thead tr:hover .comp-delete-btn {
   display: block;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 68vh;
+  min-height: 0;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
   background: var(--theme-surface);
@@ -2735,6 +2791,75 @@ thead tr:hover .comp-delete-btn {
   display: none;
 }
 
+.assignment-submission-preview-download[hidden],
+.assignment-submission-preview-score-row[hidden],
+.assignment-submission-preview-score-row .btn[hidden],
+.assignment-submission-preview-unavailable[hidden],
+.assignment-submission-preview-feedback[hidden] {
+  display: none;
+}
+
+.assignment-submission-preview-scoring {
+  min-width: 0;
+  min-height: 0;
+  padding: 18px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--theme-surface);
+}
+
+.assignment-submission-preview-scoring-title {
+  margin: 0 0 18px;
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.assignment-submission-preview-score-row {
+  display: grid;
+  gap: 8px;
+}
+
+.assignment-submission-preview-score-row label {
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assignment-submission-preview-score-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.assignment-submission-preview-score-row .score-input {
+  width: 88px;
+  flex: 0 0 88px;
+}
+
+#assignmentSubmissionPreviewMaxScore,
+.assignment-submission-preview-unavailable {
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.assignment-submission-preview-score-row .btn {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.assignment-submission-preview-feedback {
+  display: block;
+  margin-top: 12px;
+  color: var(--green);
+  font-size: 11px;
+}
+
+.assignment-submission-preview-feedback.is-error {
+  color: var(--red);
+}
+
 .assignment-submission-actions {
   display: flex;
   align-items: center;
@@ -2742,19 +2867,45 @@ thead tr:hover .comp-delete-btn {
   white-space: nowrap;
 }
 
+@media (max-width: 900px) {
+  .assignment-submission-preview-body {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .assignment-submission-preview-document {
+    height: min(50vh, 520px);
+  }
+
+  .assignment-submission-preview-scoring {
+    margin-top: 12px;
+    overflow: visible;
+  }
+}
+
 @media (max-width: 560px) {
   .assignment-submission-preview-modal {
     width: 100%;
     max-width: 100%;
+    max-height: calc(100dvh - 20px);
   }
 
   .assignment-submission-preview-body {
-    min-height: 54vh;
+    height: 60vh;
     padding: 8px !important;
   }
 
-  .assignment-submission-preview-frame {
-    min-height: 54vh;
+  .assignment-submission-preview-document {
+    height: 44vh;
+  }
+
+  .assignment-submission-preview-footer-actions {
+    width: 100%;
+  }
+
+  .assignment-submission-preview-footer-actions .btn {
+    flex: 1 1 0;
+    justify-content: center;
   }
 
   .assignment-submission-actions {
