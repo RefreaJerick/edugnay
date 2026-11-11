@@ -2158,6 +2158,82 @@ body[data-page-loading]:not([data-page-loading-complete]) .shell {
   box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
+.password-field {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.password-field > input[data-password-toggle-enhanced] {
+  width: 100%;
+  padding-right: 48px !important;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  z-index: 1;
+}
+
+.password-toggle:hover {
+  background: transparent;
+  color: var(--gray-700);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--theme-accent-text);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.password-toggle-icon {
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle-icon[hidden] {
+  display: none;
+}
+
+.password-toggle-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.8;
+}
+
+input[data-password-toggle-enhanced]::-ms-reveal {
+  display: none;
+}
+
+@media (max-width: 520px) {
+  .password-toggle {
+    right: 4px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .password-field > input[data-password-toggle-enhanced] {
+    padding-right: 50px !important;
+  }
+}
+
 /* Shared select control language. Selects use the same height and surface as
    the input controls while keeping the compact assignment-style arrow. */
 select:not([multiple]) {
@@ -2471,7 +2547,7 @@ html.profile-chip-page .tb-profile-name { overflow: hidden; text-overflow: ellip
 .tb-sound-toggle[aria-checked="false"] .tb-sound-state { color: var(--gray-400); }
 .tb-sound-toggle:disabled { opacity: .55; cursor: not-allowed; }
 
-.tb-dropdown-divider { height: 1px; background: var(--gray-100); margin: 4px 6px; }
+.tb-dropdown-divider { height: 1px; background: var(--panel-divider); margin: 4px 6px; }
 
 @media (max-width: 640px) {
   .tb-profile-info { display: none; }

@@ -161,7 +161,9 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
     function returnToSignIn() {
       AUTH_STATE.pendingRecoveryEmail = '';
       AUTH_STATE.resetToken = '';
-      document.getElementById('passwordInput').value = '';
+      const passwordInput = document.getElementById('passwordInput');
+      passwordInput.value = '';
+      window.EDUGNAY_PASSWORD_TOGGLE?.hide(passwordInput);
       setAuthMessage('signInMessage', '');
       if (window.history.replaceState) {
         window.history.replaceState(null, '', window.location.pathname);

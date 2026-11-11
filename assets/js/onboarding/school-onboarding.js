@@ -316,7 +316,9 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
           schoolYearEndDate: application.schoolYearEndDate
         };
         Object.entries(values).forEach(([id, value]) => { document.getElementById(id).value = value; });
-        document.getElementById('adminPassword').value = '';
+        const adminPasswordInput = document.getElementById('adminPassword');
+        adminPasswordInput.value = '';
+        window.EDUGNAY_PASSWORD_TOGGLE?.hide(adminPasswordInput);
         document.getElementById('schoolLogo').value = '';
         document.getElementById('schoolLogoHelp').textContent = 'The current logo will be kept unless you choose a replacement.';
         document.querySelectorAll('#schoolLevelOptions input').forEach(input => {
