@@ -1,6 +1,6 @@
 -- =========================================================
 -- Academix Database Schema
--- Final schema through migration 066; built-in template records through 068 are
+-- Final schema through migration 066; built-in template records through 069 are
 -- in reference-data.sql. Import on a new database only.
 -- Then import reference-data.sql; for a demo, import demo-data.sql first.
 -- Do not run historical migrations after importing this file.
