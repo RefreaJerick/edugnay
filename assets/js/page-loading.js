@@ -16,12 +16,16 @@
     loader.classList.add('is-error');
     loader.setAttribute('role', 'alert');
     loader.setAttribute('aria-live', 'assertive');
-    loader.querySelector('.academix-page-loader-message').textContent = failureMessage || 'This page could not be loaded.';
+    loader.removeAttribute('aria-label');
+    const message = document.createElement('span');
+    message.className = 'academix-page-loader-message';
+    message.textContent = failureMessage || 'This page could not be loaded.';
     const retry = document.createElement('button');
     retry.className = 'top-btn secondary academix-page-loader-retry';
     retry.type = 'button';
     retry.textContent = 'Retry';
     retry.addEventListener('click', () => window.location.reload());
+    loader.append(message);
     loader.append(retry);
   }
 
@@ -45,13 +49,10 @@
     loader.setAttribute('role', 'status');
     loader.setAttribute('aria-live', 'polite');
     loader.setAttribute('aria-atomic', 'true');
+    loader.setAttribute('aria-label', body.dataset.pageLoading);
     loader.innerHTML = `
-      <span class="academix-page-loader-mark" aria-hidden="true">
-        <img src="../../assets/images/edUgnay-logo-circle.png" alt="">
-      </span>
-      <span class="academix-page-loader-message"></span>
+      <span class="academix-page-loader-mark" aria-hidden="true"></span>
     `;
-    loader.querySelector('.academix-page-loader-message').textContent = body.dataset.pageLoading;
     main.prepend(loader);
 
     if (state === 'failed') {

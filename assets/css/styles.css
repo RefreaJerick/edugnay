@@ -1643,6 +1643,18 @@ body[data-page-loading]:not([data-page-loading-complete]) .shell {
   box-shadow: 0 5px 20px rgba(12, 31, 56, .12);
 }
 
+.academix-page-loader .academix-page-loader-mark {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.academix-page-loader .academix-page-loader-mark::after {
+  inset: 0;
+  border-width: 3px;
+}
+
 .academix-page-loader-mark::after {
   position: absolute;
   inset: -5px;
