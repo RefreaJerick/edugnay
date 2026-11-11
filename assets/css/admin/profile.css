@@ -39,34 +39,6 @@
 /* ══════════════════════════════
     MODAL (page-local)
 ══════════════════════════════ */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(11, 31, 58, 0.5);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s, visibility 0.2s;
-  padding: 20px;
-}
-.modal-backdrop.open {
-  opacity: 1;
-  visibility: visible;
-}
-.modal {
-  background: var(--theme-surface);
-  border-radius: var(--radius-md);
-  width: 100%;
-  max-width: 480px;
-  box-shadow: 0 24px 64px rgba(11, 31, 58, 0.25);
-  transform: translateY(20px);
-  transition: transform 0.25s ease;
-  overflow: hidden;
-}
-.modal-backdrop.open .modal { transform: translateY(0); }
 .modal-head {
   padding: 22px 28px 18px;
   border-bottom: 1px solid var(--panel-divider);

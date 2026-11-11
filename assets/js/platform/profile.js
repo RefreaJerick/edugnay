@@ -26,6 +26,58 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
       if (window.lucide) window.lucide.createIcons();
     }
 
+    function openPasswordModal() {
+      const modal = document.getElementById('changePasswordModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('currentPasswordInput').focus();
+    }
+
+    function closePasswordModal() {
+      const modal = document.getElementById('changePasswordModal');
+      if (!modal.classList.contains('open')) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('passwordForm').reset();
+      document.getElementById('changePasswordTrigger').focus();
+    }
+
+    async function submitPasswordChange(event) {
+      event.preventDefault();
+      const currentPassword = document.getElementById('currentPasswordInput').value;
+      const newPassword = document.getElementById('newPasswordInput').value;
+      const confirmPassword = document.getElementById('confirmPasswordInput').value;
+
+      if (newPassword.length < 12) {
+        alert('Use a password with at least 12 characters.');
+        return false;
+      }
+      if (newPassword !== confirmPassword) {
+        alert('New password and confirmation do not match.');
+        return false;
+      }
+
+      try {
+        await window.EDUGNAY_API.request('/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        closePasswordModal();
+        showAppToast('Password updated. You have been signed out on other devices.');
+      } catch (error) {
+        showAppToast(error.message || 'Unable to update your password.', 'error');
+      }
+      return false;
+    }
+
+    const passwordModal = document.getElementById('changePasswordModal');
+    passwordModal.addEventListener('click', event => {
+      if (event.target === passwordModal) closePasswordModal();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && passwordModal.classList.contains('open')) closePasswordModal();
+    });
+
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         const admin = await window.EDUGNAY_API.getCurrentUser();
@@ -39,3 +91,13 @@ const PLATFORM = window.EDUGNAY_PLATFORM;
       await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
       PLATFORM.renderTopbarNotifs();
     });
+
+window.EDUGNAY_PAGE_EVENTS.bind({
+  click: {
+    p0dcd2c4737b7: function(event) { closePasswordModal() },
+    p0f58b0be77b6: function(event) { openPasswordModal() },
+  },
+  submit: {
+    p3d74c63c8476: function(event) { return submitPasswordChange(event) },
+  },
+});

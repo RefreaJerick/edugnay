@@ -12,6 +12,7 @@ const onboardingScript = fs.readFileSync(path.join(root, 'assets/js/onboarding/s
 const passwordPages = [
   'index.html',
   'views/onboarding/edugnay-school-onboarding.html',
+  'views/platform/edugnay-platform-profile.html',
   'views/admin/edugnay-admin-profile.html',
   'views/teacher/edugnay-teacher-profile.html',
   'views/student/edugnay-student-profile.html',
@@ -95,7 +96,7 @@ class FakeForm extends FakeElement {
 }
 
 function createTogglePage() {
-  const formSizes = [1, 2, 1, 3, 3, 3, 3];
+  const formSizes = [1, 2, 1, 3, 3, 3, 3, 3];
   const forms = formSizes.map(() => new FakeForm());
   const inputs = [];
   let fieldIndex = 0;
@@ -139,7 +140,7 @@ test('all password screens load the shared toggle and its responsive styles', ()
     return page.match(/<input\b[^>]*\btype=["']password["']/g) || [];
   });
 
-  assert.equal(passwordInputs.length, 16);
+  assert.equal(passwordInputs.length, 19);
   assert.match(sharedStyles, /\.password-toggle:focus-visible/);
   assert.match(sharedStyles, /@media \(max-width: 520px\)/);
   assert.match(sharedStyles, /::-ms-reveal/);
@@ -149,7 +150,7 @@ test('all password screens load the shared toggle and its responsive styles', ()
 
 test('toggle changes visibility without changing value and restores hidden state on reset', () => {
   const page = createTogglePage();
-  assert.equal(page.inputs.length, 16);
+  assert.equal(page.inputs.length, 19);
   assert.equal(page.iconRenderCount(), 1);
   page.inputs.forEach(input => {
     const button = input.closest('.password-field')?.querySelector('.password-toggle');

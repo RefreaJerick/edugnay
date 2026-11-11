@@ -125,19 +125,76 @@
           <div class="config-panel-body profile-fields" id="platformProfileFields"></div>
         </section>
 
-        <section class="panel" aria-labelledby="platform-account-access-title">
-          <div class="panel-head">
-            <div class="panel-head-title-group">
-              <div class="panel-title-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
-              <div><div class="panel-title" id="platform-account-access-title">Account Access</div></div>
+        <div class="profile-side-column">
+          <section class="panel" aria-labelledby="platform-account-access-title">
+            <div class="panel-head">
+              <div class="panel-head-title-group">
+                <div class="panel-title-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+                <div><div class="panel-title" id="platform-account-access-title">Account Access</div></div>
+              </div>
             </div>
-          </div>
-          <div class="config-panel-body profile-details" id="platformAccessDetails"></div>
-        </section>
+            <div class="config-panel-body profile-details" id="platformAccessDetails"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="platform-security-title">
+            <div class="panel-head">
+              <div class="panel-head-title-group">
+                <div class="panel-title-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+                <div><div class="panel-title" id="platform-security-title">Security</div></div>
+              </div>
+            </div>
+            <div class="config-panel-body profile-security-body">
+              <div class="profile-security-copy">Use a unique password with at least 12 characters.</div>
+              <button type="button" class="top-btn secondary" id="changePasswordTrigger" aria-haspopup="dialog" aria-controls="changePasswordModal" data-page-click="p0f58b0be77b6">
+                <i data-lucide="lock" style="width:14px;height:14px;" aria-hidden="true"></i> Change Password
+              </button>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   </div>
 
+  <div class="modal-backdrop" id="changePasswordModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="platformPasswordModalTitle" aria-describedby="platformPasswordModalDescription">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="lock-keyhole"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="platformPasswordModalTitle">Change Password</div>
+            <div class="modal-sub" id="platformPasswordModalDescription">Choose a strong password you haven't used before.</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close" aria-label="Close change password dialog" data-page-click="p0dcd2c4737b7">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <form id="passwordForm" autocomplete="on" data-page-submit="p3d74c63c8476">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="currentPasswordInput">Current Password</label>
+            <input class="form-input" type="password" name="currentPassword" id="currentPasswordInput" autocomplete="current-password" required placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newPasswordInput">New Password</label>
+            <input class="form-input" type="password" name="newPassword" id="newPasswordInput" autocomplete="new-password" required minlength="12" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirmPasswordInput">Confirm New Password</label>
+            <input class="form-input" type="password" name="confirmPassword" id="confirmPasswordInput" autocomplete="new-password" required placeholder="••••••••">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-cancel" data-page-click="p0dcd2c4737b7">Cancel</button>
+          <button type="submit" class="btn btn-save">
+            <i data-lucide="check" aria-hidden="true" style="width:13px;height:13px;"></i> Update Password
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../assets/js/password-toggle.js"></script>
   <script src="../../assets/js/platform/profile.js"></script>
 </body>
 </html>
