@@ -232,6 +232,44 @@ function restoreProfileChip() {
   document.documentElement.classList.remove('profile-chip-restoring');
 }
 
+let portalHeaderReady = false;
+let portalHeaderObserver = null;
+function initPortalChrome() {
+  const sidebar = document.querySelector('aside.sidebar');
+  if (sidebar?.querySelector('i[data-lucide]')) {
+    window.lucide?.createIcons?.({ root: sidebar });
+  }
+  initPortalHeader();
+}
+
+function initPortalHeader() {
+  if (portalHeaderReady || !portalRoleForCurrentPage) return;
+  const header = document.querySelector('header.topbar');
+  if (!header || !header.querySelector('.hamburger [data-lucide]')
+    || !header.querySelector('[data-theme-trigger]')
+    || !header.querySelector('.tb-profile-trigger .tb-chevron')) return;
+
+  portalHeaderReady = true;
+  portalHeaderObserver?.disconnect();
+  portalHeaderObserver = null;
+  restoreProfileChip();
+  if (!document.documentElement.classList.contains('profile-chip-restored')) {
+    header.querySelectorAll('.tb-profile-trigger .tb-avatar').forEach(element => {
+      renderAvatar(element, { initials: '--' }, { color: 'navy' });
+    });
+  }
+  document.dispatchEvent(new Event('edugnay:portal-header-ready'));
+  window.lucide?.createIcons?.({ root: header });
+}
+
+if (portalRoleForCurrentPage) {
+  if (typeof MutationObserver === 'function') {
+    portalHeaderObserver = new MutationObserver(initPortalChrome);
+    portalHeaderObserver.observe(document.documentElement, { childList: true, subtree: true });
+  }
+  document.addEventListener('DOMContentLoaded', initPortalChrome, { once: true });
+}
+
 let appToastTimer;
 let toastSoundsEnabled = true;
 let toastAudioContext = null;
@@ -3415,10 +3453,14 @@ function applyCurrentDateToGradingBanners() {
       const grade11AcademicSf9 = record.formCode === 'SF9' && record.version === 'g11-academic-2026-2027';
       const grade11TechProSf9 = record.formCode === 'SF9' && record.version === 'g11-techpro-2026-2027';
       const grade12AcademicSf9 = record.formCode === 'SF9' && record.version === 'g12-academic-2026-2027';
+      const grade12TechProSf9 = record.formCode === 'SF9' && record.version === 'g12-techpro-2026-2027';
+      const currentElementaryJhsForm = ['SF1', 'SF2', 'SF3', 'SF8'].includes(record.formCode)
+        && record.version === '1.0';
       return {
         id: grade11AcademicSf9 ? 'sf9-g11-academic-v1'
           : grade11TechProSf9 ? 'sf9-g11-techpro-v1'
           : grade12AcademicSf9 ? 'sf9-g12-academic-v1'
+          : grade12TechProSf9 ? 'sf9-g12-techpro-v1'
           : record.formCode === 'SF1' ? 'sf1-school-register-v1'
             : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1'
               : record.formCode === 'SF3' ? 'sf3-books-issued-returned-v1'
@@ -3430,18 +3472,21 @@ function applyCurrentDateToGradingBanners() {
         formCode: record.formCode,
         formName: record.formName,
         version: record.version,
-        schoolLevels: grade11AcademicSf9 || grade11TechProSf9 || grade12AcademicSf9 ? ['shs']
+        schoolLevels: grade11AcademicSf9 || grade11TechProSf9 || grade12AcademicSf9 || grade12TechProSf9 ? ['shs']
           : record.formCode === 'SF10' ? ['jhs']
-            : ['SF5', 'SF9'].includes(record.formCode) ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
+            : currentElementaryJhsForm || ['SF5', 'SF9'].includes(record.formCode)
+              ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
         source: 'official',
         status: record.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : 'draft',
         mappingStatus: record.mappingStatus,
         fileName: grade11AcademicSf9 ? 'SF9-G11-Academic.xlsx'
           : grade11TechProSf9 ? 'SF9-G11-TechPro.xlsx'
-            : grade12AcademicSf9 ? 'SF9-G12-Academic.xlsx' : `${record.formCode}.xlsx`,
+            : grade12AcademicSf9 ? 'SF9-G12-Academic.xlsx'
+              : grade12TechProSf9 ? 'SF9-G12-TechPro.xlsx' : `${record.formCode}.xlsx`,
         templateFileUrl: `../../assets/templates/school-forms/${grade11AcademicSf9 ? 'sf9-g11-academic'
           : grade11TechProSf9 ? 'sf9-g11-techpro'
-            : grade12AcademicSf9 ? 'sf9-g12-academic' : record.formCode.toLowerCase()}.xlsx`,
+            : grade12AcademicSf9 ? 'sf9-g12-academic'
+              : grade12TechProSf9 ? 'sf9-g12-techpro' : record.formCode.toLowerCase()}.xlsx`,
         sheetName: record.sheetName,
         requiresAcademicPeriod: Boolean(record.requiresAcademicTerm),
         sheets: record.formCode === 'SF10'
@@ -3488,6 +3533,7 @@ function applyCurrentDateToGradingBanners() {
     const fileName = template.id === 'sf9-g11-academic-v1' ? 'SF9-G11-Academic-blank-template.xlsx'
       : template.id === 'sf9-g11-techpro-v1' ? 'SF9-G11-TechPro-blank-template.xlsx'
         : template.id === 'sf9-g12-academic-v1' ? 'SF9-G12-Academic-blank-template.xlsx'
+          : template.id === 'sf9-g12-techpro-v1' ? 'SF9-G12-TechPro-blank-template.xlsx'
         : `${template.formCode}-blank-template.xlsx`;
     return { buffer, fileName };
   }

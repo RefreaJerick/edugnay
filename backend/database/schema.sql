@@ -882,8 +882,10 @@ CREATE TABLE IF NOT EXISTS assignments (
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_term
     FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
+  -- MariaDB 10.11 does not allow CHECK to reference a SET NULL foreign key column.
+  -- The application already prevents deleting categories used by assignments.
   CONSTRAINT fk_assignments_category
-    FOREIGN KEY (grading_category_id) REFERENCES grading_categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (grading_category_id) REFERENCES grading_categories(id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_subject_grading_component
     FOREIGN KEY (school_id, subject_grading_component_id) REFERENCES subject_grading_components(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_subject_grading_exam_part
@@ -1406,7 +1408,8 @@ CREATE TABLE IF NOT EXISTS learning_materials (
   CONSTRAINT fk_materials_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_materials_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_materials_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_materials_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE SET NULL,
+  -- Keep academic_term_id available to ck_elective_material_no_term on MariaDB 10.11.
+  CONSTRAINT fk_materials_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
   CONSTRAINT fk_materials_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT,
   CONSTRAINT fk_material_elective_class FOREIGN KEY (school_id, shs_elective_class_id)
     REFERENCES shs_elective_classes(school_id, id) ON DELETE RESTRICT,

@@ -1,1 +1,1 @@
-restoreProfileChip();
+initPortalChrome();

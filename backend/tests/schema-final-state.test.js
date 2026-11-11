@@ -67,7 +67,7 @@ test('fresh install keeps built-in form metadata separate from demo records', ()
     assert.match(reference, new RegExp(`'${form}'`));
   }
   for (const version of ['g11-academic-2026-2027', 'g11-techpro-2026-2027',
-    'jhs-2025', 'g12-academic-2026-2027']) {
+    'jhs-2025', 'g12-academic-2026-2027', 'g12-techpro-2026-2027']) {
     assert.match(reference, new RegExp(`'${version}'`));
   }
   assert.match(reference, /'finalGrade', default_sheet_name, 'I32'/);

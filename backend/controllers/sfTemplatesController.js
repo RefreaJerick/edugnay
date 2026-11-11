@@ -7,9 +7,10 @@ const { SF3, buildSf3Pages } = require('../config/sf3');
 const { SF5, buildSf5Pages } = require('../config/sf5');
 const { SF8, buildSf8Pages } = require('../config/sf8');
 const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, SF9_GRADE12_ACADEMIC, buildSf9Pages,
-  buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages, buildSf9Grade12AcademicPages,
+  SF9_GRADE12_TECHPRO, buildSf9Grade11AcademicPages, buildSf9Grade11TechProPages,
+  buildSf9Grade12AcademicPages, buildSf9Grade12TechProPages,
   displayName: sf9DisplayName, isGrade11AcademicSf9, isGrade11TechProSf9,
-  isGrade12AcademicSf9 } = require('../config/sf9');
+  isGrade12AcademicSf9, isGrade12TechProSf9 } = require('../config/sf9');
 const { SF10, buildSf10Pages, nameOf: sf10NameOf } = require('../config/sf10');
 
 const SF1_TEMPLATE = {
@@ -81,6 +82,14 @@ function formatTemplate(row) {
     requiresAcademicTerm: Boolean(row.requiresAcademicTerm),
     mappingStatus: row.mappingStatus
   };
+}
+
+function isCurrentElementaryJhsForm(template) {
+  return ['SF1', 'SF2', 'SF3', 'SF8'].includes(template.formCode) && template.version === '1.0';
+}
+
+function isSeniorHighSection(section) {
+  return ['grade-11', 'grade-12'].includes(section.gradeCode);
 }
 
 function formatIssue(issue) {
@@ -469,6 +478,10 @@ function sf9SectionIsEligible(template, section) {
     return section.gradeCode === 'grade-12' && section.trackCode === 'academic'
       && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
   }
+  if (isGrade12TechProSf9(template)) {
+    return section.gradeCode === 'grade-12' && section.trackCode === 'techpro'
+      && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
+  }
   if (isGrade11AcademicSf9(template)) {
     return section.gradeCode === 'grade-11' && section.trackCode === 'academic'
       && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027';
@@ -483,6 +496,9 @@ function sf9SectionIsEligible(template, section) {
 function sf9EligibilityMessage(template) {
   if (isGrade12AcademicSf9(template)) {
     return 'The Grade 12 Academic SF9 is available only for Strengthened SHS Academic sections in school year 2026-2027.';
+  }
+  if (isGrade12TechProSf9(template)) {
+    return 'The Grade 12 TechPro SF9 is available only for Strengthened SHS TechPro sections in school year 2026-2027.';
   }
   if (isGrade11TechProSf9(template)) {
     return 'The Grade 11 TechPro SF9 is available only for Strengthened SHS TechPro sections in school year 2026-2027.';
@@ -758,8 +774,16 @@ async function getTemplateDetails(req, res, next) {
     const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
     const shsSf9Definition = isGrade11AcademicSf9(template) ? SF9_GRADE11_ACADEMIC
       : isGrade11TechProSf9(template) ? SF9_GRADE11_TECHPRO
-        : isGrade12AcademicSf9(template) ? SF9_GRADE12_ACADEMIC : null;
-    const shsSf9Fields = isGrade12AcademicSf9(template)
+        : isGrade12AcademicSf9(template) ? SF9_GRADE12_ACADEMIC
+          : isGrade12TechProSf9(template) ? SF9_GRADE12_TECHPRO : null;
+    const shsSf9Fields = isGrade12TechProSf9(template)
+      ? [['techproElective1', 'B33'], ['techproElective1Term1', 'F33'], ['techproElective1Term2', 'G33'],
+        ['techproElective1Term3', 'H33'], ['techproElective1Final', 'I33'],
+        ['techproElective2', 'B34'], ['techproElective2Term1', 'F34'], ['techproElective2Term2', 'G34'],
+        ['techproElective2Term3', 'H34'], ['techproElective2Final', 'I34'],
+        ['workImmersion', 'B35'], ['workImmersionTerm1', 'F35'], ['workImmersionTerm2', 'G35'],
+        ['workImmersionTerm3', 'H35'], ['workImmersionFinal', 'I35'], ['generalAverage', 'I38']]
+      : isGrade12AcademicSf9(template)
       ? [['electiveSubject1', 'B33'], ['firstTermGrade', 'F33'], ['secondTermGrade', 'G36'],
         ['thirdTermGrade', 'H39'], ['finalGrade', 'I33'], ['generalAverage', 'I43']]
       : isGrade11TechProSf9(template)
@@ -825,7 +849,10 @@ async function getTemplateDetails(req, res, next) {
     ];
     const sections = await getAdvisorySections(database, req.user.id, req.user.schoolId,
       ['SF5', 'SF9', 'SF10'].includes(template.formCode));
-    res.json({ template: formatTemplate(template), mappings, sections,
+    const eligibleSections = isCurrentElementaryJhsForm(template)
+      ? sections.filter(section => !isSeniorHighSection(section))
+      : sections;
+    res.json({ template: formatTemplate(template), mappings, sections: eligibleSections,
       maxLearners: template.formCode === 'SF1' ? 49 : ['SF9', 'SF10'].includes(template.formCode) ? 1 : null });
   } catch (error) {
     next(error);
@@ -867,6 +894,9 @@ async function preparePreview(req, database) {
     ? null : parseId(termValue, 'academic term ID');
   const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId,
     ['SF5', 'SF9', 'SF10'].includes(template.formCode));
+  if (isCurrentElementaryJhsForm(template) && isSeniorHighSection(section)) {
+    throw createError(`${template.formCode} is available only for Elementary and Junior High School sections.`, 403);
+  }
   if (template.formCode === 'SF5' && !/^grade-(?:[2-9]|10)$/.test(section.gradeCode)) {
     throw createError('SF5 is available only for Grades 2–10.', 403);
   }
@@ -938,7 +968,13 @@ async function preparePreview(req, database) {
       WHERE id = ? AND school_id = ? AND role = 'teacher' LIMIT 1`,
       [req.user.id, req.user.schoolId]
     );
-    if (isGrade12AcademicSf9(template)) {
+    if (isGrade12TechProSf9(template)) {
+      const electiveData = await getSf9Grade11ElectiveData(database, req.user.schoolId, section, learner);
+      data = buildSf9Grade12TechProPages(schools[0], section, advisers[0]?.displayName || '', learner,
+        gradeData.terms, electiveData.electiveClasses, electiveData.electiveGrades);
+      sourceRecords = { terms: gradeData.terms, electiveClasses: electiveData.electiveClasses,
+        electiveGrades: electiveData.electiveGrades };
+    } else if (isGrade12AcademicSf9(template)) {
       const electiveData = await getSf9Grade11ElectiveData(database, req.user.schoolId, section, learner);
       data = buildSf9Grade12AcademicPages(schools[0], section, advisers[0]?.displayName || '', learner,
         gradeData.terms, electiveData.electiveClasses, electiveData.electiveGrades);

@@ -13,6 +13,7 @@
   const system = typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   const root = document.documentElement;
+  const boundThemeTriggers = new WeakSet();
   let pendingAccentTimer = null;
   let mode = 'light';
   try {
@@ -32,8 +33,11 @@
       const icon = nextTheme === 'dark' ? 'moon' : 'sun';
       trigger.setAttribute('aria-label', label);
       trigger.setAttribute('title', label);
-      trigger.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`;
-      window.lucide?.createIcons({ root: trigger });
+      if (trigger.dataset.themeIcon !== icon) {
+        trigger.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`;
+        trigger.dataset.themeIcon = icon;
+        window.lucide?.createIcons({ root: trigger });
+      }
     });
   }
 
@@ -41,6 +45,19 @@
     if (!modes.has(next)) return;
     mode = next;
     try { window.localStorage.setItem(storageKey, mode); } catch { /* Keep this tab usable. */ }
+    apply();
+  }
+
+  function initThemeControls() {
+    document.querySelectorAll('[data-theme-control]').forEach(control => {
+      const trigger = control.querySelector('[data-theme-trigger]');
+      if (!trigger || boundThemeTriggers.has(trigger)) return;
+      boundThemeTriggers.add(trigger);
+      trigger.addEventListener('click', () => {
+        const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+        setMode(currentTheme === 'dark' ? 'light' : 'dark');
+      });
+    });
     apply();
   }
 
@@ -113,6 +130,7 @@
   });
   window.addEventListener('beforeprint', () => { document.documentElement.dataset.theme = 'light'; });
   window.addEventListener('afterprint', apply);
+  document.addEventListener('edugnay:portal-header-ready', initThemeControls);
 
   document.addEventListener('DOMContentLoaded', () => {
     if (schoolPageRole && root.classList?.contains('school-accent-pending')) {
@@ -130,15 +148,7 @@
         releasePendingSchoolAccent();
       }
     }
-    document.querySelectorAll('[data-theme-control]').forEach(control => {
-      const trigger = control.querySelector('[data-theme-trigger]');
-      if (!trigger) return;
-      trigger.addEventListener('click', () => {
-        const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-        setMode(currentTheme === 'dark' ? 'light' : 'dark');
-      });
-    });
-    apply();
+    initThemeControls();
   });
 
   window.ACADEMIX_THEME = { getMode: () => mode, setMode, setSchoolAccent };

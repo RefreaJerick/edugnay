@@ -87,6 +87,14 @@ function isGrade12AcademicSf9Template(template) {
   return template?.formCode === 'SF9' && template.version === 'g12-academic-2026-2027';
 }
 
+function isGrade12TechProSf9Template(template) {
+  return template?.formCode === 'SF9' && template.version === 'g12-techpro-2026-2027';
+}
+
+function isCurrentElementaryJhsForm(template) {
+  return ['SF1', 'SF2', 'SF3', 'SF8'].includes(template?.formCode) && template.version === '1.0';
+}
+
 function formatTemplateDate(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -180,6 +188,7 @@ function availableSections() {
   const templates = selectedTemplates();
   const includesSf5 = templates.some(template => template.formCode === 'SF5');
   const sf5Only = templates.length === 1 && includesSf5;
+  const includesCurrentElementaryJhsForm = templates.some(isCurrentElementaryJhsForm);
   const includesSf9 = templates.some(template => template.formCode === 'SF9');
   const includesSf10 = templates.some(template => template.formCode === 'SF10');
   const sf9Only = templates.length === 1 && includesSf9;
@@ -187,17 +196,22 @@ function availableSections() {
   const grade11AcademicSf9 = sf9Only && isGrade11AcademicSf9Template(templates[0]);
   const grade11TechProSf9 = sf9Only && isGrade11TechProSf9Template(templates[0]);
   const grade12AcademicSf9 = sf9Only && isGrade12AcademicSf9Template(templates[0]);
+  const grade12TechProSf9 = sf9Only && isGrade12TechProSf9Template(templates[0]);
   return sfState.sections.filter(section => {
     const currentSection = section.status === 'active' && section.academicYearStatus === 'active';
     const closedSection = (sf5Only || sf9Only || sf10Only)
       && section.status === 'archived' && section.academicYearStatus === 'closed';
     return (currentSection || closedSection)
+      && (!includesCurrentElementaryJhsForm || !['grade-11', 'grade-12'].includes(section.gradeCode))
       && (!includesSf5 || /^grade-(?:[2-9]|10)$/.test(section.gradeCode))
       && (!includesSf9 || (grade11AcademicSf9
         ? section.gradeCode === 'grade-11' && section.trackCode === 'academic'
           && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
         : grade12AcademicSf9
           ? section.gradeCode === 'grade-12' && section.trackCode === 'academic'
+            && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
+        : grade12TechProSf9
+          ? section.gradeCode === 'grade-12' && section.trackCode === 'techpro'
             && section.shsCurriculumCode === 'strengthened_2026' && section.academicYear === '2026-2027'
         : grade11TechProSf9
           ? section.gradeCode === 'grade-11' && section.trackCode === 'techpro'

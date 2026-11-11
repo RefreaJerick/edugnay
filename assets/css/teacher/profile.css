@@ -307,6 +307,15 @@
   gap: 16px;
 }
 
+.main #pane-sections .teacher-assignment-heading {
+  margin: 0 0 8px;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .main #pane-sections .section-list {
   display: flex;
   flex-direction: column;

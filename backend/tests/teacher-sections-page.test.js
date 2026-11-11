@@ -854,9 +854,11 @@ test('Publish Grades shows actionable blockers and hides the warning when ready'
 });
 
 test('published section status starts hidden and follows actual period records', () => {
+  assert.match(sectionsSource, /class="section-status-item is-published badge badge-green" data-publication-status="published" hidden/);
   assert.match(sectionsSource, /data-publication-status="published" hidden/);
   assert.match(sectionsSource, /publicationStatus\.hidden = grades\.length === 0/);
   assert.match(sectionsStyles, /\.section-status-item\[hidden\][\s\S]*?display:\s*none;/);
+  assert.match(sectionsStyles, /\.section-subject \.section-status-item\.is-published\.badge\s*\{[^}]*color:\s*var\(--pill-color, var\(--gray-600\)\);/s);
 });
 
 test('published section status follows saved grades for the selected period', () => {

@@ -33,6 +33,15 @@ const variants = {
       ...['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC']
         .flatMap(column => Array.from({ length: 6 }, (_, index) => `${column}${5 + index}`))]
   },
+  'grade12-techpro': {
+    sheetName: 'SF9 - GRADE 12 TECHPRO',
+    outputFile: 'sf9-g12-techpro.xlsx',
+    sourceSheetName: 'SF9 - GRADE 12 TechPro',
+    clearAddresses: ['B7', 'B8', 'B9', 'B10', 'B12', 'B15', 'C17', 'I17', 'K17', 'C18', 'I18', 'K18',
+      'E19', 'B27', 'H27', 'B33', 'B34', 'B35',
+      ...['R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC']
+        .flatMap(column => Array.from({ length: 6 }, (_, index) => `${column}${5 + index}`))]
+  },
   'grade11-techpro': {
     sheetName: 'SF9 - GRADE 11 TECHPRO',
     outputFile: 'sf9-g11-techpro.xlsx',
@@ -132,6 +141,14 @@ function transformSf9Worksheet(xml, options) {
       .replace(/<ext\b[^>]*>\s*<\/ext>/gi, '');
     return /<ext\b/i.test(cleaned) ? cleaned : '';
   });
+  if (options.sheetName === 'SF9 - GRADE 12 TECHPRO') {
+    nextXml = nextXml.replace(/<dataValidations\b[^>]*>[\s\S]*?<\/dataValidations>/gi, block => {
+      const cleaned = block.replace(/<dataValidation\b[^>]*>[\s\S]*?#REF![\s\S]*?<\/dataValidation>/gi, '');
+      const count = [...cleaned.matchAll(/<dataValidation\b/g)].length;
+      if (!count) return '';
+      return cleaned.replace(/count="\d+"/i, `count="${count}"`);
+    });
+  }
   return nextXml;
 }
 
@@ -264,7 +281,7 @@ async function main() {
     : printSettings.replace('</Types>',
       `<Override PartName="/${drawingSourcePath}" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`));
 
-  if (variantName === 'grade12-academic') await removeUnusedSharedStrings(output, outputWorksheetPath);
+  if (variantName.startsWith('grade12-')) await removeUnusedSharedStrings(output, outputWorksheetPath);
 
   await fs.writeFile(outputPath, await output.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
   process.stdout.write(`Extracted ${outputPath}\n`);

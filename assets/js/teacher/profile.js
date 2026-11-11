@@ -2,6 +2,9 @@ let teacherApiUser = null;
   let teacherSections = [];
   let teacherSectionsLoading = true;
   let teacherSectionsError = '';
+  let teacherShsClasses = [];
+  let teacherShsClassesLoading = true;
+  let teacherShsClassesError = '';
 
   function setTeacherProfileLoadState(title = '', message = '', isError = false) {
     const notice = document.getElementById('teacher-profile-load-notice');
@@ -53,29 +56,57 @@ let teacherApiUser = null;
     }
   }
 
+  async function loadTeacherShsClasses() {
+    try {
+      await window.EDUGNAY_SCHOOL_READY;
+      const response = await window.EDUGNAY_API.getShsTeachingClasses();
+      teacherShsClasses = response.classes || [];
+    } catch (error) {
+      if (error.status === 403 || error.status === 404) {
+        teacherShsClasses = [];
+      } else {
+        teacherShsClassesError = error.message || 'Your SHS classes could not be loaded. Refresh and try again.';
+      }
+    } finally {
+      teacherShsClassesLoading = false;
+      renderEmploymentDetails();
+    }
+  }
+
   function renderEmploymentDetails() {
-    const panel = document.getElementById('teacher-employment-details');
-    if (!panel) return;
-    if (teacherSectionsLoading) {
-      panel.innerHTML = '';
-      lucide.createIcons();
-      return;
+    const sectionsPanel = document.getElementById('teacher-sections-assignments');
+    const shsClassesPanel = document.getElementById('teacher-shs-classes-assignments');
+
+    if (sectionsPanel && !teacherSectionsLoading) {
+      if (teacherSectionsError) {
+        sectionsPanel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Sections unavailable', text: teacherSectionsError });
+      } else {
+        const sections = teacherSections.map(section => [section.grade, section.name].filter(Boolean).join(' - '));
+        sectionsPanel.innerHTML = sections.length
+          ? `<div class="section-list" role="list" aria-label="Sections handled">${sections.map(section => `<span class="badge badge-blue" role="listitem">${window.EDUGNAY_CONFIG.escapeHtml(section)}</span>`).join('')}</div>`
+          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to this teacher will appear here.' });
+      }
     }
-    if (teacherSectionsError) {
-      panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Sections unavailable', text: teacherSectionsError });
-      lucide.createIcons();
-      return;
+
+    if (shsClassesPanel && !teacherShsClassesLoading) {
+      if (teacherShsClassesError) {
+        shsClassesPanel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'SHS classes unavailable', text: teacherShsClassesError });
+      } else {
+        const classes = teacherShsClasses
+          .map(item => [item.gradeName, item.className].filter(Boolean).join(' - '))
+          .filter(Boolean);
+        shsClassesPanel.innerHTML = classes.length
+          ? `<div class="section-list" role="list" aria-label="SHS classes assigned">${classes.map(className => `<span class="badge badge-blue" role="listitem">${window.EDUGNAY_CONFIG.escapeHtml(className)}</span>`).join('')}</div>`
+          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No SHS classes assigned', text: 'SHS classes assigned to this teacher will appear here.' });
+      }
     }
-    const sections = teacherSections.map(section => [section.grade, section.name].filter(Boolean).join(' - '));
-    panel.innerHTML = sections.length
-      ? `<div class="section-list" role="list" aria-label="Sections handled">${sections.map(section => `<span class="badge badge-blue" role="listitem">${window.EDUGNAY_CONFIG.escapeHtml(section)}</span>`).join('')}</div>`
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to this teacher will appear here.' });
+
     lucide.createIcons();
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
     renderEmploymentDetails();
-    await Promise.all([loadTeacherProfile(), loadTeacherSections()]);
+    await Promise.all([loadTeacherProfile(), loadTeacherSections(), loadTeacherShsClasses()]);
     lucide.createIcons();
     window.EDUGNAY_PAGE_LOADING.ready();
   });

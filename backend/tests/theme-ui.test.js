@@ -12,8 +12,8 @@ const read = file => pageFs.readFileSync(path.join(root, file), 'utf8');
 function createControl() {
   const events = {};
   const trigger = {
-    attributes: {}, innerHTML: '',
-    addEventListener(name, handler) { events[name] = handler; },
+    attributes: {}, dataset: {}, innerHTML: '', clickBindings: 0,
+    addEventListener(name, handler) { events[name] = handler; if (name === 'click') this.clickBindings += 1; },
     setAttribute(name, value) { this.attributes[name] = value; }
   };
   const control = {
@@ -126,6 +126,25 @@ test('toggle switches immediately and makes legacy System preference explicit', 
   assert.equal(systemState.document.documentElement.dataset.theme, 'light');
   assert.equal(systemState.storage.get('edugnay_theme_v1'), 'light');
   assert.equal(systemState.window.ACADEMIX_THEME.getMode(), 'light');
+});
+
+test('header-ready event sets the saved icon early and repeated setup leaves the icon and handler intact', () => {
+  for (const saved of ['light', 'dark', 'system']) {
+    const control = createControl();
+    const state = boot(saved, true, [control]);
+    if (saved === 'system') state.media.matches = true;
+    state.document.dispatchEvent(new Event('edugnay:portal-header-ready'));
+    const icon = saved === 'light' ? 'moon' : 'sun';
+    assert.match(control.trigger.innerHTML, new RegExp(`data-lucide="${icon}"`));
+    assert.equal(control.trigger.clickBindings, 1);
+    const firstMarkup = control.trigger.innerHTML;
+    const firstRenders = state.iconRenders.length;
+    state.document.dispatchEvent(new Event('edugnay:portal-header-ready'));
+    state.listeners.DOMContentLoaded();
+    assert.equal(control.trigger.innerHTML, firstMarkup);
+    assert.equal(state.iconRenders.length, firstRenders);
+    assert.equal(control.trigger.clickBindings, 1);
+  }
 });
 
 test('printing uses Light without changing the saved choice', () => {

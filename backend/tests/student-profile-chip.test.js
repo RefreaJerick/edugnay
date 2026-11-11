@@ -34,6 +34,24 @@ function createHarness(account, storedSnapshot = null, storedKey = key) {
   const avatar = { textContent: '' };
   const brand = { textContent: 'Current School' };
   const trigger = { setAttribute(attribute, value) { this[attribute] = value; } };
+  let headerPresent = false;
+  let sidebarIconsPending = false;
+  let headerObserver;
+  let headerDisconnects = 0;
+  const headerIcons = [];
+  const headerEvents = [];
+  const header = {
+    querySelector(selector) {
+      return headerPresent && [
+        '.hamburger [data-lucide]', '.tb-notif-btn [data-lucide]',
+        '[data-theme-trigger]', '.tb-profile-trigger .tb-chevron'
+      ].includes(selector) ? {} : null;
+    },
+    querySelectorAll(selector) { return selector === '.tb-profile-trigger .tb-avatar' ? [avatar] : []; }
+  };
+  const sidebar = {
+    querySelector(selector) { return selector === 'i[data-lucide]' && sidebarIconsPending ? {} : null; }
+  };
   const nodes = {
     '.tb-profile-name': [name], '.tb-profile-role': [role],
     '.tb-avatar': [avatar], '.tb-profile-trigger .tb-avatar': [avatar],
@@ -45,7 +63,12 @@ function createHarness(account, storedSnapshot = null, storedKey = key) {
       contains: value => classes.has(value)
     } },
     querySelectorAll: selector => nodes[selector] || [],
-    dispatchEvent() {},
+    querySelector(selector) {
+      if (selector === 'header.topbar' && headerPresent) return header;
+      if (selector === 'aside.sidebar') return sidebar;
+      return null;
+    },
+    dispatchEvent(event) { headerEvents.push(event.type); },
     addEventListener() {}
   };
   const context = vm.createContext({
@@ -58,7 +81,17 @@ function createHarness(account, storedSnapshot = null, storedKey = key) {
       get length() { return storage.size; },
       key: index => [...storage.keys()][index] ?? null
     },
-    window: { location: {} }, CustomEvent: class {},
+    window: { location: {}, lucide: { createIcons(options) {
+      headerIcons.push(options.root);
+      if (options.root === sidebar) sidebarIconsPending = false;
+    } } },
+    Event: class { constructor(type) { this.type = type; } },
+    MutationObserver: class {
+      constructor(callback) { headerObserver = callback; }
+      observe() {}
+      disconnect() { headerDisconnects += 1; }
+    },
+    CustomEvent: class {},
     EDUGNAY_API_BASE_URL: 'http://localhost:3000/api',
     renderAvatar: (element, person) => { element.person = person; element.textContent = person.initials; }
   });
@@ -86,8 +119,66 @@ function createHarness(account, storedSnapshot = null, storedKey = key) {
     let currentUserRequest = null;
     ${source.slice(userStart, userEnd)}
     ${source.slice(userEnd, applyEnd)}`, context);
-  return { context, storage, classes, name, role, avatar, trigger, brand };
+  return {
+    context, storage, classes, name, role, avatar, trigger, brand,
+    setHeaderPresent(value) { headerPresent = value; },
+    addSidebarIcons() { sidebarIconsPending = true; },
+    notifyHeaderMutation() { headerObserver?.(); },
+    headerIcons, headerEvents, header, sidebar,
+    get headerDisconnects() { return headerDisconnects; }
+  };
 }
+
+test('portal header icons and cached initials are ready before DOMContentLoaded in every role', () => {
+  for (const account of roles) {
+    const harness = createHarness(account, snapshotFor(account));
+    harness.notifyHeaderMutation();
+    assert.equal(harness.headerIcons.length, 0);
+    harness.setHeaderPresent(true);
+    harness.notifyHeaderMutation();
+    assert.equal(harness.avatar.textContent, account.initials, account.role);
+    assert.deepEqual(harness.headerEvents, ['edugnay:portal-header-ready'], account.role);
+    assert.equal(harness.headerIcons.length, 1, account.role);
+    assert.equal(harness.headerDisconnects, 1, account.role);
+    vm.runInContext('initPortalHeader()', harness.context);
+    assert.equal(harness.headerIcons.length, 1, 'fallback does not render icons again');
+    assert.equal(harness.headerEvents.length, 1, 'fallback does not dispatch again');
+  }
+});
+
+test('sidebar icons render while parsed and repeated mutations do not redraw them', () => {
+  for (const account of roles) {
+    const harness = createHarness(account, snapshotFor(account));
+    harness.addSidebarIcons();
+    harness.notifyHeaderMutation();
+    assert.deepEqual(harness.headerIcons, [harness.sidebar], account.role);
+    harness.notifyHeaderMutation();
+    assert.equal(harness.headerIcons.length, 1, 'rendered sidebar icons are left alone');
+    harness.addSidebarIcons();
+    harness.notifyHeaderMutation();
+    assert.equal(harness.headerIcons.length, 2, 'later sidebar icons render as parsed');
+    harness.setHeaderPresent(true);
+    harness.notifyHeaderMutation();
+    assert.equal(harness.headerIcons[2], harness.header);
+    assert.equal(harness.headerDisconnects, 1);
+  }
+});
+
+test('missing and mismatched cached profiles show a neutral avatar before DOMContentLoaded', () => {
+  for (const account of roles) {
+    const other = roles.find(candidate => candidate.role !== account.role);
+    for (const snapshot of [null, snapshotFor(other)]) {
+      const harness = createHarness(account, snapshot);
+      harness.setHeaderPresent(true);
+      harness.notifyHeaderMutation();
+      assert.equal(harness.avatar.textContent, '--', account.role);
+      assert.equal(harness.avatar.person.initials, '--', account.role);
+      assert.equal(harness.name.textContent, 'Loading account...', account.role);
+      assert.equal(harness.classes.has('profile-chip-restoring'), false, account.role);
+      assert.equal(harness.storage.has(key), false, account.role);
+    }
+  }
+});
 
 async function runShellInit(harness, loadCurrentUser) {
   let ready;
@@ -271,6 +362,13 @@ test('every signed-in portal header restores its chip before main content', () =
       const html = pageFs.readFileSync(path.join(directory, page), 'utf8');
       if (!html.includes('assets/js/shell-common.js')) continue;
       assert.match(html, /assets\/js\/shell-common\.js/);
+      assert.ok(html.indexOf('<aside class="sidebar"') < html.indexOf('<header class="topbar"'),
+        `${role}/${page} should parse its sidebar before its header`);
+      assert.match(html, /<header class="topbar">[\s\S]*?class="hamburger"[\s\S]*?data-theme-trigger[\s\S]*?tb-profile-trigger[\s\S]*?tb-chevron/,
+        `${role}/${page} should contain the shared visible header controls`);
+      assert.ok(html.indexOf('assets/js/theme.js') < html.indexOf('lucide-1.62.0.min.js'), `${role}/${page} theme should load before icons`);
+      assert.ok(html.indexOf('lucide-1.62.0.min.js') < html.indexOf('assets/js/shell-common.js'), `${role}/${page} icons should load before the shared shell`);
+      assert.ok(html.indexOf('assets/js/shell-common.js') < html.indexOf('assets/js/portal-header-init.js'), `${role}/${page} shared shell should load before header fallback`);
       assert.match(html, /<\/header>\s*<script src="\.\.\/\.\.\/assets\/js\/portal-header-init\.js"><\/script>/,
         `${role}/${page} should restore directly after its header`);
       checked += 1;

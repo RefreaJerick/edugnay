@@ -323,7 +323,7 @@ html.school-accent-pending body :is(.sidebar, .grading-banner, .profile-header-c
   .section-header, .portal-overview, .settings-drawer-head, .settings-trigger, .week-day.is-today, .cal-day.today) {
   visibility: hidden !important;
 }
-html[data-school-accent] body .section-header { background: var(--school-accent-sidebar); }
+html[data-school-accent] body :is(.section-header, .pipeline-banner) { background: var(--school-accent-sidebar); }
 html[data-school-accent] body .grading-banner {
   background: linear-gradient(120deg, var(--school-accent-sidebar), var(--school-accent-hero-mid) 58%, var(--school-accent-hero-end));
 }

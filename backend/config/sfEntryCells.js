@@ -2,7 +2,8 @@ const { SF2 } = require('./sf2');
 const { SF3 } = require('./sf3');
 const { SF5 } = require('./sf5');
 const { SF8 } = require('./sf8');
-const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, SF9_GRADE12_ACADEMIC } = require('./sf9');
+const { SF9, SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, SF9_GRADE12_ACADEMIC,
+  SF9_GRADE12_TECHPRO } = require('./sf9');
 const { SF10 } = require('./sf10');
 
 function range(startRow, endRow, startColumn, endColumn) {
@@ -95,6 +96,16 @@ const entries = {
       range(34, 42, columnNumber('Q'), columnNumber('AC')),
       range(46, 51, columnNumber('Q'), columnNumber('AC'))]
   },
+  SF9_GRADE12_TECHPRO: {
+    addresses: [...Object.values(SF9_GRADE12_TECHPRO.headers), 'B27',
+      `I${SF9_GRADE12_TECHPRO.generalAverageRow}`],
+    ranges: [range(33, 35, columnNumber('B'), columnNumber('K')),
+      range(5, 10, columnNumber('R'), columnNumber('AC')),
+      range(15, 26, columnNumber('Q'), columnNumber('AC')),
+      range(29, 32, columnNumber('Q'), columnNumber('AC')),
+      range(34, 42, columnNumber('Q'), columnNumber('AC')),
+      range(46, 51, columnNumber('Q'), columnNumber('AC'))]
+  },
   SF9_GRADE11_TECHPRO: {
     addresses: [...Object.values(SF9_GRADE11_TECHPRO.headers), `I${SF9_GRADE11_TECHPRO.generalAverageRow}`],
     ranges: [range(33, 39, columnNumber('B'), columnNumber('K')),
@@ -109,6 +120,7 @@ const entries = {
 };
 
 function entryDefinition(formCode, version) {
+  if (formCode === 'SF9' && version === SF9_GRADE12_TECHPRO.version) return entries.SF9_GRADE12_TECHPRO;
   if (formCode === 'SF9' && version === SF9_GRADE12_ACADEMIC.version) return entries.SF9_GRADE12_ACADEMIC;
   if (formCode === 'SF9' && version === SF9_GRADE11_ACADEMIC.version) return entries.SF9_GRADE11_ACADEMIC;
   if (formCode === 'SF9' && version === SF9_GRADE11_TECHPRO.version) return entries.SF9_GRADE11_TECHPRO;
@@ -171,6 +183,12 @@ function getFormEntryType(formCode, address, cell, version = '') {
   if (formCode === 'SF9' && version === SF9_GRADE12_ACADEMIC.version && parts
     && parts.row >= 33 && parts.row <= 41
     && [columnNumber('B'), columnNumber('J')].includes(parts.column)) return 'text';
+  if (formCode === 'SF9' && version === SF9_GRADE12_TECHPRO.version && parts
+    && parts.row >= 33 && parts.row <= 35
+    && [columnNumber('B'), columnNumber('J')].includes(parts.column)) return 'text';
+  if (formCode === 'SF9' && version === SF9_GRADE12_TECHPRO.version
+    && (normalized === `I${SF9_GRADE12_TECHPRO.generalAverageRow}` || parts && parts.row >= 33 && parts.row <= 35
+      && parts.column >= columnNumber('F') && parts.column <= columnNumber('I'))) return 'number';
   if (formCode === 'SF9' && version === SF9_GRADE12_ACADEMIC.version
     && (normalized === 'I43' || parts && parts.row >= 33 && parts.row <= 41
       && parts.column >= columnNumber('F') && parts.column <= columnNumber('I'))) return 'number';

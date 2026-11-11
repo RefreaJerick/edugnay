@@ -710,9 +710,13 @@ test('SF9 learner selection and preview stay adviser-only, level-limited, and se
   assert.match(api, /record\.version === 'g12-academic-2026-2027'/);
   assert.match(api, /'sf9-g12-academic-v1'/);
   assert.match(api, /sf9-g12-academic/);
+  assert.match(api, /record\.version === 'g12-techpro-2026-2027'/);
+  assert.match(api, /'sf9-g12-techpro-v1'/);
+  assert.match(api, /sf9-g12-techpro/);
   assert.match(page, /sf9Only[\s\S]*academicYearStatus/);
   assert.match(page, /g11-techpro-2026-2027/);
   assert.match(page, /g12-academic-2026-2027/);
+  assert.match(page, /g12-techpro-2026-2027/);
   assert.match(page, /section\.trackCode === 'techpro'/);
   assert.match(page, /section\.status === 'active' && section\.academicYearStatus === 'active'/);
   assert.match(page, /section\.status === 'archived' && section\.academicYearStatus === 'closed'/);
@@ -741,6 +745,8 @@ test('advisory class eligibility follows API status as templates change', async 
       trackCode: 'academic', shsCurriculumCode: 'strengthened_2026', academicYear: '2025-2026' },
     { id: 'active-grade-12-academic', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-12',
       trackCode: 'academic', shsCurriculumCode: 'strengthened_2026', academicYear: '2026-2027' },
+    { id: 'active-grade-12-techpro', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-12',
+      trackCode: 'techpro', shsCurriculumCode: 'strengthened_2026', academicYear: '2026-2027' },
     { id: 'active-grade-12-legacy', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-12',
       trackCode: 'academic', shsCurriculumCode: 'legacy', academicYear: '2026-2027' }
   ];
@@ -752,7 +758,9 @@ test('advisory class eligibility follows API status as templates change', async 
       isGrade11TechProSf9Template: template => template?.formCode === 'SF9'
         && template.version === 'g11-techpro-2026-2027',
       isGrade12AcademicSf9Template: template => template?.formCode === 'SF9'
-        && template.version === 'g12-academic-2026-2027' }
+        && template.version === 'g12-academic-2026-2027',
+      isGrade12TechProSf9Template: template => template?.formCode === 'SF9'
+        && template.version === 'g12-techpro-2026-2027' }
   );
 
   assert.deepEqual(eligibleIds([{ formCode: 'SF9' }]), ['active-grade-7', 'closed-grade-7']);
@@ -761,10 +769,11 @@ test('advisory class eligibility follows API status as templates change', async 
   assert.deepEqual(eligibleIds([{ formCode: 'SF5' }]), ['active-grade-7', 'closed-grade-7', 'active-grade-3']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF3' }]), ['active-grade-7', 'active-grade-3', 'active-grade-11',
     'active-grade-11-academic', 'active-grade-11-techpro', 'active-grade-11-legacy', 'active-grade-11-old-year',
-    'active-grade-12-academic', 'active-grade-12-legacy']);
+    'active-grade-12-academic', 'active-grade-12-techpro', 'active-grade-12-legacy']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF9', version: 'g11-academic-2026-2027' }]), ['active-grade-11-academic']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF9', version: 'g11-techpro-2026-2027' }]), ['active-grade-11-techpro']);
   assert.deepEqual(eligibleIds([{ formCode: 'SF9', version: 'g12-academic-2026-2027' }]), ['active-grade-12-academic']);
+  assert.deepEqual(eligibleIds([{ formCode: 'SF9', version: 'g12-techpro-2026-2027' }]), ['active-grade-12-techpro']);
 });
 
 test('incompatible SF9 selections show an error toast while supported combinations remain unchanged', async () => {
@@ -780,7 +789,8 @@ test('incompatible SF9 selections show an error toast while supported combinatio
     { id: 'sf8', formCode: 'SF8' },
     { id: 'sf9', formCode: 'SF9', version: '1.0' },
     { id: 'sf9-g11-academic', formCode: 'SF9', version: 'g11-academic-2026-2027' },
-    { id: 'sf9-g11-techpro', formCode: 'SF9', version: 'g11-techpro-2026-2027' }
+    { id: 'sf9-g11-techpro', formCode: 'SF9', version: 'g11-techpro-2026-2027' },
+    { id: 'sf9-g12-techpro', formCode: 'SF9', version: 'g12-techpro-2026-2027' }
   ];
   const inputs = templates.map(template => ({ value: template.id, checked: false, matches: () => true }));
   let changeHandler;
@@ -834,15 +844,20 @@ test('incompatible SF9 selections show an error toast while supported combinatio
   select('sf9');
   select('sf9-g11-academic');
   assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g11-academic']);
-  assert.equal(toastMessages.length, 2);
+  select('sf9-g12-techpro');
+  assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g12-techpro']);
+  select('sf1');
+  assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g12-techpro']);
+  assert.deepEqual(toastMessages.at(-1), ['The selected form cannot be combined with other forms.', 'error']);
+  assert.equal(toastMessages.length, 3);
 
   select('sf9');
   assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9']);
-  assert.equal(toastMessages.length, 2);
+  assert.equal(toastMessages.length, 3);
 
   select('sf9-g11-techpro');
   assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g11-techpro']);
   select('sf9-g11-academic');
   assert.deepEqual(selectedTemplates().map(template => template.id), ['sf9-g11-academic']);
-  assert.equal(toastMessages.length, 2);
+  assert.equal(toastMessages.length, 3);
 });

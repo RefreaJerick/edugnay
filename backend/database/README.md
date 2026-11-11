@@ -1,11 +1,17 @@
 # Academix database setup
 
 `schema.sql` defines the final database structure through migration 066.
-Migrations 067-068 add built-in school-form records, which are included in
+Migrations 067-069 add built-in school-form records, which are included in
 `reference-data.sql`. Together, these files cover a fresh installation through
-migration 068. `schema.sql` is for an empty database, not for upgrading an
+migration 069. `schema.sql` is for an empty database, not for upgrading an
 existing one. It creates and selects the `academix` database, so check the
 target server before importing.
+
+The fresh schema uses `ON DELETE RESTRICT` for assignment grading categories
+and learning-material terms. MariaDB 10.11 rejects their historical
+`ON DELETE SET NULL` rules because `CHECK` constraints also use those columns.
+The application does not remove grading categories that have recorded work;
+term deletion will be blocked while materials still reference that term.
 
 For a fresh installation:
 

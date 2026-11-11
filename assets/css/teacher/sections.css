@@ -61,14 +61,11 @@
   min-width: 0;
 }
 
-.section-subject .section-status-item.is-published {
+.section-subject .section-status-item.is-published.badge {
   flex: 0 0 auto;
-  gap: 5px;
-  padding: 4px 8px;
-  border: 1px solid rgba(187, 247, 208, 0.22);
-  border-radius: var(--radius-sm);
-  background: rgba(187, 247, 208, 0.1);
-  font-size: 11px;
+  color: var(--pill-color, var(--gray-600));
+  font-size: 10px;
+  font-weight: 800;
   white-space: nowrap;
 }
 
@@ -291,10 +288,6 @@
 .section-status-item[hidden],
 .publish-warn[hidden] {
   display: none;
-}
-
-.section-status-item.is-published {
-  color: #bbf7d0;
 }
 
 .section-encoded-count {
