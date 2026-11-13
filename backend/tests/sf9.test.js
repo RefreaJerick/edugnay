@@ -146,33 +146,121 @@ test('SF9 rounds 74/75/75 to 75 and rejects missing, duplicate, and invalid publ
   assert.equal(cellsFor([{ ...grades[0], finalGrade: 101 }, ...grades.slice(1)]).get('I32'), '');
 });
 
-test('SF9 leaves GMRC and Values Education term and final grades for adviser domain review', async () => {
+test('SF9 fills Grade 4 GMRC only from domain-verified published grades', async () => {
   const termList = terms(3);
   const subjectList = [
     { id: 1, code: 'gmrc-elementary', name: 'Good Manners and Right Conduct (GMRC)' },
-    { id: 2, code: 'values-education-jhs', name: 'Values Education' },
-    { id: 3, code: 'english-jhs', name: 'English' }
+    { id: 2, code: 'english-elementary', name: 'English' }
   ];
   const result = buildSf9Pages(school, section, 'Ms. Adviser', learner, subjectList, termList,
     gradesFor(subjectList, termList));
   const cells = new Map(result.pages[0].map(cell => [cell.cellAddress, cell.value]));
-  for (const row of [32, 33]) {
-    for (const column of ['F', 'G', 'H', 'I']) assert.equal(cells.get(`${column}${row}`), '');
-  }
-  assert.equal(cells.get('I34'), 82);
+  for (const column of ['F', 'G', 'H', 'I']) assert.equal(cells.get(`${column}37`), '');
+  assert.equal(cells.get('I33'), 82);
+  assert.equal(cells.get('B37'), 'GMRC / Values Education');
   assert.equal(cells.get('I42'), '');
-  assert.equal(result.issues.filter(issue => issue.fieldKey === 'gradePolicyReview').length, 2);
+  assert.equal(result.issues.filter(issue => issue.message.includes('domain review')).length, 3);
+  const verifiedGrades = gradesFor(subjectList, termList).map(grade => grade.subjectId === 1
+    ? { ...grade, domainRuleVersion: 'deped_values_domains_2026' } : grade);
+  const verified = buildSf9Pages(school, section, 'Ms. Adviser', learner, subjectList, termList, verifiedGrades);
+  const verifiedCells = new Map(verified.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(verifiedCells.get('F37'), 80);
+  assert.equal(verifiedCells.get('I37'), 82);
+  assert.equal(verified.issues.find(issue => issue.fieldKey === 'draft').message.includes('GMRC'), false);
+  assert.equal(verified.issues.some(issue => issue.message.includes('domain review')), false);
+  const termCell = records => new Map(buildSf9Pages(school, section, 'Ms. Adviser', learner,
+    subjectList, termList, records).pages[0].map(cell => [cell.cellAddress, cell.value])).get('F37');
+  assert.equal(termCell(verifiedGrades.filter(grade => !(grade.subjectId === 1 && grade.academicTermId === termList[0].id))), '');
+  assert.equal(termCell([...verifiedGrades, { ...verifiedGrades[0] }]), '');
+  assert.equal(termCell([{ ...verifiedGrades[0], finalGrade: 101 }, ...verifiedGrades.slice(1)]), '');
   const editable = new Set((await getEditableCells(template, result.pages[0])).map(cell => cell.cellAddress));
-  for (const address of ['F32', 'I32', 'F33', 'I33', 'I42']) assert.ok(editable.has(address));
-  const editedPage = result.pages[0].map(cell => cell.cellAddress === 'F32' || cell.cellAddress === 'I32'
+  for (const address of ['F37', 'I37', 'F33', 'I33', 'I42']) assert.ok(editable.has(address));
+  const editedPage = result.pages[0].map(cell => cell.cellAddress === 'F37' || cell.cellAddress === 'I37'
     ? { ...cell, value: 80 } : cell.cellAddress === 'I42' ? { ...cell, value: 81 } : cell);
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await createExportWorkbook(template, [editedPage]));
   const sheet = workbook.getWorksheet(SF9.sheetName);
-  assert.equal(sheet.getCell('F32').value, 80);
-  assert.equal(sheet.getCell('I32').value, 80);
+  assert.equal(sheet.getCell('F37').value, 80);
+  assert.equal(sheet.getCell('I37').value, 80);
   assert.equal(sheet.getCell('I42').value, 81);
-  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'I32').value, '');
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'I37').value, '');
+});
+
+test('SF9 requires verification for Grade 7 Values Education and keeps Grade 2 GMRC unchanged', () => {
+  for (const [gradeCode, code, name, needsVerification] of [
+    ['grade-7', 'values-education-jhs', 'Values Education', true],
+    ['grade-2', 'gmrc-grade-2', 'Good Manners and Right Conduct (GMRC)', false]
+  ]) {
+    const subjectList = [{ id: 1, code, name }];
+    const records = gradesFor(subjectList, terms(3));
+    const build = grades => new Map(buildSf9Pages(school, { ...section, gradeCode }, 'Ms. Adviser', learner,
+      subjectList, terms(3), grades).pages[0].map(cell => [cell.cellAddress, cell.value]));
+    assert.equal(build(records).get('F37'), needsVerification ? '' : 80);
+    assert.equal(build(records.map(grade => ({ ...grade, domainRuleVersion: 'deped_values_domains_2026' }))).get('I37'), 82);
+  }
+});
+
+test('Grade 4-10 SF9 keeps MAPEH above its italic subject rows and retains overflow subjects', async () => {
+  const standardSubjects = [
+    { id: 1, code: 'araling-panlipunan-elementary', name: 'Araling Panlipunan' },
+    { id: 2, code: 'english-elementary', name: 'English' },
+    { id: 3, code: 'filipino-elementary', name: 'Filipino' },
+    { id: 4, code: 'mathematics-elementary', name: 'Mathematics' },
+    { id: 5, code: 'music-and-arts-elementary', name: 'Music & Arts' },
+    { id: 6, code: 'physical-education-and-health-elementary', name: 'Physical Education & Health' },
+    { id: 7, code: 'science-elementary', name: 'Science' },
+    { id: 8, code: 'epp-elementary', name: 'Edukasyong Pantahanan at Pangkabuhayan (EPP)' },
+    { id: 9, code: 'gmrc-elementary', name: 'Good Manners and Right Conduct (GMRC)' }
+  ];
+  const termList = terms(3);
+  const build = assigned => buildSf9Pages(school, section, 'Ms. Adviser', learner, assigned, termList,
+    gradesFor(assigned, termList).map(grade => grade.subjectId === 9
+      ? { ...grade, domainRuleVersion: 'deped_values_domains_2026' } : grade));
+  const result = build(standardSubjects);
+  const cells = new Map(result.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.deepEqual(Array.from({ length: 10 }, (_, index) => cells.get(`B${32 + index}`)), [
+    'Filipino', 'English', 'Mathematics', 'Science', 'Araling Panlipunan',
+    'GMRC / Values Education', 'EPP / TLE',
+    'MAPEH', 'Music & Arts', 'Physical Education & Health'
+  ]);
+  assert.equal(cells.has('F39'), false);
+  assert.equal(cells.has('I39'), false);
+  for (const row of [32, 33, 34, 35, 36, 37, 38, 40, 41]) {
+    assert.equal(cells.get(`F${row}`), 80);
+    assert.equal(cells.get(`I${row}`), 82);
+  }
+  assert.equal(result.averageCellAddress, 'I42');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await createExportWorkbook(template, result.pages));
+  const sheet = workbook.getWorksheet(SF9.sheetName);
+  assert.equal(sheet.getCell('B39').value, 'MAPEH');
+  assert.equal(sheet.getCell('I39').value, null);
+  assert.equal(sheet.getCell('B40').font.italic, true);
+  assert.equal(sheet.getCell('B41').font.italic, true);
+  assert.equal(sheet.getCell('I40').value, 82);
+  assert.equal(sheet.getCell('I41').value, 82);
+
+  const assigned = [...standardSubjects.filter(subject => subject.id !== 6),
+    { id: 10, code: 'custom-one', name: 'Custom One' },
+    { id: 11, code: 'custom-two', name: 'Custom Two' }];
+  const overflow = build(assigned);
+  const overflowCells = new Map(overflow.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(overflowCells.get('B39'), 'MAPEH');
+  assert.equal(overflowCells.get('B40'), 'Music & Arts');
+  assert.equal(overflowCells.has('B41'), false);
+  assert.equal(overflowCells.get('B42'), 'Custom One');
+  assert.equal(overflowCells.get('B43'), 'Custom Two');
+  assert.equal(overflow.averageCellAddress, 'I44');
+  const editable = new Set((await getEditableCells(template, overflow.pages[0])).map(cell => cell.cellAddress));
+  for (const address of ['B42', 'F42', 'I43', 'I44']) assert.ok(editable.has(address), address);
+  for (const address of ['B39', 'F39', 'I39', 'J39']) assert.equal(editable.has(address), false, address);
+  const extended = new ExcelJS.Workbook();
+  await extended.xlsx.load(await createExportWorkbook(template, overflow.pages));
+  const extendedSheet = extended.getWorksheet(SF9.sheetName);
+  assert.equal(extendedSheet.getCell('B42').value, 'Custom One');
+  assert.equal(extendedSheet.getCell('B43').value, 'Custom Two');
+  assert.equal(extendedSheet.getCell('B44').value, 'General Average');
+  assert.equal(extendedSheet.getCell('B40').font.italic, true);
 });
 
 test('SF9 retains earlier school-year average behavior', () => {
@@ -728,7 +816,9 @@ test('SF9 learner selection and preview stay adviser-only, level-limited, and se
 test('advisory class eligibility follows API status as templates change', async () => {
   const page = await fs.readFile(path.join(root, 'assets/js/teacher/sf-templates.js'), 'utf8');
   const availableSectionsSource = page.match(/function availableSections\(\) \{[\s\S]*?\n\}/)?.[0];
+  const currentFormSource = page.match(/function isCurrentElementaryJhsForm\(template\) \{[\s\S]*?\n\}/)?.[0];
   assert.ok(availableSectionsSource);
+  assert.ok(currentFormSource);
 
   const sections = [
     { id: 'active-grade-7', status: 'active', academicYearStatus: 'active', gradeCode: 'grade-7' },
@@ -751,7 +841,7 @@ test('advisory class eligibility follows API status as templates change', async 
       trackCode: 'academic', shsCurriculumCode: 'legacy', academicYear: '2026-2027' }
   ];
   const eligibleIds = templates => vm.runInNewContext(
-    `${availableSectionsSource}; availableSections().map(section => section.id);`,
+    `${currentFormSource}; ${availableSectionsSource}; availableSections().map(section => section.id);`,
     { sfState: { sections }, selectedTemplates: () => templates,
       isGrade11AcademicSf9Template: template => template?.formCode === 'SF9'
         && template.version === 'g11-academic-2026-2027',

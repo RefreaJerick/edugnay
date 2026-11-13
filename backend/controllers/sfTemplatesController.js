@@ -85,7 +85,7 @@ function formatTemplate(row) {
 }
 
 function isCurrentElementaryJhsForm(template) {
-  return ['SF1', 'SF2', 'SF3', 'SF8'].includes(template.formCode) && template.version === '1.0';
+  return ['SF1', 'SF2', 'SF3'].includes(template.formCode) && template.version === '1.0';
 }
 
 function isSeniorHighSection(section) {
@@ -307,14 +307,23 @@ async function getSf2Learners(database, schoolId, sectionId, month) {
   return { learners, historical: !isCurrent };
 }
 
-async function getSf5GradeData(database, schoolId, section, learners, includeInactive = false) {
-  const [subjects] = await database.execute(
-    `SELECT DISTINCT subjects.id, subjects.name, subjects.subject_code AS code FROM section_teachers
-    INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = section_teachers.school_id
-      ${includeInactive ? '' : 'AND subjects.is_active = TRUE'}
-    WHERE section_teachers.school_id = ? AND section_teachers.section_id = ?
-    ORDER BY subjects.name, subjects.id`, [schoolId, section.id]
-  );
+async function getSf5GradeData(database, schoolId, section, learners, includeInactive = false, useGradeScope = false) {
+  const [subjects] = useGradeScope
+    ? await database.execute(
+      `SELECT subjects.id, subjects.name, subjects.subject_code AS code FROM subjects
+      WHERE subjects.school_id = ? AND subjects.is_active = TRUE
+        AND EXISTS (SELECT 1 FROM subject_grade_scopes AS scopes
+          WHERE scopes.school_id = subjects.school_id AND scopes.subject_id = subjects.id
+            AND scopes.grade_level_id = ?)
+      ORDER BY subjects.name, subjects.id`, [schoolId, section.gradeLevelId]
+    )
+    : await database.execute(
+      `SELECT DISTINCT subjects.id, subjects.name, subjects.subject_code AS code FROM section_teachers
+      INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = section_teachers.school_id
+        ${includeInactive ? '' : 'AND subjects.is_active = TRUE'}
+      WHERE section_teachers.school_id = ? AND section_teachers.section_id = ?
+      ORDER BY subjects.name, subjects.id`, [schoolId, section.id]
+    );
   const [terms] = await database.execute(
     `SELECT id, name, sequence_number AS sequenceNumber FROM academic_terms WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ?
     ORDER BY sequence_number`, [schoolId, section.academicYearId, section.schoolLevelId]
@@ -325,6 +334,7 @@ async function getSf5GradeData(database, schoolId, section, learners, includeIna
     `SELECT published_final_grades.student_user_id AS studentId,
       published_final_grades.subject_id AS subjectId, published_final_grades.academic_term_id AS academicTermId,
       published_final_grades.final_grade AS finalGrade,
+      published_final_grades.domain_rule_version AS domainRuleVersion,
       published_final_grades.communication_grade_source AS communicationGradeSource,
       source_section.name AS sectionName
     FROM published_final_grades
@@ -962,7 +972,10 @@ async function preparePreview(req, database) {
       section.academicYearStatus === 'closed' ? section.endDate : null);
     const learner = learners.find(record => Number(record.userId) === studentId);
     if (!learner) throw createError('Select a learner currently or historically enrolled in this advisory class.', 403);
-    const gradeData = await getSf5GradeData(database, req.user.schoolId, section, [learner]);
+    const grade4To10Sf9 = template.version === '1.0';
+    const gradeData = await getSf5GradeData(database, req.user.schoolId, section, [learner],
+      grade4To10Sf9 && section.academicYearStatus === 'closed',
+      grade4To10Sf9 && section.academicYearStatus === 'active');
     const [advisers] = await database.execute(
       `SELECT display_name AS displayName FROM users
       WHERE id = ? AND school_id = ? AND role = 'teacher' LIMIT 1`,
@@ -1000,6 +1013,7 @@ async function preparePreview(req, database) {
     } else {
       data = buildSf9Pages(schools[0], section, advisers[0]?.displayName || '', learner,
         gradeData.subjects, gradeData.terms, gradeData.grades);
+      sourceRecords = gradeData.subjects;
     }
     pages = data.pages;
   } else {

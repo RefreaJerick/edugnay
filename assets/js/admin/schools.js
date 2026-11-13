@@ -733,14 +733,14 @@ const SCHOOL_ACCENT_PALETTES = [
     function getK10SubjectSetupState(subject) {
       const isLocked = subject.status === 'published';
       const isSaved = subject.status === 'configured' || (isLocked && Boolean(subject.configurationSource));
-      const needsPolicyReview = Boolean(subject.needsPolicyReview);
+      const needsPolicyReview = Boolean(subject.needsPolicyReview || (subject.valuesDomains && !subject.valuesDomainSetupMatches));
       const needsExamSetup = Boolean(subject.needsExamSetup);
       return {
         isSaved,
         isLocked,
         needsPolicyReview,
         needsExamSetup,
-        label: isLocked ? 'Published' : needsExamSetup ? 'Needs exam setup' : needsPolicyReview ? 'Review exam setup' : isSaved ? 'Configured' : 'Not saved',
+        label: subject.valuesDomains && !subject.valuesDomainSetupMatches ? 'Review domain weights' : isLocked ? 'Published' : needsExamSetup ? 'Needs exam setup' : needsPolicyReview ? 'Review exam setup' : isSaved ? 'Configured' : 'Not saved',
         badgeClass: needsPolicyReview || needsExamSetup ? 'badge-orange' : isSaved ? 'badge-green' : 'badge-blue'
       };
     }
@@ -798,7 +798,8 @@ const SCHOOL_ACCENT_PALETTES = [
       const standardExamDiffers = new Set(standardParts).size > 1;
       const differentSetups = weightsDiffer || earlyExamDiffers || standardExamDiffers;
       const isSaved = states.every(item => item.isSaved && !item.needsPolicyReview && !item.needsExamSetup) && !differentSetups;
-      const status = needsReview ? { label: 'Review exam setup', badgeClass: 'badge-orange' }
+      const status = needsReview ? { label: group.subjects.some(subject => subject.valuesDomains && !subject.valuesDomainSetupMatches)
+        ? 'Review domain weights' : 'Review exam setup', badgeClass: 'badge-orange' }
         : needsExamSetup ? { label: 'Needs exam setup', badgeClass: 'badge-orange' }
           : hasMissing ? { label: 'Needs setup', badgeClass: 'badge-blue' }
             : differentSetups ? { label: 'Different setups', badgeClass: 'badge-orange' }
@@ -1528,7 +1529,23 @@ const SCHOOL_ACCENT_PALETTES = [
             `<span>${escapeHtml(part.name || 'Exam part')} <strong>${Number(part.weight) || 0}%</strong></span>`).join('')}</div></div>`).join('');
         return `<div class="school-k10-published-card"><div class="school-k10-published-card-head"><strong>${escapeHtml(grades)}</strong><span class="school-k10-grading-source badge badge-green">Published</span></div><div class="school-k10-published-weights">${weights || '<span>No saved grading components.</span>'}</div>${exams}</div>`;
       }).join('');
-      return `<div class="school-k10-published-summary"><div class="school-k10-exam-info-banner" role="note"><span class="school-k10-exam-info-icon"><i data-lucide="info" aria-hidden="true"></i></span><span>Published grades lock these settings. The saved weights and exam parts are shown below.</span></div><section class="school-k10-editor-section" aria-labelledby="schoolK10PublishedTitle"><h3 id="schoolK10PublishedTitle">Published grading setup</h3><div class="school-k10-published-list">${cards}</div></section></div>`;
+      return `<div class="school-k10-published-summary"><div class="school-k10-exam-info-banner" role="note"><span class="school-k10-exam-info-icon"><i data-lucide="info" aria-hidden="true"></i></span><span>Published grades lock these settings. The saved weights and exam parts are shown below.</span></div>${renderValuesDomainGuidance()}<section class="school-k10-editor-section" aria-labelledby="schoolK10PublishedTitle"><h3 id="schoolK10PublishedTitle">Published grading setup</h3><div class="school-k10-published-list">${cards}</div></section></div>`;
+    }
+
+    function renderValuesDomainGuidance() {
+      const subjects = state.k10EditorGroup?.allSubjects || (state.k10EditorSubject ? [state.k10EditorSubject] : []);
+      const applicable = subjects.filter(subject => subject.valuesDomains);
+      if (!applicable.length) return '';
+      const mismatch = applicable.some(subject => !subject.valuesDomainSetupMatches);
+      const isGmrc = applicable.some(subject => String(subject.subjectCode).startsWith('gmrc-'));
+      const scope = isGmrc ? 'GMRC Grades 4–6' : 'Values Education Grades 7–10';
+      return `<section class="school-k10-editor-section school-k10-domain-section" role="note">
+        <div class="school-k10-domain-heading"><h3>DepEd domain breakdown</h3><p>${scope}${isGmrc ? ' · Grades 2–3 keep their current setup' : ''}</p></div>
+        <div class="school-k10-domain-cards">
+          <div class="school-k10-domain-card"><div class="school-k10-domain-card-heading"><h4>Written/Oral Works</h4><strong>20%</strong></div><div class="school-k10-domain-row"><span>Cognitive</span><strong>10%</strong></div><div class="school-k10-domain-row"><span>Affective</span><strong>10%</strong></div></div>
+          <div class="school-k10-domain-card"><div class="school-k10-domain-card-heading"><h4>Performance Tasks</h4><strong>50%</strong></div><div class="school-k10-domain-row"><span>Cognitive</span><strong>10%</strong></div><div class="school-k10-domain-row"><span>Affective</span><strong>10%</strong></div><div class="school-k10-domain-row"><span>Behavioral</span><strong>30%</strong></div></div>
+          <div class="school-k10-domain-card"><div class="school-k10-domain-card-heading"><h4>Examinations</h4><strong>30%</strong></div><p class="school-k10-domain-exam-note">Split within Examinations</p><div class="school-k10-domain-row"><span>Summative Test 1</span><strong>30%</strong></div><div class="school-k10-domain-row"><span>Summative Test 2</span><strong>30%</strong></div><div class="school-k10-domain-row"><span>Term Exam</span><strong>40%</strong></div></div>
+        </div>${mismatch ? '<div class="school-k10-grading-warning">Saved weights or exam parts differ from DepEd’s rule. Grades using this setup cannot be domain-verified for SF9/SF10.</div>' : ''}</section>`;
     }
 
     function renderK10GroupStandardExamSummary({ showCustom = true } = {}) {
@@ -1629,9 +1646,9 @@ const SCHOOL_ACCENT_PALETTES = [
         const groupContent = `${renderK10GroupExamInfoBanner()}<div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>`;
         body.innerHTML = readOnly
           ? renderK10PublishedGroupSummary()
-          : `${groupContent}<section class="school-k10-editor-section school-k10-components-section" aria-labelledby="schoolK10ComponentsTitle"><div class="school-k10-section-heading"><div><h3 id="schoolK10ComponentsTitle">Component weights</h3><p>Set the weight for each grading component.</p></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div class="school-k10-component-table"><div class="school-k10-component-columns" aria-hidden="true"><span>Code</span><span>Component</span><span>Type</span><span>Weight (%)</span><span></span></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}</div><div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div></section>${hasAnyStandard ? renderK10GroupStandardExamSection(displayComponents, hasEditableStandard) : ''}${earlyExamNote}${exceptions}${syncPrompt}`;
+          : `${groupContent}${renderValuesDomainGuidance()}<section class="school-k10-editor-section school-k10-components-section" aria-labelledby="schoolK10ComponentsTitle"><div class="school-k10-section-heading"><div><h3 id="schoolK10ComponentsTitle">Component weights</h3><p>Set the weight for each grading component.</p></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div class="school-k10-component-table"><div class="school-k10-component-columns" aria-hidden="true"><span>Code</span><span>Component</span><span>Type</span><span>Weight (%)</span><span></span></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}</div><div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div></section>${hasAnyStandard ? renderK10GroupStandardExamSection(displayComponents, hasEditableStandard) : ''}${earlyExamNote}${exceptions}${syncPrompt}`;
       } else {
-        body.innerHTML = `<div class="subject-grading-editor-toolbar"><div><strong>Subject components</strong><div class="subject-grading-editor-total">Total must be 100%.</div></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}<div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div>${earlyExamNote}`;
+        body.innerHTML = `${renderValuesDomainGuidance()}<div class="subject-grading-editor-toolbar"><div><strong>Subject components</strong><div class="subject-grading-editor-total">Total must be 100%.</div></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}<div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div>${earlyExamNote}`;
       }
       if (readOnly) {
         if (window.lucide) lucide.createIcons();
@@ -2223,7 +2240,7 @@ const SCHOOL_ACCENT_PALETTES = [
       const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
       const finalGradeRules = `<div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="passingGradeThreshold">Passing grade threshold</label><input id="passingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${passingGradeThreshold}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="gradeRounding">Grade rounding</label><select id="gradeRounding" name="gradeRounding" ${isShs ? 'disabled' : ''}><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>${isShs ? 'SHS term grades use the curriculum transmutation table, so this rounding rule does not change them.' : 'Applied when final grades are calculated.'}</small></div></div></div>`;
       const saveButton = '<div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save grading rules</button></div>';
-      const subjectWeightTable = `<div class="school-shs-weight-section"><div class="school-section-block-title">Subject weights</div><div class="school-shs-weight-table-wrap"><table class="school-shs-weight-table"><thead><tr><th scope="col">Grading type</th><th scope="col">Written Work</th><th scope="col">Performance Tasks</th><th scope="col">Quarterly Assessment</th></tr></thead><tbody>${state.apiShsGradingTypes.map(type => `<tr><th scope="row">${escapeHtml(type.label)}</th><td>${Number(type.weights.ww)}%</td><td>${Number(type.weights.pt)}%</td><td>${Number(type.weights.qa)}%</td></tr>`).join('')}</tbody></table></div>
+      const subjectWeightTable = `<div class="school-shs-weight-section"><div class="school-section-block-title">Subject weights</div><div class="school-shs-weight-table-wrap"><table class="school-shs-weight-table"><thead><tr><th scope="col">Grading type</th><th scope="col">Written Work</th><th scope="col">Performance Tasks</th><th scope="col">Examinations</th></tr></thead><tbody>${state.apiShsGradingTypes.map(type => `<tr><th scope="row">${escapeHtml(type.label)}</th><td>${Number(type.weights.ww)}%</td><td>${Number(type.weights.pt)}%</td><td>${Number(type.weights.qa)}%</td></tr>`).join('')}</tbody></table></div>
         ${state.publishedShsGradeCount > 0 ? `<div class="school-shs-review-notice" role="status"><strong>${Number(state.publishedShsGradeCount).toLocaleString()} SHS grade${state.publishedShsGradeCount === 1 ? '' : 's'} already published.</strong> This correction does not change published results. Review historical grades against the grading rules used when they were published.</div>` : ''}`;
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-grading-pane active">

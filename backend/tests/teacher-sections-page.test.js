@@ -43,6 +43,16 @@ test('teacher student roster uses identity cards on phones and keeps table data 
   assert.match(sectionsStyles, /#studentTable tbody tr\.panel-empty-row td[\s\S]*?display: block/);
 });
 
+test('Score Recording keeps student names beside the sticky heading on desktop', () => {
+  const desktopStickyName = sectionsStyles.match(/#scoreTable tbody th\.sticky-col \{\s*position: sticky;\s*left: 0;\s*z-index: 3;\s*background: var\(--theme-surface\);[^}]*\}/);
+  assert.ok(desktopStickyName);
+  assert.match(sectionsStyles, /#scoreTable thead th\.sticky-col \{\s*z-index: 4;[^}]*inset -1px 0 0 var\(--panel-divider\)/);
+  assert.match(desktopStickyName[0], /inset -1px 0 0 var\(--panel-divider\)/);
+  assert.match(sectionsStyles, /#scoreTable tbody tr:hover \{\s*background: transparent;\s*\}/);
+  assert.doesNotMatch(sectionsStyles, /#scoreTable tbody tr:hover th\.sticky-col/);
+  assert.match(sectionsScript, /<th scope="row" class="sticky-col">/);
+});
+
 test('Score Recording keeps its student column aligned and above scrolling headers on phones', () => {
   const phoneStickyColumn = sectionsStyles.match(/@media \(max-width: 560px\) \{\s*#scoreTable thead th\.sticky-col,\s*#scoreTable tbody th\.sticky-col \{[^}]*\}/);
   assert.ok(phoneStickyColumn);
@@ -415,7 +425,7 @@ test('invalid requested subject does not publish a section identity or request i
   assert.equal(await testContext.context.initialize(), false);
   assert.equal(testContext.rosterRequested(), false);
   assert.equal(testContext.elements.get('sectionHeaderName').textContent, '');
-  assert.equal(testContext.context.BACKEND_SECTION_ERROR, 'That subject is not assigned to you in this section.');
+  assert.equal(testContext.context.BACKEND_SECTION_ERROR, 'Your assigned sections could not be loaded. Refresh and try again.');
 });
 
 test('roster failure keeps the existing unavailable-section error path', async () => {
@@ -428,7 +438,7 @@ test('roster failure keeps the existing unavailable-section error path', async (
   testContext.rejectRoster(new Error('Roster unavailable'));
 
   assert.equal(await initialized, false);
-  assert.equal(testContext.context.BACKEND_SECTION_ERROR, 'Roster unavailable');
+  assert.equal(testContext.context.BACKEND_SECTION_ERROR, 'Your assigned sections could not be loaded. Refresh and try again.');
   assert.match(sectionsSource, /if \(!sectionReady\) \{\s*renderUnavailableSectionPage\(\)/);
 });
 
@@ -506,14 +516,133 @@ test('grading average headers abbreviate standard categories but retain accessib
 test('score component headers abbreviate standard categories while retaining full export labels', () => {
   assert.match(sectionsSource, /const categoryName = String\(component\.categoryName \|\| component\.cat \|\| ''\)\.trim\(\)/);
   assert.match(sectionsSource, /categoryHeader: gradingAverageHeaderLabel\(categoryName\)/);
-  assert.match(sectionsSource, /categoryName,\s*categoryHeader: gradingAverageHeaderLabel\(categoryName\)/);
+  assert.match(sectionsScript, /categoryName,\s*domainCode: component\.domainCode,\s*categoryHeader: gradingAverageHeaderLabel\(categoryName\)/);
   assert.match(sectionsSource, /data-category-name=/);
   assert.match(sectionsSource, /renderScoreTable: renderSharedScoreTable/);
 });
 
+test('score category tabs show saved weights and filter matching score items', () => {
+  const render = extractSourceBetween(sectionsScript,
+    'function renderSharedScoreCategories(', '\n    function renderSharedComponentChoices(');
+  const filter = extractSourceBetween(sectionsScript,
+    'function filterSharedScoreTable(', '\n    function renderSharedScoreTable(');
+  assert.ok(render && filter);
+  const context = vm.createContext({ window: {
+    EDUGNAY_CONFIG: { escapeHtml: value => String(value) },
+    lucide: { createIcons() {} }
+  } });
+  vm.runInContext(`${render}\n${filter}`, context);
+
+  function makeTabs() {
+    let html = '';
+    const tabs = { buttons: [], querySelectorAll: () => tabs.buttons };
+    Object.defineProperty(tabs, 'innerHTML', {
+      get: () => html,
+      set(value) {
+        html = value;
+        tabs.buttons = [...value.matchAll(/<button class="cat-tab ([^"]*)"[^>]*data-cat="([^"]+)"/g)].map(match => {
+          const button = { dataset: { cat: match[2] }, active: match[1] === 'active' };
+          button.classList = { toggle(_name, selected) { button.active = selected; } };
+          button.addEventListener = (_event, handler) => { button.click = handler; };
+          return button;
+        });
+      }
+    });
+    return tabs;
+  }
+
+  const search = { value: 'ey' };
+  const rows = [{ dataset: { studentName: 'eyannah' }, hidden: false }, { dataset: { studentName: 'jose' }, hidden: false }];
+  const cells = ['WRITTEN-ORAL-WORKS', 'PERFORMANCE-TASKS', 'EXAMINATIONS'].map(cat => ({ dataset: { cat }, hidden: false }));
+  const footer = { textContent: '' };
+  const host = {
+    querySelector: selector => selector === '#scoreStudentSearch' ? search : footer,
+    querySelectorAll: selector => selector.includes('data-student-name') ? rows : cells
+  };
+  const tabs = makeTabs();
+  const categories = [
+    { code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: 20 },
+    { code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: 50 },
+    { code: 'examinations', name: 'Examinations', componentType: 'examination', weight: 30 }
+  ];
+  context.renderSharedScoreCategories(tabs, categories, category => context.filterSharedScoreTable(host, category));
+  assert.match(tabs.innerHTML, /Written\/Oral Works.*20%/);
+  assert.match(tabs.innerHTML, /Performance Tasks.*50%/);
+  assert.match(tabs.innerHTML, /Examinations.*30%/);
+  assert.match(tabs.innerHTML, /data-lucide="clipboard-list"/);
+  assert.doesNotMatch(tabs.innerHTML, />0%<\/span>/);
+  tabs.buttons[3].click();
+  assert.deepEqual(cells.map(cell => cell.hidden), [true, true, false]);
+  assert.equal(tabs.buttons[3].active, true);
+  assert.deepEqual(rows.map(row => row.hidden), [false, true]);
+  assert.equal(footer.textContent, 'Showing 1 of 2 students');
+  tabs.buttons[0].click();
+  assert.deepEqual(cells.map(cell => cell.hidden), [false, false, false]);
+  const noExamItems = { ...host, querySelectorAll: selector => selector.includes('data-student-name') ? rows : cells.slice(0, 2) };
+  context.filterSharedScoreTable(noExamItems, 'EXAMINATIONS');
+  assert.deepEqual(cells.slice(0, 2).map(cell => cell.hidden), [true, true]);
+  context.renderSharedScoreCategories(tabs, categories.map((category, index) => ({ ...category, weight: [25, 35, 40][index] })), () => {});
+  assert.match(tabs.innerHTML, /Examinations.*40%/);
+  context.renderSharedScoreCategories(tabs, [
+    { code: 'WW', name: 'Written/Oral Works', weight: 20 },
+    { code: 'PT', name: 'Performance Tasks', weight: 50 },
+    { code: 'QA', name: 'Examinations', weight: 30 }
+  ], () => {});
+  assert.match(tabs.innerHTML, /data-cat="QA".*Examinations.*30%/);
+  assert.match(shsGradebookScript, /renderScoreCategories\(tabs, categories, onChange\)/);
+  assert.match(sectionsStyles, /#scoreTable \[data-cat\]\[hidden\] \{\s*display: none;/);
+});
+
+test('Score Recording toolbar keeps Export without Fill Perfect', () => {
+  assert.match(sectionsSource, /id="scoreStudentSearch"/);
+  assert.match(sectionsSource, /id="exportScoresButton"/);
+  for (const source of [sectionsSource, sectionsScript, shsGradebookScript]) {
+    assert.doesNotMatch(source, /fillPerfectScoresButton|pfa5c76a0aeef|fillAllPresent|Fill Perfect/);
+  }
+});
+
+test('score CSV grade header matches the selected grading method', async () => {
+  const exportSource = extractSourceBetween(sectionsScript,
+    'function exportScoresCsv() {', '\n    function savePendingBackendScore(');
+
+  async function exportHeader(gradingScale) {
+    let exportedBlob;
+    const row = {
+      style: { display: '' },
+      querySelector: selector => selector === '.student-name' ? { textContent: 'Sample Student' } : null,
+      querySelectorAll: () => []
+    };
+    const document = {
+      getElementById: id => id === 'exportScoresButton' ? { disabled: false, title: '' } : { value: 'period-1' },
+      querySelectorAll: selector => selector === '#scoreTbody tr[data-student-id]' ? [row] : [],
+      createElement: () => ({ click() {} })
+    };
+    const context = vm.createContext({
+      document,
+      URL: { createObjectURL: blob => { exportedBlob = blob; return 'blob:score-export'; }, revokeObjectURL() {} },
+      Blob,
+      ACADEMIC_PERIODS: [{ id: 'period-1', name: 'Term 1' }],
+      CURRENT_SECTION_RECORD: { academicYear: '2026–2027' },
+      CURRENT_SECTION: 'Section A',
+      CURRENT_SUBJECT: 'Values Education',
+      CURRENT_GRADING_RULES: [{ id: 'WW' }],
+      CURRENT_GRADE_SCALE: gradingScale,
+      updateScoreFooter() {},
+      showAppToast() {},
+      setTimeout() {}
+    });
+    vm.runInContext(exportSource, context);
+    context.exportScoresCsv();
+    return (await exportedBlob.text()).split('\r\n')[0].replace(/^\uFEFF/, '');
+  }
+
+  assert.equal(await exportHeader('deped_zero_based'), '"Student","WW Avg","Final Grade"');
+  assert.equal(await exportHeader('legacy_shs_transmutation'), '"Student","WW Avg","Weighted Grade"');
+});
+
 test('shared score table uses one empty state for missing components and missing students', () => {
-  const renderer = extractSourceBetween(sectionsSource,
-    'function renderSharedScoreTable(', '\n\n    window.TeacherClassViews =');
+  const renderer = extractSourceBetween(sectionsScript,
+    'function renderSharedScoreTable(', '\n    window.TeacherClassViews =');
   assert.ok(renderer);
 
   function renderEmpty(items, students) {
@@ -744,6 +873,7 @@ test('Publish Grades preview presents final results and teacher-facing blocker g
     if (!elements.has(id)) elements.set(id, makeElement());
     return elements.get(id);
   };
+  const warningLines = () => element('publishGradeWarningText').children.map(item => item.textContent);
   element('academicPeriodSelect').selectedOptions = [{ textContent: 'Term 1' }];
   let renderedRows = [];
   const context = vm.createContext({
@@ -818,7 +948,109 @@ test('Publish Grades preview presents final results and teacher-facing blocker g
 
   context.renderPublishGradePreview({ ...preview, readyToPublish: false, missingScoreCount: 1 }, {});
   assert.equal(element('publishGradeWarning').hidden, false);
-  assert.match(element('publishGradeWarningText').textContent, /1 blank score field\. A score of 0 is valid/);
+  assert.deepEqual(warningLines(), ['Enter 1 missing score. A score of 0 is valid.']);
+
+  const missingDomainIssue = { code: 'missing_values_domain', message: 'Choose a domain for this score item.' };
+  context.renderPublishGradePreview({ ...preview, readyToPublish: false, issues: [missingDomainIssue] }, {});
+  assert.deepEqual(warningLines(), ['Choose a domain for 1 Written/Oral Works or Performance Tasks score item.']);
+
+  context.renderPublishGradePreview({
+    ...preview,
+    readyToPublish: false,
+    issues: [missingDomainIssue, { code: 'no_grading_items' }, missingDomainIssue, missingDomainIssue]
+  }, {});
+  assert.deepEqual(warningLines(), ['Choose a domain for 3 Written/Oral Works or Performance Tasks score items.']);
+
+  const missingRequiredDomain = { code: 'values_domain_without_items', componentName: 'Written/Oral Works', domainName: 'Cognitive' };
+  context.renderPublishGradePreview({ ...preview, readyToPublish: false, issues: [missingRequiredDomain] }, {});
+  assert.deepEqual(warningLines(), ['Add a Written/Oral Works item for Cognitive.']);
+
+  context.renderPublishGradePreview({
+    ...preview, readyToPublish: false,
+    issues: [missingRequiredDomain,
+      { code: 'values_domain_without_items', componentName: 'Performance Tasks', domainName: 'Affective' },
+      { code: 'values_domain_without_items', componentName: 'Performance Tasks', domainName: 'Behavioral' },
+      { code: 'no_grading_items' }, missingDomainIssue, { code: 'exam_part_without_items', message: 'Add Summative Test 1.' }]
+  }, {});
+  assert.deepEqual(warningLines(), [
+    'Choose a domain for 1 Written/Oral Works or Performance Tasks score item.',
+    'Add a Written/Oral Works item for Cognitive.',
+    'Add Performance Tasks items for Affective and Behavioral.',
+    'Add Summative Test 1.'
+  ]);
+
+  context.renderPublishGradePreview(preview, {});
+  assert.equal(element('publishGradeWarning').hidden, true);
+
+  context.renderPublishGradePreview({ ...preview, readyToPublish: false, issues: [{ code: 'no_grading_items' }] }, {});
+  assert.deepEqual(warningLines(), ['Add a score item for this grading period.']);
+
+  const guidanceCases = [
+    ['incompatible_period_structure', 'Ask your school administrator to set up three grading periods for this school year.'],
+    ['unconfigured_subject_grading', "Ask your school administrator to finish this subject's grading setup."],
+    ['values_domain_setup_mismatch', 'Ask your school administrator to check the GMRC/Values Education weights (20%, 50%, 30%) and exam split (30%, 30%, 40%).'],
+    ['early_grade_exam_setup_required', 'Ask your school administrator to add exam parts for Grades 2 and 3.'],
+    ['early_grade_exam_setup_review_required', 'Ask your school administrator to review and save the exam split for Grades 2 and 3.'],
+    ['invalid_category_weights', 'Ask your school administrator to make the grading weights total 100%.'],
+    ['invalid_rounding_rule', 'Ask your school administrator to check the grade rounding setting.'],
+    ['invalid_passing_threshold', 'Ask your school administrator to check the passing grade setting.'],
+    ['no_grading_categories', "Ask your school administrator to set up this subject's grading components."],
+    ['no_students', 'Ask your school administrator to check the class list. No active students are enrolled.'],
+    ['duplicate_published_grade', 'Ask your school administrator to check duplicate published grades for this subject and period.'],
+    ['unclassified_shs_section', "Ask your school administrator to confirm this section's strand."],
+    ['unclassified_shs_subject', "Ask your school administrator to choose this subject's grading type."],
+    ['invalid_shs_grading_categories', 'Ask your school administrator to check the SHS grading setup.']
+  ];
+  for (const [code, expected] of guidanceCases) {
+    context.renderPublishGradePreview({ ...preview, readyToPublish: false, issues: [{ code }] }, {});
+    assert.deepEqual(warningLines(), [expected], code);
+  }
+
+  const itemIssueMessages = [
+    ['invalid_max_score', 'Set the maximum score for “Quiz 1” above 0.'],
+    ['invalid_item_category', 'Choose a grading category for score item “Quiz 1”.'],
+    ['invalid_item_component', 'Ask your school administrator to check the grading setup for “Quiz 1”.'],
+    ['invalid_item_exam_part', 'Choose an exam part from this subject’s setup for “Exam 1”.'],
+    ['invalid_values_domain', 'Remove the domain from Examination item “Exam 1”.'],
+    ['category_without_items', 'Add a score item for Written Work.'],
+    ['component_without_items', 'Add a score item for Performance Tasks.'],
+    ['exam_part_without_items', 'Add an Examinations score item for Term Exam.']
+  ];
+  for (const [code, message] of itemIssueMessages) {
+    context.renderPublishGradePreview({ ...preview, readyToPublish: false, issues: [{ code, message }] }, {});
+    assert.deepEqual(warningLines(), [message], code);
+  }
+
+  context.renderPublishGradePreview({ ...preview, readyToPublish: false, missingScoreCount: 2, invalidScoreCount: 1 }, {});
+  assert.deepEqual(warningLines(), [
+    'Enter 2 missing scores. A score of 0 is valid.',
+    "Correct 1 score. Use a number from 0 to the item's maximum score."
+  ]);
+
+  context.renderPublishGradePreview({
+    ...preview, readyToPublish: false, missingScoreCount: 3, invalidScoreCount: 2,
+    issues: [
+      { code: 'unconfigured_subject_grading' }, { code: 'no_grading_categories' },
+      { code: 'values_domain_setup_mismatch' }, { code: 'invalid_category_weights' },
+      { code: 'invalid_max_score', message: 'Set the maximum score for “<Quiz 1>” above 0.' },
+      { code: 'invalid_max_score', message: 'Set the maximum score for “<Quiz 1>” above 0.' },
+      { code: 'exam_part_without_items', message: 'Add an Examinations score item for Summative Test 1.' }
+    ]
+  }, {});
+  assert.deepEqual(warningLines(), [
+    "Ask your school administrator to finish this subject's grading setup.",
+    'Ask your school administrator to check the GMRC/Values Education weights (20%, 50%, 30%) and exam split (30%, 30%, 40%).',
+    'Set the maximum score for “<Quiz 1>” above 0.',
+    'Add an Examinations score item for Summative Test 1.',
+    'Enter 3 missing scores. A score of 0 is valid.',
+    "Correct 2 scores. Use a number from 0 to the item's maximum score."
+  ]);
+  assert.ok(warningLines().every(line => !/[—–]/.test(line)));
+  assert.equal(element('publishGradeWarningText').children.length, 6);
+
+  context.renderPublishGradePreview({ ...preview, readyToPublish: false, issues: [{ code: 'unknown', message: 'Check Item A — then try again.' }] }, {});
+  assert.deepEqual(warningLines(), ['Check Item A - then try again.']);
+  assert.match(sectionsScript, /item\.textContent = message/);
 
   context.renderPublishGradePreview({
     ...preview,
@@ -839,12 +1071,14 @@ test('Publish Grades preview presents final results and teacher-facing blocker g
 
 test('Publish Grades shows actionable blockers and hides the warning when ready', () => {
   assert.match(sectionsSource, /id="publishGradeWarning" role="alert" hidden/);
+  assert.match(sectionsSource, /Before you publish<\/div>\s*<ul class="publish-warn-text" id="publishGradeWarningText"><\/ul>/);
   assert.match(sectionsSource, /A score of 0 is valid\./);
   assert.match(sectionsSource, /warning\.hidden = Boolean\(preview\.readyToPublish\)/);
   assert.match(sectionsSource, /Final grades for \$\{publishableCount\} .* are ready to publish/);
   assert.match(sectionsSource, /function teacherFriendlyPreviewIssue\(issue\)/);
-  assert.match(sectionsSource, /incompatible_period_structure: 'The DepEd grading method needs three grading periods/);
+  assert.match(sectionsScript, /incompatible_period_structure: 'Ask your school administrator to set up three grading periods for this school year/);
   assert.match(sectionsStyles, /\.publish-warn\[hidden\]\s*\{\s*display:\s*none;/);
+  assert.match(sectionsStyles, /\.publish-warn-text\s*\{[^}]*color:\s*var\(--theme-warning-dark\);[^}]*padding-left:\s*18px;/s);
   assert.match(sectionsStyles, /\.publish-preview-list\s*\{[^}]*max-height:\s*min\(48vh, 440px\)/);
   assert.match(sectionsStyles, /\.publish-preview-list\s*\{[^}]*display:\s*grid/);
   assert.match(sectionsStyles, /\.publish-preview-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1\.8fr\)/);

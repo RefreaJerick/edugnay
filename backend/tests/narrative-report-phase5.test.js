@@ -34,6 +34,7 @@ function reportDatabase({ report, history = [], denied = false }) {
       if (sql.includes('SELECT display_name AS displayName FROM users WHERE id = ?')) return [[{ displayName: 'Adviser' }]];
       if (sql.includes('SELECT display_name AS displayName FROM users')) return [[{ displayName: 'Synthetic Learner' }]];
       if (sql.includes('FROM parent_notification_triggers')) return [[{ enabled: 1 }]];
+      if (sql.includes('FROM school_parent_notification_settings')) return [[{ enabled: 0 }]];
       return [{ affectedRows: 1 }];
     }
   };
@@ -74,6 +75,31 @@ test('corrected release creates version 2 in one transaction and uses a distinct
     const incomplete = reportDatabase({ report, history: [] });
     await assert.rejects(releaseConfirmedReport(request(), incomplete), error => error.status === 409);
     assert.equal(incomplete.calls.some(call => call.sql?.startsWith('INSERT INTO notifications')), false);
+  } finally {
+    if (previous === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
+    else process.env.AI_REPORTS_RELEASE_ENABLED = previous;
+  }
+});
+
+test('grade viewing turned off blocks grade-based and older unmarked drafts before release', async () => {
+  const previous = process.env.AI_REPORTS_RELEASE_ENABLED;
+  process.env.AI_REPORTS_RELEASE_ENABLED = 'true';
+  try {
+    for (const marker of [1, null]) {
+      const report = { id: 101, sectionId: 22, studentId: 4, status: 'confirmed',
+        releasedAt: null, pendingCorrection: 0, gradesEnabled: 0, gradeEvidenceUsed: marker };
+      const db = reportDatabase({ report });
+      await assert.rejects(releaseConfirmedReport(request(), db), error =>
+        error.status === 409 && /Reopen this report and regenerate/.test(error.message));
+      assert.equal(db.calls.some(call => call.sql?.startsWith('UPDATE narrative_reports SET released_at')), false);
+      assert.equal(db.calls.some(call => call.sql?.includes('INSERT INTO narrative_report_releases')), false);
+      assert.ok(db.calls.includes('ROLLBACK'));
+    }
+    const alreadyReleased = reportDatabase({ report: {
+      id: 101, sectionId: 22, studentId: 4, status: 'confirmed', releasedAt: '2026-10-18',
+      pendingCorrection: 0, gradesEnabled: 0, gradeEvidenceUsed: null
+    } });
+    assert.equal((await releaseConfirmedReport(request(), alreadyReleased)).alreadyReleased, true);
   } finally {
     if (previous === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
     else process.env.AI_REPORTS_RELEASE_ENABLED = previous;
@@ -166,6 +192,56 @@ test('AI quota reserves before sending, counts failures, isolates schools, and r
     if (previous === undefined) delete process.env.AI_REPORTS_DAILY_CALL_LIMIT;
     else process.env.AI_REPORTS_DAILY_CALL_LIMIT = previous;
   }
+});
+
+test('invalid numeric drafts use one quota-counted retry and record a safe reason', async () => {
+  const calls = [];
+  const database = { async execute(sql, values = []) {
+    calls.push({ sql, values });
+    if (sql.includes('ai_evidence_approved_at')) return [[{ approvedAt: '2026-11-13 08:00:00' }]];
+    return [{ affectedRows: 1 }];
+  } };
+  const reasons = [];
+  const draft = await generateWithQuota({ database, schoolId: 1, student: {}, reportWeek: {} }, {
+    now: new Date('2026-11-13T02:00:00Z'),
+    provider: async ({ retryReason }) => {
+      reasons.push(retryReason);
+      if (!retryReason) {
+        const error = new Error('The AI draft did not meet the expected format.');
+        error.category = 'invalid_output'; error.reasonCode = 'numeric_result';
+        error.usage = { inputTokens: 10, outputTokens: 5 };
+        throw error;
+      }
+      return { summary: 'Safe draft', usage: { inputTokens: 12, outputTokens: 6 } };
+    }
+  });
+  assert.equal(draft.summary, 'Safe draft');
+  assert.deepEqual(reasons, [null, 'numeric_result']);
+  assert.equal(calls.filter(call => call.sql?.startsWith('UPDATE ai_report_daily_usage SET call_count')).length, 2);
+  assert.deepEqual(calls.filter(call => call.sql?.includes('INSERT INTO ai_report_daily_errors'))
+    .map(call => call.values[2]), ['invalid_output_numeric_result']);
+  assert.equal(calls.filter(call => call.sql?.startsWith('UPDATE ai_report_daily_usage SET input_tokens')).length, 2);
+});
+
+test('a second invalid draft stops after two attempts', async () => {
+  const calls = [];
+  const database = { async execute(sql, values = []) {
+    calls.push({ sql, values });
+    if (sql.includes('ai_evidence_approved_at')) return [[{ approvedAt: '2026-11-13 08:00:00' }]];
+    return [{ affectedRows: 1 }];
+  } };
+  let attempts = 0;
+  await assert.rejects(generateWithQuota({ database, schoolId: 1, student: {}, reportWeek: {} }, {
+    now: new Date('2026-11-13T02:00:00Z'), provider: async () => {
+      attempts++;
+      const error = new Error('The AI draft did not meet the expected format.');
+      error.category = 'invalid_output'; error.reasonCode = 'numeric_result';
+      throw error;
+    }
+  }), error => error.category === 'invalid_output' && error.reasonCode === 'numeric_result');
+  assert.equal(attempts, 2);
+  assert.equal(calls.filter(call => call.sql?.startsWith('UPDATE ai_report_daily_usage SET call_count')).length, 2);
+  assert.equal(calls.filter(call => call.sql?.includes('INSERT INTO ai_report_daily_errors')).length, 2);
 });
 
 test('revoked school approval blocks the AI before quota or provider use', async () => {

@@ -1,13 +1,23 @@
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
+const fsSync = require('node:fs');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
+const testUploadRoot = fsSync.mkdtempSync(path.join(os.tmpdir(), 'academix-assignment-tests-'));
+process.env.ASSIGNMENT_SUBMISSION_DIRECTORY = path.join(testUploadRoot, 'assignment-submissions');
+process.env.MATERIAL_UPLOAD_DIRECTORY = path.join(testUploadRoot, 'learning-materials');
+
 const databaseModule = require('../config/database');
 const { uploadDirectory } = require('../config/uploads');
 const { errorHandler } = require('../middleware/errorHandler');
+
+test.after(async () => {
+  await fs.rm(testUploadRoot, { recursive: true, force: true });
+  await assert.rejects(fs.stat(testUploadRoot), error => error.code === 'ENOENT');
+});
 
 let submissionCount = 0;
 let gradingItemFound = false;

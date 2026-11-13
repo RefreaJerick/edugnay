@@ -409,7 +409,7 @@
       padding: 14px 16px;
       margin-top: 10px;
     }
-    .report-card-metrics.without-journal { grid-template-columns: 1fr; }
+    .report-card-metrics.without-journal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
     .rc-metric {
       text-align: center;
@@ -1578,17 +1578,32 @@
 .report-card-identity { gap: 3px; }
 .report-card-name { color: var(--gray-800); font-size: 13px; }
 .report-card-meta { color: var(--gray-400); font-size: 10px; }
-.report-card-metrics { min-height: 120px; align-content: start; padding: 10px 14px; }
-.rc-metric.wide.has-records .rc-metric-val { color: var(--theme-success-text); }
-.rc-metric.wide:not(.has-records) .rc-metric-val { color: var(--gray-500); }
-.report-card-excerpt { padding: 12px 14px 12px; }
-.report-card .excerpt-label { gap: 5px; margin-bottom: 6px; font-size: 9px; }
-.report-card .excerpt-label > svg { width: 12px !important; height: 12px !important; flex: 0 0 12px; }
-.excerpt-text {
-  min-height: 68px;
-  overflow-wrap: anywhere;
+.report-card-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+  margin-top: 0;
+  padding: 10px 14px;
 }
-.report-card .excerpt-text { font-size: 10px; }
+.report-card-metrics.without-journal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.report-card-metrics .rc-metric { min-width: 0; padding: 0; }
+.report-card-metrics .rc-metric.absences.has-absences .rc-metric-val { color: var(--theme-warning-strong); }
+.report-card-metrics .rc-metric.absences.no-records .rc-metric-val { color: var(--gray-500); }
+.report-card-excerpt { padding: 10px 14px; }
+.report-card .excerpt-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.5;
+}
 .report-card-foot { min-height: 52px; padding: 10px 14px; margin-top: auto; }
 .report-card-status { max-width: 100%; }
 .report-card-review { gap: 6px; }
@@ -1889,8 +1904,8 @@
 
 /* Compact review content while preserving its existing header treatment. */
 #review-modal .review-modal {
-  width: min(700px, calc(100vw - 32px));
-  max-width: 700px;
+  width: min(670px, calc(100vw - 32px));
+  max-width: 670px;
   max-height: min(90vh, 900px);
 }
 #review-modal .review-body {
@@ -1900,21 +1915,37 @@
 #review-modal .review-section { margin-bottom: 16px; }
 #review-modal .review-section:last-child { margin-bottom: 0; }
 #review-modal .review-section-label { margin-bottom: 7px; }
+#review-modal .review-grade-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--orange-border);
+  border-radius: 7px;
+  background: var(--orange-pale);
+  color: var(--theme-warning-strong);
+  font-size: 12px;
+  line-height: 1.5;
+}
+#review-modal .review-grade-warning[hidden] { display: none; }
+#review-modal .review-grade-warning svg { width: 16px; height: 16px; flex: 0 0 16px; }
 #review-modal .data-source-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
-#review-modal .data-source-grid.without-journal .ds-academic { grid-column: 1 / -1; }
 #review-modal .data-source-card {
-  min-height: 68px;
-  gap: 9px;
-  padding: 9px 10px;
+  position: relative;
+  display: block;
+  min-height: 0;
+  padding: 10px 12px;
 }
-#review-modal .ds-icon { width: 28px; height: 28px; }
-#review-modal .ds-icon svg { width: 16px; height: 16px; }
-#review-modal .ds-val { font-size: 12px; }
-#review-modal .ds-detail { font-size: 10px; line-height: 1.45; }
-#review-modal .ds-label { font-size: 8.5px; }
+#review-modal .ds-head { min-height: 24px; margin-bottom: 7px; padding-right: 30px; }
+#review-modal .ds-icon { position: absolute; top: 10px; right: 12px; width: 24px; height: 24px; }
+#review-modal .ds-icon svg { width: 14px; height: 14px; }
+#review-modal .ds-label { margin: 0; color: var(--gray-700); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+#review-modal .ds-val { display: block; font-size: 14px; line-height: 1.35; }
+#review-modal .ds-detail { margin-top: 4px; font-size: 11px; line-height: 1.45; }
 #review-modal .ai-report-text { min-height: 150px; }
 #review-modal .review-modal-foot {
   flex-wrap: wrap;
@@ -2017,7 +2048,7 @@
 #review-modal .report-reopen-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 760px) {
   #review-modal .review-modal {
-    width: min(700px, calc(100vw - 20px));
+    width: min(900px, calc(100vw - 20px));
     max-height: calc(100vh - 20px);
   }
   #review-modal .review-body { padding: 16px 18px; }

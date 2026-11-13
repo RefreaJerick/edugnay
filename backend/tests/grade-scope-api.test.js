@@ -50,7 +50,7 @@ test('school structure API rejects Kindergarten and Grade 1 codes', async () => 
       }] }
     });
 
-    assert.match(result.error?.message || '', /grade-level configuration is invalid/i, gradeCode);
+    assert.equal(result.error?.message, 'Review the selected grade levels and try again.', gradeCode);
     assert.ok(events.includes('rollback'), gradeCode);
     assert.equal(events.some(event => typeof event === 'object' && event.sql.startsWith('INSERT INTO school_grade_levels')), false, gradeCode);
   }

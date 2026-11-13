@@ -52,17 +52,17 @@ function selectedStudents(body, evidence) {
   return { students: normalizedIds.map(id => roster.get(String(id))), notes, regenerate: body.regenerateDrafts === true };
 }
 
-function sourceReferences(student, journalApplicable = false) {
+function sourceReferences(student, journalApplicable = false, gradesEnabled = true) {
   const references = [];
   const add = (type, value) => {
     const id = positiveId(value);
     if (id) references.push({ type, id });
   };
-  student.attendance.sources.forEach(source => {
-    if (source.recordId) add('attendance_record', source.recordId);
-    else add('attendance_session', source.sessionId);
-  });
-  student.assignments.sources.slice(0, 20).forEach(source => {
+  student.attendance.sources.filter(source =>
+    source.recordId && ['present', 'late', 'absent', 'excused'].includes(source.status))
+    .forEach(source => add('attendance_record', source.recordId));
+  student.assignments.sources.filter(source =>
+    ['submitted', 'not_submitted'].includes(source.status)).forEach(source => {
     add('assignment', source.assignmentId);
     if (source.submissionId) add('assignment_submission', source.submissionId);
   });
@@ -70,9 +70,17 @@ function sourceReferences(student, journalApplicable = false) {
     student.journal.sources.filter(source => ['submitted', 'reviewed'].includes(source.status)).slice(-3)
       .forEach(source => add('journal_entry', source.entryId));
   }
-  student.academicRecords
-    .forEach(source => add('published_final_grade', source.gradeId));
-  (student.academicScores || []).forEach(score => add('student_score', score.scoreId));
+  if (gradesEnabled) {
+    const reasons = student.candidateReasons || [];
+    reasons.filter(reason => reason?.type === 'low_scores')
+      .flatMap(reason => reason.scores || [])
+      .forEach(score => add('student_score', score.scoreId));
+    const gradeReasons = reasons.filter(reason => reason?.type === 'grade');
+    student.academicRecords.filter(record => gradeReasons.some(reason =>
+      record.subjectName === reason.subject && Number(record.finalGrade) === Number(reason.grade) &&
+      record.termName === reason.term))
+      .forEach(record => add('published_final_grade', record.gradeId));
+  }
   return [...new Map(references.map(ref => [`${ref.type}:${ref.id}`, ref])).values()];
 }
 
@@ -102,6 +110,8 @@ async function saveDraft({ database, req, student, evidence, draft, teacherNote,
   const teacherId = Number(req.user.id);
   const sectionId = Number(evidence.section.id);
   const key = periodKey(evidence.reportWeek.startDate);
+  const gradeEvidenceUsed = Boolean(evidence.section.gradesEnabled &&
+    student.candidateReasons?.some(reason => ['low_scores', 'grade'].includes(reason.type)));
   const connection = await database.getConnection();
   let transactionStarted = false;
   try {
@@ -120,10 +130,11 @@ async function saveDraft({ database, req, student, evidence, draft, teacherNote,
       await connection.execute(
         `UPDATE narrative_reports SET teacher_user_id = ?, teacher_note = ?, ai_model = ?,
           generated_summary = ?, teacher_edited_summary = NULL, ai_follow_up_suggestion = ?,
+          grade_evidence_used = ?,
           report_week_start_date = ?, report_week_end_date = ?, report_period_label = ?,
           is_at_risk = FALSE, generated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND school_id = ? AND report_status = 'draft'`,
-        [teacherId, teacherNote || null, draft.model, draft.summary, draft.followUpSuggestion,
+        [teacherId, teacherNote || null, draft.model, draft.summary, draft.followUpSuggestion, gradeEvidenceUsed,
           evidence.reportWeek.startDate, evidence.reportWeek.endDate, periodLabel(evidence.reportWeek), reportId, schoolId]
       );
       await connection.execute('DELETE FROM report_recommendations WHERE narrative_report_id = ?', [reportId]);
@@ -133,11 +144,12 @@ async function saveDraft({ database, req, student, evidence, draft, teacherNote,
         `INSERT INTO narrative_reports (
           school_id, student_user_id, section_id, teacher_user_id,
           report_week_start_date, report_week_end_date, report_period_key, report_period_label,
-          teacher_note, ai_model, generated_summary, ai_follow_up_suggestion, report_status, is_at_risk
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', FALSE)`,
+          teacher_note, ai_model, generated_summary, ai_follow_up_suggestion,
+          grade_evidence_used, report_status, is_at_risk
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', FALSE)`,
         [schoolId, Number(student.id), sectionId, teacherId,
           evidence.reportWeek.startDate, evidence.reportWeek.endDate, key, periodLabel(evidence.reportWeek),
-          teacherNote || null, draft.model, draft.summary, draft.followUpSuggestion]
+          teacherNote || null, draft.model, draft.summary, draft.followUpSuggestion, gradeEvidenceUsed]
       );
       reportId = Number(result.insertId);
     }
@@ -147,7 +159,7 @@ async function saveDraft({ database, req, student, evidence, draft, teacherNote,
         [reportId, action, index + 1]
       );
     }
-    const references = sourceReferences(student, evidence.section.journalApplicable);
+    const references = sourceReferences(student, evidence.section.journalApplicable, evidence.section.gradesEnabled);
     if (references.length) {
       await connection.execute(
         `INSERT INTO report_data_sources (narrative_report_id, source_type, source_record_id) VALUES ${references.map(() => '(?, ?, ?)').join(', ')}`,
@@ -188,18 +200,22 @@ async function processWeeklyGeneration(req, {
       const reason = skipReason(existing, sectionId, selection.regenerate);
       if (reason) outcome = { status: 'skipped', reason };
       else {
-        if ((student.lowScoreReasons || []).reduce((count, flag) => count + flag.scores.length, 0) > 20) {
+        if (evidence.section.gradesEnabled !== false &&
+          (student.lowScoreReasons || []).reduce((count, flag) => count + flag.scores.length, 0) > 20) {
           throw createError('More than 20 flagged academic scores are recorded this week. Review them before generating this report.', 422);
         }
         const teacherNote = Object.hasOwn(selection.notes, student.id)
           ? selection.notes[student.id].trim() : existing?.teacherNote || '';
         const draft = await generate({ student, reportWeek: evidence.reportWeek, teacherNote,
-          journalApplicable: evidence.section.journalApplicable });
+          journalApplicable: evidence.section.journalApplicable,
+          gradesEnabled: evidence.section.gradesEnabled === true });
         outcome = await saveDraft({ database, req, student, evidence, draft, teacherNote, regenerate: selection.regenerate });
       }
     } catch (error) {
       outcome = { status: 'error', message: [422, 429, 503].includes(error.status)
-        ? error.message : 'Draft generation failed for this learner.' };
+        ? error.message : error.category === 'invalid_output'
+          ? 'The report could not meet the required format after two attempts. Try again later.'
+          : 'Draft generation failed for this learner.' };
     }
     results.push({ studentId: student.id, ...outcome, processed: results.length + 1, total: selection.students.length });
   }
@@ -231,7 +247,7 @@ async function readWeeklyDrafts(database, evidence, { schoolId }) {
     const [rows] = await database.execute(
       `SELECT id, student_user_id AS studentId, teacher_note AS teacherNote, ai_model AS aiModel,
         generated_summary AS generatedSummary, teacher_edited_summary AS editedSummary,
-        ai_follow_up_suggestion AS followUpSuggestion,
+        ai_follow_up_suggestion AS followUpSuggestion, grade_evidence_used AS gradeEvidenceUsed,
         report_status AS status, is_at_risk AS isAtRisk, released_at AS releasedAt,
         pending_correction AS pendingCorrection,
         DATE_FORMAT(report_week_start_date, '%Y-%m-%d') AS reportWeekStartDate,
@@ -246,6 +262,7 @@ async function readWeeklyDrafts(database, evidence, { schoolId }) {
       id: String(row.id), studentId: String(row.studentId), teacherNote: row.teacherNote,
       aiModel: row.aiModel, generatedSummary: row.generatedSummary, editedSummary: row.editedSummary,
       followUpSuggestion: row.followUpSuggestion,
+      gradeEvidenceUsed: row.gradeEvidenceUsed == null ? null : Boolean(row.gradeEvidenceUsed),
       isAtRisk: Boolean(row.isAtRisk), status: row.status, generatedAt: row.generatedAt,
       releasedAt: row.releasedAt, pendingCorrection: Boolean(row.pendingCorrection),
       confirmedAt: row.confirmedAt,
@@ -282,7 +299,8 @@ async function loadWeeklyDrafts({ database, schoolId, teacherId, sectionId, star
   const [sections] = await database.execute(
     `SELECT sections.id, sections.name, school_grade_levels.display_name AS gradeLevel,
       academic_years.id AS academicYearId, academic_years.label AS academicYearLabel,
-      features.narrative_reports_enabled AS reportsEnabled
+      features.narrative_reports_enabled AS reportsEnabled,
+      features.grades_enabled AS gradesEnabled
     FROM sections
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
       AND academic_years.school_id = sections.school_id AND academic_years.status = 'active'
@@ -300,7 +318,8 @@ async function loadWeeklyDrafts({ database, schoolId, teacherId, sectionId, star
   return {
     section: {
       id: String(section.id), name: section.name, gradeLevel: section.gradeLevel,
-      academicYearId: String(section.academicYearId), academicYearLabel: section.academicYearLabel
+      academicYearId: String(section.academicYearId), academicYearLabel: section.academicYearLabel,
+      gradesEnabled: Number(section.gradesEnabled) === 1
     },
     reportWeek: { startDate, endDate: reports[0]?.reportWeekEndDate || null },
     reports

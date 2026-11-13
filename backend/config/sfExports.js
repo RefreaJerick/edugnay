@@ -296,10 +296,7 @@ async function getEditableCells(template, mappedCells = []) {
   }
   if (template.formCode === 'SF9' && !isGrade11AcademicSf9(template) && !isGrade11TechProSf9(template)
     && !isGrade12AcademicSf9(template) && !isGrade12TechProSf9(template)) {
-    const subjectRows = new Set(mappedCells.map(cell => /^B(\d+)$/.exec(String(cell.cellAddress || '').toUpperCase()))
-      .filter(match => match && Number(match[1]) >= 32)
-      .map(match => Number(match[1])));
-    const subjectCount = subjectRows.size;
+    const subjectCount = subjectCountFromCells(mappedCells);
     if (subjectCount > 200) throw createError('SF9 supports up to 200 assigned subjects per learner report.', 422);
     const existing = new Set(editableCells.map(cell => cell.cellAddress));
     const dynamicAddresses = [];
@@ -315,14 +312,18 @@ async function getEditableCells(template, mappedCells = []) {
       });
     });
   }
+  if (template.formCode === 'SF9' && mappedCells.some(cell => cell.cellAddress === 'B39' && cell.value === 'MAPEH')) {
+    return editableCells.filter(cell => !/^(?:B|F|G|H|I|J)39$/.test(cell.cellAddress));
+  }
   return editableCells;
 }
 
 function subjectCountFromCells(cells) {
-  return new Set((Array.isArray(cells) ? cells : [])
+  const rows = (Array.isArray(cells) ? cells : [])
     .map(cell => /^B(\d+)$/.exec(String(cell.cellAddress || '').toUpperCase()))
     .filter(match => match && Number(match[1]) >= 32)
-    .map(match => Number(match[1]))).size;
+    .map(match => Number(match[1]));
+  return rows.length ? Math.max(...rows) - SF9.firstSubjectRow + 1 : 0;
 }
 
 function getCombinedTemplatePath(formCodes) {

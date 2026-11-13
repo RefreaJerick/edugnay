@@ -81,9 +81,9 @@ function buildSf8Pages(school, section, learners) {
       division: school.division,
       region: school.region,
       schoolId: school.depedSchoolId,
-      gradeLevel: section.gradeLevel,
+      gradeLevel: /^grade-(1[0-2]|[1-9])$/.exec(section.gradeCode || '')?.[1] || section.gradeLevel,
       section: section.name,
-      strand: section.strandName,
+      strand: section.trackName || section.strandName,
       schoolYear: section.academicYear
     };
     Object.entries(SF8.headers).forEach(([field, cellAddress]) => {

@@ -13,6 +13,7 @@ const { uploadDirectory } = require('../config/uploads');
 const { assertElectiveStudent, assertElectiveTeacher } = require('../utils/shsTeachingAccess');
 const { createLinkedAssignmentItem } = require('./shsGradesController');
 const { COMMUNICATION_COMPONENTS } = require('../config/shsCommunication');
+const { resolveValuesDomainCode } = require('../utils/valuesDomainItems');
 
 const ASSIGNMENT_STATUSES = new Set(['draft', 'published', 'closed']);
 const SUBMISSION_STATUSES = new Set(['pending', 'submitted', 'not_submitted']);
@@ -115,6 +116,7 @@ function formatAssignment(row) {
     academicTermName: row.academicTermName, gradingCategoryId: row.gradingCategoryId,
     subjectGradingComponentId: row.subjectGradingComponentId == null ? null : Number(row.subjectGradingComponentId),
     subjectGradingExamPartId: row.subjectGradingExamPartId == null ? null : Number(row.subjectGradingExamPartId),
+    domainCode: row.domainCode || null,
     gradingItemId: row.gradingItemId,
     gradingCategoryCode: row.gradingCategoryCode, gradingCategoryName: row.gradingCategoryName, teacherUserId: row.teacherUserId,
     subjectGradingComponentCode: row.subjectGradingComponentCode, subjectGradingComponentName: row.subjectGradingComponentName,
@@ -136,6 +138,7 @@ function assignmentSelect() {
     assignments.subject_grading_component_id AS subjectGradingComponentId,
     assignments.subject_grading_exam_part_id AS subjectGradingExamPartId,
     assignments.grading_item_id AS gradingItemId,
+    linked_item.domain_code AS domainCode,
     assignments.teacher_user_id AS teacherUserId,
     assignments.title, assignments.description, assignments.due_at AS dueAt, assignments.max_score AS maxScore,
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
@@ -171,6 +174,7 @@ function assignmentSelect() {
   LEFT JOIN grading_categories ON grading_categories.id = assignments.grading_category_id AND grading_categories.school_id = assignments.school_id
   LEFT JOIN subject_grading_components ON subject_grading_components.id = assignments.subject_grading_component_id AND subject_grading_components.school_id = assignments.school_id
   LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id = assignments.subject_grading_exam_part_id AND subject_grading_exam_parts.school_id = assignments.school_id
+  LEFT JOIN grading_items AS linked_item ON linked_item.id = assignments.grading_item_id AND linked_item.school_id = assignments.school_id
   INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id`;
 }
 
@@ -788,6 +792,9 @@ async function createAssignment(req, res, next) {
       throw createError('A graded assignment needs an active grading period and a maximum score greater than zero.');
     }
     if (isGraded) await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
+    const domainCode = isGraded
+      ? await resolveValuesDomainCode(connection, section.schoolId, sectionId, subjectId, subjectGradingComponentId, req.body.domainCode)
+      : null;
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
@@ -804,8 +811,8 @@ async function createAssignment(req, res, next) {
       const [item] = await connection.execute(
         `INSERT INTO grading_items (school_id, section_id, subject_id, communication_component_code, academic_term_id,
           grading_category_id, subject_grading_component_id, subject_grading_exam_part_id,
-          teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, maxScore]
+          domain_code, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, domainCode, req.user.id, title, maxScore]
       );
       await connection.execute(
         'UPDATE assignments SET grading_item_id = ? WHERE id = ? AND school_id = ?',
@@ -888,6 +895,9 @@ async function updateAssignment(req, res, next) {
     const gradingCategoryId = req.body.gradingCategoryId === undefined ? current.gradingCategoryId : optionalId(req.body.gradingCategoryId, 'grading category ID');
     const subjectGradingComponentId = req.body.subjectGradingComponentId === undefined ? current.subjectGradingComponentId : optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
     const subjectGradingExamPartId = req.body.subjectGradingExamPartId === undefined ? current.subjectGradingExamPartId : optionalId(req.body.subjectGradingExamPartId, 'exam-part ID');
+    const domainCode = current.gradingItemId && req.body.domainCode === undefined ? current.domainCode
+      : await resolveValuesDomainCode(connection, section.schoolId, current.sectionId, current.subjectId,
+        subjectGradingComponentId, req.body.domainCode);
     await validateTermAndCategory(connection, section, current.subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
     const title = req.body.title === undefined ? current.title : requiredText(req.body.title, 255, 'Assignment title');
     const description = req.body.description === undefined ? current.description : optionalText(req.body.description, 10000, 'Assignment description');
@@ -899,7 +909,8 @@ async function updateAssignment(req, res, next) {
       || String(subjectGradingExamPartId || '') !== String(current.subjectGradingExamPartId || '') || maxScore === null)) {
       throw createError('An assignment with a score component cannot change its grading period or category, or remove its maximum score.', 409);
     }
-    if (current.gradingItemId && (title !== current.title || Number(maxScore) !== Number(current.maxScore))) {
+    if (current.gradingItemId && (title !== current.title || Number(maxScore) !== Number(current.maxScore)
+      || domainCode !== current.domainCode)) {
       await validateGradeItemScope(connection, req.user, section, current.subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
     }
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
@@ -938,8 +949,8 @@ async function updateAssignment(req, res, next) {
       [status, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, title,
         description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId]);
     if (current.gradingItemId) await connection.execute(
-      'UPDATE grading_items SET title = ?, max_score = ? WHERE id = ? AND school_id = ?',
-      [title, maxScore, current.gradingItemId, req.user.schoolId]
+      'UPDATE grading_items SET title = ?, max_score = ?, domain_code = ? WHERE id = ? AND school_id = ?',
+      [title, maxScore, domainCode, current.gradingItemId, req.user.schoolId]
     );
     const updatedRow = await getAssignmentForManagement(connection, req.user, assignmentId);
     if (statusChanged || detailsChanged) {

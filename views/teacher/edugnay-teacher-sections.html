@@ -80,13 +80,14 @@
             <button class="comp-type-opt cat-qa" type="button" data-cat="QA" aria-pressed="false">
               <span class="comp-type-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;"></i></span>
               <span class="comp-type-name">Quarterly Exam</span>
-              <span class="comp-type-cat">Quarterly Assessment</span>
+              <span class="comp-type-cat">Examinations</span>
             </button>
           </div>
           <div class="form-group" id="scoreExamPartGroup" hidden>
             <label class="form-label" for="scoreExamPartInput">Exam part</label>
             <select class="form-select" id="scoreExamPartInput"></select>
           </div>
+          <div class="form-group" id="scoreDomainGroup" hidden><label class="form-label" for="scoreDomainInput">Assessment domain</label><select class="form-select" id="scoreDomainInput"></select></div>
         </div>
 
         <div class="form-row-2">
@@ -173,6 +174,7 @@
             <label class="form-label" for="assignExamPartInput">Exam part</label>
             <select class="form-select" id="assignExamPartInput"></select>
           </div>
+          <div class="form-group" id="assignDomainGroup" hidden><label class="form-label" for="assignDomainInput">Assessment domain</label><select class="form-select" id="assignDomainInput"></select></div>
           <div class="form-group">
             <label class="form-label" for="assignMaxScoreInput">Highest Possible Score</label>
             <input class="form-input" type="number" id="assignMaxScoreInput" min="1" step="1" placeholder="e.g. 50">
@@ -250,6 +252,7 @@
             <label class="form-label" for="editAssignmentExamPartInput">Exam part</label>
             <select class="form-select" id="editAssignmentExamPartInput"></select>
           </div>
+          <div class="form-group" id="editAssignmentDomainGroup" hidden><label class="form-label" for="editAssignmentDomainInput">Assessment domain</label><select class="form-select" id="editAssignmentDomainInput"></select></div>
           <div class="form-group">
             <label class="form-label" for="editAssignmentMaxScoreInput">Highest Possible Score</label>
             <input class="form-input" type="number" id="editAssignmentMaxScoreInput" min="1" step="1"
@@ -408,8 +411,8 @@
             <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
           </div>
           <div>
-            <div class="publish-warn-title" id="publishGradeWarningTitle">A few items need your attention</div>
-            <div class="publish-warn-text" id="publishGradeWarningText">Review the items below before publishing.</div>
+            <div class="publish-warn-title" id="publishGradeWarningTitle">Before you publish</div>
+            <ul class="publish-warn-text" id="publishGradeWarningText"></ul>
           </div>
         </div>
         <div id="publishGradeSummary" style="font-size:13px;color:var(--gray-700);line-height:1.7;">Review the final
@@ -1041,7 +1044,7 @@
               </div>
               <div class="cat-tab" data-page-click="pa79a6c1342a2">
                 <i data-lucide="clipboard-list" style="width:12px;height:12px;"></i>
-                <span data-grading-label="QA">Quarterly Assessment</span> <span class="cat-weight"
+                <span data-grading-label="QA">Examinations</span> <span class="cat-weight"
                   data-grading-weight="QA">—</span>
               </div>
             </div>
@@ -1055,9 +1058,6 @@
                 </div>
               </div>
               <div class="score-toolbar-right">
-                <button class="top-btn secondary" id="fillPerfectScoresButton" data-page-click="pfa5c76a0aeef">
-                  <i data-lucide="copy" style="width:13px;height:13px;"></i> Fill Perfect
-                </button>
                 <button class="top-btn secondary" id="exportScoresButton" type="button" data-page-click="pafb199fa3d64"
                   disabled>
                   <i data-lucide="download" style="width:13px;height:13px;"></i> Export
@@ -1293,6 +1293,10 @@
   </div>
 
   <div class="score-component-menu" id="scoreComponentMenu" role="menu" hidden>
+    <div id="scoreComponentDomainGroup" hidden>
+      <label class="form-label" for="scoreComponentDomainInput">Assessment domain</label>
+      <select class="form-select" id="scoreComponentDomainInput"></select>
+    </div>
     <button class="assignment-menu-item delete" id="scoreComponentDeleteAction" type="button" role="menuitem">
       <i data-lucide="trash-2" aria-hidden="true"></i> <span id="scoreComponentDeleteLabel">Delete component</span>
     </button>

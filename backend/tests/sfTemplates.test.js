@@ -92,6 +92,7 @@ let learnerRows = null;
 let sectionQuery = null;
 let sectionGradeCode = 'grade-7';
 let sectionGradeLevel = 'Grade 7';
+let sectionGradeLevelId = 7;
 let sectionTrackCode = 'academic';
 let sectionShsCurriculumCode = 'strengthened_2026';
 let sectionAcademicYear = '2026-2027';
@@ -100,6 +101,9 @@ let publishedFinalGrade = 90;
 let includePublishedGrade = true;
 let sf9ConfiguredTerms = null;
 let sf9PublishedGrades = null;
+let sf9GradeScopedSubjects = [{ id: 11, name: 'English', code: 'english-jhs', gradeLevelIds: [7], isActive: true }];
+let sf9SubjectQuery = null;
+let sf9AssignedSubjectActive = true;
 let sf9CommunicationGrades = [];
 let sf9ElectiveRecords = [];
 let sf9AdviserName = 'Ms. Maria Reyes';
@@ -206,7 +210,7 @@ const database = {
     if (/FROM sections/.test(sql)) {
       sectionQuery = { sql, values };
       const current = { id: 8, schoolId: 1, name: 'St. Matthew', sectionStatus: 'active', academicYearId: 2,
-        schoolLevelId: 2, gradeLevelId: 7, gradeCode: sectionGradeCode, strandId: null,
+        schoolLevelId: 2, gradeLevelId: sectionGradeLevelId, gradeCode: sectionGradeCode, strandId: null,
         trackId: 5, trackCode: sectionTrackCode, trackName: sectionTrackCode === 'academic' ? 'Academic' : 'TechPro',
         shsCurriculumCode: sectionShsCurriculumCode, academicYear: sectionAcademicYear, academicYearStatus: 'active',
         startDate: '2026-06-01', endDate: '2027-03-31', gradeLevel: sectionGradeLevel, strandName: sectionStrandName };
@@ -234,7 +238,15 @@ const database = {
     }] : [])];
     if (/FROM section_students/.test(sql)) return [learnerRows || [learner]];
     if (/FROM student_parent_links/.test(sql)) return [[]];
+    if (/FROM subjects\s/.test(sql) && /subject_grade_scopes/.test(sql)) {
+      sf9SubjectQuery = { sql, values, source: 'grade' };
+      return [sf9GradeScopedSubjects.filter(subject => subject.isActive
+        && subject.gradeLevelIds.includes(Number(values[1]))
+        && (subject.schoolId == null || subject.schoolId === Number(values[0])))
+        .map(({ id, name, code }) => ({ id, name, code }))];
+    }
     if (/FROM section_teachers/.test(sql)) {
+      sf9SubjectQuery = { sql, values, source: 'teacher' };
       assert.match(sql, /subjects\.subject_code AS code/);
       if (sectionGradeCode === 'grade-11') return [[
         { id: 11, name: 'Effective Communication / Mabisang Komunikasyon', code: 'shs-core-communication' },
@@ -243,6 +255,7 @@ const database = {
         { id: 14, name: 'Life and Career Skills', code: 'shs-core-life-career' },
         { id: 15, name: 'Pag-aaral ng Kasaysayan at Lipunang Pilipino', code: 'shs-core-philippine-history' }
       ]];
+      if (!sf9AssignedSubjectActive && /subjects\.is_active = TRUE/.test(sql)) return [[]];
       return [[{ id: 11, name: 'English' }]];
     }
     if (/FROM academic_terms/.test(sql)) return [sf9ConfiguredTerms || [{ id: 21, name: 'Quarter 1', sequenceNumber: 1 }]];
@@ -366,7 +379,7 @@ test('template library search covers template fields and works with both filters
     { formCode: 'SF2', formName: 'Daily Attendance Report of Learners', fileName: 'SF2.xlsx', schoolLevels: ['elementary', 'jhs'] },
     { formCode: 'SF3', formName: 'Books Issued and Returned', fileName: 'SF3.xlsx', schoolLevels: ['elementary', 'jhs'] },
     { formCode: 'SF5', formName: 'General Average', fileName: 'SF5.xlsx', schoolLevels: ['jhs'] },
-    { formCode: 'SF8', formName: 'Learner\'s Basic Health and Nutrition Report', fileName: 'SF8.xlsx', schoolLevels: ['elementary', 'jhs'] }
+    { formCode: 'SF8', formName: 'Learner\'s Basic Health and Nutrition Report', fileName: 'SF8.xlsx', schoolLevels: ['elementary', 'jhs', 'shs'] }
   ];
   const state = { templates };
   const elements = {
@@ -403,7 +416,7 @@ test('template library search covers template fields and works with both filters
   assert.deepEqual(codesFor('SF5.xlsx'), ['SF5']);
   assert.deepEqual(codesFor('nutrition report'), ['SF8']);
   assert.deepEqual(codesFor('junior high school'), ['SF1', 'SF2', 'SF3', 'SF5', 'SF8']);
-  assert.deepEqual(codesFor('senior high school'), []);
+  assert.deepEqual(codesFor('senior high school'), ['SF8']);
 
   elements.librarySearch.value = 'register';
   elements.codeFilter.value = 'SF1';
@@ -415,7 +428,7 @@ test('template library search covers template fields and works with both filters
   elements.levelFilter.value = 'jhs';
   assert.deepEqual(filterTemplates().map(template => template.formCode), ['SF1', 'SF2', 'SF3', 'SF5', 'SF8']);
   elements.levelFilter.value = 'shs';
-  assert.deepEqual(filterTemplates(), []);
+  assert.deepEqual(filterTemplates().map(template => template.formCode), ['SF8']);
 
   elements.levelFilter.value = 'all';
   assert.deepEqual(filterTemplates().map(template => template.formCode), ['SF1', 'SF2', 'SF3', 'SF5', 'SF8']);
@@ -437,9 +450,11 @@ test('current SF template metadata and section picker keep SHS versions separate
     { statuses: { ACTIVE: 'active' } }
   );
   const templates = await getSfTemplates();
-  for (const template of templates.filter(record => ['SF1', 'SF2', 'SF3', 'SF8'].includes(record.formCode))) {
+  for (const template of templates.filter(record => ['SF1', 'SF2', 'SF3'].includes(record.formCode))) {
     assert.deepEqual(template.schoolLevels, ['elementary', 'jhs'], `${template.formCode} level labels`);
   }
+  assert.deepEqual(templates.find(record => record.formCode === 'SF8').schoolLevels,
+    ['elementary', 'jhs', 'shs']);
   assert.deepEqual(templates.find(record => record.formCode === 'SF9').schoolLevels, ['shs']);
 
   const script = await fs.promises.readFile(path.join(root, 'assets/js/teacher/sf-templates.js'), 'utf8');
@@ -455,13 +470,15 @@ test('current SF template metadata and section picker keep SHS versions separate
     { id: 'grade-11', gradeCode: 'grade-11', status: 'active', academicYearStatus: 'active' },
     { id: 'grade-12', gradeCode: 'grade-12', status: 'active', academicYearStatus: 'active' }
   ];
-  const selections = [
-    ...['SF1', 'SF2', 'SF3', 'SF8'].map(formCode => [{ formCode, version: '1.0' }]),
+  const restrictedSelections = [
+    ...['SF1', 'SF2', 'SF3'].map(formCode => [{ formCode, version: '1.0' }]),
     ['SF1', 'SF2', 'SF3', 'SF8'].map(formCode => ({ formCode, version: '1.0' }))
   ];
-  for (const selected of selections) {
+  for (const selected of restrictedSelections) {
     assert.deepEqual(availableSectionIds({ sections }, () => selected), ['kinder', 'grade-7', 'grade-10']);
   }
+  assert.deepEqual(availableSectionIds({ sections }, () => [{ formCode: 'SF8', version: '1.0' }]),
+    ['kinder', 'grade-7', 'grade-10', 'grade-11', 'grade-12']);
 });
 
 test('school-form routes accept larger JSON edit batches without changing other route limits', async () => {
@@ -565,7 +582,7 @@ test('SF8 preview prepopulates school and roster details and exposes only editab
   const cells = new Map(result.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
   assert.equal(cells.get('E5'), 'St. Columban\u2019s College');
   assert.equal(cells.get('C7'), '305614');
-  assert.equal(cells.get('F7'), 'Grade 7');
+  assert.equal(cells.get('F7'), '7');
   assert.equal(cells.get('H7'), 'St. Matthew');
   assert.equal(cells.get('O7'), '2026-2027');
   assert.equal(cells.get('B12'), '100201000015');
@@ -589,7 +606,7 @@ test('SF8 preview prepopulates school and roster details and exposes only editab
   assert.equal(writes, 0);
 });
 
-test('current SF1, SF2, SF3, and SF8 templates reject SHS sections across preview and export', async () => {
+test('current SF1, SF2, and SF3 templates reject SHS sections across preview and export', async () => {
   const previous = { sectionGradeCode, sectionGradeLevel, sectionStrandName, allowSection };
   try {
     for (const [gradeCode, gradeLevel] of [['grade-11', 'Grade 11'], ['grade-12', 'Grade 12']]) {
@@ -597,7 +614,7 @@ test('current SF1, SF2, SF3, and SF8 templates reject SHS sections across previe
       sectionGradeLevel = gradeLevel;
       sectionStrandName = 'STEM';
 
-      for (const templateId of ['1', '2', '3', '8']) {
+      for (const templateId of ['1', '2', '3']) {
         const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' }, templateId);
         assert.equal(preview.error?.status, 403, `SF${templateId} preview should reject ${gradeLevel}`);
         assert.match(preview.error.message, /Elementary and Junior High School/);
@@ -618,7 +635,17 @@ test('current SF1, SF2, SF3, and SF8 templates reject SHS sections across previe
       });
       assert.equal(combinedExport.error?.status, 403, `combined export should reject ${gradeLevel}`);
 
-      const details = await call(controller.getTemplateDetails, 'GET', {}, {}, '8');
+      const mixedPreview = await call(controller.previewCombinedTemplates, 'POST', {
+        templateIds: [1, 8], sectionId: '8'
+      });
+      assert.equal(mixedPreview.error?.status, 403, `SF1 and SF8 should reject ${gradeLevel}`);
+
+      const mixedExport = await call(controller.generateCombinedTemplates, 'POST', {
+        templateIds: [1, 8], sectionId: '8'
+      });
+      assert.equal(mixedExport.error?.status, 403, `SF1 and SF8 export should reject ${gradeLevel}`);
+
+      const details = await call(controller.getTemplateDetails, 'GET', {}, {}, '1');
       assert.equal(details.error, null);
       assert.equal(details.body.sections.some(section => ['grade-11', 'grade-12'].includes(section.gradeCode)), false);
     }
@@ -638,6 +665,60 @@ test('current SF1, SF2, SF3, and SF8 templates reject SHS sections across previe
     assert.equal(writes, 0);
   } finally {
     ({ sectionGradeCode, sectionGradeLevel, sectionStrandName, allowSection } = previous);
+  }
+});
+
+test('SF8 supports Strengthened SHS Grade 11 and 12 previews and exports', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sectionTrackCode, sectionStrandName, allowSection, learner };
+  const generatedFiles = [];
+  try {
+    for (const [gradeCode, trackCode, trackName] of [
+      ['grade-11', 'academic', 'Academic'], ['grade-12', 'techpro', 'TechPro']
+    ]) {
+      sectionGradeCode = gradeCode;
+      sectionGradeLevel = gradeCode === 'grade-11' ? 'Grade 11' : 'Grade 12';
+      sectionTrackCode = trackCode;
+      sectionStrandName = null;
+      const details = await call(controller.getTemplateDetails, 'GET', {}, {}, '8');
+      assert.equal(details.error, null);
+      assert.equal(details.body.sections.some(section => section.gradeCode === gradeCode), true);
+
+      const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' }, '8');
+      assert.equal(preview.error, null);
+      const cells = new Map(preview.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+      assert.equal(cells.get('F7'), gradeCode === 'grade-11' ? '11' : '12');
+      assert.equal(cells.get('L7'), trackName);
+      assert.equal(cells.get('B12'), learner.lrn);
+
+      learner = { ...learner, lrn: '100201000016' };
+      const stale = await call(controller.generateTemplate, 'POST', {
+        sectionId: 8, previewFingerprint: preview.body.previewFingerprint
+      }, {}, '8');
+      assert.equal(stale.error?.status, 409);
+      learner = previous.learner;
+
+      const generated = await call(controller.generateTemplate, 'POST', {
+        sectionId: 8, previewFingerprint: preview.body.previewFingerprint,
+        edits: [{ cellAddress: 'I12', value: '21.5' }]
+      }, {}, '8');
+      assert.equal(generated.error, null);
+      assert.equal(generated.status, 201);
+      const generatedFilePath = getExportFilePath(sf9ExportRecord.filePath);
+      generatedFiles.push(generatedFilePath);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await fs.promises.readFile(generatedFilePath));
+      const sheet = workbook.getWorksheet('School Form 8 (SF8)');
+      assert.equal(sheet.getCell('F7').value, gradeCode === 'grade-11' ? '11' : '12');
+      assert.equal(sheet.getCell('L7').value, trackName);
+      assert.equal(sheet.getCell('I12').value, 21.5);
+    }
+    allowSection = false;
+    const unauthorized = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' }, '8');
+    assert.equal(unauthorized.error?.status, 403);
+  } finally {
+    for (const filePath of generatedFiles) await fs.promises.unlink(filePath);
+    sf9ExportRecord = null;
+    ({ sectionGradeCode, sectionGradeLevel, sectionTrackCode, sectionStrandName, allowSection, learner } = previous);
   }
 });
 
@@ -667,27 +748,157 @@ test('SF9 selects a learner from the adviser roster and maps published grades to
     assert.equal(cells.get('H27'), 'Ms. Maria Reyes');
     assert.equal(cells.has('F31') || cells.has('G31') || cells.has('H31') || cells.has('I31'), false,
       'printed T1-T3 headings stay in the static workbook template');
-    assert.equal(cells.get('F32'), 80);
-    assert.equal(cells.get('G32'), termCount >= 2 ? 82 : '');
-    assert.equal(cells.get('H32'), termCount >= 3 ? 84 : '');
-    assert.equal(cells.get('I32'), termCount === 3 ? 82 : '');
-    assert.equal(cells.has('J32'), false, 'column J is Remarks, not Final Grade');
+    assert.equal(cells.get('F33'), 80);
+    assert.equal(cells.get('G33'), termCount >= 2 ? 82 : '');
+    assert.equal(cells.get('H33'), termCount >= 3 ? 84 : '');
+    assert.equal(cells.get('I33'), termCount === 3 ? 82 : '');
+    assert.equal(cells.has('J33'), false, 'column J is Remarks, not Final Grade');
+    assert.equal(cells.get('B39'), 'MAPEH');
+    assert.equal(cells.has('F39'), false);
     assert.equal(cells.get('I42'), '');
     assert.equal(preview.body.issues.some(issue => issue.fieldKey === 'terms'), termCount !== 3);
     assert.equal(preview.body.previewFingerprint.length, 64);
     assert.ok(preview.body.issues.some(issue => issue.fieldKey === 'draft'));
+    const draftMessage = preview.body.issues.find(issue => issue.fieldKey === 'draft').message;
+    assert.equal(draftMessage,
+      'SF9 is a draft. Enter the general average manually after review. Complete attendance, comments, signatures, and transfer details from verified records.');
     const editable = new Map(preview.body.editableCells.map(cell => [cell.cellAddress, cell.type]));
     assert.equal(editable.get('C17'), 'text');
     assert.equal(editable.get('I18'), 'number');
-    assert.equal(editable.get('F32'), 'number');
-    assert.equal(editable.get('I32'), 'number');
-    assert.equal(editable.get('J32'), 'text');
+    assert.equal(editable.get('F33'), 'number');
+    assert.equal(editable.get('I33'), 'number');
+    assert.equal(editable.get('J33'), 'text');
     assert.equal(editable.get('I42'), 'number');
     assert.equal(editable.has('F30'), false);
     assert.equal(editable.has('A32'), false);
   }
 
   ({ sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades } = previous);
+});
+
+test('Grade 4-10 SF9 previews and exports active grade-scoped subjects without teacher assignments', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sectionGradeLevelId,
+    sf9GradeScopedSubjects, sf9PublishedGrades, sf9ConfiguredTerms };
+  const generatedFiles = [];
+  try {
+    for (const grade of [4, 7]) {
+      sectionGradeCode = `grade-${grade}`;
+      sectionGradeLevel = `Grade ${grade}`;
+      sectionGradeLevelId = grade;
+      const elementary = grade === 4;
+      const scoped = (id, code, name, gradeLevelIds = [grade], isActive = true) =>
+        ({ id, code, name, gradeLevelIds, isActive });
+      sf9GradeScopedSubjects = [
+        scoped(11, 'english-elementary', 'English'),
+        scoped(12, elementary ? 'gmrc-elementary' : 'values-education-jhs',
+          elementary ? 'Good Manners and Right Conduct (GMRC)' : 'Values Education'),
+        scoped(13, elementary ? 'epp-elementary' : 'tle-jhs',
+          elementary ? 'Edukasyong Pantahanan at Pangkabuhayan (EPP)' : 'Technology and Livelihood Education (TLE)'),
+        scoped(14, 'music-and-arts-elementary', 'Music & Arts'),
+        scoped(15, 'physical-education-and-health-elementary', 'Physical Education & Health'),
+        scoped(16, 'custom', 'School-added Subject'),
+        scoped(17, 'inactive', 'Inactive Subject', [grade], false),
+        scoped(18, 'other-grade', 'Other Grade Subject', [grade === 4 ? 7 : 4])
+      ];
+      sf9ConfiguredTerms = [1, 2, 3].map(index => ({ id: 20 + index, name: `Term ${index}` }));
+      sf9PublishedGrades = [
+        { studentId: 10, subjectId: 11, academicTermId: 21, finalGrade: 88, sectionName: 'St. Matthew' },
+        { studentId: 10, subjectId: 12, academicTermId: 21, finalGrade: 90,
+          domainRuleVersion: 'deped_values_domains_2026', sectionName: 'St. Matthew' },
+        { studentId: 10, subjectId: 13, academicTermId: 21, finalGrade: 84, sectionName: 'St. Matthew' }
+      ];
+      const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+      assert.equal(preview.error, null);
+      assert.equal(sf9SubjectQuery.source, 'grade');
+      assert.match(sf9SubjectQuery.sql, /EXISTS \(SELECT 1 FROM subject_grade_scopes/);
+      assert.match(sf9SubjectQuery.sql, /subjects\.is_active = TRUE/);
+      assert.deepEqual(sf9SubjectQuery.values, [1, grade]);
+      const cells = new Map(preview.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+      assert.equal(cells.get('B33'), 'English');
+      assert.equal(preview.body.pages[0].filter(cell => cell.cellAddress === 'B33').length, 1);
+      assert.equal(cells.get('B37'), 'GMRC / Values Education');
+      assert.equal(cells.get('B38'), 'EPP / TLE');
+      assert.equal(cells.get('F37'), 90);
+      assert.equal(cells.get('F38'), 84);
+      assert.equal(cells.get('I38'), '');
+      assert.equal(cells.get('B39'), 'MAPEH');
+      assert.equal(cells.get('B40'), 'Music & Arts');
+      assert.equal(cells.get('B41'), 'Physical Education & Health');
+      assert.equal(cells.get('B42'), 'School-added Subject');
+      assert.equal(cells.get('F42'), '');
+      assert.equal(cells.get('I43'), '');
+      assert.equal(preview.body.pages[0].some(cell => /Inactive Subject|Other Grade Subject/.test(String(cell.value))), false);
+      assert.ok(preview.body.issues.some(issue => /School-added Subject.*no published grade/.test(issue.message)));
+      assert.ok(preview.body.editableCells.some(cell => cell.cellAddress === 'I38'));
+
+      const generated = await call(controller.generateTemplate, 'POST', {
+        sectionId: 8, studentId: 10, previewFingerprint: preview.body.previewFingerprint,
+        edits: [{ cellAddress: 'I38', value: 85 }]
+      }, {}, '9');
+      assert.equal(generated.error, null);
+      assert.equal(generated.status, 201);
+      const generatedFilePath = getExportFilePath(sf9ExportRecord.filePath);
+      generatedFiles.push(generatedFilePath);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await fs.promises.readFile(generatedFilePath));
+      const sheet = workbook.getWorksheet('SF9 - GRADE 4-10');
+      assert.equal(sheet.getCell('B37').value, 'GMRC / Values Education');
+      assert.equal(sheet.getCell('B38').value, 'EPP / TLE');
+      assert.equal(sheet.getCell('F37').value, 90);
+      assert.equal(sheet.getCell('I38').value, 85);
+      assert.equal(sheet.getCell('B42').value, 'School-added Subject');
+      assert.equal(sheet.getCell('B43').value, 'General Average');
+
+      sf9GradeScopedSubjects = [...sf9GradeScopedSubjects,
+        scoped(19, 'new-subject', 'New Grade Subject')];
+      const stale = await call(controller.generateTemplate, 'POST', {
+        sectionId: 8, studentId: 10, previewFingerprint: preview.body.previewFingerprint
+      }, {}, '9');
+      assert.equal(stale.error?.status, 409);
+    }
+  } finally {
+    for (const filePath of generatedFiles) await fs.promises.unlink(filePath);
+    sf9ExportRecord = null;
+    ({ sectionGradeCode, sectionGradeLevel, sectionGradeLevelId,
+      sf9GradeScopedSubjects, sf9PublishedGrades, sf9ConfiguredTerms } = previous);
+  }
+});
+
+test('Grade 4-10 SF9 rejects a replaced subject even when the printed form is unchanged', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sectionGradeLevelId,
+    sf9GradeScopedSubjects, sf9PublishedGrades, sf9ConfiguredTerms };
+  try {
+    sectionGradeCode = 'grade-7';
+    sectionGradeLevel = 'Grade 7';
+    sectionGradeLevelId = 7;
+    sf9ConfiguredTerms = [1, 2, 3].map(index => ({ id: 20 + index, name: `Term ${index}` }));
+    const subject = id => ({ id, code: `tle-${id}`, name: 'Technology and Livelihood Education (TLE)',
+      gradeLevelIds: [7], isActive: true });
+    const grades = id => sf9ConfiguredTerms.map(term => ({ studentId: 10, subjectId: id,
+      academicTermId: term.id, finalGrade: 90, sectionName: 'St. Matthew' }));
+    sf9GradeScopedSubjects = [subject(11)];
+    sf9PublishedGrades = grades(11);
+    const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+    assert.equal(preview.error, null);
+
+    sf9GradeScopedSubjects = [subject(19)];
+    sf9PublishedGrades = grades(19);
+    const replacement = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+    assert.equal(replacement.error, null);
+    assert.deepEqual(replacement.body.pages, preview.body.pages);
+    assert.deepEqual(replacement.body.issues, preview.body.issues);
+    assert.notEqual(replacement.body.previewFingerprint, preview.body.previewFingerprint);
+
+    writes = 0;
+    const stale = await call(controller.generateTemplate, 'POST', {
+      sectionId: 8, studentId: 10, previewFingerprint: preview.body.previewFingerprint
+    }, {}, '9');
+    assert.equal(stale.error?.status, 409);
+    assert.equal(writes, 0);
+  } finally {
+    ({ sectionGradeCode, sectionGradeLevel, sectionGradeLevelId,
+      sf9GradeScopedSubjects, sf9PublishedGrades, sf9ConfiguredTerms } = previous);
+  }
 });
 
 test('SF9 flags missing and conflicting period grades and permits only adviser-owned Grades 4-10 learners', async () => {
@@ -698,8 +909,8 @@ test('SF9 flags missing and conflicting period grades and permits only adviser-o
   sf9PublishedGrades = [{ studentId: 10, subjectId: 11, academicTermId: 21, finalGrade: 88, sectionName: 'Former Section' }];
   const missing = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
   const missingCells = new Map(missing.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
-  assert.equal(missingCells.get('G32'), '');
-  assert.equal(missingCells.get('I32'), '');
+  assert.equal(missingCells.get('G33'), '');
+  assert.equal(missingCells.get('I33'), '');
   assert.equal(missingCells.get('I42'), '');
   assert.ok(missing.body.issues.some(issue => /no published grade/.test(issue.message)));
 
@@ -744,6 +955,7 @@ test('SF9 exposes archived closed-year sections and rejects stale preview export
   assert.deepEqual(closedLearners.body.learners.map(record => record.id), ['10']);
   const closedPreview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '1', studentId: '10' }, '9');
   assert.equal(closedPreview.error, null);
+  assert.equal(sf9SubjectQuery.source, 'teacher');
   const closedCells = new Map(closedPreview.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
   assert.equal(closedCells.get('I18'), 4);
   assert.equal(closedCells.has('F31') || closedCells.has('G31') || closedCells.has('H31') || closedCells.has('I31'), false,
@@ -759,6 +971,26 @@ test('SF9 exposes archived closed-year sections and rejects stale preview export
   assert.equal(writes, 0);
 
   ({ sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades } = previous);
+});
+
+test('closed-year Grade 4-10 SF9 keeps a teacher-assigned subject after deactivation', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sf9AssignedSubjectActive };
+  try {
+    sectionGradeCode = 'grade-4';
+    sectionGradeLevel = 'Grade 4';
+    sf9AssignedSubjectActive = true;
+    const before = await call(controller.previewTemplate, 'GET', {}, { sectionId: '1', studentId: '10' }, '9');
+    assert.equal(before.error, null);
+    sf9AssignedSubjectActive = false;
+    const after = await call(controller.previewTemplate, 'GET', {}, { sectionId: '1', studentId: '10' }, '9');
+    assert.equal(after.error, null);
+    assert.equal(sf9SubjectQuery.source, 'teacher');
+    assert.doesNotMatch(sf9SubjectQuery.sql, /subjects\.is_active = TRUE/);
+    assert.equal(after.body.pages[0].find(cell => cell.cellAddress === 'B33')?.value, 'English');
+    assert.deepEqual(after.body.pages, before.body.pages);
+  } finally {
+    ({ sectionGradeCode, sectionGradeLevel, sf9AssignedSubjectActive } = previous);
+  }
 });
 
 test('Grade 11 Academic SF9 maps communication components, core marks, and approved electives to its supplied rows', async () => {
@@ -1498,6 +1730,7 @@ test('combined SF8 edits affect only the generated workbook and protected cells 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(result.body);
   const sheet = workbook.getWorksheet('School Form 8 (SF8)');
+  assert.equal(sheet.getCell('F7').value, '7');
   assert.equal(sheet.getCell('I12').value, 21.5);
   assert.equal(sheet.getCell('M12').value, 'Normal');
   assert.equal(sheet.getCell('N12').value, 'Age appropriate');

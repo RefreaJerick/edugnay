@@ -111,16 +111,23 @@ function buildSf10Pages(school, learner, histories) {
       if (matchedSubjects.length !== 1) { missingGrades = true; return; }
       const subject = matchedSubjects[0];
       const row = block.grades + offset;
-      if (code === 'values-education' && section.academicYear === '2026-2027') {
-        missingGrades = true;
-        return;
-      }
       const matches = grades.filter(grade => Number(grade.subjectId) === Number(subject.id));
       const values = orderedTerms.map((term, termIndex) => {
         const found = matches.filter(grade => Number(grade.academicTermId) === Number(term.id));
-        const value = found.length === 1 && found[0].finalGrade != null ? Number(found[0].finalGrade) : null;
+        const verified = code !== 'values-education' || Number(String(section.academicYear || '').slice(0, 4)) < 2026
+          || found[0]?.domainRuleVersion === 'deped_values_domains_2026';
+        const rawGrade = found[0]?.finalGrade;
+        const numericGrade = rawGrade === null || rawGrade === undefined || rawGrade === '' ? null : Number(rawGrade);
+        const value = found.length === 1 && verified && numericGrade !== null
+          && Number.isFinite(numericGrade) && numericGrade >= 0 && numericGrade <= 100 ? numericGrade : null;
         if (found.length > 1) issues.push({ severity: 'warning', fieldKey: 'grades', cellReference: `${SF10.periodColumns[termIndex]}${row}`,
           message: `${section.academicYear}: conflicting published grades for ${subject.name}, period ${term.sequenceNumber}.` });
+        else if (found.length === 1 && !verified) issues.push({ severity: 'warning', fieldKey: 'grades', cellReference: `${SF10.periodColumns[termIndex]}${row}`,
+          message: `${section.academicYear}: ${subject.name}, period ${term.sequenceNumber} needs domain review and republication.` });
+        else if (!found.length) issues.push({ severity: 'warning', fieldKey: 'grades', cellReference: `${SF10.periodColumns[termIndex]}${row}`,
+          message: `${section.academicYear}: no published grade for ${subject.name}, period ${term.sequenceNumber}.` });
+        else if (value === null) issues.push({ severity: 'warning', fieldKey: 'grades', cellReference: `${SF10.periodColumns[termIndex]}${row}`,
+          message: `${section.academicYear}: invalid published grade for ${subject.name}, period ${term.sequenceNumber}.` });
         if (value === null || !Number.isFinite(value)) missingGrades = true;
         if (termIndex < 4 && value !== null && Number.isFinite(value)) add(block.sheet, `${SF10.periodColumns[termIndex]}${row}`, value, 'number');
         return value;

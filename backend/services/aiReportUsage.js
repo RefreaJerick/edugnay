@@ -37,6 +37,11 @@ async function reserveModelCall(database, schoolId, date = manilaDate()) {
 
 function errorCategory(error) {
   if (error?.name === 'TimeoutError' || error?.name === 'AbortError') return 'timeout';
+  if (error?.category === 'invalid_output' && ['no_text', 'invalid_json', 'numeric_result',
+    'private_content', 'flagged_subject', 'attendance', 'assignment', 'academic_content',
+    'attendance_date', 'grade_subject', 'reflection', 'format'].includes(error.reasonCode)) {
+    return `invalid_output_${error.reasonCode}`;
+  }
   if (['provider', 'refusal', 'invalid_output'].includes(error?.category)) return error.category;
   return 'other';
 }
@@ -72,19 +77,22 @@ async function recordModelOutcome(database, schoolId, date, usage, error) {
   }
 }
 
-async function generateWithQuota({ database, schoolId, student, reportWeek, teacherNote, journalApplicable },
+async function generateWithQuota({ database, schoolId, student, reportWeek, teacherNote, journalApplicable, gradesEnabled },
   { provider = generateNarrativeDraft, now = new Date() } = {}) {
   await requireAiEvidenceApproval(database, schoolId);
-  const date = await reserveModelCall(database, schoolId, manilaDate(now));
-  let draft;
-  try {
-    draft = await provider({ student, reportWeek, teacherNote, journalApplicable });
-  } catch (error) {
-    await recordModelOutcome(database, schoolId, date, error.usage, error);
-    throw error;
+  let retryReason = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const date = await reserveModelCall(database, schoolId, manilaDate(now));
+    try {
+      const draft = await provider({ student, reportWeek, teacherNote, journalApplicable, gradesEnabled, retryReason });
+      await recordModelOutcome(database, schoolId, date, draft.usage, null);
+      return draft;
+    } catch (error) {
+      await recordModelOutcome(database, schoolId, date, error.usage, error);
+      if (error.category !== 'invalid_output' || attempt === 1) throw error;
+      retryReason = error.reasonCode || 'format';
+    }
   }
-  await recordModelOutcome(database, schoolId, date, draft.usage, null);
-  return draft;
 }
 
 module.exports = {

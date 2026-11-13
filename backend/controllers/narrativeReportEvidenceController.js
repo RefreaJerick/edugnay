@@ -106,6 +106,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         academic_years.label AS academicYearLabel,
         school_grade_levels.display_name AS gradeLevelName,
         school_portal_features.narrative_reports_enabled AS reportsEnabled,
+        school_portal_features.grades_enabled AS gradesEnabled,
         school_settings.journal_subject_id AS journalSubjectId,
         school_portal_features.journals_enabled AS journalsEnabled,
         school_settings.narrative_report_week_start_day AS weekStartDay,
@@ -598,7 +599,8 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
       section: {
         id: String(section.sectionId), name: section.sectionName,
         gradeLevel: section.gradeLevelName, academicYearId: String(section.academicYearId),
-        academicYearLabel: section.academicYearLabel, journalApplicable
+        academicYearLabel: section.academicYearLabel, journalApplicable,
+        gradesEnabled: Number(section.gradesEnabled) === 1
       },
       reportWeek: { ...period, dataThroughDate: evidenceEndDate },
       students: students.map(({ enrolledDate, withdrawnDate, ...student }) => student)

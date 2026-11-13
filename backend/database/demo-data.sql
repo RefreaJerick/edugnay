@@ -213,7 +213,7 @@ INSERT INTO grading_categories (id, school_id, school_level_id, code, name, weig
 VALUES
   (1, 1, 2, 'ww', 'Written Work', 30.00),
   (2, 1, 2, 'pt', 'Performance Task', 50.00),
-  (3, 1, 2, 'qa', 'Quarterly Assessment', 20.00);
+  (3, 1, 2, 'qa', 'Examinations', 20.00);
 
 -- =========================================================
 -- 4. Assignment, scores, attendance, and QR demo records

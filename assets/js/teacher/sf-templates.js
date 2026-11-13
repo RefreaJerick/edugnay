@@ -92,7 +92,7 @@ function isGrade12TechProSf9Template(template) {
 }
 
 function isCurrentElementaryJhsForm(template) {
-  return ['SF1', 'SF2', 'SF3', 'SF8'].includes(template?.formCode) && template.version === '1.0';
+  return ['SF1', 'SF2', 'SF3'].includes(template?.formCode) && template.version === '1.0';
 }
 
 function formatTemplateDate(value) {

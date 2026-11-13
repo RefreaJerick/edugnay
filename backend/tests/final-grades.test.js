@@ -32,6 +32,7 @@ let gradesEnabled = true;
 let finalGradeRule = null;
 let publishedK10Grades = 0;
 let publishedSubjectGrades = 0;
+let reopenApproved = false;
 
 const database = {
   async execute(sql, values = []) {
@@ -42,6 +43,7 @@ const database = {
       gradeCode: context.gradeCode, academicYearLabel: context.academicYearLabel
     }]];
     if (sql.includes('FROM parent_notification_triggers')) return [parentTriggerEnabled ? [{ enabled: 1 }] : []];
+    if (sql.includes('FROM grading_period_reopen_requests')) return [reopenApproved ? [{ id: 1 }] : []];
     if (sql.startsWith('SELECT id FROM academic_terms WHERE id = ?')) return [[{ id: context.academicTermId }]];
     if (sql.startsWith('SELECT COUNT(*) AS total FROM academic_terms')) return [[{ total: configuredTermCount }]];
     if (sql.includes('SELECT COUNT(*) AS termCount FROM academic_terms')) return [[{ termCount: configuredTermCount }]];
@@ -148,12 +150,14 @@ function reset() {
   finalGradeRule = null;
   publishedK10Grades = 0;
   publishedSubjectGrades = 0;
+  reopenApproved = false;
   previousScores = [];
   previousPublished = [];
   context = {
     sectionId: 8, schoolId: 1, schoolLevelId: 2, academicYearId: 4,
     sectionName: 'St. Matthew', subjectId: 2, subjectName: 'English',
     academicTermId: 14, academicTermName: 'Quarter 2', termStatus: 'active',
+    academicYearStatus: 'active',
     schoolLevelCode: 'jhs', shsGradingGroup: null,
     academicYearLabel: '2025-2026', gradingPeriodType: 'quarterly', gradeCode: 'grade-8',
     gradeRounding: 'round', passingGradeThreshold: '75.00'
@@ -329,6 +333,103 @@ test('Grades 4-10 preview weights exam parts, applies the 2026 transmutation, th
   }
 });
 
+test('approved reopened terms allow recalculation during the active school year', async () => {
+  reset();
+  context.termStatus = 'closed';
+  reopenApproved = true;
+  const preview = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(preview.error, null);
+  assert.equal(preview.data.preview.readyToPublish, true);
+  context.academicYearStatus = 'closed';
+  const closedYear = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(closedYear.error?.status, 409);
+});
+
+test('GMRC domain scores use five fixed parts and three exam parts before verification', async () => {
+  reset();
+  context.schoolLevelCode = 'elementary';
+  context.gradeCode = 'grade-4';
+  context.subjectCode = 'gmrc-grade-4';
+  context.academicYearLabel = '2026-2027';
+  context.gradingPeriodType = 'trimestral';
+  subjectProfile = { id: 40 };
+  subjectComponents = [
+    { id: 101, code: 'written', name: 'Written/Oral', componentType: 'written', weight: 20 },
+    { id: 102, code: 'performance', name: 'Performance', componentType: 'performance', weight: 50 },
+    { id: 103, code: 'examination', name: 'Examinations', componentType: 'examination', weight: 30 }
+  ];
+  subjectExamParts = [
+    { id: 201, componentId: 103, code: 'summative-test-1', name: 'ST1', weight: 30 },
+    { id: 202, componentId: 103, code: 'summative-test-2', name: 'ST2', weight: 30 },
+    { id: 203, componentId: 103, code: 'term-exam', name: 'Term Exam', weight: 40 }
+  ];
+  items = [
+    ...[['cognitive', 101], ['affective', 101], ['cognitive', 102], ['affective', 102], ['behavioral', 102]]
+      .map(([domainCode, subjectGradingComponentId], index) => ({ gradingItemId: 11 + index,
+        title: `${domainCode} ${index}`, domainCode, subjectGradingComponentId, maxScore: 10, componentSchoolId: 1 })),
+    ...[201, 202, 203].map((subjectGradingExamPartId, index) => ({ gradingItemId: 16 + index,
+      title: `Exam ${index}`, subjectGradingComponentId: 103, subjectGradingExamPartId, maxScore: 10, componentSchoolId: 1 }))
+  ];
+  scores = students.flatMap(student => items.map(item => ({ studentId: student.studentId,
+    gradingItemId: item.gradingItemId, score: item.gradingItemId === 15 ? 5 : 10 })));
+  let result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.error, null);
+  assert.equal(result.data.preview.readyToPublish, true);
+  assert.equal(result.data.preview.students[0].initialGrade, 85);
+  assert.equal(result.data.preview.issues.some(issue => issue.code === 'values_domain_without_items'), false);
+  assert.equal(result.data.preview.domainRuleVersion, 'deped_values_domains_2026');
+  const transmutedGrade = result.data.preview.students[0].finalGrade;
+  assert.ok(transmutedGrade > 85);
+  const published = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(published.error, null);
+  assert.equal(savedGrades[0][6], 'deped_values_domains_2026');
+  subjectComponents[1].weight = 45;
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.readyToPublish, false);
+  assert.ok(result.data.preview.issues.some(issue => issue.code === 'values_domain_setup_mismatch'));
+  subjectComponents[1].weight = 50;
+  items[4].domainCode = null;
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.readyToPublish, false);
+  assert.ok(result.data.preview.issues.some(issue => issue.code === 'missing_values_domain'));
+  items[4].domainCode = 'behavioral';
+  const completeItems = items;
+  items = items.filter(item => item.gradingItemId !== 15);
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.readyToPublish, false);
+  assert.deepEqual(result.data.preview.issues.filter(issue => issue.code === 'values_domain_without_items')
+    .map(issue => [issue.componentType, issue.domainCode, issue.componentName, issue.domainName]),
+  [['performance', 'behavioral', 'Performance Tasks', 'Behavioral']]);
+  items = items.filter(item => ![11, 14].includes(item.gradingItemId));
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.deepEqual(result.data.preview.issues.filter(issue => issue.code === 'values_domain_without_items')
+    .map(issue => `${issue.componentType}:${issue.domainCode}`),
+  ['written:cognitive', 'performance:affective', 'performance:behavioral']);
+  items = items.filter(item => item.subjectGradingComponentId !== 101);
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.deepEqual(result.data.preview.issues.filter(issue => issue.code === 'values_domain_without_items')
+    .map(issue => `${issue.componentType}:${issue.domainCode}`),
+  ['written:cognitive', 'written:affective', 'performance:affective', 'performance:behavioral']);
+  assert.equal(result.data.preview.issues.some(issue => issue.code === 'component_without_items' && issue.categoryCode === 'written'), false);
+  items = [];
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.issues.filter(issue => issue.code === 'values_domain_without_items').length, 5);
+  assert.equal(result.data.preview.issues.filter(issue => issue.code === 'exam_part_without_items').length, 3);
+  items = completeItems;
+  scores = scores.filter(score => score.gradingItemId !== 17);
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.readyToPublish, false);
+  assert.equal(result.data.preview.issues.some(issue => issue.code === 'values_domain_without_items'), false);
+  assert.ok(result.data.preview.missingScoreCount > 0);
+  context.academicYearLabel = '2027-2028';
+  scores = students.flatMap(student => items.map(item => ({ studentId: student.studentId,
+    gradingItemId: item.gradingItemId, score: item.gradingItemId === 15 ? 5 : 10 })));
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.students[0].finalGrade, 85);
+  assert.notEqual(result.data.preview.students[0].finalGrade, transmutedGrade);
+  assert.equal(result.data.preview.gradingMethod, 'deped_zero_based');
+});
+
 test('Grades 4-10 publication requires an item for each configured exam part', async () => {
   reset();
   context.schoolLevelCode = 'jhs';
@@ -356,6 +457,7 @@ test('Grades 4-10 publication requires an item for each configured exam part', a
   assert.equal(result.error, null);
   assert.equal(result.data.preview.readyToPublish, false);
   assert.ok(result.data.preview.issues.some(issue => issue.code === 'exam_part_without_items' && issue.categoryCode === 'term-exam'));
+  assert.equal(result.data.preview.issues.some(issue => issue.code === 'values_domain_without_items'), false);
 });
 
 test('Configured Grades 2–3 setups use the 2026 adjusted transmutation method', async () => {
@@ -403,6 +505,7 @@ test('Configured Grades 2–3 setups use the 2026 adjusted transmutation method'
     const preview = result.data.preview;
     assert.equal(result.error, null, gradeCode);
     assert.equal(preview.readyToPublish, true, gradeCode);
+    assert.equal(preview.issues.some(issue => issue.code === 'values_domain_without_items'), false);
     assert.equal(preview.gradingMethod, 'deped_2026_transmutation');
     assert.equal(preview.passingGradeThreshold, 75);
     assert.equal(preview.missingScoreCount, 0);
@@ -754,7 +857,7 @@ test('publish saves all student grades atomically using the authenticated teache
   assert.equal(result.data.published, true);
   assert.equal(result.data.publishedCount, 2);
   assert.equal(savedGrades.length, 2);
-  assert.ok(savedGrades.every(values => values[0] === 1 && values[1] === 8 && values[2] === 2 && values[3] === 14 && values[6] === 5));
+  assert.ok(savedGrades.every(values => values[0] === 1 && values[1] === 8 && values[2] === 2 && values[3] === 14 && values[7] === 5));
   assert.equal(committed, true);
   assert.equal(rolledBack, false);
   const studentNotices = queries.filter(query => query.sql.includes('INSERT INTO notifications') && query.sql.includes('SELECT students.id'));

@@ -383,7 +383,7 @@ test('SHS weekly evidence includes placed classes and only meaningful attendance
     assert.equal(bea.assignments.total, 0);
     const aiEvidence = buildModelEvidence(ari, result.body.reportWeek, null);
     assert.equal(aiEvidence.attendance.remarks.length, 3);
-    assert.match(aiEvidence.academicRecords[0].subject, /Class A/);
+    assert.deepEqual(aiEvidence.academicRecords, [], 'ordinary term grades do not reach the AI');
     assert.ok(calls.some(call => call.sql.includes('FROM published_final_grades AS grades')
       && call.sql.includes('shs_elective_classes') && call.sql.includes('DATE(grades.published_at) BETWEEN ? AND ?')
       && call.values.includes(weekStart) && call.values.includes(weekEnd)));

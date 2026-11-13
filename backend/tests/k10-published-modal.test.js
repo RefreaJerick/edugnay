@@ -78,3 +78,23 @@ test('different published setups stay in separate rows and compact layout adapts
   assert.match(styles, /\.school-k10-readonly-modal \.modal\s*\{[^}]*max-width:\s*760px/s);
   assert.match(styles, /@media \(max-width: 600px\)[\s\S]*?\.school-k10-published-weights\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
 });
+
+test('domain breakdown renders for GMRC and Values Education with saved-setup warning', () => {
+  const context = vm.createContext({ state: { k10EditorGroup: { allSubjects: [] } } });
+  vm.runInContext(script.slice(summaryStart, summaryEnd), context);
+  for (const [code, scope] of [
+    ['gmrc-elementary', 'GMRC Grades 4–6'],
+    ['values-education-jhs', 'Values Education Grades 7–10']
+  ]) {
+    context.state.k10EditorGroup.allSubjects = [{ subjectCode: code, valuesDomains: true,
+      valuesDomainSetupMatches: true }];
+    const html = vm.runInContext('renderValuesDomainGuidance()', context);
+    assert.match(html, new RegExp(scope));
+    assert.equal((html.match(/class="school-k10-domain-card"/g) || []).length, 3);
+    assert.match(html, /Split within Examinations/);
+    assert.equal(html.includes('Grades 2–3 keep their current setup'), code === 'gmrc-elementary');
+  }
+  context.state.k10EditorGroup.allSubjects[0].valuesDomainSetupMatches = false;
+  assert.match(vm.runInContext('renderValuesDomainGuidance()', context), /Saved weights or exam parts differ/);
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*?\.school-k10-domain-cards\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\)/);
+});

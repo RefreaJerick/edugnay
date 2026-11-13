@@ -407,7 +407,7 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.doesNotMatch(script, /generation-control-help/);
   assert.match(script, /hasAttendanceRecords/);
   assert.match(script, /report-card-avatar/);
-  assert.match(styles, /\.report-card-excerpt \{ padding: 12px 14px 12px; \}/);
+  assert.match(styles, /\.report-card-excerpt \{ padding: 10px 14px; \}/);
   assert.match(script, /EDUGNAY_AVATAR\?\.html/);
   assert.match(script, /EDUGNAY_AVATAR\?\.hydrate/);
   assert.match(script, /EDUGNAY_AVATAR\?\.render/);
@@ -416,7 +416,7 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.doesNotMatch(script, /status-pill|status-released|status-confirmed/);
   assert.match(script, /data-lucide="eye"/);
   assert.match(script, /\$\('review-summary'\)\.value = report\.editedSummary \|\| report\.generatedSummary;/);
-  assert.match(script, /No confirmed records/);
+  assert.match(script, /No records/);
   assert.match(script, /No assignments due/);
   assert.match(script, /data-source-card ds-/);
   assert.match(script, /getClientRects\(\)/);
@@ -440,12 +440,9 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /\$\('confirm-review'\)\.hidden = !editable/);
   assert.match(script, /\$\('release-report'\)\.hidden = editable \|\| Boolean\(report\.releasedAt && !report\.pendingCorrection\) \|\| !state\.releaseEnabled/);
   assert.match(page, /class="review-avatar person-avatar person-avatar--compact"[^>]*id="review-avatar"/);
-  assert.match(styles, /\.excerpt-text\s*\{[^}]*min-height:\s*68px;[^}]*overflow-wrap:\s*anywhere;/s);
-  assert.doesNotMatch(styles, /-webkit-line-clamp|\.excerpt-text\s*\{[^}]*overflow:\s*hidden/s);
+  assert.match(styles, /\.report-card \.excerpt-text\s*\{[^}]*-webkit-line-clamp:\s*2;[^}]*overflow:\s*hidden;/s);
   assert.match(styles, /\.person-avatar\.report-card-avatar\s*\{\s*--avatar-size:\s*38px;/);
-  assert.match(styles, /\.report-card \.excerpt-label\s*\{[^}]*font-size:\s*9px/s);
-  assert.match(styles, /\.report-card \.excerpt-label\s*>\s*svg\s*\{[^}]*width:\s*12px/s);
-  assert.match(styles, /\.report-card \.excerpt-text\s*\{\s*font-size:\s*10px;/);
+  assert.match(styles, /\.report-card \.excerpt-text\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(styles, /\.report-card-review\s*>\s*svg\s*\{[^}]*width:\s*14px/s);
   assert.match(styles, /\.pipeline-head \.badge/);
   assert.doesNotMatch(styles, /^\s*\.badge\s*\{/m);
@@ -467,6 +464,21 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(routes, /weekly-drafts\/:reportId\/confirm.*requireSchoolUser.*requireRoles\('teacher'\)/);
   assert.match(routes, /router\.delete\('\/weekly-drafts\/:reportId', requireSchoolUser, requireRoles\('teacher'\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/release.*requireSchoolUser.*requireRoles\('teacher'\)/);
+});
+
+test('teacher review warns below the report label and blocks release for unmarked drafts when grade viewing is off', () => {
+  const root = path.join(__dirname, '../..');
+  const page = pageFs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const script = pageFs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
+  const styles = pageFs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  assert.match(page, /AI-generated parent report[\s\S]*?id="review-grade-warning"[\s\S]*?id="review-summary"/);
+  assert.match(styles, /\.review-grade-warning\[hidden\]/);
+  assert.match(script, /report\.gradeEvidenceUsed !== false/);
+  assert.match(script, /gradeReleaseBlocked = !state\.gradesEnabled/);
+  assert.match(script, /if \(state\.gradesEnabled !== false\) \{/);
+  assert.match(script, /\$\('release-report'\)\.disabled = state\.busy \|\| gradeReleaseBlocked/);
+  assert.match(script, /Select Regenerate draft/);
+  assert.match(script, /Select Reopen report, then Regenerate draft/);
 });
 
 test('teacher Narrative Reports removes the intro and keeps its page title', () => {
@@ -641,12 +653,24 @@ test('adviser report actions use success toasts and show regeneration progress',
 
 test('adviser cards and review evidence omit Journal outside eligible JHS sections', () => {
   const styles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/adviser/narrative-reports.css'), 'utf8');
-  assert.match(styles, /\.report-card-metrics\.without-journal \{ grid-template-columns: 1fr; \}/);
-  assert.match(styles, /#review-modal \.data-source-grid\.without-journal \.ds-academic \{ grid-column: 1 \/ -1; \}/);
+  const page = pageFs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  assert.match(styles, /\.report-card-metrics\.without-journal \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
+  assert.match(styles, /\.report-card-metrics\s*\{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);[^}]*min-height: 0;/s);
+  assert.match(styles, /\.report-card-metrics \.rc-metric\.absences\.has-absences \.rc-metric-val \{ color: var\(--theme-warning-strong\); \}/);
+  assert.match(styles, /\.report-card-metrics \.rc-metric\.absences\.no-records \.rc-metric-val \{ color: var\(--gray-500\); \}/);
+  assert.match(styles, /#review-modal \.data-source-grid \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 520px\) \{\s*#review-modal \.data-source-grid \{ grid-template-columns: 1fr; \}/);
+  assert.match(styles, /#review-modal \.data-source-card \{[\s\S]*?min-height: 0;[\s\S]*?padding: 10px 12px;/);
+  assert.match(styles, /#review-modal \.ds-label \{[^}]*font-size: 11px;/);
+  assert.match(styles, /#review-modal \.ds-val \{[^}]*font-size: 14px;/);
+  assert.match(styles, /#review-modal \.ds-detail \{[^}]*font-size: 11px;/);
+  assert.doesNotMatch(page, /review-evidence-note/);
   const student = {
     id: '4', displayName: 'Ari Student', initials: 'AS',
-    attendance: { recordedSessions: 1, absent: 0, present: 1 },
-    assignments: { total: 1, submitted: 1 },
+    attendance: { recordedSessions: 2, absent: 0, present: 1, late: 1 },
+    assignments: { total: 3, submitted: 1, notSubmitted: 1, sources: [
+      { status: 'submitted' }, { status: 'not_submitted' }, { status: 'pending' }
+    ] },
     academicRecords: [], academicScores: [], academicScoresOmitted: 0,
     journal: { entries: [{ entryText: 'A private reflection.' }] }
   };
@@ -654,10 +678,11 @@ test('adviser cards and review evidence omit Journal outside eligible JHS sectio
     students: [student] } };
   const elements = {
     'report-search': { value: '' }, 'report-status': { value: 'all' }, 'reports-grid': { innerHTML: '' },
-    'review-evidence': { innerHTML: '', withoutJournal: false,
-      classList: { toggle(name, value) { elements['review-evidence'].withoutJournal = value; } } }
+    'review-evidence': { innerHTML: '' }
   };
-  const context = { state, student, $: id => elements[id], reportFor: () => null,
+  const report = { gradeEvidenceUsed: false, sources: [] };
+  let cardReport = null;
+  const context = { state, student, report, $: id => elements[id], reportFor: () => cardReport,
     studentInitials: item => item.initials, escape: value => String(value), setMessage() {},
     window: { lucide: { createIcons() {} } } };
   const cardsSource = teacherScript.slice(teacherScript.indexOf('  function renderCards()'), teacherScript.indexOf('  async function loadWeek()'));
@@ -666,21 +691,129 @@ test('adviser cards and review evidence omit Journal outside eligible JHS sectio
   const reviewSource = teacherScript.slice(teacherScript.indexOf('    const attendance = student.attendance;', reviewStart),
     teacherScript.indexOf('    window.lucide?.createIcons?.();', reviewStart));
   const renderReviewEvidence = vm.runInNewContext(`function renderReviewEvidence() {\n${reviewSource}\n}\nrenderReviewEvidence`, context);
+  const detailCount = () => (elements['review-evidence'].innerHTML.match(/class="ds-detail"/g) || []).length;
 
   renderCards();
   renderReviewEvidence();
   assert.match(elements['reports-grid'].innerHTML, /report-card-metrics without-journal/);
   assert.doesNotMatch(elements['reports-grid'].innerHTML, /Journal/);
-  assert.equal(elements['review-evidence'].withoutJournal, true);
+  assert.match(elements['reports-grid'].innerHTML, /1\/2<\/strong><div class="rc-metric-label">Submitted/);
+  assert.doesNotMatch(elements['reports-grid'].innerHTML, /Report summary|rc-metric-detail/);
+  assert.doesNotMatch(elements['reports-grid'].innerHTML, /report-card-excerpt|report-card-review/);
+  assert.match(elements['reports-grid'].innerHTML, /No draft/);
+  assert.match(elements['reports-grid'].innerHTML, /<strong class="rc-metric-val">0<\/strong><div class="rc-metric-label">Absences/);
+  cardReport = { id: 7, status: 'draft', generatedSummary: 'Original report.', editedSummary: 'Teacher edited report.' };
+  renderCards();
+  assert.match(elements['reports-grid'].innerHTML, /Teacher edited report/);
+  assert.doesNotMatch(elements['reports-grid'].innerHTML, /Original report|Report summary/);
+  assert.match(elements['reports-grid'].innerHTML, /Needs review|report-card-review/);
+  cardReport.status = 'confirmed';
+  renderCards();
+  assert.match(elements['reports-grid'].innerHTML, /Confirmed/);
+  cardReport.releasedAt = '2026-11-13';
+  renderCards();
+  assert.match(elements['reports-grid'].innerHTML, /Released to parents/);
+  cardReport = null;
+  student.attendance.absent = 1;
+  renderCards();
+  assert.match(elements['reports-grid'].innerHTML, /rc-metric absences has-absences/);
+  student.attendance.recordedSessions = 0;
+  student.assignments.submitted = 0;
+  student.assignments.notSubmitted = 0;
+  renderCards();
+  assert.match(elements['reports-grid'].innerHTML, /rc-metric absences no-records/);
+  assert.match(elements['reports-grid'].innerHTML, /<strong class="rc-metric-val">—<\/strong><div class="rc-metric-label">Absences/);
+  assert.match(elements['reports-grid'].innerHTML, /<strong class="rc-metric-val">—<\/strong><div class="rc-metric-label">Submitted/);
+  student.attendance = { recordedSessions: 2, absent: 0, present: 1, late: 1 };
+  student.assignments.submitted = 1;
+  student.assignments.notSubmitted = 1;
   assert.doesNotMatch(elements['review-evidence'].innerHTML, /Journal/);
-  assert.match(elements['review-evidence'].innerHTML, /Academic records/);
+  assert.match(elements['review-evidence'].innerHTML, /Academic concerns/);
+  assert.match(elements['review-evidence'].innerHTML, /<strong class="ds-val">None included<\/strong>/);
+  assert.match(elements['review-evidence'].innerHTML, /No concerns flagged/);
+  assert.match(elements['review-evidence'].innerHTML, /1\/2 submitted/);
+  assert.doesNotMatch(elements['review-evidence'].innerHTML, /1\/3 submitted/);
+  assert.match(elements['review-evidence'].innerHTML, /1 not submitted · Pending work is not counted/);
+  assert.match(elements['review-evidence'].innerHTML, /<span class="ds-label">Attendance<\/span><\/div><div class="ds-content"><strong class="ds-val">1\/2 present/);
+  assert.match(elements['review-evidence'].innerHTML, /1 late/);
+  assert.equal(detailCount(), 3);
+
+  student.attendance = { recordedSessions: 4, present: 1, late: 1, absent: 1, excused: 1 };
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /1 late · 1 absent · 1 excused/);
+  student.attendance = { recordedSessions: 2, present: 2, late: 0, absent: 0, excused: 0 };
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /No late, absent, or excused marks/);
+  student.attendance = { recordedSessions: 2, absent: 0, present: 1, late: 1 };
+
+  student.assignments.sources = [{ status: 'pending' }];
+  student.assignments.total = 1;
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /<strong class="ds-val">No confirmed work<\/strong>/);
+  assert.match(elements['review-evidence'].innerHTML, /Pending work is not counted/);
+  student.assignments.total = 0;
+  student.assignments.sources = [];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /No assignments due this week/);
+  student.assignments.total = 2;
+  student.assignments.sources = [{ status: 'submitted' }, { status: 'submitted' }];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /No confirmed work left unsubmitted/);
+  student.assignments.total = 3;
+  student.assignments.sources = [{ status: 'submitted' }, { status: 'not_submitted' }, { status: 'pending' }];
+
+  student.attendance.recordedSessions = 0;
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /<strong class="ds-val">No records<\/strong>/);
+  assert.match(elements['review-evidence'].innerHTML, /No class status recorded this week/);
+  student.attendance.recordedSessions = 2;
+
+  report.gradeEvidenceUsed = true;
+  report.sources = [{ type: 'student_score' }, { type: 'student_score' }, { type: 'published_final_grade' }];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /2 low-score activities/);
+  assert.match(elements['review-evidence'].innerHTML, /1 published grade below passing/);
+  assert.doesNotMatch(elements['review-evidence'].innerHTML, /20 scored activities|9 published record/);
+
+  report.sources = [{ type: 'student_score' }];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /<strong class="ds-val">1 low-score activity<\/strong>/);
+  assert.match(elements['review-evidence'].innerHTML, /No published grades flagged/);
+
+  report.sources = [{ type: 'published_final_grade' }];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /<strong class="ds-val">1 published grade below passing<\/strong>/);
+  assert.match(elements['review-evidence'].innerHTML, /No low-score activities/);
+
+  report.sources = [{ type: 'published_final_grade' }, { type: 'published_final_grade' }];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /<strong class="ds-val">2 published grades below passing<\/strong>/);
+
+  report.sources = [];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /Concerns included/);
+  assert.match(elements['review-evidence'].innerHTML, /Details unavailable/);
+
+  state.gradesEnabled = false;
+  renderReviewEvidence();
+  assert.doesNotMatch(elements['review-evidence'].innerHTML, /Academic concerns|Academic evidence/);
+  state.gradesEnabled = true;
+  report.gradeEvidenceUsed = null;
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /Older draft/);
+  assert.match(elements['review-evidence'].innerHTML, /Grade data was not tracked/);
 
   state.evidence.section.journalApplicable = true;
   renderCards();
   renderReviewEvidence();
   assert.match(elements['reports-grid'].innerHTML, /Journal/);
   assert.match(elements['review-evidence'].innerHTML, /Journal/);
-  assert.equal(elements['review-evidence'].withoutJournal, false);
+  assert.match(elements['review-evidence'].innerHTML, /1 reflection/);
+  assert.equal(detailCount(), 4);
+  student.journal.entries = [];
+  renderReviewEvidence();
+  assert.match(elements['review-evidence'].innerHTML, /0 reflections/);
+  assert.match(elements['review-evidence'].innerHTML, /Values Education/);
 });
 
 test('inline regeneration confirmation cancels safely and starts only after explicit confirmation', async () => {

@@ -160,7 +160,7 @@
         ...(policy?.components || []).map(component => ({
           label: `${({ WW: 'WW', PT: 'PT', QA: 'Exams' })[categoryCode(component)] || component.name} Avg`,
           title: `${component.name}: ${Number(component.weight) || 0}% of the final grade`,
-          style: 'min-width:80px;background:#f0f4ff;'
+          className: 'score-average-header'
         })),
         { label: 'Final Grade', title: 'Calculated final grade based on current scores.', style: 'min-width:148px;background:var(--navy);color:var(--gold);' }
       ],
@@ -173,8 +173,7 @@
         return [
           ...(policy?.components || []).map(component => ({
             value: student.componentAverages?.[component.code] ?? null,
-            className: 'computed-cell computed-avg',
-            style: 'background:#f8faff;'
+            className: 'computed-cell computed-avg'
           })),
           {
             value: student.termGrade ?? (published ? Number(published.finalGrade) : null),
@@ -341,8 +340,6 @@
     const publishButton = host.querySelector('#publishGradesButton');
     publishButton.onclick = () => openPublishPreview(data, scope, writable, reload);
     publishButton.disabled = !writable || !items.length || !students.length;
-    const periodButton = host.querySelector('#fillPerfectScoresButton');
-    setVisible(periodButton, false);
     const exportButton = host.querySelector('#exportScoresButton');
     setVisible(exportButton, false);
     const lockBanner = host.querySelector('#quarterLockBanner');
@@ -409,7 +406,6 @@
       periodSelect.innerHTML = '<option value="">Loading grading periods…</option>';
       host.querySelector('#scorePanelWeights').textContent = '—';
       renderCategoryTabs(host, [], () => {});
-      setVisible(host.querySelector('#fillPerfectScoresButton'), false);
       setVisible(host.querySelector('#exportScoresButton'), false);
       window.TeacherClassViews.renderScoreTable({
         host,

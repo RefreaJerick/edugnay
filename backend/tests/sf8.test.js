@@ -13,7 +13,7 @@ const school = {
   schoolName: 'AcadeMix School', depedSchoolId: '305614', region: 'VIII', division: 'Leyte', district: 'Tacloban'
 };
 const section = {
-  name: 'St. Matthew', academicYear: '2026-2027', gradeLevel: 'Grade 7', strandName: null
+  name: 'St. Matthew', academicYear: '2026-2027', gradeCode: 'grade-7', gradeLevel: 'Grade 7', strandName: null
 };
 
 function student(number, sex = 'male') {
@@ -37,7 +37,7 @@ test('SF8 fills school and sex-grouped roster cells while leaving health assessm
   const cells = new Map(result.pages[0].map(cell => [cell.cellAddress, cell.value]));
   assert.equal(cells.get('E5'), school.schoolName);
   assert.equal(cells.get('C7'), school.depedSchoolId);
-  assert.equal(cells.get('F7'), section.gradeLevel);
+  assert.equal(cells.get('F7'), '7');
   assert.equal(cells.get('H7'), section.name);
   assert.equal(cells.get('O7'), section.academicYear);
   assert.equal(cells.get('B12'), '100000000001');
@@ -51,6 +51,29 @@ test('SF8 fills school and sex-grouped roster cells while leaving health assessm
   assert.equal(cells.has('C13'), false);
   assert.ok(result.issues.some(issue => issue.fieldKey === 'sex' && /Learner3/.test(issue.message)));
   assert.ok(result.issues.some(issue => issue.fieldKey === 'draft'));
+});
+
+test('SF8 uses grade numbers for Grades 1-12 and keeps the Kindergarten label', () => {
+  for (const grade of [1, 7, 10, 11, 12]) {
+    const gradeSection = { ...section, gradeCode: `grade-${grade}`, gradeLevel: `Grade ${grade}` };
+    const cells = new Map(buildSf8Pages(school, gradeSection, [student(1)]).pages[0]
+      .map(cell => [cell.cellAddress, cell.value]));
+    assert.equal(cells.get('F7'), String(grade));
+  }
+  const kindergarten = { ...section, gradeCode: 'kindergarten', gradeLevel: 'Kindergarten' };
+  const cells = new Map(buildSf8Pages(school, kindergarten, [student(1)]).pages[0]
+    .map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(cells.get('F7'), 'Kindergarten');
+});
+
+test('SF8 shows the Strengthened SHS track without requiring a strand', () => {
+  for (const trackName of ['Academic', 'Technical Professional (TechPro)']) {
+    const shsSection = { ...section, gradeCode: 'grade-11', gradeLevel: 'Grade 11', trackName, strandName: null };
+    const cells = new Map(buildSf8Pages(school, shsSection, [student(1)]).pages[0]
+      .map(cell => [cell.cellAddress, cell.value]));
+    assert.equal(cells.get('F7'), '11');
+    assert.equal(cells.get('L7'), trackName);
+  }
 });
 
 test('SF8 warns when school or learner details are missing and when the roster is empty', () => {

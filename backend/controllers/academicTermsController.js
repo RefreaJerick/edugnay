@@ -484,7 +484,7 @@ async function listGradingCategories(req, res, next) {
     res.json({
       gradingCategories: categories.map(category => ({
         ...category,
-        name: weights && category.code === 'qa' ? 'Examinations' : category.name,
+        name: String(category.code).toLowerCase() === 'qa' ? 'Examinations' : category.name,
         weight: weights?.[String(category.code).toLowerCase()] ?? Number(category.weight)
       })),
       shsGradingTypes: [],
@@ -523,7 +523,7 @@ async function updateGradingCategories(req, res, next) {
     if (level.levelCode === 'shs') {
       const requiredCodes = ['ww', 'pt', 'qa'];
       if (categories.length !== requiredCodes.length || requiredCodes.some(code => !categories.some(category => category.code === code))) {
-        throw createError('SHS grading must keep Written Work, Performance Task, and Quarterly Assessment categories.');
+        throw createError('SHS grading must keep Written Work, Performance Task, and Examinations categories.');
       }
       const existingCodesAreStandard = existing.length === requiredCodes.length
         && requiredCodes.every(code => existing.some(category => String(category.code).toLowerCase() === code));
@@ -558,7 +558,7 @@ async function updateGradingCategories(req, res, next) {
       schoolLevelId,
       gradeRounding: savedRounding,
       passingGradeThreshold: savedThreshold,
-      gradingCategories: saved.map(category => ({ ...category, weight: Number(category.weight) }))
+      gradingCategories: saved.map(category => ({ ...category, name: String(category.code).toLowerCase() === 'qa' ? 'Examinations' : category.name, weight: Number(category.weight) }))
     });
   } catch (error) {
     await connection.rollback();

@@ -980,6 +980,7 @@ async function createApiAssignment(values = {}) {
       gradingCategoryId: values.gradingCategoryId ? Number(values.gradingCategoryId) : null,
       subjectGradingComponentId: values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null,
       subjectGradingExamPartId: values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null,
+      domainCode: values.domainCode ?? null,
       title: values.title,
       description: values.description ?? values.instructions ?? null,
       dueAt: dueAt ? `${String(dueAt).slice(0, 10)}T23:59:00` : null,
@@ -999,6 +1000,7 @@ async function updateApiAssignment(assignmentId, values = {}) {
       gradingCategoryId: values.gradingCategoryId === undefined ? undefined : (values.gradingCategoryId ? Number(values.gradingCategoryId) : null),
       subjectGradingComponentId: values.subjectGradingComponentId === undefined ? undefined : (values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null),
       subjectGradingExamPartId: values.subjectGradingExamPartId === undefined ? undefined : (values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null),
+      domainCode: values.domainCode,
       title: values.title,
       description: values.description ?? values.instructions,
       dueAt: values.dueAt || values.dueDate ? `${String(values.dueAt || values.dueDate).slice(0, 10)}T23:59:00` : null,
@@ -1087,8 +1089,7 @@ async function createApiGradingItem(values = {}) {
       gradingCategoryId: values.gradingCategoryId ? Number(values.gradingCategoryId) : null,
       subjectGradingComponentId: values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null,
       subjectGradingExamPartId: values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null,
-      subjectGradingComponentId: values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null,
-      subjectGradingExamPartId: values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null,
+      domainCode: values.domainCode ?? null,
       assignmentId: values.assignmentId ? Number(values.assignmentId) : undefined,
       title: values.title,
       maxScore: values.maxScore
@@ -1100,7 +1101,7 @@ async function createApiGradingItem(values = {}) {
 async function updateApiGradingItem(gradingItemId, values = {}) {
   const response = await requestApi(`/grading-items/${Number(gradingItemId)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ title: values.title, maxScore: values.maxScore })
+    body: JSON.stringify({ title: values.title, maxScore: values.maxScore, domainCode: values.domainCode })
   });
   return normalizeApiGradingItem(response?.gradingItem);
 }
@@ -3010,12 +3011,12 @@ function applyCurrentDateToGradingBanners() {
     const defaultRules = level === 'shs'
       ? [
         { id: 'performance', label: 'Written and Performance Work', weight: 60 },
-        { id: 'assessment', label: 'Quarterly Assessment', weight: 40 }
+        { id: 'assessment', label: 'Examinations', weight: 40 }
       ]
       : [
         { id: 'ww', label: 'Written Work', weight: 30 },
         { id: 'pt', label: 'Performance Task', weight: level === 'elementary' ? 40 : 50 },
-        { id: 'qa', label: 'Quarterly Assessment', weight: level === 'elementary' ? 30 : 20 }
+        { id: 'qa', label: 'Examinations', weight: level === 'elementary' ? 30 : 20 }
       ];
 
     const gradingPeriodType = ACADEMIC_PERIOD_TYPES[values.gradingPeriodType]
@@ -3454,7 +3455,7 @@ function applyCurrentDateToGradingBanners() {
       const grade11TechProSf9 = record.formCode === 'SF9' && record.version === 'g11-techpro-2026-2027';
       const grade12AcademicSf9 = record.formCode === 'SF9' && record.version === 'g12-academic-2026-2027';
       const grade12TechProSf9 = record.formCode === 'SF9' && record.version === 'g12-techpro-2026-2027';
-      const currentElementaryJhsForm = ['SF1', 'SF2', 'SF3', 'SF8'].includes(record.formCode)
+      const currentElementaryJhsForm = ['SF1', 'SF2', 'SF3'].includes(record.formCode)
         && record.version === '1.0';
       return {
         id: grade11AcademicSf9 ? 'sf9-g11-academic-v1'

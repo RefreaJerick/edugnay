@@ -350,6 +350,9 @@ lucide.createIcons();
       const rect = button.getBoundingClientRect();
       scoreComponentMenuItemId = button.dataset.componentId;
       const journalItem = BACKEND_GRADING_ITEMS.find(item => String(item.id) === scoreComponentMenuItemId && item.journalPromptId);
+      const selectedItem = BACKEND_GRADING_ITEMS.find(item => String(item.id) === scoreComponentMenuItemId);
+      const selectedCategory = BACKEND_CATEGORIES.find(category => String(category.subjectGradingComponentId) === String(selectedItem?.subjectGradingComponentId));
+      updateValuesDomainSelect(selectedCategory?.code, 'scoreComponentDomainGroup', 'scoreComponentDomainInput', selectedItem?.domainCode, true);
       document.getElementById('scoreComponentDeleteLabel').textContent = journalItem ? 'Delete journal & component' : BACKEND_ASSIGNMENTS.some(assignment =>
         String(assignment.gradingItemId) === scoreComponentMenuItemId)
         ? 'Delete assignment & component' : 'Delete component';
@@ -358,6 +361,21 @@ lucide.createIcons();
       menu.style.left = `${Math.max(8, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 8))}px`;
       menu.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - menu.offsetHeight - 8)}px`;
       document.getElementById('scoreComponentDeleteAction').focus();
+    });
+    document.getElementById('scoreComponentDomainInput').addEventListener('change', async event => {
+      const item = BACKEND_GRADING_ITEMS.find(record => String(record.id) === scoreComponentMenuItemId);
+      if (!item) return;
+      event.target.disabled = true;
+      try {
+        const saved = await window.EDUGNAY_API.updateGradingItem(item.id, { domainCode: event.target.value });
+        Object.assign(item, saved);
+        closeScoreComponentMenu();
+        renderScoreTable(document.getElementById('academicPeriodSelect').value);
+        showAppToast('Assessment domain saved. Review scores before republishing.');
+      } catch (error) {
+        showAppToast(error.message || 'The domain could not be saved.', 'error');
+        event.target.value = item.domainCode || '';
+      } finally { event.target.disabled = false; }
     });
     document.getElementById('scoreComponentDeleteAction').addEventListener('click', () => {
       const item = BACKEND_GRADING_ITEMS.find(record => String(record.id) === scoreComponentMenuItemId);
@@ -1455,14 +1473,18 @@ lucide.createIcons();
       window.lucide?.createIcons?.();
     }
 
-    function renderSharedScoreCategories(host, categories = [], onChange = () => { }) {
-      const tabs = host?.querySelector('.cat-tabs');
+    function renderSharedScoreCategories(tabs, categories = [], onChange = () => { }) {
       if (!tabs) return;
       const unique = categories.filter((category, index) => category.code
         && categories.findIndex(other => String(other.code).toUpperCase() === String(category.code).toUpperCase()) === index);
-      tabs.innerHTML = [{ code: 'all', name: 'All Components' }, ...unique].map((category, index) =>
-        `<button class="cat-tab ${index === 0 ? 'active' : ''}" type="button" data-cat="${window.EDUGNAY_CONFIG.escapeHtml(String(category.code).toUpperCase())}">${window.EDUGNAY_CONFIG.escapeHtml(category.name)}${category.weight == null ? '' : ` <span class="cat-weight">${Number(category.weight) || 0}%</span>`}</button>`
-      ).join('');
+      tabs.innerHTML = [{ code: 'all', name: 'All Components' }, ...unique].map((category, index) => {
+        const code = index === 0 ? 'all' : String(category.code).toUpperCase();
+        const type = String(category.componentType || code).toLowerCase();
+        const icon = type.includes('written') || type === 'ww' ? 'pencil'
+          : type.includes('performance') || type === 'pt' ? 'target'
+            : type.includes('exam') || type === 'qa' ? 'clipboard-list' : '';
+        return `<button class="cat-tab ${index === 0 ? 'active' : ''}" type="button" data-cat="${window.EDUGNAY_CONFIG.escapeHtml(code)}">${icon ? `<i data-lucide="${icon}" aria-hidden="true" style="width:12px;height:12px;"></i>` : ''}${window.EDUGNAY_CONFIG.escapeHtml(category.name)}${category.weight == null ? '' : ` <span class="cat-weight">${Number(category.weight) || 0}%</span>`}</button>`;
+      }).join('');
       tabs.querySelectorAll('.cat-tab').forEach(button => button.addEventListener('click', () => {
         tabs.querySelectorAll('.cat-tab').forEach(tab => tab.classList.toggle('active', tab === button));
         onChange(button.dataset.cat);
@@ -1531,13 +1553,13 @@ lucide.createIcons();
           const value = score.score == null ? '' : score.score;
           const correction = score.correctionRequired
             ? `<input class="form-input" type="text" data-correction-reason="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}" minlength="10" maxlength="500" placeholder="Reason for correction (required)" aria-label="Correction reason for ${window.EDUGNAY_CONFIG.escapeHtml(name)} ${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" ${writable ? '' : 'disabled'}>` : '';
-          return `<td class="center" data-cat="${window.EDUGNAY_CONFIG.escapeHtml(String(item.categoryCode || '').toUpperCase())}" data-exam-part-id="${window.EDUGNAY_CONFIG.escapeHtml(item.examPartId || '')}"><input class="score-input" type="number" min="0" max="${Number(item.maxScore) || 0}" step="0.01" value="${window.EDUGNAY_CONFIG.escapeHtml(value)}" data-score-item="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}" data-score-id="${window.EDUGNAY_CONFIG.escapeHtml(`${studentId}:${item.id}`)}" data-grading-item-id="${window.EDUGNAY_CONFIG.escapeHtml(item.gradingItemId || item.id)}" data-academic-period-id="${window.EDUGNAY_CONFIG.escapeHtml(item.academicPeriodId || '')}" data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(studentId)}" aria-label="${window.EDUGNAY_CONFIG.escapeHtml(item.title)} score for ${window.EDUGNAY_CONFIG.escapeHtml(name)}" ${writable ? '' : 'disabled'}>${correction}</td>`;
+          return `<td class="center" data-cat="${window.EDUGNAY_CONFIG.escapeHtml(String(item.categoryCode || '').toUpperCase())}" data-exam-part-id="${window.EDUGNAY_CONFIG.escapeHtml(item.examPartId || '')}" data-domain-code="${window.EDUGNAY_CONFIG.escapeHtml(item.domainCode || '')}"><input class="score-input" type="number" min="0" max="${Number(item.maxScore) || 0}" step="0.01" value="${window.EDUGNAY_CONFIG.escapeHtml(value)}" data-score-item="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}" data-score-id="${window.EDUGNAY_CONFIG.escapeHtml(`${studentId}:${item.id}`)}" data-grading-item-id="${window.EDUGNAY_CONFIG.escapeHtml(item.gradingItemId || item.id)}" data-academic-period-id="${window.EDUGNAY_CONFIG.escapeHtml(item.academicPeriodId || '')}" data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(studentId)}" aria-label="${window.EDUGNAY_CONFIG.escapeHtml(item.title)} score for ${window.EDUGNAY_CONFIG.escapeHtml(name)}" ${writable ? '' : 'disabled'}>${correction}</td>`;
         }).join('');
         const metricCells = getMetrics(student, index).map(metric => `<td class="center ${window.EDUGNAY_CONFIG.escapeHtml(metric.className || 'computed-cell')}" style="${window.EDUGNAY_CONFIG.escapeHtml(metric.style || '')}">${metric.value == null ? '—' : window.EDUGNAY_CONFIG.escapeHtml(metric.value)}${metric.detail ? `<small>${window.EDUGNAY_CONFIG.escapeHtml(metric.detail)}</small>` : ''}</td>`).join('');
         return `<tr data-student-name="${window.EDUGNAY_CONFIG.escapeHtml(String(name).toLocaleLowerCase())}" data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(studentId)}"><th scope="row" class="sticky-col"><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student', size: 'sm' })}<div><div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(name)}</div><div class="student-num">#${index + 1}</div></div></div></th>${cells}${metricCells}</tr>`;
       }).join('');
       tbody.querySelectorAll('.score-input').forEach(input => input.addEventListener(scoreEvent, () => onScoreInput(input)));
-      filterSharedScoreTable(host, 'all');
+      filterSharedScoreTable(host, host.querySelector('.cat-tab.active')?.dataset.cat || 'all');
       window.lucide?.createIcons?.();
     }
 
@@ -1821,8 +1843,6 @@ lucide.createIcons();
         document.querySelectorAll('#scoreTable .score-input:not(.readonly-score)').forEach(input => { input.disabled = true; });
         const headActions = document.querySelector('#content-scores .panel-head-actions');
         if (headActions) headActions.style.display = 'none';
-        const fillPerfectButton = document.getElementById('fillPerfectScoresButton');
-        if (fillPerfectButton) fillPerfectButton.style.display = 'none';
         const academicTermId = getBackendTermId(academicPeriodId);
         try {
           if (!academicTermId || !BACKEND_GRADE_CONTEXT?.sectionId || !BACKEND_GRADE_CONTEXT?.subjectId) {
@@ -1874,8 +1894,6 @@ lucide.createIcons();
       if (publishButton) publishButton.style.display = canPublishGradePeriod(academicPeriodId) ? 'inline-flex' : 'none';
       const republishButton = document.getElementById('republishGradesButton');
       if (republishButton && !canPublishGradePeriod(academicPeriodId)) republishButton.style.display = 'none';
-      const fillPerfectButton = document.getElementById('fillPerfectScoresButton');
-      if (fillPerfectButton) fillPerfectButton.style.display = locked ? 'none' : 'inline-flex';
       updateScoreFooter();
     }
 
@@ -1894,7 +1912,8 @@ lucide.createIcons();
       if (!isBackendGradeMode()) return false;
       const termId = getBackendTermId(academicPeriodId);
       const access = termId ? gradeEditAccessByTerm.get(String(termId)) : null;
-      return period?.status === 'active' && access?.academicYearStatus === 'active';
+      return access?.canEdit === true && access?.academicYearStatus === 'active'
+        && ['active', 'closed'].includes(period?.status);
     }
 
     function requireScoreEditingAccess(academicPeriodId, showAlert = true) {
@@ -1951,6 +1970,8 @@ lucide.createIcons();
       document.getElementById('editAssignmentCategoryInput').innerHTML = ASSIGNMENT_CATEGORY_OPTIONS;
       updateAssignmentExamParts('assignCategoryInput', 'assignExamPartGroup', 'assignExamPartInput');
       updateAssignmentExamParts('editAssignmentCategoryInput', 'editAssignmentExamPartGroup', 'editAssignmentExamPartInput');
+      updateValuesDomainSelect(document.getElementById('assignCategoryInput').value, 'assignDomainGroup', 'assignDomainInput');
+      updateValuesDomainSelect(document.getElementById('editAssignmentCategoryInput').value, 'editAssignmentDomainGroup', 'editAssignmentDomainInput');
     }
 
     function getComponentPresentation(code) {
@@ -1979,6 +2000,20 @@ lucide.createIcons();
       updateExamPartSelect(document.getElementById(categorySelectId).value, groupId, partSelectId, selectedPartId);
     }
 
+    function updateValuesDomainSelect(categoryCode, groupId, selectId, selectedCode = '', allowBlank = false) {
+      const category = getBackendCategory(categoryCode);
+      const type = String(category?.componentType || '').toLowerCase();
+      const domains = BACKEND_SUBJECT_GRADING_CONFIG?.valuesDomains
+        ? type === 'written' ? ['cognitive', 'affective']
+          : type === 'performance' ? ['cognitive', 'affective', 'behavioral'] : [] : [];
+      const group = document.getElementById(groupId);
+      const select = document.getElementById(selectId);
+      group.hidden = !domains.length;
+      select.innerHTML = `${allowBlank ? '<option value="">Choose a domain</option>' : ''}${domains.map(code => `<option value="${code}">${code[0].toUpperCase()}${code.slice(1)}</option>`).join('')}`;
+      if (selectedCode && domains.includes(selectedCode)) select.value = selectedCode;
+      else if (allowBlank) select.value = '';
+    }
+
     function renderScoreComponentChoices() {
       const choices = document.getElementById('compTypeOpts');
       if (!BACKEND_SUBJECT_GRADING_CONFIG?.applicable) {
@@ -1986,6 +2021,7 @@ lucide.createIcons();
         selectedCompCat = 'WW';
         selectedCompType = 'Quiz';
         updateExamPartSelect('', 'scoreExamPartGroup', 'scoreExamPartInput');
+        updateValuesDomainSelect('', 'scoreDomainGroup', 'scoreDomainInput');
         renderGradingRules();
         return;
       }
@@ -1999,6 +2035,7 @@ lucide.createIcons();
       selectedCompCat = BACKEND_CATEGORIES[0]?.code || '';
       selectedCompType = BACKEND_CATEGORIES[0]?.name || '';
       updateExamPartSelect(selectedCompCat, 'scoreExamPartGroup', 'scoreExamPartInput');
+      updateValuesDomainSelect(selectedCompCat, 'scoreDomainGroup', 'scoreDomainInput');
       window.lucide?.createIcons?.();
       renderGradingRules();
     }
@@ -2032,10 +2069,12 @@ lucide.createIcons();
     document.getElementById('assignCategoryInput').addEventListener('change', () => {
       if (!new URLSearchParams(window.location.search).has('classId'))
         updateAssignmentExamParts('assignCategoryInput', 'assignExamPartGroup', 'assignExamPartInput');
+      updateValuesDomainSelect(document.getElementById('assignCategoryInput').value, 'assignDomainGroup', 'assignDomainInput');
     });
     document.getElementById('editAssignmentCategoryInput').addEventListener('change', () => {
       if (!new URLSearchParams(window.location.search).has('classId'))
         updateAssignmentExamParts('editAssignmentCategoryInput', 'editAssignmentExamPartGroup', 'editAssignmentExamPartInput');
+      updateValuesDomainSelect(document.getElementById('editAssignmentCategoryInput').value, 'editAssignmentDomainGroup', 'editAssignmentDomainInput');
     });
 
     function selectCompType(el, type, cat) {
@@ -2049,6 +2088,7 @@ lucide.createIcons();
       selectedCompCat = cat;
       document.getElementById('compNameInput').placeholder = 'e.g. ' + type + ' 1';
       updateExamPartSelect(cat, 'scoreExamPartGroup', 'scoreExamPartInput');
+      updateValuesDomainSelect(cat, 'scoreDomainGroup', 'scoreDomainInput');
       lucide.createIcons();
     }
 
@@ -2086,6 +2126,7 @@ lucide.createIcons();
           gradingCategoryId: BACKEND_SUBJECT_GRADING_CONFIG?.applicable ? null : category.id,
           subjectGradingComponentId: category.subjectGradingComponentId || null,
           subjectGradingExamPartId: examPartId,
+          domainCode: document.getElementById('scoreDomainGroup').hidden ? null : document.getElementById('scoreDomainInput').value,
           title: name,
           maxScore: Number(max)
         }).then(item => {
@@ -2339,6 +2380,10 @@ lucide.createIcons();
             max: item.max,
             cat: String(category?.code || item.cat || '').trim().toUpperCase(),
             categoryName: category?.name || '',
+            domainCode: item.domainCode || '',
+            domainName: BACKEND_SUBJECT_GRADING_CONFIG?.valuesDomains && ['written', 'performance'].includes(category?.componentType)
+              ? item.domainCode ? `${item.domainCode[0].toUpperCase()}${item.domainCode.slice(1)}` : 'Choose domain'
+              : '',
             examPartId: item.subjectGradingExamPartId || null,
             examPartName: examPart?.name || '',
             gradingItemId: item.id
@@ -2350,10 +2395,11 @@ lucide.createIcons();
         return {
           id: component.id || component.name,
           gradingItemId: component.gradingItemId,
-          title: component.name,
+          title: component.domainName ? `${component.name} · ${component.domainName}` : component.name,
           maxScore: component.max,
           categoryCode: component.cat,
           categoryName,
+          domainCode: component.domainCode,
           categoryHeader: gradingAverageHeaderLabel(categoryName),
           examPartId: component.examPartId,
           examPartName: getDistinctExamPartName(component.name, component.examPartName),
@@ -2363,7 +2409,7 @@ lucide.createIcons();
       });
       const metricHeaders = CURRENT_GRADING_RULES.map(rule => {
         const label = gradingAverageHeaderLabel(rule.label || String(rule.id).toUpperCase());
-        return { label: `${label} Avg`, title: `${label}: ${Number(rule.weight) || 0}% of the final grade`, style: 'min-width:80px;background:#f0f4ff;' };
+        return { label: `${label} Avg`, title: `${label}: ${Number(rule.weight) || 0}% of the final grade`, className: 'score-average-header' };
       });
       const weightedScoreOnly = CURRENT_GRADE_SCALE === 'legacy_shs_transmutation';
       metricHeaders.push({
@@ -2384,7 +2430,7 @@ lucide.createIcons();
           return { score: pendingScore ? pendingScore.value : (backendScore?.score ?? null) };
         },
         getMetrics: () => [
-          ...CURRENT_GRADING_RULES.map(() => ({ value: '0.0', className: 'computed-cell computed-avg', style: 'background:#f8faff;' })),
+          ...CURRENT_GRADING_RULES.map(() => ({ value: '0.0', className: 'computed-cell computed-avg' })),
           { value: '0', className: 'computed-cell computed-final', style: 'background:var(--blue-xpale);' }
         ],
         onScoreInput: input => computeRow(input, true),
@@ -2494,8 +2540,9 @@ lucide.createIcons();
         const categoryLabel = cell.querySelector('.comp-head-type');
         return `${categoryLabel.dataset.categoryName || categoryLabel.textContent.trim()}: ${cell.querySelector('.comp-head-name').textContent} / ${cell.querySelector('.comp-head-max').textContent.replace('/', '').trim()}`;
       });
+      const finalGradeLabel = CURRENT_GRADE_SCALE === 'legacy_shs_transmutation' ? 'Weighted Grade' : 'Final Grade';
       const csvRows = [
-        ['Student', ...itemHeaders, ...CURRENT_GRADING_RULES.map(rule => `${String(rule.id).toUpperCase()} Avg`), 'Estimate'],
+        ['Student', ...itemHeaders, ...CURRENT_GRADING_RULES.map(rule => `${String(rule.id).toUpperCase()} Avg`), finalGradeLabel],
         ...rows.map(row => [
           row.querySelector('.student-name').textContent,
           ...[...row.querySelectorAll('td[data-cat] .score-input')].map(input => input.value),
@@ -2620,9 +2667,12 @@ lucide.createIcons();
       }
 
       const usesSubjectGradingConfig = Boolean(BACKEND_SUBJECT_GRADING_CONFIG?.applicable);
+      const domainWeights = BACKEND_SUBJECT_GRADING_CONFIG?.valuesDomains
+        ? { written: { cognitive: 10, affective: 10 }, performance: { cognitive: 10, affective: 10, behavioral: 30 } }
+        : null;
       const groups = Object.fromEntries(CURRENT_GRADING_RULES.map(rule => [
         String(rule.id).trim().toUpperCase(),
-        { sum: 0, maxSum: 0, parts: {} }
+        { sum: 0, maxSum: 0, parts: {}, domains: {} }
       ]));
       const scoreInputs = [...row.querySelectorAll('td[data-cat] .score-input')];
       let allScoresComplete = scoreInputs.length > 0;
@@ -2630,13 +2680,24 @@ lucide.createIcons();
       scoreInputs.forEach(inp => {
         const category = String(inp.closest('td')?.dataset.cat || '').trim().toUpperCase();
         const group = groups[category];
-        const partId = inp.closest('td')?.dataset.examPartId || '';
+        const cell = inp.closest('td');
+        const partId = cell?.dataset.examPartId || '';
+        const domainCode = cell?.dataset.domainCode || '';
+        const componentType = BACKEND_CATEGORIES.find(record => String(record.code).toUpperCase() === category)?.componentType;
         const rawScore = inp.value.trim();
         const score = rawScore === '' ? NaN : Number(rawScore);
         const maxScore = Number(inp.max);
 
         if (!group || !Number.isFinite(score) || !Number.isFinite(maxScore)
           || maxScore <= 0 || score < 0 || score > maxScore) {
+          if (group) group.invalid = true;
+          allScoresComplete = false;
+          return;
+        }
+
+        if (domainWeights && ((domainWeights[componentType] && !Object.hasOwn(domainWeights[componentType], domainCode))
+          || (!domainWeights[componentType] && domainCode))) {
+          group.invalid = true;
           allScoresComplete = false;
           return;
         }
@@ -2645,6 +2706,10 @@ lucide.createIcons();
           const part = group.parts[partId] || (group.parts[partId] = { sum: 0, maxSum: 0 });
           part.sum += score;
           part.maxSum += maxScore;
+        } else if (domainWeights?.[componentType]) {
+          const domain = group.domains[domainCode] || (group.domains[domainCode] = { sum: 0, maxSum: 0 });
+          domain.sum += score;
+          domain.maxSum += maxScore;
         } else {
           group.sum += score;
           group.maxSum += maxScore;
@@ -2654,6 +2719,7 @@ lucide.createIcons();
       const averages = Object.fromEntries(
         Object.entries(groups).map(([code, values]) => {
           const category = BACKEND_CATEGORIES.find(record => String(record.code).toUpperCase() === code);
+          if (values.invalid) return [code, null];
           if (usesSubjectGradingConfig && category?.examParts?.length) {
             const partAverages = category.examParts.map(part => {
               const totals = values.parts[String(part.id)];
@@ -2663,6 +2729,14 @@ lucide.createIcons();
             return [code, complete
               ? category.examParts.reduce((sum, part, index) => sum + partAverages[index] * Number(part.weight) / 100, 0)
               : null];
+          }
+          const requiredDomains = domainWeights?.[category?.componentType];
+          if (requiredDomains) {
+            const complete = Object.keys(requiredDomains).every(domain => values.domains[domain]?.maxSum > 0);
+            return [code, complete ? Object.entries(requiredDomains).reduce((sum, [domain, weight]) => {
+              const totals = values.domains[domain];
+              return sum + totals.sum / totals.maxSum * weight;
+            }, 0) * 100 / Number(category.weight) : null];
           }
           return [code, values.maxSum > 0 ? (values.sum / values.maxSum) * 100 : null];
         })
@@ -2678,6 +2752,7 @@ lucide.createIcons();
         const allCategoriesScored = Object.values(averages).every(average => average !== null);
         const totalWeight = Object.values(WEIGHTS).reduce((total, weight) => total + weight, 0);
         const canEstimate = allScoresComplete && allCategoriesScored
+          && (!domainWeights || BACKEND_SUBJECT_GRADING_CONFIG.valuesDomainSetupMatches)
           && Math.abs(totalWeight - 1) < 0.0001;
 
         finalCell.className = 'center computed-cell computed-final';
@@ -3512,25 +3587,23 @@ lucide.createIcons();
 
     function teacherFriendlyPreviewIssue(issue) {
       const guidance = {
-        incompatible_period_structure: 'This grading method needs three grading periods for this school year. Ask your school administrator to check the grading-period schedule.',
-        unconfigured_subject_grading: 'This subject’s grading setup is incomplete. Ask your school administrator to finish it before publishing.',
-        early_grade_exam_setup_required: 'This Grade 2–3 subject has no exam parts yet. Ask your school administrator to add them before publishing.',
-        early_grade_exam_setup_review_required: 'This Grades 2–3 exam split came from the former suggested setup. Ask your school admin to review and save the school-selected exam parts before publishing.',
-        invalid_category_weights: 'The grading weights need to total 100%. Ask your school admin to review them.',
-        invalid_rounding_rule: 'The grade rounding setting needs review. Ask your school admin to check it.',
-        invalid_passing_threshold: 'The passing grade setting needs review. Ask your school admin to check it.',
-        no_grading_categories: 'No grading components are set up for this subject. Ask your school admin to configure them.',
-        no_students: 'There are no actively enrolled students in this section.',
-        duplicate_published_grade: 'A student has more than one published grade for this subject and period. Ask your school admin to review the records.',
-        no_grading_items: 'Add at least one score component for this subject and grading period.',
-        invalid_item_category: 'A score component needs to be assigned to the correct grading category. Review the item or ask your school admin for help.',
-        invalid_item_component: 'A score component does not match this subject’s grading setup. Ask your school admin to review the item.',
-        invalid_item_exam_part: 'A score component needs to use an exam part from its grading setup. Review the item or ask your school admin for help.',
-        unclassified_shs_section: 'Ask your school admin to confirm this section’s strand before publishing.',
-        unclassified_shs_subject: 'Ask your school admin to choose a grading type for this subject before publishing.',
-        invalid_shs_grading_categories: 'The SHS grading setup needs review. Ask your school admin to check its grading categories.'
+        incompatible_period_structure: 'Ask your school administrator to set up three grading periods for this school year.',
+        unconfigured_subject_grading: 'Ask your school administrator to finish this subject\'s grading setup.',
+        values_domain_setup_mismatch: 'Ask your school administrator to check the GMRC/Values Education weights (20%, 50%, 30%) and exam split (30%, 30%, 40%).',
+        early_grade_exam_setup_required: 'Ask your school administrator to add exam parts for Grades 2 and 3.',
+        early_grade_exam_setup_review_required: 'Ask your school administrator to review and save the exam split for Grades 2 and 3.',
+        invalid_category_weights: 'Ask your school administrator to make the grading weights total 100%.',
+        invalid_rounding_rule: 'Ask your school administrator to check the grade rounding setting.',
+        invalid_passing_threshold: 'Ask your school administrator to check the passing grade setting.',
+        no_grading_categories: 'Ask your school administrator to set up this subject\'s grading components.',
+        no_students: 'Ask your school administrator to check the class list. No active students are enrolled.',
+        duplicate_published_grade: 'Ask your school administrator to check duplicate published grades for this subject and period.',
+        no_grading_items: 'Add a score item for this grading period.',
+        unclassified_shs_section: 'Ask your school administrator to confirm this section\'s strand.',
+        unclassified_shs_subject: 'Ask your school administrator to choose this subject\'s grading type.',
+        invalid_shs_grading_categories: 'Ask your school administrator to check the SHS grading setup.'
       };
-      return guidance[issue.code] || issue.message || '';
+      return (guidance[issue.code] || issue.message || '').replace(/[—–]/g, '-');
     }
 
     function updateTransferPublishButton() {
@@ -3604,18 +3677,49 @@ lucide.createIcons();
       });
       window.TeacherClassViews.renderGradePreviewRows(studentList, rows);
 
-      const messages = (preview.issues || []).map(teacherFriendlyPreviewIssue).filter(Boolean);
+      const issues = preview.issues || [];
+      const missingDomainCount = issues.filter(issue => issue.code === 'missing_values_domain').length;
+      const domainsWithoutItems = issues.filter(issue => issue.code === 'values_domain_without_items');
+      const messages = [];
+      if (missingDomainCount) {
+        messages.push(`Choose a domain for ${missingDomainCount} Written/Oral Works or Performance Tasks score item${missingDomainCount === 1 ? '' : 's'}.`);
+      }
+      const domainsByComponent = new Map();
+      for (const issue of domainsWithoutItems) {
+        const names = domainsByComponent.get(issue.componentName) || new Set();
+        names.add(issue.domainName);
+        domainsByComponent.set(issue.componentName, names);
+      }
+      for (const [componentName, domainNames] of domainsByComponent) {
+        const names = [...domainNames];
+        const domainList = names.length > 2 ? `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}` : names.join(' and ');
+        messages.push(`Add ${names.length === 1 ? 'a ' : ''}${componentName} item${names.length === 1 ? '' : 's'} for ${domainList}.`);
+      }
+      const specificMissingItems = missingDomainCount || domainsWithoutItems.length || issues.some(issue =>
+        ['component_without_items', 'category_without_items', 'exam_part_without_items'].includes(issue.code));
+      for (const issue of issues) {
+        if (issue.code === 'missing_values_domain' || issue.code === 'values_domain_without_items'
+          || (specificMissingItems && issue.code === 'no_grading_items')
+          || (issues.some(other => other.code === 'unconfigured_subject_grading') && issue.code === 'no_grading_categories')
+          || (issues.some(other => other.code === 'values_domain_setup_mismatch') && issue.code === 'invalid_category_weights')) continue;
+        messages.push(teacherFriendlyPreviewIssue(issue));
+      }
       if (preview.missingScoreCount) {
-        messages.push(`Enter scores in the ${preview.missingScoreCount} blank score field${preview.missingScoreCount === 1 ? '' : 's'}. A score of 0 is valid.`);
+        messages.push(`Enter ${preview.missingScoreCount} missing score${preview.missingScoreCount === 1 ? '' : 's'}. A score of 0 is valid.`);
       }
       if (preview.invalidScoreCount) {
-        messages.push(`Correct ${preview.invalidScoreCount} score${preview.invalidScoreCount === 1 ? '' : 's'}; each must be from 0 up to the item’s maximum score.`);
+        messages.push(`Correct ${preview.invalidScoreCount} score${preview.invalidScoreCount === 1 ? '' : 's'}. Use a number from 0 to the item\'s maximum score.`);
       }
       if (preview.retainedPublishedCount && !publishableCount) messages.push('All students already have published grades for this subject and period.');
-      if (!preview.readyToPublish && !messages.length) messages.push('The grades are not ready to publish. Review the score entries and grading setup.');
+      if (!preview.readyToPublish && !messages.length) messages.push('Check the score items and grading setup. The grades are not ready to publish.');
       const warning = document.getElementById('publishGradeWarning');
       warning.hidden = Boolean(preview.readyToPublish);
-      document.getElementById('publishGradeWarningText').textContent = messages.join(' ');
+      const warningList = document.getElementById('publishGradeWarningText');
+      warningList.replaceChildren(...[...new Set(messages.filter(Boolean))].map(message => {
+        const item = document.createElement('li');
+        item.textContent = message;
+        return item;
+      }));
       document.getElementById('transferPublishReview').hidden = !preview.transferReviewStudentIds?.length;
       document.getElementById('transferPublishAcknowledged').checked = false;
       setPublishGradeFeedback('', false);
@@ -3999,6 +4103,8 @@ lucide.createIcons();
       const subjectGradingComponentId = isSubjectConfig ? category?.subjectGradingComponentId || null : null;
       const subjectGradingExamPartId = isSubjectConfig && category?.examParts?.length
         ? Number(document.getElementById('assignExamPartInput').value) || null : null;
+      const domainCode = includeInScoreRecording && !document.getElementById('assignDomainGroup').hidden
+        ? document.getElementById('assignDomainInput').value : null;
       const maxScore = includeInScoreRecording ? Number(document.getElementById('assignMaxScoreInput').value) : null;
       if (!CURRENT_SUBJECT_ASSIGNMENT || !CURRENT_SUBJECT_ID) {
         showAppToast('Select an assigned subject before adding an assignment.', 'error');
@@ -4031,6 +4137,7 @@ lucide.createIcons();
             gradingCategoryId: isSubjectConfig ? null : category?.id || null,
             subjectGradingComponentId,
             subjectGradingExamPartId,
+            domainCode,
             title,
             description: instructions || null,
             dueDate: due,
@@ -4114,6 +4221,8 @@ lucide.createIcons();
         : null;
       document.getElementById('editAssignmentCategoryInput').value = selectedCategory?.code || assignment.categoryId || '';
       updateAssignmentExamParts('editAssignmentCategoryInput', 'editAssignmentExamPartGroup', 'editAssignmentExamPartInput', assignment.subjectGradingExamPartId);
+      updateValuesDomainSelect(document.getElementById('editAssignmentCategoryInput').value,
+        'editAssignmentDomainGroup', 'editAssignmentDomainInput', assignment.domainCode, true);
       document.getElementById('editAssignmentMaxScoreInput').value = assignment.maxScore || '';
       openModal('editAssignmentModal');
       lucide.createIcons();
@@ -4160,6 +4269,8 @@ lucide.createIcons();
       const subjectGradingComponentId = isSubjectConfig ? category?.subjectGradingComponentId || null : null;
       const subjectGradingExamPartId = isSubjectConfig && category?.examParts?.length
         ? Number(document.getElementById('editAssignmentExamPartInput').value) || null : null;
+      const domainCode = includeInScoreRecording && !document.getElementById('editAssignmentDomainGroup').hidden
+        ? document.getElementById('editAssignmentDomainInput').value : null;
       const maxScore = includeInScoreRecording ? Number(document.getElementById('editAssignmentMaxScoreInput').value) : null;
       if (!title || !dueDate) {
         alert('Please fill in task title and due date.');
@@ -4201,6 +4312,7 @@ lucide.createIcons();
             gradingCategoryId: isSubjectConfig ? null : category?.id || null,
             subjectGradingComponentId,
             subjectGradingExamPartId,
+            domainCode,
             title,
             description: instructions || null,
             dueDate,
@@ -4212,8 +4324,8 @@ lucide.createIcons();
           const gradingItem = currentGradingItem || getBackendGradingItemForAssignment(updated || assignment);
           if (gradingItem && includeInScoreRecording) {
             const savedItem = String(updated?.gradingItemId) === String(gradingItem.id)
-              ? { ...gradingItem, title, name: title, max: maxScore, maxScore }
-              : await window.EDUGNAY_API.updateGradingItem(gradingItem.id, { title, maxScore });
+              ? { ...gradingItem, title, name: title, max: maxScore, maxScore, domainCode }
+              : await window.EDUGNAY_API.updateGradingItem(gradingItem.id, { title, maxScore, domainCode });
             const itemIndex = BACKEND_GRADING_ITEMS.findIndex(item => item.id === gradingItem.id);
             if (itemIndex >= 0) BACKEND_GRADING_ITEMS[itemIndex] = savedItem;
           } else if (!gradingItem && includeInScoreRecording) {
@@ -4224,6 +4336,7 @@ lucide.createIcons();
               gradingCategoryId: isSubjectConfig ? null : category.id,
               subjectGradingComponentId,
               subjectGradingExamPartId,
+              domainCode,
               assignmentId: activeAssignmentId,
               title,
               maxScore
@@ -4842,7 +4955,6 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     pf2302f2e3184: function(event) { switchCatTab(this,'WW') },
     pf3c97efc71fa: function(event) { closeModal('uploadModal') },
     pf40f6cb8cd12: function(event) { addAssignment() },
-    pfa5c76a0aeef: function(event) { fillAllPresent() },
     pfc89cdf73fc4: function(event) { openQrAttendance() },
   },
   input: {

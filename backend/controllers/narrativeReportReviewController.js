@@ -19,6 +19,8 @@ async function lockAdviserReport(connection, req) {
   const [rows] = await connection.execute(
     `SELECT reports.id, reports.report_status AS status,
       reports.ai_follow_up_suggestion AS followUpSuggestion,
+      reports.grade_evidence_used AS gradeEvidenceUsed,
+      features.grades_enabled AS gradesEnabled,
       reports.student_user_id AS studentId, reports.section_id AS sectionId,
       reports.released_at AS releasedAt, reports.pending_correction AS pendingCorrection,
       DATE_FORMAT(reports.report_week_start_date, '%Y-%m-%d') AS weekStartDate,
@@ -221,6 +223,10 @@ async function releaseConfirmedReport(req, database = getDatabase()) {
       await connection.commit();
       transactionStarted = false;
       return { reportId: String(report.id), status: 'released', alreadyReleased: true };
+    }
+    if (Number(report.gradesEnabled) === 0 &&
+      (report.gradeEvidenceUsed == null || Boolean(report.gradeEvidenceUsed))) {
+      throw createError('Grade viewing is off. Reopen this report and regenerate the draft without grade results before releasing it.', 409);
     }
     const [[previousRelease]] = await connection.execute(
       `SELECT version_number AS versionNumber FROM narrative_report_releases

@@ -4,7 +4,7 @@
   const escape = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
   const state = { sections: [], evidence: null, reports: [], settings: null, weekRequestId: 0,
     generationEnabled: false, generationSwitchEnabled: false, aiEvidenceApproved: false, reportsEnabled: false,
-    releaseEnabled: false, selectedReportId: null, busy: false, regenerateConfirmOpen: false,
+    releaseEnabled: false, gradesEnabled: true, selectedReportId: null, busy: false, regenerateConfirmOpen: false,
     deleteConfirmOpen: false, modalReturnFocus: new Map() };
 
   function addDays(date, count) {
@@ -165,26 +165,22 @@
           : report?.status === 'confirmed' ? 'Confirmed · not sent' : report ? 'Needs review' : 'No draft';
       const statusTone = report?.pendingCorrection ? report.status === 'confirmed' ? 'gold' : 'orange'
         : report?.releasedAt ? 'green' : report?.status === 'confirmed' ? 'gold' : report ? 'orange' : 'gray';
-      const summary = report ? report.editedSummary || report.generatedSummary : 'A weekly draft has not been generated for this learner.';
+      const summary = report?.editedSummary || report?.generatedSummary || '';
       const initials = studentInitials(student);
       const avatar = window.EDUGNAY_AVATAR?.html?.(student, { role: 'student', size: 'compact', className: 'report-card-avatar' })
         || `<span class="person-avatar person-avatar--compact report-card-avatar" data-avatar-tone="green" aria-hidden="true">${escape(initials)}</span>`;
       const hasAttendanceRecords = Number(student.attendance.recordedSessions) > 0;
       const absences = Number(student.attendance.absent) || 0;
-      const attendance = hasAttendanceRecords
-        ? `${absences} absence${absences === 1 ? '' : 's'} · ${student.attendance.recordedSessions} recorded sessions`
-        : 'No confirmed attendance records';
-      const assignmentTotal = Number(student.assignments.total) || 0;
-      const assignmentMetric = assignmentTotal
-        ? `<strong class="rc-metric-val">${escape(student.assignments.submitted)}/${escape(assignmentTotal)}</strong><div class="rc-metric-label">Assignments</div>`
-        : '<strong class="rc-metric-val">—</strong><div class="rc-metric-label">Assignments</div><div class="rc-metric-detail">No assignments due</div>';
+      const submitted = Number(student.assignments.submitted) || 0;
+      const confirmedAssignments = submitted + (Number(student.assignments.notSubmitted) || 0);
+      const assignmentCount = confirmedAssignments ? `${submitted}/${confirmedAssignments}` : '—';
       const journalApplicable = state.evidence.section.journalApplicable === true;
       return `<article class="report-card${report?.isAtRisk ? ' at-risk' : ''}">
         <div class="report-card-head">${avatar}<div class="report-card-identity"><strong class="report-card-name">${escape(student.displayName)}</strong><span class="report-card-meta">${escape(state.evidence.section.gradeLevel)} · ${escape(state.evidence.section.name)}</span></div>${report?.isAtRisk ? '<span class="at-risk-flag">Adviser follow-up</span>' : ''}</div>
-        <div class="report-card-metrics${journalApplicable ? '' : ' without-journal'}"><div class="rc-metric wide${hasAttendanceRecords ? ' has-records' : ''}"><strong class="rc-metric-val">${hasAttendanceRecords ? escape(absences) : '—'}</strong><span class="rc-metric-label"> Absences</span><div class="rc-metric-detail">${escape(attendance)}</div></div>
-          <div class="rc-metric">${assignmentMetric}</div>
+        <div class="report-card-metrics${journalApplicable ? '' : ' without-journal'}"><div class="rc-metric absences${hasAttendanceRecords ? absences ? ' has-absences' : '' : ' no-records'}"><strong class="rc-metric-val">${hasAttendanceRecords ? escape(absences) : '—'}</strong><div class="rc-metric-label">Absences</div></div>
+          <div class="rc-metric"><strong class="rc-metric-val">${escape(assignmentCount)}</strong><div class="rc-metric-label">Submitted</div></div>
           ${journalApplicable ? `<div class="rc-metric"><strong class="rc-metric-val">${escape(student.journal.entries.length)}</strong><div class="rc-metric-label">Journal</div></div>` : ''}</div>
-        <div class="report-card-excerpt"><div class="excerpt-label"><i data-lucide="sparkles"></i> Report summary</div><p class="excerpt-text${report ? '' : ' pending'}">${escape(summary)}</p></div>
+        ${report && summary ? `<div class="report-card-excerpt"><p class="excerpt-text">${escape(summary)}</p></div>` : ''}
         <div class="report-card-foot"><span class="badge badge-${statusTone} report-card-status">${escape(status)}</span>${report ? `<button class="btn-sm ghost report-card-review" type="button" data-review-id="${escape(report.id)}"><i data-lucide="eye" aria-hidden="true"></i> Review</button>` : ''}</div></article>`;
     }).join('');
     window.EDUGNAY_AVATAR?.hydrate?.($('reports-grid'));
@@ -217,6 +213,7 @@
       if (requestId !== state.weekRequestId || $('report-section').value !== sectionId || $('report-week').value !== startDate) return;
       state.evidence = evidence;
       state.reports = drafts.reports || [];
+      state.gradesEnabled = drafts.section?.gradesEnabled !== false;
       const label = `${formatDate(evidence.reportWeek.startDate)}–${formatDate(evidence.reportWeek.endDate)}`;
       $('pipeline-context').textContent = `${evidence.section.gradeLevel} · ${evidence.section.name} · Across all subjects`;
       const inProgress = evidence.reportWeek.endDate >= schoolToday();
@@ -485,20 +482,72 @@
     $('review-subtitle').textContent = `${state.evidence.section.gradeLevel} · ${state.evidence.section.name} · ${formatDate(report.reportWeekStartDate)}–${formatDate(report.reportWeekEndDate)}`;
     const attendance = student.attendance;
     const assignments = student.assignments;
-    const scoreCount = student.academicScores?.length || 0;
+    const confirmedAssignments = (assignments.sources || []).filter(source =>
+      ['submitted', 'not_submitted'].includes(source.status));
+    const submittedCount = confirmedAssignments.filter(source => source.status === 'submitted').length;
     const journalApplicable = state.evidence.section.journalApplicable === true;
+    const attendanceDetails = [
+      attendance.late && `${attendance.late} late`,
+      attendance.absent && `${attendance.absent} absent`,
+      attendance.excused && `${attendance.excused} excused`
+    ].filter(Boolean).join(' · ');
+    const notSubmittedCount = confirmedAssignments.length - submittedCount;
+    const pendingCount = (assignments.sources || []).filter(source => source.status === 'pending').length;
+    let attendanceDetail = attendanceDetails;
+    if (!attendance.recordedSessions) attendanceDetail = 'No class status recorded this week.';
+    else if (!attendanceDetail) attendanceDetail = 'No late, absent, or excused marks.';
+    let assignmentDetail;
+    if (pendingCount && notSubmittedCount) assignmentDetail = `${notSubmittedCount} not submitted · Pending work is not counted.`;
+    else if (pendingCount) assignmentDetail = 'Pending work is not counted.';
+    else if (notSubmittedCount) assignmentDetail = `${notSubmittedCount} not submitted`;
+    else if (confirmedAssignments.length) assignmentDetail = 'No confirmed work left unsubmitted.';
+    else if (Number(assignments.total) > 0) assignmentDetail = 'No submission outcomes recorded.';
+    else assignmentDetail = 'No assignments due this week.';
     const sources = [
-      { key: 'attendance', icon: 'user-round-check', label: 'Attendance', value: attendance.recordedSessions ? `${attendance.present}/${attendance.recordedSessions} present · ${attendance.absent} absent` : 'No confirmed records', detail: attendance.recordedSessions ? `${attendance.recordedSessions} recorded sessions across subjects` : 'Missing records are not treated as absences.' },
-      { key: 'assignments', icon: 'clipboard-check', label: 'Assignment completion', value: assignments.total ? `${assignments.submitted}/${assignments.total} submitted` : 'No assignments due', detail: assignments.total ? 'Published assignments due in the selected week' : 'Across all subjects for this week' },
-      { key: 'academic', icon: 'chart-no-axes-column', label: 'Academic records', value: [student.academicRecords.length && `${student.academicRecords.length} published record(s)`, scoreCount && `${scoreCount} scored activities`].filter(Boolean).join(' · ') || 'No academic records', detail: student.academicScoresOmitted ? `${student.academicScoresOmitted} more scored activities are not shown here; review them before confirming.` : 'Recorded during the selected week' }
+      { key: 'attendance', icon: 'user-round-check', label: 'Attendance', value: attendance.recordedSessions ? `${attendance.present}/${attendance.recordedSessions} present` : 'No records', detail: attendanceDetail },
+      { key: 'assignments', icon: 'clipboard-check', label: 'Assignments', value: confirmedAssignments.length ? `${submittedCount}/${confirmedAssignments.length} submitted` : 'No confirmed work', detail: assignmentDetail }
     ];
-    if (journalApplicable) sources.push({ key: 'journal', icon: 'notebook-pen', label: 'Journal · Values Education', value: `${student.journal.entries.length} relevant submission(s)`, detail: 'Student reflections may help describe the week. Review the report before sharing.' });
-    $('review-evidence').classList.toggle('without-journal', !journalApplicable);
-    $('review-evidence').innerHTML = sources.map(source => `<div class="data-source-card ds-${source.key}"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div><div class="ds-label">${escape(source.label)}</div></div></div>`).join('');
+    if (state.gradesEnabled !== false) {
+      const scoreCount = (report.sources || []).filter(source => source.type === 'student_score').length;
+      const gradeCount = (report.sources || []).filter(source => source.type === 'published_final_grade').length;
+      let value;
+      let detail;
+      if (report.gradeEvidenceUsed == null) {
+        value = 'Older draft';
+        detail = 'Grade data was not tracked.';
+      } else if (report.gradeEvidenceUsed === false) {
+        value = 'None included';
+        detail = 'No concerns flagged.';
+      } else if (gradeCount || scoreCount) {
+        value = gradeCount ? `${gradeCount} published grade${gradeCount === 1 ? '' : 's'} below passing`
+          : `${scoreCount} low-score activit${scoreCount === 1 ? 'y' : 'ies'}`;
+        detail = scoreCount && gradeCount ? `${scoreCount} low-score activit${scoreCount === 1 ? 'y' : 'ies'}`
+          : scoreCount ? 'No published grades flagged.' : 'No low-score activities.';
+      } else {
+        value = 'Concerns included';
+        detail = 'Details unavailable.';
+      }
+      sources.push({ key: 'academic', icon: 'chart-no-axes-column', label: 'Academic concerns', value, detail });
+    }
+    if (journalApplicable) {
+      const journalCount = student.journal.entries.length;
+      sources.push({ key: 'journal', icon: 'notebook-pen', label: 'Journal',
+        value: `${journalCount} reflection${journalCount === 1 ? '' : 's'}`,
+        detail: 'Values Education' });
+    }
+    $('review-evidence').innerHTML = sources.map(source => `<div class="data-source-card ds-${source.key}"><div class="ds-head"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><span class="ds-label">${escape(source.label)}</span></div><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div></div></div>`).join('');
     window.lucide?.createIcons?.();
     $('review-note').textContent = report.teacherNote || 'No classroom observation was added.';
     $('review-summary').value = report.editedSummary || report.generatedSummary;
     $('review-summary').disabled = !editable;
+    const gradeReleaseBlocked = !state.gradesEnabled && report.gradeEvidenceUsed !== false &&
+      (!report.releasedAt || report.pendingCorrection);
+    $('review-grade-warning').hidden = !gradeReleaseBlocked;
+    $('review-grade-warning-text').textContent = gradeReleaseBlocked
+      ? editable
+        ? 'Grade viewing is off. This draft may include grade results. Select Regenerate draft, then review and confirm it before releasing.'
+        : 'Grade viewing is off. This report may include grade results. Select Reopen report, then Regenerate draft. Review and confirm it before releasing.'
+      : '';
     $('review-actions').replaceChildren();
     report.parentActions.forEach(action => appendAction(action, !editable));
     const lowScores = (student.candidateReasons || []).filter(reason => reason.type === 'low_scores');
@@ -547,7 +596,7 @@
     $('report-reopen-section').hidden = true;
     $('report-reopen-reason').value = '';
     $('release-report').hidden = editable || Boolean(report.releasedAt && !report.pendingCorrection) || !state.releaseEnabled;
-    $('release-report').disabled = state.busy;
+    $('release-report').disabled = state.busy || gradeReleaseBlocked;
     $('review-release-note').textContent = editable
       ? report.pendingCorrection
         ? 'Parents still see the last released version while you edit this correction.'
@@ -631,7 +680,7 @@
   async function releaseReport() {
     const report = state.reports.find(item => item.id === state.selectedReportId);
     if (!report || report.status !== 'confirmed' || report.releasedAt && !report.pendingCorrection ||
-      !state.releaseEnabled || state.busy) return;
+      !state.releaseEnabled || state.busy || $('release-report').disabled) return;
     state.busy = true;
     $('release-report').disabled = true;
     updateRegenerateButton();
@@ -640,8 +689,17 @@
       await loadWeek();
       showReview(report.id);
       showAppToast(report.pendingCorrection ? 'Correction released to parents.' : 'Report released to parents.');
-    } catch (error) { setMessage('review-message', error.message || 'The report could not be released.', true); }
-    finally { state.busy = false; $('release-report').disabled = false; updateRegenerateButton(); }
+    } catch (error) {
+      if (/Grade viewing is off/.test(error.message || '')) {
+        await loadWeek();
+        showReview(report.id);
+      }
+      setMessage('review-message', error.message || 'The report could not be released.', true);
+    } finally {
+      state.busy = false;
+      $('release-report').disabled = !state.gradesEnabled && state.reports.find(item => item.id === report.id)?.gradeEvidenceUsed !== false;
+      updateRegenerateButton();
+    }
   }
 
   async function submitReopen() {

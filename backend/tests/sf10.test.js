@@ -79,7 +79,7 @@ test('SF10 only fills grade cells for complete four-period schedules', () => {
     && issue.message.includes('2023-2024') && issue.message.includes('three-term')));
   assert.ok(result.restrictedCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'U26'));
   assert.ok(result.restrictedCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'AJ26'));
-  assert.ok(result.restrictedCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'U33'));
+  assert.ok(result.restrictedCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'U31'));
   assert.ok(result.restrictedCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'AJ33'));
   assert.ok(result.restrictedCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'AJ40'));
   assert.ok(!result.restrictedCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'U54'));
@@ -115,6 +115,19 @@ test('SF10 leaves conflicting grades blank for review', () => {
   assert.equal(front.has('AJ26'), false);
   assert.ok(result.issues.some(issue => issue.fieldKey === 'grades' && issue.cellReference === 'U26'));
   assert.equal(result.pages[1].length, 0, 'other-school years are not invented');
+});
+
+test('SF10 Values Education requires a verified, unique, valid grade', () => {
+  const record = history('2026-2027', 7, 90);
+  record.subjects = [{ id: 10, code: 'values-education-jhs', name: 'Values Education' }];
+  const gradeCell = grades => new Map(buildSf10Pages(school, learner, [{ ...record, grades }]).pages[0]
+    .map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(gradeCell(record.grades).has('U31'), false);
+  const verified = record.grades.map(grade => ({ ...grade, domainRuleVersion: 'deped_values_domains_2026' }));
+  assert.equal(gradeCell(verified).get('U31'), 90);
+  assert.equal(gradeCell(verified.slice(1)).has('U31'), false);
+  assert.equal(gradeCell([...verified, { ...verified[0] }]).has('U31'), false);
+  assert.equal(gradeCell([{ ...verified[0], finalGrade: 101 }, ...verified.slice(1)]).has('U31'), false);
 });
 
 test('SF10 export keeps all original sheets and package parts except populated worksheet XML', async () => {
@@ -253,7 +266,7 @@ test('SF10 preview uses adviser access, recorded years, and rejects stale export
       && issue.message.includes('2023-2024')));
     assert.ok(!preview.body.editableCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'U26'));
     assert.ok(!preview.body.editableCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'AJ26'));
-    assert.ok(!preview.body.editableCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'U33'));
+    assert.ok(!preview.body.editableCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'U31'));
     assert.ok(!preview.body.editableCells.some(cell => cell.pageIndex === 0 && cell.cellAddress === 'AJ33'));
     assert.ok(preview.body.editableCells.some(cell => cell.pageIndex === 1 && cell.cellAddress === 'AP8'));
     assert.equal((await call(controller.previewTemplate, { id: 4, schoolId: 1 }, 'GET', {}, query)).status, 403);
@@ -272,7 +285,7 @@ test('SF10 preview uses adviser access, recorded years, and rejects stale export
     periodCountByYear[1] = 3;
     const blockedGradeEdit = await call(controller.generateTemplate, { id: 3, schoolId: 1 }, 'POST',
       { sectionId: 8, studentId: 12, previewFingerprint: preview.body.previewFingerprint,
-        edits: [{ pageIndex: 0, cellAddress: 'U33', value: 91 }] });
+        edits: [{ pageIndex: 0, cellAddress: 'U31', value: 91 }] });
     assert.equal(blockedGradeEdit.status, 400, 'incompatible quarter cells reject crafted edits');
     const wrongSheetEdit = await call(controller.generateTemplate, { id: 3, schoolId: 1 }, 'POST',
       { sectionId: 8, studentId: 12, previewFingerprint: preview.body.previewFingerprint,

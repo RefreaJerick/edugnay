@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GMRC and Values Education grading flow demo</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color: #172b3a; background: #f4f7f9; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px 16px 60px; }
+    main { max-width: 980px; margin: auto; }
+    h1 { margin: 0 0 8px; font-size: clamp(25px, 4vw, 34px); }
+    h2 { margin: 0 0 8px; font-size: 20px; }
+    p { line-height: 1.5; margin: 6px 0 14px; }
+    .muted { color: #536674; }
+    .intro { max-width: 750px; }
+    .panel { background: white; border: 1px solid #dce5eb; border-radius: 12px; padding: 22px; margin-top: 18px; box-shadow: 0 2px 8px #142d3b0a; }
+    .step { color: #075c82; font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 8px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    label { display: block; font-weight: 700; font-size: 13px; }
+    input, select { width: 100%; margin-top: 6px; padding: 10px 11px; border: 1px solid #b8cad5; border-radius: 8px; background: white; color: #172b3a; font: inherit; }
+    input:focus, select:focus, button:focus-visible { outline: 3px solid #87c9e4; outline-offset: 2px; }
+    button { border: 0; border-radius: 8px; background: #0876a5; color: white; padding: 11px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+    button:hover { background: #065d84; }
+    .button-row { display: flex; align-items: center; gap: 12px; margin-top: 15px; flex-wrap: wrap; }
+    .helper { color: #536674; font-size: 13px; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; min-width: 680px; }
+    th, td { border-bottom: 1px solid #e5edf1; padding: 11px 8px; text-align: left; vertical-align: middle; }
+    th { background: #eef5f8; font-size: 13px; }
+    td input { margin: 0; max-width: 90px; }
+    .tag { display: inline-block; padding: 5px 8px; background: #e7f3f8; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .summary > div { border: 1px solid #dce5eb; border-radius: 9px; padding: 14px; }
+    .summary strong { display: block; font-size: 23px; margin-top: 5px; }
+    .result { padding: 14px; border-radius: 8px; background: #e8f7ed; color: #175231; margin-top: 16px; }
+    .result.waiting { background: #fff5df; color: #724a00; }
+    .note { padding: 12px 14px; border-left: 4px solid #0876a5; background: #edf6fa; margin-top: 16px; }
+    .small { font-size: 13px; }
+    @media (max-width: 720px) { .grid, .summary { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .grid, .summary { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>How GMRC / Values Education grading would work</h1>
+  <p class="intro muted">This is a standalone demonstration, not a working Academix page. GMRC is the elementary subject; Values Education is the junior high subject. Both use the same domain breakdown for Grades 4–10.</p>
+
+  <section class="panel" aria-labelledby="step-one">
+    <div class="step">Step 1 · Teacher creates a score item</div>
+    <h2 id="step-one">Tell Academix what the activity measures</h2>
+    <p>For Written/Oral Works and Performance Tasks, the teacher selects a domain. This is how the system knows which part of the grade receives the score.</p>
+    <div class="grid">
+      <label>Subject<select id="subject"><option>GMRC · Grade 5</option><option>Values Education · Grade 8</option></select></label>
+      <label>Assessment part<select id="component"><option value="written">Written / Oral Works</option><option value="performance">Performance Task</option><option value="exam">Examination</option></select></label>
+      <label id="domain-label">Domain<select id="domain"></select></label>
+      <label>Activity name<input id="item-title" value="Reflection journal" maxlength="60"></label>
+    </div>
+    <div class="button-row"><button id="add-item" type="button">Add example item</button><span id="form-message" class="helper" role="status"></span></div>
+    <div class="note small">Example: A reflection journal can measure the <b>affective</b> domain. An observed action can measure the <b>behavioral</b> domain. An examination uses its existing test or term-exam part instead of a domain choice.</div>
+  </section>
+
+  <section class="panel" aria-labelledby="step-two">
+    <div class="step">Step 2 · Teacher records scores</div>
+    <h2 id="step-two">One student’s example scores</h2>
+    <p class="muted">Edit a score to see how the calculation changes. Clear a score to see why publication would wait.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Assessment part</th><th>Domain / exam part</th><th>Activity</th><th>Score</th><th>Maximum</th></tr></thead>
+      <tbody id="items"></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="step-three">
+    <div class="step">Step 3 · Academix calculates and publishes</div>
+    <h2 id="step-three">Where each score goes</h2>
+    <div id="breakdown" class="summary"></div>
+    <div id="result" class="result" role="status"></div>
+    <p class="small muted">After a complete term grade is published, SF9 can copy that published grade into the subject’s term cell. It then calculates the subject’s final grade from the three published term grades. This demo shows the initial grade only; the real 2026–27 flow also applies DepEd’s adjusted transmutation table before publication.</p>
+  </section>
+</main>
+<script>
+  const domainOptions = {
+    written: [['cognitive', 'Cognitive'], ['affective', 'Affective']],
+    performance: [['cognitive', 'Cognitive'], ['affective', 'Affective'], ['behavioral', 'Behavioral']],
+    exam: [['st1', 'Summative Test 1'], ['st2', 'Summative Test 2'], ['term', 'Term Exam']]
+  };
+  const weights = [
+    ['written:cognitive', 'Written · Cognitive', 10],
+    ['written:affective', 'Written · Affective', 10],
+    ['performance:cognitive', 'Performance · Cognitive', 10],
+    ['performance:affective', 'Performance · Affective', 10],
+    ['performance:behavioral', 'Performance · Behavioral', 30]
+  ];
+  const items = [
+    { component: 'written', domain: 'cognitive', title: 'Knowledge check', score: 8, max: 10 },
+    { component: 'written', domain: 'affective', title: 'Reflection journal', score: 9, max: 10 },
+    { component: 'performance', domain: 'cognitive', title: 'Explain a choice', score: 7, max: 10 },
+    { component: 'performance', domain: 'affective', title: 'Group reflection', score: 9, max: 10 },
+    { component: 'performance', domain: 'behavioral', title: 'Observed actions', score: 24, max: 30 },
+    { component: 'exam', domain: 'st1', title: 'Summative Test 1', score: 8, max: 10 },
+    { component: 'exam', domain: 'st2', title: 'Summative Test 2', score: 7, max: 10 },
+    { component: 'exam', domain: 'term', title: 'Term Exam', score: 36, max: 40 }
+  ];
+  const component = document.getElementById('component');
+  const domain = document.getElementById('domain');
+  const domainLabel = document.getElementById('domain-label');
+  const itemTitle = document.getElementById('item-title');
+  const tableBody = document.getElementById('items');
+
+  function updateDomainChoices() {
+    domain.replaceChildren(...domainOptions[component.value].map(([value, label]) => new Option(label, value)));
+    domainLabel.firstChild.textContent = component.value === 'exam' ? 'Exam part' : 'Domain';
+  }
+  function percentFor(key) {
+    const matching = items.filter(item => `${item.component}:${item.domain}` === key);
+    if (!matching.length || matching.some(item => item.score === '' || !Number.isFinite(Number(item.score)) || Number(item.score) < 0 || Number(item.score) > item.max)) return null;
+    const possible = matching.reduce((sum, item) => sum + item.max, 0);
+    return matching.reduce((sum, item) => sum + Number(item.score), 0) / possible;
+  }
+  function calculate() {
+    const rows = weights.map(([key, label, weight]) => ({ label, weight, fraction: percentFor(key) }));
+    const examParts = [['st1', 30], ['st2', 30], ['term', 40]].map(([code, weight]) => ({ weight, fraction: percentFor(`exam:${code}`) }));
+    const examFraction = examParts.every(part => part.fraction !== null)
+      ? examParts.reduce((sum, part) => sum + part.fraction * part.weight / 100, 0) : null;
+    rows.push({ label: 'Examinations · ST1 30%, ST2 30%, Term Exam 40%', weight: 30, fraction: examFraction });
+    document.getElementById('breakdown').replaceChildren(...rows.map(row => {
+      const box = document.createElement('div');
+      const title = document.createElement('span');
+      const value = document.createElement('strong');
+      title.textContent = `${row.label} (${row.weight}% of initial grade)`;
+      value.textContent = row.fraction === null ? 'Missing score' : `${(row.fraction * row.weight).toFixed(2)} points`;
+      box.append(title, value);
+      return box;
+    }));
+    const missing = rows.filter(row => row.fraction === null);
+    const result = document.getElementById('result');
+    result.classList.toggle('waiting', missing.length > 0);
+    result.textContent = missing.length
+      ? `Cannot publish yet: add a valid score for ${missing.map(row => row.label).join(', ')}.`
+      : `Initial grade: ${rows.reduce((sum, row) => sum + row.fraction * row.weight, 0).toFixed(2)}. Academix would then apply the 2026–27 transmutation table and publish the term grade.`;
+  }
+  function renderItems() {
+    tableBody.replaceChildren(...items.map((item, index) => {
+      const row = document.createElement('tr');
+      const part = document.createElement('td');
+      const domainCell = document.createElement('td');
+      const title = document.createElement('td');
+      const scoreCell = document.createElement('td');
+      const max = document.createElement('td');
+      const badge = document.createElement('span');
+      const input = document.createElement('input');
+      part.textContent = item.component === 'written' ? 'Written / Oral Works' : item.component === 'performance' ? 'Performance Task' : 'Examination';
+      badge.className = 'tag';
+      badge.textContent = domainOptions[item.component].find(([code]) => code === item.domain)[1];
+      domainCell.append(badge);
+      title.textContent = item.title;
+      input.type = 'number'; input.min = '0'; input.max = String(item.max); input.step = '0.01'; input.value = item.score;
+      input.setAttribute('aria-label', `Score for ${item.title}`);
+      input.addEventListener('input', () => { items[index].score = input.value; calculate(); });
+      scoreCell.append(input);
+      max.textContent = String(item.max);
+      row.append(part, domainCell, title, scoreCell, max);
+      return row;
+    }));
+    calculate();
+  }
+  component.addEventListener('change', updateDomainChoices);
+  document.getElementById('add-item').addEventListener('click', () => {
+    const title = itemTitle.value.trim();
+    const message = document.getElementById('form-message');
+    if (!title) { message.textContent = 'Enter an activity name first.'; itemTitle.focus(); return; }
+    items.push({ component: component.value, domain: domain.value, title, score: '', max: 10 });
+    message.textContent = `Added “${title}”. Enter a score in the table below.`;
+    renderItems();
+  });
+  updateDomainChoices();
+  renderItems();
+</script>
+</body>
+</html>

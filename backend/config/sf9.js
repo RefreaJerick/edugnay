@@ -28,6 +28,24 @@ const SF9 = {
   }
 };
 
+const SF9_STANDARD_ROWS = [
+  { row: 32, code: /^filipino(?:-|$)/, name: /^filipino$/i },
+  { row: 33, code: /^english(?:-|$)/, name: /^english$/i },
+  { row: 34, code: /^mathematics(?:-|$)/, name: /^mathematics$/i },
+  { row: 35, code: /^science(?:-|$)/, name: /^science$/i },
+  { row: 36, code: /^araling-panlipunan(?:-|$)/, name: /^araling panlipunan(?: \(ap\))?$/i },
+  { row: 37, code: /^(?:gmrc|values-education)(?:-|$)/, name: /^(?:good manners and right conduct(?: \(gmrc\))?|gmrc|values education)$/i },
+  { row: 38, code: /^(?:epp|tle)(?:-|$)/, name: /^(?:edukasyong pantahanan at pangkabuhayan(?: \(epp\))?|technology and livelihood education(?: \(tle\))?|epp|tle)$/i },
+  { row: 40, code: /^music-and-arts(?:-|$)/, name: /^music (?:&|and) arts$/i },
+  { row: 41, code: /^physical-education-and-health(?:-|$)/, name: /^physical education (?:&|and) health$/i }
+];
+
+function standardSf9Row(subject) {
+  const code = String(subject.code || '').trim().toLowerCase();
+  const name = String(subject.name || '').trim();
+  return SF9_STANDARD_ROWS.find(entry => entry.code.test(code) || entry.name.test(name))?.row ?? null;
+}
+
 const SF9_GRADE11_ACADEMIC = {
   formCode: 'SF9',
   version: 'g11-academic-2026-2027',
@@ -160,7 +178,7 @@ function buildSf9Pages(school, section, adviser, learner, subjects, terms, grade
   const reportTerms = terms.slice(0, SF9.periodColumns.length);
   const issues = [{ severity: 'warning', fieldKey: 'draft', cellReference: null,
     message: currentPolicy
-      ? 'SF9 is a draft. Enter the general average manually after review. Any GMRC/Values Education grades require separate domain-based verification and are left blank. Complete attendance, comments, signatures, and transfer details from verified records.'
+      ? 'SF9 is a draft. Enter the general average manually after review. Complete attendance, comments, signatures, and transfer details from verified records.'
       : 'SF9 is a draft. Class-day attendance, comments, signatures, and transfer details are left blank for adviser completion from verified records. Review grades and learner details before issuing the report card.' }];
   const requireValue = (value, fieldKey, cellReference, label) => {
     if (!String(value || '').trim()) issues.push({ severity: 'warning', fieldKey, cellReference,
@@ -217,32 +235,37 @@ function buildSf9Pages(school, section, adviser, learner, subjects, terms, grade
 
   let allSubjectsComplete = subjects.length > 0 && terms.length === SF9.periodColumns.length;
   const subjectFinalGrades = [];
+  const useStandardRows = subjects.some(subject => standardSf9Row(subject) !== null);
+  const usedRows = new Set();
+  let extraRows = 0;
+  if (useStandardRows) cells.push({ cellAddress: 'B39', value: 'MAPEH', type: 'text' });
   subjects.forEach((subject, subjectIndex) => {
-    const row = SF9.firstSubjectRow + subjectIndex;
-    const policyReview = currentPolicy && (/^(gmrc|values-education)(?:-|$)/i.test(String(subject.code || ''))
-      || /^(?:good manners and right conduct(?:\s*\(gmrc\))?|gmrc|values education)$/i.test(String(subject.name || '').trim()));
+    const standardRow = useStandardRows ? standardSf9Row(subject) : null;
+    const row = standardRow !== null && !usedRows.has(standardRow) ? standardRow
+      : useStandardRows ? SF9.firstSubjectRow + SF9.baseSubjectRows + extraRows++
+        : SF9.firstSubjectRow + subjectIndex;
+    usedRows.add(row);
+    const gradeNumber = Number(String(section.gradeCode || '').replace(/^grade-/, ''));
+    const policyReview = Number(String(section.academicYear || '').slice(0, 4)) >= 2026 && ((gradeNumber >= 4 && gradeNumber <= 6
+      && (/^gmrc(?:-|$)/i.test(String(subject.code || '')) || /^(?:good manners and right conduct(?:\s*\(gmrc\))?|gmrc)$/i.test(String(subject.name || '').trim())))
+      || (gradeNumber >= 7 && gradeNumber <= 10
+        && (/^values-education(?:-|$)/i.test(String(subject.code || '')) || /^values education$/i.test(String(subject.name || '').trim()))));
     const subjectGrades = [];
     let subjectComplete = terms.length === SF9.periodColumns.length;
-    if (policyReview) {
-      issues.push({ severity: 'warning', fieldKey: 'gradePolicyReview', cellReference: `F${row}`,
-        message: `${subject.name}: term and final grades are blank because the GMRC/Values Education domain-weight calculation is not implemented. Adviser must verify and enter them manually.` });
-      cells.push({ cellAddress: `B${row}`, value: subject.name, type: 'text' });
-      SF9.periodColumns.forEach(column => cells.push({ cellAddress: `${column}${row}`, value: '', type: 'number' }));
-      cells.push({ cellAddress: `${SF9.finalGradeColumn}${row}`, value: '', type: 'number' });
-      allSubjectsComplete = false;
-      return;
-    }
     reportTerms.forEach((term, termIndex) => {
       const matchingGrades = gradesBySubject.get(`${subject.id}:${term.id}`) || [];
       const cellAddress = `${SF9.periodColumns[termIndex]}${row}`;
       const gradeValue = matchingGrades[0]?.finalGrade;
       if (matchingGrades.length !== 1 || gradeValue === null || gradeValue === undefined
         || gradeValue === '' || !Number.isFinite(Number(gradeValue))
-        || (currentPolicy && (Number(gradeValue) < 0 || Number(gradeValue) > 100))) {
+        || (policyReview && matchingGrades[0]?.domainRuleVersion !== 'deped_values_domains_2026')
+        || ((currentPolicy || policyReview) && (Number(gradeValue) < 0 || Number(gradeValue) > 100))) {
         subjectComplete = false;
         allSubjectsComplete = false;
         const reason = matchingGrades.length > 1 ? 'conflicting published grades'
-          : matchingGrades.length ? 'invalid published grade' : 'no published grade';
+          : !matchingGrades.length ? 'no published grade'
+            : policyReview && matchingGrades[0]?.domainRuleVersion !== 'deped_values_domains_2026'
+              ? 'published grade needs domain review and republication' : 'invalid published grade';
         issues.push({ severity: 'warning', fieldKey: 'grade', cellReference: cellAddress,
           message: `${subject.name}, ${term.name}: ${reason}.` });
         cells.push({ cellAddress, value: '', type: 'number' });
@@ -264,13 +287,16 @@ function buildSf9Pages(school, section, adviser, learner, subjects, terms, grade
       : null;
     if (finalGrade === null) allSubjectsComplete = false;
     else subjectFinalGrades.push(finalGrade);
-    cells.push({ cellAddress: `B${row}`, value: subject.name, type: 'text' });
+    const rowLabel = standardRow === row && row === 37 ? 'GMRC / Values Education'
+      : standardRow === row && row === 38 ? 'EPP / TLE' : subject.name;
+    cells.push({ cellAddress: `B${row}`, value: rowLabel, type: 'text' });
     cells.push({ cellAddress: `${SF9.finalGradeColumn}${row}`, value: finalGrade ?? '', type: 'number' });
   });
 
   const generalAverage = !currentPolicy && allSubjectsComplete && subjectFinalGrades.length === subjects.length
     ? Number((subjectFinalGrades.reduce((sum, grade) => sum + grade, 0) / subjects.length).toFixed(2)) : null;
-  const averageCellAddress = `${SF9.finalGradeColumn}${SF9.firstSubjectRow + Math.max(SF9.baseSubjectRows, subjects.length)}`;
+  const averageCellAddress = `${SF9.finalGradeColumn}${SF9.firstSubjectRow + (useStandardRows
+    ? SF9.baseSubjectRows + extraRows : Math.max(SF9.baseSubjectRows, subjects.length))}`;
   cells.push({ cellAddress: averageCellAddress, value: generalAverage ?? '', type: 'number' });
   if (!currentPolicy && !allSubjectsComplete && subjects.length) issues.push({ severity: 'warning', fieldKey: 'generalAverage', cellReference: averageCellAddress,
     message: terms.length !== SF9.periodColumns.length

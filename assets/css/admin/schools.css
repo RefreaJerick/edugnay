@@ -2451,6 +2451,80 @@
   background: var(--theme-surface);
 }
 
+.school-k10-domain-heading h3 {
+  margin: 0;
+  color: var(--gray-800, #26364d);
+  font-size: 15px;
+}
+
+.school-k10-domain-heading p {
+  margin: 4px 0 0;
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+}
+
+.school-k10-domain-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.school-k10-domain-card {
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
+  border-radius: 9px;
+  background: var(--gray-50, #f7f9fc);
+}
+
+.school-k10-domain-card-heading,
+.school-k10-domain-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.school-k10-domain-card-heading {
+  align-items: flex-start;
+  min-height: 39px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--gray-200, var(--theme-border-muted));
+  color: var(--gray-800, #26364d);
+}
+
+.school-k10-domain-card-heading h4 {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.school-k10-domain-card-heading > strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.school-k10-domain-row {
+  padding-top: 9px;
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+}
+
+.school-k10-domain-row strong {
+  color: var(--gray-800, #26364d);
+  white-space: nowrap;
+}
+
+.school-k10-domain-exam-note {
+  margin: 9px 0 0;
+  color: var(--gray-600, #60718a);
+  font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .school-k10-domain-cards { grid-template-columns: minmax(0, 1fr); }
+  .school-k10-domain-card-heading { min-height: 0; }
+}
+
 .school-k10-section-heading {
   display: flex;
   align-items: center;

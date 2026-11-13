@@ -8,6 +8,8 @@ const {
   isDepedNumericalGradeCode
 } = require('../config/depedK10Grading');
 const { loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
+const { DOMAIN_WEIGHTS, usesDepedValuesDomains, isDepedValuesSetup } = require('../config/depedValuesDomains');
+const { resolveValuesDomainCode } = require('../utils/valuesDomainItems');
 const { getTrigger, notifyParents } = require('../utils/parentNotifications');
 const { isCommunicationComponentCode } = require('../config/shsCommunication');
 const { classHasStartedSql } = require('../utils/shsClassTerms');
@@ -163,7 +165,7 @@ async function getTeacherSectionSubject(connection, teacherId, sectionId, subjec
 }
 
 async function getManagedGradingItem(connection, user, gradingItemId) {
-  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN subjects ON subjects.id = grading_items.subject_id AND subjects.school_id = grading_items.school_id AND subjects.is_active = TRUE INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
+  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.domain_code AS domainCode, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN subjects ON subjects.id = grading_items.subject_id AND subjects.school_id = grading_items.school_id AND subjects.is_active = TRUE INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
   const item = rows[0];
   if (!item || (user.role === 'teacher' && Number(item.teacherUserId) !== Number(user.id))) return null;
   if (['closed', 'archived'].includes(item.academicYearStatus)) throw createError('Records from a closed or archived school year are read-only.', 409);
@@ -323,6 +325,7 @@ async function listGradingItems(req, res, next) {
         grading_items.grading_category_id AS gradingCategoryId,
         grading_items.subject_grading_component_id AS subjectGradingComponentId,
         grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId,
+        grading_items.domain_code AS domainCode,
         grading_items.teacher_user_id AS teacherUserId, grading_items.title,
         grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades,
         grading_items.recorded_at AS recordedAt, subjects.name AS subjectName,
@@ -388,14 +391,15 @@ async function createGradingItem(req, res, next) {
         throw createError('The score component must match the unlinked assignment.', 409);
       }
     }
-    const [result] = await connection.execute('INSERT INTO grading_items (school_id, section_id, subject_id, academic_term_id, grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [req.user.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, maxScore]);
+    const domainCode = await resolveValuesDomainCode(connection, req.user.schoolId, sectionId, subjectId, subjectGradingComponentId, req.body.domainCode);
+    const [result] = await connection.execute('INSERT INTO grading_items (school_id, section_id, subject_id, academic_term_id, grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, domain_code, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [req.user.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, domainCode, req.user.id, title, maxScore]);
     if (assignmentId) await connection.execute(
       'UPDATE assignments SET grading_item_id = ? WHERE id = ? AND school_id = ?',
       [result.insertId, assignmentId, req.user.schoolId]
     );
     await connection.commit();
     transactionStarted = false;
-    res.status(201).json({ gradingItem: { id: result.insertId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, teacherUserId: req.user.id, title, maxScore, usedInPublishedGrades: false } });
+    res.status(201).json({ gradingItem: { id: result.insertId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, domainCode, teacherUserId: req.user.id, title, maxScore, usedInPublishedGrades: false } });
   } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
@@ -472,10 +476,14 @@ async function updateGradingItem(req, res, next) {
       academicYearStatus: current.academicYearStatus
     });
     const title = req.body.title === undefined ? current.title : text(req.body.title, 255, 'Grading item title'); const maxScore = req.body.maxScore === undefined ? Number(current.maxScore) : scoreValue(req.body.maxScore, 'Maximum score');
-    await connection.execute('UPDATE grading_items SET title=?, max_score=? WHERE id=?', [title, maxScore, gradingItemId]);
+    const domainCode = req.body.domainCode === undefined ? current.domainCode
+      : await resolveValuesDomainCode(connection, req.user.schoolId, current.sectionId, current.subjectId,
+        current.subjectGradingComponentId, req.body.domainCode);
+    await connection.execute('UPDATE grading_items SET title=?, max_score=?, domain_code=? WHERE id=? AND school_id=?',
+      [title, maxScore, domainCode, gradingItemId, req.user.schoolId]);
     await connection.commit();
     transactionStarted = false;
-    res.json({ gradingItem: { ...current, title, maxScore } });
+    res.json({ gradingItem: { ...current, title, maxScore, domainCode } });
   } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
@@ -1022,9 +1030,11 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
       sections.track_id AS trackId, sections.strand_id AS strandId,
       tracks.track_code AS trackCode,
       sections.name AS sectionName, subjects.id AS subjectId, subjects.name AS subjectName,
+      subjects.subject_code AS subjectCode,
       subjects.shs_grading_group AS shsGradingGroup,
       academic_terms.id AS academicTermId, academic_terms.name AS academicTermName,
       academic_terms.status AS termStatus, school_levels.grade_rounding AS gradeRounding,
+      academic_years.status AS academicYearStatus,
       school_levels.passing_grade_threshold AS passingGradeThreshold,
       school_levels.level_code AS schoolLevelCode,
       academic_years.label AS academicYearLabel,
@@ -1059,7 +1069,17 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   const context = contextRows[0];
   if (!context) throw createError('The section, subject, or term is not available to your account.', 404);
   if (context.schoolLevelCode === 'shs') throw createError('Strengthened SHS grades cannot be calculated or published until the new grading workflow is available.', 409);
-  if (context.termStatus !== 'active') throw createError('Grades can only be published for the active term.', 409);
+  if (context.academicYearStatus !== 'active') throw createError('Records outside the active school year are read-only.', 409);
+  if (context.termStatus !== 'active') {
+    if (context.termStatus !== 'closed') throw createError('Grades can only be published for an active or approved reopened term.', 409);
+    const [approvals] = await connection.execute(
+      `SELECT id FROM grading_period_reopen_requests WHERE school_id = ? AND academic_term_id = ?
+       AND section_id = ? AND subject_id = ? AND teacher_user_id = ?
+       AND request_status = 'approved' AND expires_at > NOW() LIMIT 1`,
+      [user.schoolId, scope.academicTermId, scope.sectionId, scope.subjectId, user.id]
+    );
+    if (!approvals.length) throw createError('Grades can only be published for an active or approved reopened term.', 409);
+  }
   const gradeBlockReason = getDepedNumericalGradeBlockReason(context.gradeCode, context.academicYearLabel);
   if (gradeBlockReason) throw createError(gradeBlockReason, 409);
 
@@ -1068,6 +1088,8 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     : 'standard';
   const usesDepedSubjectRules = ['elementary', 'jhs'].includes(context.schoolLevelCode)
     && isDepedNumericalGradeCode(context.gradeCode, context.academicYearLabel);
+  const usesValuesDomains = usesDepedSubjectRules
+    && usesDepedValuesDomains(context.subjectCode, context.gradeCode, context.academicYearLabel);
   const finalGradeRules = usesDepedSubjectRules ? await loadK10FinalGradeRules(connection, {
     schoolId: context.schoolId,
     academicYearId: context.academicYearId,
@@ -1159,6 +1181,9 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     || Math.round(weightTotal * 100) !== 10000) {
     issues.push({ code: 'invalid_category_weights', message: 'Grading category weights must be valid and total 100%.' });
   }
+  if (usesValuesDomains && categories.length && !isDepedValuesSetup(categories)) {
+    issues.push({ code: 'values_domain_setup_mismatch', message: 'GMRC/Values Education requires DepEd’s 20% Written/Oral, 50% Performance, and 30% Examination setup with the 30/30/40 exam split. Review School Settings.' });
+  }
   const effectiveRounding = usesDepedSubjectRules ? finalGradeRules.gradeRounding : context.gradeRounding;
   if (!['round', 'roundup', 'truncate'].includes(effectiveRounding)) {
     issues.push({ code: 'invalid_rounding_rule', message: 'The grade-rounding setting is invalid. Check School Settings.' });
@@ -1192,6 +1217,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
       grading_items.grading_category_id AS gradingCategoryId, grading_items.max_score AS maxScore,
       grading_items.subject_grading_component_id AS subjectGradingComponentId,
       grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId,
+      grading_items.domain_code AS domainCode,
       grading_categories.school_id AS categorySchoolId,
       grading_categories.school_level_id AS categorySchoolLevelId,
       subject_grading_components.school_id AS componentSchoolId
@@ -1216,33 +1242,51 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   if (!items.length) issues.push({ code: 'no_grading_items', message: 'Add grading items for this subject and term before publishing.' });
   for (const item of items) {
     if (!Number.isFinite(item.maxScore) || item.maxScore <= 0) {
-      issues.push({ code: 'invalid_max_score', message: `“${item.title}” must have a maximum score greater than zero.` });
+      issues.push({ code: 'invalid_max_score', message: `Set the maximum score for “${item.title}” above 0.` });
     }
     if (!usesDepedSubjectRules && (!categoryById.has(item.gradingCategoryId)
       || Number(item.categorySchoolId) !== Number(context.schoolId)
       || Number(item.categorySchoolLevelId) !== Number(context.schoolLevelId))) {
-      issues.push({ code: 'invalid_item_category', message: `Choose a grading category for “${item.title}” before publishing.` });
+      issues.push({ code: 'invalid_item_category', message: `Choose a grading category for score item “${item.title}”.` });
     }
     if (usesDepedSubjectRules) {
       const component = categoryById.get(item.subjectGradingComponentId);
       const part = component?.examParts.find(examPart => examPart.id === item.subjectGradingExamPartId);
       if (!component || Number(item.componentSchoolId) !== Number(context.schoolId)) {
-        issues.push({ code: 'invalid_item_component', message: `“${item.title}” is not included in this subject’s grading parts for the school year.` });
+        issues.push({ code: 'invalid_item_component', message: `Ask your school administrator to check the grading setup for “${item.title}”.` });
       } else if ((component.examParts.length && !part) || (!component.examParts.length && item.subjectGradingExamPartId)) {
-        issues.push({ code: 'invalid_item_exam_part', message: `“${item.title}” must use an exam part from the same grading section.` });
+        issues.push({ code: 'invalid_item_exam_part', message: `Choose an exam part from this subject’s setup for “${item.title}”.` });
+      }
+      if (usesValuesDomains && component && DOMAIN_WEIGHTS[component.componentType]
+        && !Object.hasOwn(DOMAIN_WEIGHTS[component.componentType], item.domainCode)) {
+        issues.push({ code: 'missing_values_domain', message: `Choose a ${component.componentType} domain for “${item.title}” before publishing.` });
+      }
+      if (usesValuesDomains && component && !DOMAIN_WEIGHTS[component.componentType] && item.domainCode) {
+        issues.push({ code: 'invalid_values_domain', message: `Remove the domain from Examination item “${item.title}”.` });
       }
     }
   }
-  if (items.length) {
+  if (items.length || usesValuesDomains) {
     for (const category of categories) {
       const categoryItems = items.filter(item => (usesDepedSubjectRules ? item.subjectGradingComponentId : item.gradingCategoryId) === category.id);
-      if (!categoryItems.length) {
-        issues.push({ code: usesDepedSubjectRules ? 'component_without_items' : 'category_without_items', categoryCode: category.code, message: `Add at least one grading item for ${category.name}.` });
+      const requiredDomains = usesValuesDomains ? DOMAIN_WEIGHTS[category.componentType] : null;
+      if (!categoryItems.length && !requiredDomains) {
+        issues.push({ code: usesDepedSubjectRules ? 'component_without_items' : 'category_without_items', categoryCode: category.code, message: `Add a score item for ${category.name}.` });
+      }
+      if (requiredDomains) {
+        for (const domainCode of Object.keys(requiredDomains)) {
+          if (!categoryItems.some(item => item.domainCode === domainCode)) {
+            const componentName = category.componentType === 'written' ? 'Written/Oral Works' : 'Performance Tasks';
+            const domainName = domainCode[0].toUpperCase() + domainCode.slice(1);
+            issues.push({ code: 'values_domain_without_items', componentType: category.componentType, domainCode,
+              componentName, domainName, message: `Add a ${componentName} item for ${domainName}.` });
+          }
+        }
       }
       if (usesDepedSubjectRules) {
         for (const part of category.examParts) {
           if (!categoryItems.some(item => item.subjectGradingExamPartId === part.id)) {
-            issues.push({ code: 'exam_part_without_items', categoryCode: part.code, message: `Add at least one score component for ${part.name}.` });
+            issues.push({ code: 'exam_part_without_items', categoryCode: part.code, message: `Add an Examinations score item for ${part.name}.` });
           }
         }
       }
@@ -1279,6 +1323,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     const invalidScores = [];
     const totals = new Map(categories.map(category => [category.id, { earned: 0, possible: 0 }]));
     const partTotals = new Map(categories.flatMap(category => category.examParts.map(part => [part.id, { earned: 0, possible: 0 }])));
+    const domainTotals = new Map();
 
     for (const item of items) {
       const record = scoreByKey.get(`${student.studentId}:${item.gradingItemId}`);
@@ -1300,6 +1345,13 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
         } else if (componentTotal) {
           componentTotal.earned += score;
           componentTotal.possible += item.maxScore;
+          if (usesValuesDomains && item.domainCode) {
+            const key = `${item.subjectGradingComponentId}:${item.domainCode}`;
+            const domainTotal = domainTotals.get(key) || { earned: 0, possible: 0 };
+            domainTotal.earned += score;
+            domainTotal.possible += item.maxScore;
+            domainTotals.set(key, domainTotal);
+          }
         }
       } else {
         const categoryTotal = totals.get(item.gradingCategoryId);
@@ -1313,12 +1365,20 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     const complete = canCalculate && !missingItems.length && !invalidScores.length
       && categories.every(category => category.examParts.length
         ? category.examParts.every(part => (partTotals.get(part.id)?.possible || 0) > 0)
-        : (totals.get(category.id)?.possible || 0) > 0);
+        : usesValuesDomains && DOMAIN_WEIGHTS[category.componentType]
+          ? Object.keys(DOMAIN_WEIGHTS[category.componentType]).every(domain =>
+            (domainTotals.get(`${category.id}:${domain}`)?.possible || 0) > 0)
+          : (totals.get(category.id)?.possible || 0) > 0);
     const categoryAverages = complete ? categories.map(category => ({
       code: category.code,
       name: category.name,
       weight: category.weight,
-      percentage: category.examParts.length
+      percentage: usesValuesDomains && DOMAIN_WEIGHTS[category.componentType]
+        ? Object.entries(DOMAIN_WEIGHTS[category.componentType]).reduce((sum, [domain, weight]) => {
+          const total = domainTotals.get(`${category.id}:${domain}`);
+          return sum + total.earned / total.possible * weight;
+        }, 0) * 100 / category.weight
+        : category.examParts.length
         ? category.examParts.reduce((sum, part) => sum + ((partTotals.get(part.id).earned / partTotals.get(part.id).possible) * 100 * (part.weight / 100)), 0)
         : (totals.get(category.id).earned / totals.get(category.id).possible) * 100,
       examPartAverages: category.examParts.map(part => ({
@@ -1362,6 +1422,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     academicTermName: context.academicTermName,
     gradingScale: usesDepedSubjectRules ? gradingMethod : null,
     gradingMethod: usesDepedSubjectRules ? gradingMethod : null,
+    domainRuleVersion: usesValuesDomains && isDepedValuesSetup(categories) ? 'deped_values_domains_2026' : null,
     gradingMethodLabel: usesDepedSubjectRules ? finalGradeRules.gradingMethodLabel : null,
     periodStructureCompatible,
     periodStructureWarning: usesDepedSubjectRules ? finalGradeRules.periodStructureWarning : null,
@@ -1429,11 +1490,12 @@ async function publishFinalGrades(req, res, next) {
       await connection.execute(
         `INSERT INTO published_final_grades (
           school_id, section_id, subject_id, academic_term_id, student_user_id,
-          final_grade, published_by_user_id, published_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+          final_grade, domain_rule_version, published_by_user_id, published_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE final_grade = VALUES(final_grade),
+          domain_rule_version = VALUES(domain_rule_version),
           published_by_user_id = VALUES(published_by_user_id), published_at = NOW()`,
-        [req.user.schoolId, preview.sectionId, preview.subjectId, preview.academicTermId, student.studentId, student.finalGrade, req.user.id]
+        [req.user.schoolId, preview.sectionId, preview.subjectId, preview.academicTermId, student.studentId, student.finalGrade, preview.domainRuleVersion, req.user.id]
       );
       if (notificationsEnabled) {
         await connection.execute(

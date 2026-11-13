@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { usesDepedValuesDomains, isDepedValuesSetup } = require('../config/depedValuesDomains');
 const {
   createDepedK10DefaultComponents,
   getDepedK10GradeMethod,
@@ -248,6 +249,10 @@ async function getPreviewData(connection, schoolId, academicYearId, schoolLevelI
       && profile?.configurationSource === 'deped_default';
     result.push({
       ...subject,
+      valuesDomains: subject.gradeCodes.some(gradeCode =>
+        usesDepedValuesDomains(subject.subjectCode, gradeCode, year.academicYearLabel)),
+      valuesDomainSetupMatches: !subject.gradeCodes.some(gradeCode =>
+        usesDepedValuesDomains(subject.subjectCode, gradeCode, year.academicYearLabel)) || isDepedValuesSetup(components),
       status: locked ? 'published' : profile ? 'configured' : defaults ? 'ready' : 'unmatched',
       configurationSource: profile?.configurationSource || null,
       needsExamSetup,
@@ -334,7 +339,7 @@ async function getTeacherSubjectGradingConfig(req, res, next) {
     const [rows] = await getDatabase().execute(
       `SELECT sections.id AS sectionId, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId,
         sections.school_level_id AS schoolLevelId, school_grade_levels.grade_code AS gradeCode,
-        academic_years.label AS academicYearLabel,
+        academic_years.label AS academicYearLabel, subjects.subject_code AS subjectCode,
         school_levels.level_code AS levelCode, school_levels.grading_period_type AS gradingPeriodType
       FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id
         AND sections.school_id = section_teachers.school_id AND sections.status = 'active'
@@ -383,6 +388,8 @@ async function getTeacherSubjectGradingConfig(req, res, next) {
       academicYearId: Number(section.academicYearId),
       academicYearLabel: section.academicYearLabel,
       components,
+      valuesDomains: usesDepedValuesDomains(section.subjectCode, section.gradeCode, section.academicYearLabel),
+      valuesDomainSetupMatches: isDepedValuesSetup(components),
       ...finalGradeRules
     });
   } catch (error) { next(error); }
