@@ -81,6 +81,34 @@ test('SHS Program uses two staff tabs and no longer exposes readiness or complet
   assert.doesNotMatch(client, /getShsCompletion|confirmShsCompletion|verifyShsPrior|recordShsPrior|loadCompletion|renderCompletion/);
 });
 
+test('SHS Program uses a compact school-year row and keeps the info banner above both tabs', () => {
+  const page = read('views/admin/edugnay-admin-shs-program.html');
+  const styles = read('assets/css/shs-program.css');
+  const yearSelector = page.indexOf('<div class="shs-toolbar shs-year-toolbar" role="group" aria-label="School year">');
+  const bannerStart = page.indexOf('<aside class="shs-info-banner" role="note">');
+  const bannerEnd = page.indexOf('</aside>', bannerStart);
+  const tabList = page.indexOf('<div class="mgmt-tabs shs-tabs" role="tablist"');
+  const subjectsPanel = page.indexOf('<section id="shs-panel-subjects"');
+  const choicesPanel = page.indexOf('<section id="shs-panel-choices"');
+  const banner = bannerStart >= 0 && bannerEnd > bannerStart ? page.slice(bannerStart, bannerEnd) : '';
+
+  assert.ok(yearSelector >= 0 && bannerStart > yearSelector && tabList > bannerEnd && subjectsPanel > tabList && choicesPanel > subjectsPanel,
+    'the year selector should precede the banner, which stays above both tab panels');
+  assert.doesNotMatch(page, /<section class="timetable-card" aria-label="School year">/,
+    'the year selector should not sit inside a full-width card');
+  assert.match(page, /<label for="shs-year">School year<\/label><select id="shs-year"><\/select>/,
+    'the existing accessible school-year control should remain intact');
+  assert.match(banner, /<span class="shs-info-icon" aria-hidden="true"><i data-lucide="lightbulb"><\/i><\/span>/);
+  assert.match(banner, /<div class="shs-info-title">How the SHS Program works<\/div>/);
+  assert.match(banner, /Set up approved SHS offerings, assign teachers, and manage class seats and schedules under Subject classes\. Review and confirm learners’ choices under Student choices\. Grade 11 core subjects are managed in Class Management\./);
+  assert.doesNotMatch(banner, /<button\b|\shidden(?:\s|=|>)/, 'the banner should remain visible without a dismissal control');
+  assert.match(styles, /\.shs-info-banner\s*\{[^}]*background:\s*var\(--blue-xpale\)/s);
+  assert.match(styles, /\.shs-info-title\s*\{[^}]*font-size:\s*13px/s);
+  assert.match(styles, /\.shs-info-text\s*\{[^}]*font-size:\s*12px/s);
+  assert.match(styles, /\.shs-year-toolbar \.timetable-field\s*\{[^}]*grid-template-columns:\s*auto minmax\(0,\s*280px\)/s);
+  assert.match(styles, /@media\s*\(max-width:\s*680px\)[\s\S]*?\.shs-year-toolbar \.timetable-field\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/s);
+});
+
 test('elective class modal aligns capacity and term controls for each term mode', () => {
   const page = read('views/admin/edugnay-admin-shs-program.html');
   const styles = read('assets/css/shs-program.css');

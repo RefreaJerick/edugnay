@@ -10,6 +10,7 @@ const pending = pageFs.readFileSync(path.join(__dirname, '../../views/onboarding
 const platformSchoolAccounts = pageFs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-school-accounts.html'), 'utf8');
 const sharedStyles = pageFs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
 const onboardingCss = pageFs.readFileSync(path.join(__dirname, '../../assets/css/onboarding.css'), 'utf8');
+const onboardingClient = pageFs.readFileSync(path.join(__dirname, '../../assets/js/onboarding/school-onboarding.js'), 'utf8');
 const apiShell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
 
 test('onboarding submits the administrator name and notification email without a manual school address', () => {
@@ -25,6 +26,58 @@ test('onboarding submits the administrator name and notification email without a
   assert.match(apiShell, /requestApi\('\/schools\/registration-details'/);
   assert.match(apiShell, /requestApi\('\/schools\/registration-resubmit'/);
   assert.match(onboarding, /Your existing school record will be retained/);
+});
+
+test('onboarding Privacy Policy link appears before registration fields, not in the topbar', () => {
+  const topbar = onboarding.match(/<header class="onboarding-topbar">([\s\S]*?)<\/header>/)?.[1] || '';
+  const intro = onboarding.match(/<div class="onboarding-registration-intro">([\s\S]*?)<\/div>/)?.[1] || '';
+  const policyNoteIndex = onboarding.indexOf('<p class="onboarding-privacy-note">');
+  const formAreaIndex = onboarding.indexOf('<div class="onboarding-form-area">');
+
+  assert.doesNotMatch(topbar, /Privacy Policy|onboarding-topbar-privacy/);
+  assert.match(intro, /id="schoolRegistrationDescription"[\s\S]*<p class="onboarding-privacy-note">Before submitting, review our <a href="edugnay-privacy-policy\.html">Privacy Policy<\/a>\.<\/p>/);
+  assert.ok(policyNoteIndex >= 0 && formAreaIndex > policyNoteIndex,
+    'the privacy link should appear before school registration fields');
+  assert.equal((onboarding.match(/href="edugnay-privacy-policy\.html"/g) || []).length, 1);
+});
+
+test('onboarding feature previews support mobile swipes and a display-only carousel indicator', () => {
+  const indicatorStyles = onboardingCss.match(/\.onboarding-feature-indicators\s*\{([^}]*)\}/)?.[1] || '';
+  const inactiveIndicatorStyles = onboardingCss.match(/\.onboarding-feature-indicator\s*\{([^}]*)\}/)?.[1] || '';
+  assert.match(onboarding, /id="onboardingFeatureIndicators" aria-hidden="true"><\/div>/);
+  assert.match(onboardingClient, /function renderOnboardingFeatureIndicators\(\)[\s\S]*ONBOARDING_FEATURES\.map\(feature =>[\s\S]*onboarding-feature-indicator[\s\S]*data-feature-id="\$\{feature\.id\}"/);
+  assert.match(onboardingClient, /document\.querySelectorAll\('\.onboarding-feature-indicator'\)\.forEach\(indicator => \{\s*indicator\.classList\.toggle\('is-active', indicator\.dataset\.featureId === featureId\);/);
+  assert.match(onboardingClient, /featurePreview\?\.addEventListener\('pointerdown', handleOnboardingFeaturePreviewPointerDown\)/);
+  assert.match(onboardingClient, /featurePreview\?\.addEventListener\('pointerup', handleOnboardingFeaturePreviewPointerUp\)/);
+  assert.match(onboardingClient, /featurePreview\?\.addEventListener\('pointercancel', handleOnboardingFeaturePreviewPointerCancel\)/);
+  assert.match(onboardingClient, /featurePreview\?\.addEventListener\('focusin', stopOnboardingFeatureAutoPlay\)/);
+  assert.match(onboardingClient, /function handleOnboardingFeaturePreviewPointerDown\(event\) \{[\s\S]*?stopOnboardingFeatureAutoPlay\(\)/);
+  assert.match(onboardingCss, /@media\s*\(max-width:\s*860px\)[\s\S]*?\.onboarding-feature-indicators\s*\{\s*display:\s*flex/s);
+  assert.doesNotMatch(indicatorStyles, /background|padding|border-radius/);
+  assert.match(inactiveIndicatorStyles, /background:\s*var\(--gray-400\)/);
+  assert.match(inactiveIndicatorStyles, /transition:[^;]*flex-basis\s+\.24s\s+ease[^;]*background-color\s+\.24s\s+ease/);
+  assert.match(onboardingCss, /\.onboarding-feature-indicator\.is-active\s*\{[^}]*width:\s*22px/s);
+  assert.match(onboardingCss, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.onboarding-feature-indicator\s*\{\s*transition:\s*none;/s);
+  assert.match(onboardingCss, /\.onboarding-showcase-preview\s*\{\s*touch-action:\s*pan-y pinch-zoom;/);
+});
+
+test('onboarding feature swipe moves one card horizontally, wraps, and ignores vertical gestures', () => {
+  const swipeHelper = onboardingClient.match(/function getOnboardingFeatureSwipeTarget\(currentFeatureId, deltaX, deltaY\) \{[\s\S]*?\n    \}/)?.[0];
+  assert.ok(swipeHelper, 'the swipe target helper should exist');
+  const context = {
+    FEATURE_PREVIEW_SWIPE_THRESHOLD: 48,
+    ONBOARDING_FEATURES: ['school-management', 'teaching-tools', 'student-progress', 'ai-reports', 'school-forms'].map(id => ({ id }))
+  };
+  const targetFor = (currentFeatureId, deltaX, deltaY) => {
+    Object.assign(context, { currentFeatureId, deltaX, deltaY });
+    return vm.runInNewContext(`${swipeHelper}\ngetOnboardingFeatureSwipeTarget(currentFeatureId, deltaX, deltaY)`, context);
+  };
+
+  assert.equal(targetFor('school-management', -80, 10), 'teaching-tools');
+  assert.equal(targetFor('teaching-tools', 80, 10), 'school-management');
+  assert.equal(targetFor('school-forms', -80, 10), 'school-management');
+  assert.equal(targetFor('school-management', 10, 80), null);
+  assert.equal(targetFor('school-management', -40, 5), null);
 });
 
 const completeSavedRegistration = {

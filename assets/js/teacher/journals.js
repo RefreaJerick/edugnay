@@ -42,6 +42,13 @@ function formatJournalDate(value) {
   return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatJournalDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+}
+
 function dueDateForWeek(weekStart, dayName, time) {
   const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayName);
   const date = localDate(`${weekStart}T00:00:00`);
@@ -245,9 +252,33 @@ function selectJournalPrompt(promptId) {
   renderTable();
 }
 
+function renderJournalPromptBanner(section) {
+  const banner = document.getElementById('journal-prompt-banner');
+  const prompt = section?.prompt;
+  banner.hidden = !prompt;
+  if (!prompt) return;
+
+  const statusLabels = {
+    open: 'Open for submissions',
+    late: 'Accepting late entries',
+    not_open: 'Opens soon',
+    deadline_passed: 'Deadline passed',
+    closed: 'Closed'
+  };
+  document.getElementById('journal-prompt-context').textContent = `${section.label} · Week of ${formatJournalDate(prompt.weekStartDate)}`;
+  document.getElementById('journal-prompt-status').textContent = statusLabels[prompt.submissionState] || 'Status unavailable';
+  document.getElementById('journal-prompt-text').textContent = prompt.promptText || '';
+  document.getElementById('journal-prompt-opens').textContent = formatJournalDateTime(prompt.opensAt);
+  document.getElementById('journal-prompt-due').textContent = formatJournalDateTime(prompt.dueAt);
+  document.getElementById('journal-prompt-words').textContent = `${prompt.minWords} words`;
+  document.getElementById('journal-prompt-late').textContent = prompt.allowLate ? 'Allowed' : 'Not allowed';
+  document.getElementById('journal-prompt-component').textContent = prompt.componentTitle || 'Not linked';
+}
+
 /* ══════ RENDER TABLE ══════ */
 function renderTable() {
   const sec = SECTIONS[currentSection];
+  renderJournalPromptBanner(sec);
   if (!sec) return;
   const noPromptEl = document.getElementById('noPromptState');
   const toolbar = document.querySelector('.toolbar');
@@ -674,6 +705,7 @@ async function loadTeacherJournals() {
     lucide.createIcons();
   } catch (error) {
     SECTIONS = {};
+    renderJournalPromptBanner(null);
     tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Journal sections unavailable', text: error.message || 'Please refresh and try again.' });
     noPrompt.innerHTML = '';
     noPrompt.style.display = 'none';

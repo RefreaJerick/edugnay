@@ -43,9 +43,11 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
     ];
 
     const FEATURE_PREVIEW_INTERVAL = 6000;
+    const FEATURE_PREVIEW_SWIPE_THRESHOLD = 48;
     const termDrafts = {};
     let featurePreviewTimer = null;
     let featurePreviewAutoPlayStopped = false;
+    let featurePreviewPointer = null;
 
     function renderOnboardingFeaturePreviews() {
       const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
@@ -75,6 +77,13 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
       }).join('');
     }
 
+    function renderOnboardingFeatureIndicators() {
+      const indicators = document.getElementById('onboardingFeatureIndicators');
+      indicators.innerHTML = ONBOARDING_FEATURES.map(feature =>
+        `<span class="onboarding-feature-indicator" data-feature-id="${feature.id}"></span>`
+      ).join('');
+    }
+
     function selectOnboardingFeature(featureId) {
       const feature = ONBOARDING_FEATURES.find(item => item.id === featureId);
       const selectedTab = document.getElementById(`onboardingFeatureTab-${featureId}`);
@@ -95,6 +104,9 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
       document.querySelectorAll('.onboarding-showcase-preview-slide').forEach(slide => {
         slide.classList.toggle('is-active', slide === selectedSlide);
       });
+      document.querySelectorAll('.onboarding-feature-indicator').forEach(indicator => {
+        indicator.classList.toggle('is-active', indicator.dataset.featureId === featureId);
+      });
 
       const tabStrip = selectedTab.parentElement;
       const tabBounds = selectedTab.getBoundingClientRect();
@@ -105,6 +117,40 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
       } else if (tabBounds.right > stripBounds.right) {
         tabStrip.scrollBy({ left: tabBounds.right - stripBounds.right, behavior });
       }
+    }
+
+    function getOnboardingFeatureSwipeTarget(currentFeatureId, deltaX, deltaY) {
+      if (Math.abs(deltaX) < FEATURE_PREVIEW_SWIPE_THRESHOLD || Math.abs(deltaX) <= Math.abs(deltaY)) return null;
+
+      const currentIndex = ONBOARDING_FEATURES.findIndex(feature => feature.id === currentFeatureId);
+      if (currentIndex < 0) return null;
+
+      const direction = deltaX < 0 ? 1 : -1;
+      return ONBOARDING_FEATURES[(currentIndex + direction + ONBOARDING_FEATURES.length) % ONBOARDING_FEATURES.length].id;
+    }
+
+    function handleOnboardingFeaturePreviewPointerDown(event) {
+      featurePreviewPointer = null;
+      if (!window.matchMedia('(max-width: 860px)').matches || !['touch', 'pen'].includes(event.pointerType) || event.isPrimary === false) return;
+
+      stopOnboardingFeatureAutoPlay();
+      featurePreviewPointer = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+
+    function handleOnboardingFeaturePreviewPointerUp(event) {
+      if (!featurePreviewPointer || featurePreviewPointer.pointerId !== event.pointerId) return;
+
+      const start = featurePreviewPointer;
+      featurePreviewPointer = null;
+      const activeTab = document.querySelector('.onboarding-feature-tab[aria-selected="true"]');
+      const currentFeatureId = activeTab?.id.replace('onboardingFeatureTab-', '');
+      const nextFeatureId = getOnboardingFeatureSwipeTarget(currentFeatureId, event.clientX - start.x, event.clientY - start.y);
+      if (nextFeatureId) selectOnboardingFeature(nextFeatureId);
+    }
+
+    function handleOnboardingFeaturePreviewPointerCancel() {
+      featurePreviewPointer = null;
     }
 
     function showNextOnboardingFeature() {
@@ -129,8 +175,14 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
 
     function initOnboardingFeatureAutoPlay() {
       const featureTabs = document.querySelector('.onboarding-feature-tabs');
+      const featurePreview = document.getElementById('onboardingFeaturePreview');
       featureTabs?.addEventListener('pointerdown', stopOnboardingFeatureAutoPlay);
       featureTabs?.addEventListener('focusin', stopOnboardingFeatureAutoPlay);
+      featurePreview?.addEventListener('pointerdown', handleOnboardingFeaturePreviewPointerDown);
+      featurePreview?.addEventListener('pointerup', handleOnboardingFeaturePreviewPointerUp);
+      featurePreview?.addEventListener('pointercancel', handleOnboardingFeaturePreviewPointerCancel);
+      featurePreview?.addEventListener('lostpointercapture', handleOnboardingFeaturePreviewPointerCancel);
+      featurePreview?.addEventListener('focusin', stopOnboardingFeatureAutoPlay);
       window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', event => {
         if (event.matches) stopOnboardingFeatureAutoPlay();
       });
@@ -606,6 +658,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
     document.addEventListener('DOMContentLoaded', async () => {
       initOnboardingReveal();
       renderOnboardingFeaturePreviews();
+      renderOnboardingFeatureIndicators();
       selectOnboardingFeature('school-management');
       initOnboardingFeatureAutoPlay();
       populateSchoolLevels();

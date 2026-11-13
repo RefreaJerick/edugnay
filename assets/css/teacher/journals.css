@@ -107,6 +107,88 @@
   color: var(--gray-500);
 }
 
+/* Selected journal prompt */
+.journal-prompt-banner {
+  margin-bottom: 18px;
+  padding: 22px 26px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: var(--radius-lg);
+  background: var(--navy);
+  box-shadow: 0 8px 20px rgba(11, 31, 58, .13);
+  color: var(--white);
+}
+
+.journal-prompt-banner[hidden] { display: none; }
+
+.journal-prompt-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.journal-prompt-head { justify-content: space-between; }
+.journal-prompt-heading { min-width: 0; }
+
+.journal-prompt-kicker {
+  color: rgba(255, 255, 255, .7);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.journal-prompt-heading h2 {
+  margin: 3px 0 0;
+  color: var(--white);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.journal-prompt-status {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, .1);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.journal-prompt-text {
+  margin: 18px 0;
+  color: var(--white);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.journal-prompt-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, .2);
+}
+
+.journal-prompt-details > div { min-width: 0; }
+.journal-prompt-details span,
+.journal-prompt-details strong { display: block; }
+.journal-prompt-details span {
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, .68);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.journal-prompt-details strong {
+  color: var(--white);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 /* ── PANEL ── */
 .panel {
   background: var(--theme-surface);
@@ -1290,6 +1372,22 @@ tbody tr.reviewed td {
 }
 
 @media (max-width: 520px) {
+  .journal-prompt-banner { padding: 18px; }
+  .journal-prompt-head { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .journal-prompt-heading { width: 100%; }
+  .journal-prompt-status { align-self: flex-start; }
+  .journal-prompt-text { margin: 16px 0; font-size: 14px; line-height: 1.55; }
+  .journal-prompt-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    padding-top: 14px;
+  }
+  .journal-prompt-details > div:last-child {
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, .14);
+  }
+
   .summary-item {
     min-width: 100%;
     border-right: none;

@@ -52,6 +52,7 @@ function renderJournalRow(entry, student) {
       querySelector: selector => selector === '.toolbar' ? toolbar : tableWrap
     },
     lucide: { createIcons() {} },
+    renderJournalPromptBanner() {},
     openEntry: studentId => openedStudents.push(studentId)
   });
 

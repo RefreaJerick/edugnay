@@ -957,30 +957,6 @@ body:has(.onboarding-pending-page) {
   flex: 0 0 auto;
 }
 
-.onboarding-topbar-privacy {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 8px 10px;
-  border-radius: var(--button-radius);
-  color: var(--theme-accent-text);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.onboarding-topbar-privacy:hover,
-.onboarding-topbar-privacy:focus-visible {
-  color: var(--theme-blue-deep);
-  background: var(--theme-surface-soft);
-}
-
-.onboarding-topbar-privacy:focus-visible {
-  outline: 2px solid var(--theme-accent-text);
-  outline-offset: 2px;
-}
-
 .onboarding-topbar-signin {
   display: inline-flex;
   align-items: center;
@@ -1015,6 +991,10 @@ body:has(.onboarding-pending-page) {
 
 html[data-theme="dark"] .onboarding-showcase-shell {
   background: var(--theme-canvas);
+}
+
+html[data-theme="dark"] .onboarding-showcase-inner > .scroll-fade-wrap:has(.onboarding-feature-tabs)::after {
+  background: linear-gradient(90deg, rgba(var(--scroll-fade-canvas-rgb), 0), rgba(var(--scroll-fade-canvas-rgb), .94));
 }
 
 .onboarding-showcase-inner {
@@ -1213,6 +1193,31 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
   text-align: left;
 }
 
+.onboarding-feature-indicators {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  margin: 18px auto 0;
+}
+
+.onboarding-feature-indicator {
+  display: block;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: var(--gray-400);
+  transition: width .24s ease, flex-basis .24s ease, background-color .24s ease;
+}
+
+.onboarding-feature-indicator.is-active {
+  width: 22px;
+  flex-basis: 22px;
+  background: var(--blue-pale);
+}
+
 .onboarding-showcase-preview-track {
   display: grid;
   min-width: 0;
@@ -1351,6 +1356,10 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
     transition: none;
   }
 
+  .onboarding-feature-indicator {
+    transition: none;
+  }
+
   .onboarding-topbar-signin,
   .onboarding-showcase-action,
   .onboarding-feature-tab {
@@ -1470,6 +1479,24 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
   line-height: 1.6;
 }
 
+.onboarding-registration-intro .onboarding-privacy-note {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.onboarding-registration-intro .onboarding-privacy-note a {
+  color: var(--theme-accent-text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.onboarding-registration-intro .onboarding-privacy-note a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--theme-accent-text);
+  outline-offset: 2px;
+}
+
 .onboarding-registration .onboarding-form-area {
   width: 100%;
   height: auto;
@@ -1583,6 +1610,16 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
 
 .pending-registration-actions button[hidden] {
   display: none;
+}
+
+@media (max-width: 860px) {
+  .onboarding-feature-indicators {
+    display: flex;
+  }
+
+  .onboarding-showcase-preview {
+    touch-action: pan-y pinch-zoom;
+  }
 }
 
 @media (max-width: 860px) and (min-width: 561px) {
