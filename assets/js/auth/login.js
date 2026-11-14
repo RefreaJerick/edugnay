@@ -71,7 +71,14 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
         body: JSON.stringify(payload)
       });
       const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || 'The request could not be completed.');
+      if (!response.ok) {
+        const retryAfter = Number(response.headers?.get('Retry-After'));
+        if (endpoint === '/auth/login' && response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
+          const minutes = Math.ceil(retryAfter / 60);
+          throw new Error(`Too many sign-in attempts. Try again in about ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`);
+        }
+        throw new Error(data.message || 'The request could not be completed.');
+      }
       return data;
     }
 

@@ -220,3 +220,16 @@ test('ordinary sign-in still submits through the same dispatcher', async () => {
   assert.equal(page.requests[0].url, 'http://api.test/auth/login');
   assert.equal(page.window.location.href, './views/admin/edugnay-admin-dashboard.html');
 });
+
+test('sign-in shows the retry time after a rate-limit response', async () => {
+  const page = createLogin();
+  page.context.fetch = async () => ({
+    ok: false,
+    status: 429,
+    headers: { get: name => name === 'Retry-After' ? '125' : null },
+    json: async () => ({ message: 'Too many sign-in attempts.' })
+  });
+  await page.submit(page.signin.target);
+  assert.match(page.elements.get('signInMessage').textContent, /about 3 minutes/);
+  assert.equal(page.signin.button.disabled, false);
+});
