@@ -1,5 +1,4 @@
 const bcrypt = require('bcrypt');
-const { randomBytes } = require('crypto');
 const { getDatabase } = require('../config/database');
 const { avatarFields, deleteAvatar } = require('../config/avatars');
 const { sendAccountCreatedEmail, sendAccountStatusEmail } = require('../config/email');
@@ -8,6 +7,7 @@ const { issueStudentQrCredential } = require('../config/qrCredentials');
 const { writeAuditLog } = require('../utils/auditLog');
 const { schoolEmailBase, schoolEmailCandidate, storedSchoolDomain } = require('../utils/schoolUserEmail');
 const { findStudentAccountSection, hasStudentSectionCapacity, isValidStudentAccountSection } = require('../utils/studentAccountSection');
+const { generateTemporaryPassword } = require('../utils/temporaryPassword');
 
 const ACCOUNT_STATUSES = new Set(['active', 'inactive', 'pending']);
 const MANAGED_ROLES = new Set(['school_admin', 'teacher', 'student', 'parent']);
@@ -16,10 +16,6 @@ function createError(message, status = 400) {
   const error = new Error(message);
   error.status = status;
   return error;
-}
-
-function generateTemporaryPassword() {
-  return `Edu-${randomBytes(9).toString('base64url').slice(0, 12)}!`;
 }
 
 function parsePositiveInteger(value, fallback, maximum) {

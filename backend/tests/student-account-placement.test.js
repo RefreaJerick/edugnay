@@ -1,11 +1,12 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const bcrypt = require('bcrypt');
 const databaseModule = require('../config/database');
 const emailModule = require('../config/email');
 const qrModule = require('../config/qrCredentials');
 const auditModule = require('../utils/auditLog');
 
-const state = { sectionGradeCode: 'grade-2', queries: [], nextUserId: 70 };
+const state = { sectionGradeCode: 'grade-2', queries: [], emails: [], nextUserId: 70 };
 const student = {
   id: 70, schoolId: 5, role: 'student', schoolEmail: 'new.student@school.example',
   personalEmail: 'new.student@example.com', accountStatus: 'active', honorific: null,
@@ -55,7 +56,10 @@ const connection = {
 };
 const database = { execute: handleQuery, getConnection: async () => connection, end: async () => {} };
 databaseModule.getDatabase = () => database;
-emailModule.sendAccountCreatedEmail = async () => ({ status: 'not_configured' });
+emailModule.sendAccountCreatedEmail = async (user, password) => {
+  state.emails.push({ user, password });
+  return { status: 'sent' };
+};
 qrModule.issueStudentQrCredential = async (db, schoolId, studentId) => {
   await db.execute('INSERT INTO student_qr_credentials (school_id, student_user_id) VALUES (?, ?)', [schoolId, studentId]);
 };
@@ -67,6 +71,7 @@ const { importUsers } = require('../controllers/userImportController');
 function reset(gradeCode = 'grade-2') {
   state.sectionGradeCode = gradeCode;
   state.queries.length = 0;
+  state.emails.length = 0;
   state.nextUserId = 70;
 }
 
@@ -93,6 +98,49 @@ test('student account can be created without a section', async () => {
     assert.equal(state.queries.some(query => query.sql?.startsWith('INSERT INTO section_students')), false);
     assert.ok(state.queries.some(query => query.event === 'commit'));
   }
+});
+
+test('individual and imported accounts email a usable, easy-to-type password', async () => {
+  reset();
+  const created = await invoke(createUser, {
+    user: { role: 'school_admin', schoolId: 5 },
+    body: { role: 'student', firstName: 'New', lastName: 'Student',
+      personalEmail: 'new.student@example.com', lrn: '123456789012' }
+  });
+  assert.equal(created.error, null);
+  assert.equal(created.status, 201);
+
+  const csv = Buffer.from('firstName,lastName,personalEmail,lrn\nOther,Learner,other.learner@example.com,123456789013\n');
+  const imported = await invoke(importUsers, {
+    user: { role: 'school_admin', schoolId: 5 }, body: { role: 'student' }, file: { buffer: csv }
+  });
+  assert.equal(imported.error, null);
+  assert.equal(imported.status, 201);
+
+  const inserts = state.queries.filter(query => query.sql?.startsWith('INSERT INTO users'));
+  assert.equal(state.emails.length, 2);
+  assert.equal(inserts.length, 2);
+  for (const [index, email] of state.emails.entries()) {
+    assert.match(email.password, /^[abcdefghjkmnpqrstuvwxyz]{4}(?:-[abcdefghjkmnpqrstuvwxyz]{4}){2}$/);
+    assert.equal(email.password.length, 14);
+    assert.equal(email.user.personalEmail, index === 0
+      ? 'new.student@example.com' : 'other.learner@example.com');
+    assert.equal(await bcrypt.compare(email.password, inserts[index].values[4]), true);
+  }
+  assert.notEqual(state.emails[0].password, state.emails[1].password);
+});
+
+test('an administrator-supplied temporary password stays unchanged', async () => {
+  reset();
+  const password = 'a-long-test-password';
+  const result = await invoke(createUser, {
+    user: { role: 'school_admin', schoolId: 5 },
+    body: { role: 'student', firstName: 'New', lastName: 'Student',
+      personalEmail: 'new.student@example.com', lrn: '123456789012', temporaryPassword: password }
+  });
+  assert.equal(result.error, null);
+  assert.equal(result.status, 201);
+  assert.equal(state.emails[0].password, password);
 });
 
 test('student account creation rejects invalid or old Kindergarten and Grade 1 section IDs', async () => {

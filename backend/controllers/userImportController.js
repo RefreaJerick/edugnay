@@ -1,11 +1,11 @@
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 const { parse } = require('csv-parse/sync');
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
 const { sendAccountCreatedEmail } = require('../config/email');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
 const { schoolEmailBase, schoolEmailCandidate, storedSchoolDomain } = require('../utils/schoolUserEmail');
+const { generateTemporaryPassword } = require('../utils/temporaryPassword');
 
 const ROLE_ALIASES = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
 const EXPECTED_COLUMNS = {
@@ -242,10 +242,6 @@ function getAccountRecords(records, role) {
   return [...parents.values()];
 }
 
-function createTemporaryPassword() {
-  return `Edu-${crypto.randomBytes(12).toString('base64url')}!`;
-}
-
 function createSchoolEmail(record, role, domain, usedEmails) {
   const base = schoolEmailBase(record.firstName, record.lastName, role);
   let candidate = schoolEmailCandidate(base, domain);
@@ -281,7 +277,7 @@ async function importUsers(req, res, next) {
     const accounts = getAccountRecords(records, role).map(record => ({
       ...record,
       schoolEmail: createSchoolEmail(record, role, storedSchoolDomain(school), usedEmails),
-      temporaryPassword: createTemporaryPassword()
+      temporaryPassword: generateTemporaryPassword()
     }));
 
     connection = await database.getConnection();
