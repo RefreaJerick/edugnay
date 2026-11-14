@@ -218,6 +218,25 @@
       }
       grid.appendChild(button);
     }
+    const nextMonth = utcDate(range.year, range.month + 1, 1);
+    for (let cell = firstWeekday + daysInMonth; cell < 42; cell += 1) {
+      if (nextMonth.getUTCFullYear() > 9999) {
+        const spacer = document.createElement('span');
+        spacer.setAttribute('aria-hidden', 'true');
+        grid.appendChild(spacer);
+        continue;
+      }
+      const day = cell - firstWeekday - daysInMonth + 1;
+      const date = utcDate(range.year, range.month + 1, day);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = String(day);
+      button.disabled = true;
+      button.tabIndex = -1;
+      button.classList.add('is-outside-month');
+      button.setAttribute('aria-label', `${formatLongDate(date.toISOString().slice(0, 10))}, next month`);
+      grid.appendChild(button);
+    }
     position();
     if (focusDay) grid.querySelector('[tabindex="0"]:not(:disabled)')?.focus();
   }

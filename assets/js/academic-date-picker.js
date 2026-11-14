@@ -418,6 +418,24 @@
         }
         days.appendChild(button);
       }
+      const nextMonth = utcDate(year, month + 1, 1);
+      for (let cell = firstWeekday + count; cell < 42; cell += 1) {
+        if (nextMonth.getUTCFullYear() > 9999) {
+          const spacer = document.createElement('span');
+          spacer.setAttribute('aria-hidden', 'true');
+          days.appendChild(spacer);
+          continue;
+        }
+        const day = cell - firstWeekday - count + 1;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = String(day);
+        button.disabled = true;
+        button.tabIndex = -1;
+        button.classList.add('is-outside-month');
+        button.setAttribute('aria-label', `${MONTHS[nextMonth.getUTCMonth()]} ${day}, ${nextMonth.getUTCFullYear()}, next month`);
+        days.appendChild(button);
+      }
     }
 
     const months = popup.querySelector('.academic-month-grid');

@@ -46,6 +46,8 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
     const FEATURE_PREVIEW_SWIPE_THRESHOLD = 48;
     const featureMobileLayout = window.matchMedia('(max-width: 860px)');
     const termDrafts = {};
+    let copiedTermDates = null;
+    let pasteConfirmation = null;
     let featurePreviewTimer = null;
     let featurePreviewAutoPlayStopped = false;
     let featurePreviewPointer = null;
@@ -459,9 +461,115 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
       });
     }
 
+    function closePasteConfirmation() {
+      if (!pasteConfirmation) return;
+      const { popup, trigger } = pasteConfirmation;
+      popup.remove();
+      pasteConfirmation = null;
+      if (trigger.isConnected) trigger.focus();
+    }
+
+    function updatePasteButtons(container) {
+      container.querySelectorAll('[data-term-paste]').forEach(button => {
+        const card = button.closest('[data-term-level]');
+        button.disabled = !copiedTermDates
+          || copiedTermDates.schoolLevel === card.dataset.termLevel
+          || copiedTermDates.gradingPeriodType !== card.querySelector('[data-period-type]').value;
+      });
+    }
+
+    function copyTermDates(card) {
+      const periods = Array.from(card.querySelectorAll('[data-period-row]')).map(row => ({
+        start: row.querySelector('[data-period-start]').value,
+        end: row.querySelector('[data-period-end]').value
+      }));
+      if (periods.some(period => !period.start || !period.end)) {
+        showAppToast('Complete all date ranges in this school level before copying.', 'error');
+        return;
+      }
+      copiedTermDates = {
+        schoolLevel: card.dataset.termLevel,
+        gradingPeriodType: card.querySelector('[data-period-type]').value,
+        periods
+      };
+      updatePasteButtons(document.getElementById('academicTermConfigurations'));
+      showAppToast(`${SCHOOL_LEVELS.find(level => level.value === card.dataset.termLevel)?.label || card.dataset.termLevel} dates copied.`);
+    }
+
+    function pasteTermDates(card) {
+      if (!copiedTermDates || copiedTermDates.schoolLevel === card.dataset.termLevel
+        || copiedTermDates.gradingPeriodType !== card.querySelector('[data-period-type]').value) return;
+      const rows = Array.from(card.querySelectorAll('[data-period-row]'));
+      if (rows.length !== copiedTermDates.periods.length) return;
+      rows.forEach((row, index) => {
+        const dates = copiedTermDates.periods[index];
+        for (const [input, value] of [
+          [row.querySelector('[data-period-start]'), dates.start],
+          [row.querySelector('[data-period-end]'), dates.end]
+        ]) {
+          if (input.value === value) continue;
+          input.value = value;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+      card.querySelector('[data-term-error]').hidden = true;
+      showAppToast('Date ranges pasted.');
+    }
+
+    function openPasteConfirmation(card, trigger) {
+      closePasteConfirmation();
+      const label = SCHOOL_LEVELS.find(level => level.value === card.dataset.termLevel)?.label || card.dataset.termLevel;
+      const popup = document.createElement('div');
+      popup.className = 'onboarding-paste-confirmation';
+      popup.setAttribute('role', 'dialog');
+      popup.setAttribute('aria-modal', 'true');
+      popup.setAttribute('aria-labelledby', 'pasteDatesConfirmTitle');
+      popup.setAttribute('aria-describedby', 'pasteDatesConfirmMessage');
+      popup.innerHTML = `<strong id="pasteDatesConfirmTitle">Replace ${label} dates?</strong>
+        <p id="pasteDatesConfirmMessage">Pasting will replace the dates already entered for this school level.</p>
+        <div class="onboarding-paste-confirmation-actions">
+          <button type="button" data-paste-cancel>Cancel</button>
+          <button type="button" data-paste-confirm>Replace dates</button>
+        </div>`;
+      document.body.appendChild(popup);
+      pasteConfirmation = { popup, trigger };
+      const rect = trigger.getBoundingClientRect();
+      const width = popup.offsetWidth;
+      const height = popup.offsetHeight;
+      popup.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
+      popup.style.top = `${rect.bottom + height + 12 <= window.innerHeight
+        ? rect.bottom + 6 : Math.max(12, rect.top - height - 6)}px`;
+      popup.querySelector('[data-paste-cancel]').addEventListener('click', closePasteConfirmation);
+      popup.querySelector('[data-paste-confirm]').addEventListener('click', () => {
+        pasteTermDates(card);
+        closePasteConfirmation();
+      });
+      popup.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closePasteConfirmation();
+        }
+        if (event.key !== 'Tab') return;
+        const buttons = Array.from(popup.querySelectorAll('button'));
+        const next = event.shiftKey ? buttons[0] : buttons[buttons.length - 1];
+        if (document.activeElement !== next) return;
+        event.preventDefault();
+        (event.shiftKey ? buttons[buttons.length - 1] : buttons[0]).focus();
+      });
+      popup.querySelector('[data-paste-cancel]').focus();
+    }
+
+    document.addEventListener('pointerdown', event => {
+      if (pasteConfirmation && !pasteConfirmation.popup.contains(event.target)
+        && !pasteConfirmation.trigger.contains(event.target)) closePasteConfirmation();
+    });
+
     function renderAcademicTermConfigurations() {
+      closePasteConfirmation();
       const container = document.getElementById('academicTermConfigurations');
       const levels = selectedSchoolLevels();
+      if (copiedTermDates && !levels.includes(copiedTermDates.schoolLevel)) copiedTermDates = null;
       Object.keys(termDrafts).forEach(level => {
         if (!levels.includes(level)) delete termDrafts[level];
       });
@@ -512,15 +620,32 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
               </div>
             </div>`).join('')}
           </div>
+          <div class="onboarding-term-copy-actions">
+            <button type="button" data-term-copy aria-label="Copy ${levelInfo?.label || level} dates" title="Copy dates"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+            <button type="button" data-term-paste aria-label="Paste dates into ${levelInfo?.label || level}" title="Paste dates"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2M9 10h6M9 14h6"/></svg></button>
+          </div>
           <div class="onboarding-level-error" data-term-error role="alert" hidden></div>
         </section>`;
       }).join('');
 
       container.querySelectorAll('[data-period-type]').forEach(select => select.addEventListener('change', () => {
         const level = select.closest('[data-term-level]').dataset.termLevel;
+        captureAcademicTermDrafts();
+        if (copiedTermDates?.schoolLevel === level) copiedTermDates = null;
         termDrafts[level] = { gradingPeriodType: select.value, academicPeriods: [] };
         renderAcademicTermConfigurations();
       }));
+      container.querySelectorAll('[data-term-copy]').forEach(button => button.addEventListener('click', () => {
+        copyTermDates(button.closest('[data-term-level]'));
+      }));
+      container.querySelectorAll('[data-term-paste]').forEach(button => button.addEventListener('click', () => {
+        const card = button.closest('[data-term-level]');
+        const hasDates = Array.from(card.querySelectorAll('[data-period-start], [data-period-end]'))
+          .some(input => input.value);
+        if (hasDates) openPasteConfirmation(card, button);
+        else pasteTermDates(card);
+      }));
+      updatePasteButtons(container);
       window.initAcademicRangePickers?.(container, {
         rowSelector: '[data-period-row]',
         startSelector: '[data-period-start]',

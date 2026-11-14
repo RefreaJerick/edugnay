@@ -13,7 +13,7 @@ const instrumented = source.replace(/\}\)\(\);\s*$/, `window.__academicDatePicke
   validDate, validMonth, parseDateTime, parseTime, displayDate, displayDateTime, displayTime, inBounds, valueFor,
   yearBounds, setCalendarYear,
   isValidValue, loadDraft, setTimeDraft, timeFromDraft, draftSummary, validationMessage, canApply,
-  apply, close, onPopupInput, onPopupKeydown, sync, wrapValueSetter,
+  apply, close, onPopupInput, onPopupKeydown, sync, wrapValueSetter, render,
   setState(state, element) { active = state; popup = element; }
 };
 })();`);
@@ -63,6 +63,59 @@ test('date values stay timezone-safe and display as abbreviated month, day, and 
   assert.equal(picker.parseDateTime('2027-10-04T00:05').hour, 0);
   assert.equal(picker.displayDateTime('2027-10-04T00:05'), 'Oct 04, 2027 · 12:05 AM');
   assert.equal(picker.displayDateTime('2027-10-04T13:45'), 'Oct 04, 2027 · 01:45 PM');
+});
+
+test('day calendar shows disabled next-month dates in a stable six-week grid', () => {
+  const days = {
+    cells: [], replaceChildren() { this.cells = []; },
+    appendChild(cell) { this.cells.push(cell); }
+  };
+  const months = { replaceChildren() {} };
+  const fields = new Map();
+  const popup = {
+    classList: { toggle() {} }, style: {}, offsetWidth: 316, offsetHeight: 600,
+    setAttribute() {}, querySelectorAll: () => [],
+    querySelector(selector) {
+      if (selector === '.academic-range-days') return days;
+      if (selector === '.academic-month-grid') return months;
+      if (!fields.has(selector)) fields.set(selector, { textContent: '', hidden: false, setAttribute() {} });
+      return fields.get(selector);
+    }
+  };
+  context.document = {
+    createElement(tag) {
+      const cell = { tag, dataset: {}, classes: [], setAttribute() {} };
+      cell.classList = { add: name => cell.classes.push(name) };
+      return cell;
+    }
+  };
+  context.window.innerWidth = 1200;
+  context.window.innerHeight = 900;
+  const state = fakeState('date', '', { date: '2026-11-14' });
+  state.button.getBoundingClientRect = () => ({ left: 100, top: 700, bottom: 750 });
+  picker.setState(state, popup);
+  picker.render();
+  assert.equal(days.cells.length, 42);
+  assert.equal(days.cells[36].textContent, '1');
+  assert.equal(days.cells[36].disabled, true);
+  assert.equal(days.cells[36].dataset.date, undefined);
+  assert.ok(days.cells[36].classes.includes('is-outside-month'));
+  const novemberTop = popup.style.top;
+
+  state.date = '2026-12-14';
+  picker.render();
+  assert.equal(days.cells.length, 42);
+  assert.equal(days.cells[1].dataset.date, '2026-12-01');
+  assert.equal(Boolean(days.cells[1].disabled), false);
+  assert.equal(days.cells[32].textContent, '1');
+  assert.equal(days.cells[32].disabled, true);
+  assert.equal(days.cells[32].dataset.date, undefined);
+  assert.equal(popup.style.top, novemberTop);
+  state.date = '2027-02-14';
+  picker.render();
+  assert.equal(days.cells.length, 42);
+  assert.equal(days.cells[28].textContent, '1');
+  assert.equal(days.cells[28].disabled, true);
 });
 
 test('direct year entry preserves month and day, clamps leap days, and honors date bounds', () => {

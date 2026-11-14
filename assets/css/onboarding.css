@@ -319,6 +319,101 @@ body:has(.onboarding-page) {
   background: var(--surface-muted);
 }
 
+.onboarding-term-copy-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.onboarding-term-copy-actions button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--gray-200);
+  border-radius: 7px;
+  background: var(--theme-surface, #fff);
+  color: var(--gray-700);
+  cursor: pointer;
+}
+
+.onboarding-term-copy-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+.onboarding-term-copy-actions button:hover:not(:disabled) {
+  background: var(--surface-blue);
+}
+
+.onboarding-term-copy-actions button:focus-visible,
+.onboarding-paste-confirmation button:focus-visible {
+  outline: 2px solid var(--blue-mid);
+  outline-offset: 2px;
+}
+
+.onboarding-term-copy-actions button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.onboarding-paste-confirmation {
+  position: fixed;
+  z-index: 3001;
+  box-sizing: border-box;
+  width: min(316px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: 14px;
+  background: var(--theme-surface, #fff);
+  box-shadow: 0 16px 40px rgba(15, 34, 65, .18);
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.onboarding-paste-confirmation > strong {
+  font-size: 13px;
+}
+
+.onboarding-paste-confirmation p {
+  margin: 12px 0;
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.onboarding-paste-confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.onboarding-paste-confirmation-actions button {
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 7px;
+  background: var(--theme-surface, #fff);
+  color: var(--gray-700);
+  cursor: pointer;
+  font: 600 12px 'Plus Jakarta Sans', sans-serif;
+}
+
+.onboarding-paste-confirmation-actions [data-paste-confirm] {
+  border-color: var(--theme-accent-text);
+  background: var(--blue-mid);
+  color: #fff;
+}
+
+.onboarding-paste-confirmation-actions button:hover {
+  filter: brightness(.96);
+}
+
 .onboarding-term-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 160px;

@@ -12,8 +12,8 @@ const onboarding = pageFs.readFileSync(path.join(root, 'views/onboarding/edugnay
 const schools = pageFs.readFileSync(path.join(root, 'views/admin/edugnay-admin-schools.html'), 'utf8');
 const rangeStyles = pageFs.readFileSync(path.join(root, 'assets/css/academic-range-picker.css'), 'utf8');
 const context = { window: {}, Event: class Event { constructor(type) { this.type = type; } } };
-vm.runInNewContext(source.replace(/\}\)\(\);\s*$/, 'window.testRange = { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, setState(range, element) { openRange = range; popup = element; } };\n})();'), context);
-const { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, setState } = context.window.testRange;
+vm.runInNewContext(source.replace(/\}\)\(\);\s*$/, 'window.testRange = { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, render, setState(range, element) { openRange = range; popup = element; } };\n})();'), context);
+const { validDate, displayDate, moveDate, nextSelection, canApply, yearBounds, setCalendarYear, inclusiveDayCount, updateSelectionSummary, updateFields, apply, close, render, setState } = context.window.testRange;
 
 function fakeButton() {
   const text = { textContent: '' };
@@ -33,6 +33,66 @@ test('calendar keeps exact dates across months, years, and leap days', () => {
   assert.equal(displayDate('invalid'), '');
   assert.equal(moveDate('2026-12-31', 1), '2027-01-01');
   assert.equal(moveDate('2028-03-01', -1), '2028-02-29');
+});
+
+test('calendar keeps six rows when navigating between five and six week months', () => {
+  const grid = {
+    cells: [],
+    replaceChildren() { this.cells = []; },
+    appendChild(cell) { this.cells.push(cell); },
+    querySelector: () => null
+  };
+  const fields = {
+    '[data-range-title]': { textContent: '' },
+    '[data-range-step]': { textContent: '' },
+    '[data-range-month]': { textContent: '' },
+    '[data-range-year]': { value: '' },
+    '[data-range-selection]': { textContent: '' },
+    '[data-range-day-count]': { textContent: '', hidden: true },
+    '[data-range-error]': { textContent: '', hidden: true },
+    '[data-range-action="apply"]': { disabled: false },
+    '.academic-range-days': grid
+  };
+  const popup = { offsetWidth: 316, offsetHeight: 600, style: {}, querySelector: selector => fields[selector] };
+  const range = {
+    name: 'Term 1', step: 'start', start: '', end: '', yearStart: '', yearEnd: '',
+    active: '2026-11-01', year: 2026, month: 10, error: '',
+    trigger: { isConnected: true, getBoundingClientRect: () => ({ left: 100, top: 700, bottom: 750 }) }
+  };
+  context.window.innerWidth = 1200;
+  context.window.innerHeight = 900;
+  context.document = {
+    createElement(tag) {
+      const cell = { tag, dataset: {}, classes: [], setAttribute() {} };
+      cell.classList = { add: name => cell.classes.push(name) };
+      return cell;
+    }
+  };
+  setState(range, popup);
+  render();
+  assert.equal(grid.cells.length, 42);
+  assert.equal(grid.cells[36].textContent, '1');
+  assert.equal(grid.cells[36].disabled, true);
+  assert.equal(grid.cells[36].dataset.date, undefined);
+  assert.ok(grid.cells[36].classes.includes('is-outside-month'));
+  const novemberTop = popup.style.top;
+  range.month = 11;
+  range.active = '2026-12-01';
+  render();
+  assert.equal(grid.cells.length, 42);
+  assert.equal(grid.cells[1].dataset.date, '2026-12-01');
+  assert.equal(grid.cells[1].disabled, false);
+  assert.equal(grid.cells[32].textContent, '1');
+  assert.equal(grid.cells[32].disabled, true);
+  assert.equal(grid.cells[32].dataset.date, undefined);
+  assert.equal(popup.style.top, novemberTop);
+  range.year = 2027;
+  range.month = 1;
+  range.active = '2027-02-01';
+  render();
+  assert.equal(grid.cells.length, 42);
+  assert.equal(grid.cells[28].textContent, '1');
+  assert.equal(grid.cells[28].disabled, true);
 });
 
 test('range calendar year entry preserves the selected month and day within school-year bounds', () => {

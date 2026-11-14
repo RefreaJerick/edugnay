@@ -319,6 +319,11 @@
   cursor: not-allowed;
 }
 
+.academic-range-days button.is-outside-month {
+  background: transparent;
+  color: var(--gray-400);
+}
+
 .academic-range-popup button:focus-visible {
   outline: 2px solid var(--blue-mid);
   outline-offset: 2px;

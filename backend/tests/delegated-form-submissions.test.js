@@ -69,6 +69,7 @@ function createOnboarding({ resubmit = false, apiError = null, levels = ['elemen
     getSchoolTypeInfo: () => ({ value: 'elementary' }),
     validateAcademicTermConfig: () => invalidTerms ? ['Invalid academic dates'] : []
   };
+  page.window.matchMedia = () => ({ matches: false, addEventListener() {} });
   page.window.EDUGNAY_API = {
     async registerSchool(...args) { calls.push(['register', ...args]); if (apiError) throw apiError; return { registrationStatusToken: 'new-token' }; },
     async resubmitSchool(...args) { calls.push(['resubmit', ...args]); if (apiError) throw apiError; return { registrationStatusToken: 'new-token' }; }
