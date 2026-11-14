@@ -409,9 +409,9 @@
 
 /* ── Journal prompt card — Values subject only ── */
 .journal-feature {
-  border: 1px solid var(--purple-border);
+  border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--purple-pale) 0%, var(--theme-surface) 72%);
+  background: var(--theme-surface);
   box-shadow: 0 4px 16px rgba(16, 40, 80, 0.04);
   overflow: hidden;
 }
@@ -430,8 +430,8 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: var(--purple);
-  color: var(--white);
+  background: var(--blue-xpale);
+  color: var(--theme-accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -446,7 +446,7 @@
 .journal-eyebrow {
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--theme-purple-text);
+  color: var(--theme-accent-text);
   text-transform: uppercase;
   letter-spacing: 0.6px;
   margin-bottom: 3px;
@@ -472,7 +472,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--purple);
+  background: var(--blue);
   color: var(--white);
   font-size: 12px;
   font-weight: 700;
@@ -485,7 +485,7 @@
 }
 
 .journal-cta:hover {
-  background: #6d28d9;
+  background: var(--blue-mid);
 }
 
 /* ── Materials list rows ── */

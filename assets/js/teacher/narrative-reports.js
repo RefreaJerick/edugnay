@@ -114,19 +114,88 @@
     return student.initials || student.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
   }
 
-  function candidateReasonText(reason) {
-    if (reason.type === 'absence') {
-      const kind = reason.includesExcused ? 'recorded subject absence, including excused' : 'recorded unexcused subject absence';
-      return `${reason.count} dates with a ${kind} (threshold: ${reason.threshold}).`;
+  function renderFollowUpReasons(reasons) {
+    const container = $('follow-up-reasons');
+    container.replaceChildren();
+    const makeCell = (tag, value, className = '') => {
+      const cell = document.createElement(tag);
+      cell.className = className;
+      cell.textContent = value;
+      return cell;
+    };
+    const makeBadgeCell = (value, className) => {
+      const cell = makeCell('td', '', className);
+      cell.append(makeCell('span', value, 'follow-up-badge'));
+      return cell;
+    };
+    const makeTable = (labels, rows, className) => {
+      const table = document.createElement('table');
+      table.className = `follow-up-table ${className}`;
+      const head = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      labels.forEach(label => headerRow.append(makeCell('th', label)));
+      head.append(headerRow);
+      const body = document.createElement('tbody');
+      rows.forEach(cells => {
+        const row = document.createElement('tr');
+        row.append(...cells);
+        body.append(row);
+      });
+      table.append(head, body);
+      return table;
+    };
+    const makeSection = (title, className) => {
+      const section = document.createElement('section');
+      section.className = `follow-up-reason-group ${className}`;
+      const heading = document.createElement('h4');
+      heading.className = 'follow-up-reason-heading';
+      heading.textContent = title;
+      section.append(heading);
+      container.append(section);
+      return section;
+    };
+
+    const grades = reasons.filter(reason => reason.type === 'grade');
+    if (grades.length) {
+      const section = makeSection('Published grades below passing', 'is-grades');
+      section.children[0].append(makeCell('span', String(grades.length), 'follow-up-count'));
+      section.append(makeTable(['Subject', 'Term', 'Grade'], grades.map(reason => [
+        makeCell('td', reason.subject, 'follow-up-primary'),
+        makeCell('td', reason.term || '—', 'follow-up-muted'),
+        makeBadgeCell(String(reason.grade), 'follow-up-grade')
+      ]), 'is-grades'));
     }
-    if (reason.type === 'consecutive') {
-      return `${reason.count} consecutive missed ${reason.subject || 'subject'} meeting dates (threshold: ${reason.threshold}).`;
+
+    reasons.filter(reason => reason.type === 'low_scores').forEach(reason => {
+      const section = makeSection(`Scored activities · ${reason.subject}`, 'is-activities');
+      const scores = reason.scores || [];
+      section.append(makeCell('p', `${reason.count || scores.length} scored activities below 75% this week`, 'follow-up-reason-detail'));
+      section.append(makeTable(['Activity', 'Date', 'Score', 'Percent'], scores.map(score => {
+        const value = Number(score.score);
+        const maximum = Number(score.maxScore);
+        const percent = Number.isFinite(value) && Number.isFinite(maximum) && maximum > 0
+          ? `${Math.round(value / maximum * 100)}%` : '—';
+        return [
+          makeCell('td', score.title, 'follow-up-primary'),
+          makeCell('td', formatDate(score.date), 'follow-up-muted'),
+          makeCell('td', `${score.score}/${score.maxScore}`, 'follow-up-score'),
+          makeBadgeCell(percent, 'follow-up-percent')
+        ];
+      }), 'is-activities'));
+    });
+
+    const attendance = reasons.filter(reason => reason.type === 'absence' || reason.type === 'consecutive');
+    if (attendance.length) {
+      const section = makeSection('Attendance concerns', 'is-attendance');
+      section.append(makeTable(['Reason', 'Recorded', 'Alert'], attendance.map(reason => [
+        makeCell('td', reason.type === 'absence' ? 'Absences' : reason.subject || 'Missed meetings', 'follow-up-primary'),
+        makeCell('td', reason.type === 'absence'
+          ? `${reason.count} absence dates (${reason.includesExcused ? 'including excused' : 'unexcused only'})`
+          : `${reason.count} consecutive missed meeting dates`, 'follow-up-muted'),
+        makeCell('td', `${reason.threshold} dates`, 'follow-up-alert')
+      ]), 'is-attendance'));
     }
-    if (reason.type === 'grade') {
-      return `Published ${reason.subject} grade ${reason.grade}${reason.term ? ` in ${reason.term}` : ''} (passing threshold: ${reason.threshold}).`;
-    }
-    if (reason.type === 'low_scores') return `${reason.subject}: three scored activities below 75% this report week.`;
-    return '';
+    if (!container.children.length) container.textContent = 'No recorded reasons are available for this report week.';
   }
 
   function renderCounts() {
@@ -535,7 +604,7 @@
         value: `${journalCount} reflection${journalCount === 1 ? '' : 's'}`,
         detail: 'Values Education' });
     }
-    $('review-evidence').innerHTML = sources.map(source => `<div class="data-source-card ds-${source.key}"><div class="ds-head"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><span class="ds-label">${escape(source.label)}</span></div><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div></div></div>`).join('');
+    $('review-evidence').innerHTML = sources.map(source => `<div class="data-source-card ds-${source.key}"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div><div class="ds-label">${escape(source.label)}</div></div></div>`).join('');
     window.lucide?.createIcons?.();
     $('review-note').textContent = report.teacherNote || 'No classroom observation was added.';
     $('review-summary').value = report.editedSummary || report.generatedSummary;
@@ -553,25 +622,10 @@
     const lowScores = (student.candidateReasons || []).filter(reason => reason.type === 'low_scores');
     $('follow-up-section').hidden = !report.followUpSuggestion && !lowScores.length;
     $('follow-up-text').textContent = report.followUpSuggestion || 'No follow-up suggestion is available. Review the reasons below.';
-    $('follow-up-help').hidden = !report.followUpSuggestion;
     $('follow-up-choices').hidden = !report.followUpSuggestion;
-    const reasons = (student.candidateReasons || []).map(reason => ({ reason, text: candidateReasonText(reason) })).filter(item => item.text);
-    $('follow-up-evidence-heading').textContent = `Recorded reasons for ${formatDate(report.reportWeekStartDate)}–${formatDate(report.reportWeekEndDate)}`;
-    $('follow-up-reasons').replaceChildren(...reasons.map(({ reason, text: value }) => {
-      const item = document.createElement('li');
-      item.textContent = value;
-      if (reason.type === 'low_scores') {
-        const scores = document.createElement('ul');
-        scores.className = 'follow-up-scores';
-        reason.scores.forEach(score => {
-          const detail = document.createElement('li');
-          detail.textContent = `${score.title} · ${formatDate(score.date)} · ${score.score}/${score.maxScore}`;
-          scores.append(detail);
-        });
-        item.append(scores);
-      }
-      return item;
-    }));
+    setFollowUpError('');
+    $('follow-up-evidence-week').textContent = `${formatDate(report.reportWeekStartDate)}–${formatDate(report.reportWeekEndDate)}`;
+    renderFollowUpReasons(student.candidateReasons || []);
     document.querySelectorAll('input[name="follow-up-decision"]').forEach(input => {
       input.checked = report.status === 'confirmed' && input.value === (report.isAtRisk ? 'accept' : 'dismiss');
       input.disabled = !editable;
@@ -619,6 +673,14 @@
     };
   }
 
+  function setFollowUpError(message) {
+    setMessage('follow-up-error', message, Boolean(message));
+    document.querySelectorAll('input[name="follow-up-decision"]').forEach(input => {
+      if (message) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    });
+  }
+
   async function saveReview(confirm = false) {
     if (state.busy) return;
     const id = state.selectedReportId;
@@ -629,12 +691,15 @@
     $('confirm-review').disabled = true;
     updateRegenerateButton();
     try {
+      setFollowUpError('');
       const body = reviewPayload();
       const report = state.reports.find(item => item.id === id);
       const followUpDecision = report.followUpSuggestion
         ? document.querySelector('input[name="follow-up-decision"]:checked')?.value || null : null;
       if (confirm && report.followUpSuggestion && !followUpDecision) {
-        throw new Error('Choose whether to include or remove the suggested follow-up before confirming.');
+        setFollowUpError('Choose whether to include or remove the suggested follow-up before confirming.');
+        document.querySelector('input[name="follow-up-decision"]').focus();
+        return;
       }
       await api.request(`/reports/weekly-drafts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
       if (confirm) await api.request(`/reports/weekly-drafts/${encodeURIComponent(id)}/confirm`, {
@@ -861,6 +926,7 @@
       if (button) showReview(button.dataset.reviewId);
     });
     $('add-action').addEventListener('click', () => appendAction());
+    $('follow-up-choices').addEventListener('change', () => setFollowUpError(''));
     $('save-review').addEventListener('click', () => saveReview(false));
     $('confirm-review').addEventListener('click', () => saveReview(true));
     $('delete-review').addEventListener('click', openDeleteConfirmation);

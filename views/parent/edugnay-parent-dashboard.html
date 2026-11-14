@@ -195,15 +195,14 @@
           <!-- Page JavaScript loads the selected child's dashboard data and renders this HTML shell. -->
           <section class="report-hero" aria-label="Weekly report" aria-busy="false" data-current-report-available="false" hidden>
             <div id="report-hero-content" hidden>
-              <div class="report-hero-head">
-                <div class="report-hero-kicker">Weekly report</div>
-                <a href="edugnay-parent-reports.html" class="report-hero-link" id="report-hero-link" data-report-available="false" hidden>
-                  View report <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
-                </a>
-              </div>
+              <span class="report-hero-icon" aria-hidden="true"><i data-lucide="file-text"></i></span>
+              <div class="report-hero-kicker">Weekly report</div>
               <h2 class="report-hero-title" id="report-status-title"></h2>
               <p class="report-hero-description"></p>
             </div>
+            <a href="edugnay-parent-reports.html" class="report-hero-link top-btn primary" id="report-hero-link" data-report-available="false" hidden>
+              View report <i data-lucide="arrow-right" aria-hidden="true"></i>
+            </a>
           </section>
           <p id="report-hero-error" role="status" aria-live="polite" hidden></p>
 

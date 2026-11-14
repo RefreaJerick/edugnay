@@ -57,6 +57,7 @@ function createAssignmentFlow(request) {
   });
   new vm.Script(`
     let assignmentsRequestId = 0;
+    let lastRenderedAssignmentsChild = null;
     let currentChild = '1';
     let currentDay = 'sun';
     let activeDailyTab = 'attendance';
@@ -67,7 +68,7 @@ function createAssignmentFlow(request) {
       load: renderUpcomingAssignments,
       tab: (name, button) => switchMiniTab(name, button),
       activate: () => { activeDailyTab = 'assignments'; },
-      selectChild: id => { currentChild = id; },
+      selectChild: id => { currentChild = id; document.getElementById('assignments-detail').innerHTML = ''; },
       day: () => currentDay
     };
   `).runInContext(context);
@@ -135,6 +136,43 @@ test('upcoming list includes due-today work, sorts by due date, and limits resul
   assert.match(content, /Submitted/);
   assert.doesNotMatch(content, /Late|Undated|Fourth/);
   assert.equal((content.match(/class="assignment-row"/g) || []).length, 3);
+});
+
+test('returning to Assignments keeps the current child result visible while refreshing', async () => {
+  const refreshed = deferred();
+  const otherChild = deferred();
+  let calls = 0;
+  const flow = createAssignmentFlow(id => {
+    calls += 1;
+    if (id === '2') return otherChild.promise;
+    if (calls === 2) return refreshed.promise;
+    return Promise.resolve({ studentId: id, currentDate: '2026-11-08', assignments: [
+      { title: 'Original task', dueDate: '2026-11-09', submissionStatus: 'pending' }
+    ] });
+  });
+  flow.flow.activate();
+  await flow.flow.load();
+  assert.match(flow.container.innerHTML, /Original task/);
+
+  flow.flow.tab('attendance', flow.attendanceTab);
+  flow.flow.tab('assignments', flow.assignmentsTab);
+  assert.equal(calls, 2);
+  assert.match(flow.container.innerHTML, /Original task/);
+  assert.doesNotMatch(flow.container.innerHTML, /Loading assignments/);
+  refreshed.resolve({ studentId: '1', currentDate: '2026-11-08', assignments: [
+    { title: 'Updated task', dueDate: '2026-11-10', submissionStatus: 'submitted' }
+  ] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(flow.container.innerHTML, /Updated task/);
+  assert.doesNotMatch(flow.container.innerHTML, /Original task/);
+
+  flow.flow.selectChild('2');
+  const childRequest = flow.flow.load();
+  assert.match(flow.container.innerHTML, /Loading assignments/);
+  assert.doesNotMatch(flow.container.innerHTML, /Updated task/);
+  otherChild.resolve({ studentId: '2', currentDate: '2026-11-08', assignments: [] });
+  await childRequest;
+  assert.match(flow.container.innerHTML, /No upcoming assignments/);
 });
 
 test('a previous child response cannot replace the selected child assignments', async () => {

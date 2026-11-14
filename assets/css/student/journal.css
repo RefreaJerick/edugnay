@@ -48,7 +48,6 @@
 
 .journal-prompt-text {
   margin: 14px 0 0;
-  max-width: 80ch;
   font-size: 14px;
   color: var(--theme-blue-deep);
   line-height: 1.7;
@@ -213,7 +212,6 @@
 
 /* ── Submitted/locked state ── */
 .submitted-entry {
-  max-width: 80ch;
   font-size: 13.5px;
   color: var(--gray-700);
   line-height: 1.7;
@@ -556,7 +554,6 @@
 /* Journal page refinements */
 #current-week-panel,
 .journal-history-panel {
-  max-width: 960px;
   border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(16, 40, 80, .07);
 }

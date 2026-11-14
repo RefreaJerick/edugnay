@@ -395,13 +395,18 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /generationEnabled/);
   assert.match(script, /releaseEnabled/);
   assert.match(script, /report\.followUpSuggestion/);
-  assert.match(page, /id="follow-up-section" hidden><h3 class="review-section-label"><i data-lucide="heart-handshake" aria-hidden="true"><\/i> Suggested adviser follow-up<\/h3>/);
+  assert.match(page, /id="follow-up-section" hidden>[\s\S]*?Suggested adviser follow-up<\/h3>/);
   assert.match(page, /id="follow-up-reasons"/);
+  assert.match(page, /id="follow-up-evidence-week"/);
+  assert.match(page, /id="follow-up-choices" role="group"[^>]*aria-describedby="follow-up-help follow-up-error"/);
+  assert.match(page, /name="follow-up-decision" value="accept"[^>]*>[\s\S]*?data-lucide="heart-handshake"/);
+  assert.match(page, /name="follow-up-decision" value="dismiss"[^>]*>[\s\S]*?data-lucide="minus-circle"/);
+  assert.match(page, /id="follow-up-error" role="alert" hidden/);
   assert.match(page, /id="report-week-notice" hidden/);
   assert.match(script, /reason\.type === 'low_scores'/);
-  assert.match(script, /detail\.textContent = .*score\.maxScore/);
+  assert.match(script, /makeCell\('td', `\$\{score\.score\}\/\$\{score\.maxScore\}`, 'follow-up-score'\)/);
   assert.match(script, /student\.candidateReasons/);
-  assert.match(script, /item\.textContent = value/);
+  assert.match(script, /renderFollowUpReasons\(student\.candidateReasons \|\| \[\]\)/);
   assert.match(script, /No follow-up suggestion is available\. Review the reasons below\./);
   assert.doesNotMatch(page, /generation-control-help/);
   assert.doesNotMatch(script, /generation-control-help/);
@@ -433,8 +438,24 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /setGenerationButtonState\(true, 'Weekly report data could not be loaded\.'/);
   assert.match(script, /No learners are available for this section and week\./);
   assert.match(script, /Every learner already has a draft or confirmed report\./);
-  assert.match(styles, /\.follow-up-evidence\s*\{[^}]*border:\s*1px solid var\(--blue-pale\);[^}]*background:\s*var\(--surface-blue\);/s);
-  assert.match(styles, /\.follow-up-choices input\[type="radio"\]\s*\{[^}]*margin:\s*0;[^}]*align-self:\s*center;/s);
+  assert.match(styles, /\.follow-up-evidence\s*\{[^}]*border:\s*1px solid var\(--gray-200\);[^}]*background:\s*var\(--theme-surface\);/s);
+  assert.match(styles, /\.follow-up-evidence-head\s*\{[^}]*background:\s*var\(--gray-50\);/s);
+  assert.match(styles, /\.follow-up-table\s*\{[^}]*border-collapse:\s*collapse;/s);
+  assert.match(styles, /\.follow-up-table td\s*\{[^}]*border-top:\s*1px solid var\(--gray-100\);/s);
+  assert.match(styles, /\.follow-up-count, \.follow-up-badge\s*\{[^}]*background:\s*var\(--red-pale\);/s);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*?\.follow-up-table thead \{ display: none; \}/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*?\.follow-up-table tr \{ display: grid;/);
+  assert.match(styles, /\.follow-up-choices\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/s);
+  assert.match(styles, /\.follow-up-decision > strong\s*\{[^}]*display:\s*block;[^}]*margin-bottom:\s*8px;/s);
+  assert.match(styles, /\.follow-up-choices label\s*\{[^}]*padding:\s*4px 0;[^}]*cursor:\s*pointer;/s);
+  assert.doesNotMatch(styles, /\.follow-up-choices label:has\(input:checked\)\s*\{/);
+  assert.match(styles, /\.follow-up-choices input\[type="radio"\]\s*\{[^}]*appearance:\s*none;[^}]*border-radius:\s*var\(--radius-xs\);/s);
+  assert.match(styles, /\.follow-up-choices input\[type="radio"\]:checked::before/);
+  assert.match(styles, /\.follow-up-choices input\[type="radio"\]:focus-visible/);
+  assert.match(styles, /\.follow-up-choice-icon\s*\{[^}]*width:\s*24px;/s);
+  assert.match(styles, /\.follow-up-choices label:last-child \.follow-up-choice-icon\s*\{[^}]*background:\s*var\(--red-pale\);[^}]*color:\s*var\(--theme-danger-dark\);/s);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*?\.follow-up-choices \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+  assert.match(script, /input\.disabled = !editable/);
   assert.match(styles, /#review-modal \.review-modal-foot-actions > \[hidden\]\s*\{\s*display:\s*none;\s*\}/);
   assert.match(script, /\$\('save-review'\)\.hidden = !editable/);
   assert.match(script, /\$\('confirm-review'\)\.hidden = !editable/);
@@ -464,6 +485,115 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(routes, /weekly-drafts\/:reportId\/confirm.*requireSchoolUser.*requireRoles\('teacher'\)/);
   assert.match(routes, /router\.delete\('\/weekly-drafts\/:reportId', requireSchoolUser, requireRoles\('teacher'\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/release.*requireSchoolUser.*requireRoles\('teacher'\)/);
+});
+
+test('follow-up choice is required only for confirmation and errors stay beside the choices', async () => {
+  const source = teacherScript.slice(teacherScript.indexOf('  function reviewPayload()'), teacherScript.indexOf('  async function regenerate()'));
+  const report = { id: '19', status: 'draft', followUpSuggestion: 'Check in with the learner.' };
+  const state = { selectedReportId: '19', reports: [report], busy: false };
+  const controls = {
+    'review-actions': { querySelectorAll: () => [] },
+    'review-summary': { value: 'Summary' },
+    'save-review': { disabled: false },
+    'confirm-review': { disabled: false }
+  };
+  const radio = { attributes: {}, setAttribute(key, value) { this.attributes[key] = value; },
+    removeAttribute(key) { delete this.attributes[key]; }, focus() { this.focused = true; } };
+  let selected = null;
+  const messages = {};
+  const requests = [];
+  const actions = vm.runInNewContext(`${source}\n({ saveReview, setFollowUpError })`, {
+    state, $: id => controls[id], setRegenerateConfirmation() {}, updateRegenerateButton() {},
+    setMessage(id, message) { messages[id] = message; },
+    document: {
+      querySelectorAll: () => [radio],
+      querySelector: selector => selector.endsWith(':checked') ? selected : radio
+    },
+    api: { async request(url, options) { requests.push({ url, options }); } },
+    async loadWeek() {}, showReview() {}, closeModal() {}, showAppToast() {}
+  });
+
+  await actions.saveReview(true);
+  assert.equal(messages['follow-up-error'], 'Choose whether to include or remove the suggested follow-up before confirming.');
+  assert.equal(radio.attributes['aria-invalid'], 'true');
+  assert.equal(radio.focused, true);
+  assert.equal(requests.length, 0);
+  assert.equal(state.busy, false);
+
+  await actions.saveReview(false);
+  assert.equal(messages['follow-up-error'], '');
+  assert.equal(radio.attributes['aria-invalid'], undefined);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].options.method, 'PATCH');
+
+  selected = { value: 'accept' };
+  await actions.saveReview(true);
+  assert.equal(requests.length, 3);
+  assert.equal(requests[2].options.method, 'POST');
+  assert.equal(JSON.parse(requests[2].options.body).followUpDecision, 'accept');
+});
+
+test('follow-up evidence groups reasons and keeps their values readable', () => {
+  const source = teacherScript.slice(teacherScript.indexOf('  function renderFollowUpReasons('), teacherScript.indexOf('  function renderCounts('));
+  function element(tagName) {
+    return {
+      tagName, className: '', children: [], value: '',
+      append(...nodes) { this.children.push(...nodes); },
+      replaceChildren(...nodes) { this.children = nodes; this.value = ''; },
+      set textContent(value) { this.value = String(value); this.children = []; },
+      get textContent() { return this.value + this.children.map(child => child.textContent).join(' '); }
+    };
+  }
+  const container = element('div');
+  const render = vm.runInNewContext(`${source}\nrenderFollowUpReasons`, {
+    $: () => container, document: { createElement: element }, formatDate: value => value
+  });
+  render([
+    { type: 'grade', subject: 'Araling Panlipunan', grade: 72, threshold: 75, term: 'Term 1' },
+    { type: 'grade', subject: 'Science', grade: 70, threshold: 80, term: 'Term 1' },
+    { type: 'low_scores', subject: 'Araling Panlipunan', count: 3, scores: [
+      { title: 'A long activity title that needs to wrap', date: 'Nov 9, 2026', score: 12, maxScore: 25 },
+      { title: 'Activity 2', date: 'Nov 10, 2026', score: 11, maxScore: 25 },
+      { title: 'Activity 3', date: 'Nov 11, 2026', score: 1, maxScore: 25 }
+    ] },
+    { type: 'absence', count: 4, threshold: 3, includesExcused: true },
+    { type: 'consecutive', subject: 'English', count: 3, threshold: 3 }
+  ]);
+  assert.deepEqual(container.children.map(group => group.children[0].value), [
+    'Published grades below passing', 'Scored activities · Araling Panlipunan', 'Attendance concerns'
+  ]);
+  const gradeRows = container.children[0].children[1].children[1].children;
+  assert.equal(container.children[0].children[0].children[0].textContent, '2');
+  assert.deepEqual(gradeRows.map(row => row.children.map(cell => cell.textContent)), [
+    ['Araling Panlipunan', 'Term 1', '72'], ['Science', 'Term 1', '70']
+  ]);
+  assert.doesNotMatch(container.children[0].textContent, /Passing grade|75|80/);
+  assert.match(container.children[1].textContent, /3 scored activities below 75% this week/);
+  const activityRows = container.children[1].children[2].children[1].children;
+  assert.deepEqual(activityRows.map(row => row.children.map(cell => cell.textContent)), [
+    ['A long activity title that needs to wrap', 'Nov 9, 2026', '12/25', '48%'],
+    ['Activity 2', 'Nov 10, 2026', '11/25', '44%'],
+    ['Activity 3', 'Nov 11, 2026', '1/25', '4%']
+  ]);
+  const attendanceRows = container.children[2].children[1].children[1].children;
+  assert.deepEqual(attendanceRows.map(row => row.children.map(cell => cell.textContent)), [
+    ['Absences', '4 absence dates (including excused)', '3 dates'],
+    ['English', '3 consecutive missed meeting dates', '3 dates']
+  ]);
+
+  render([
+    { type: 'low_scores', subject: 'English', scores: [{ title: 'Essay', date: 'Nov 12, 2026', score: 1, maxScore: 3 }] },
+    { type: 'low_scores', subject: 'Science', scores: [{ title: 'Quiz', date: 'Nov 13, 2026', score: 0, maxScore: 0 }] }
+  ]);
+  assert.deepEqual(container.children.map(group => group.children[0].value), [
+    'Scored activities · English', 'Scored activities · Science'
+  ]);
+  assert.match(container.children[0].textContent, /1\/3 33%/);
+  assert.match(container.children[1].textContent, /0\/0 —/);
+
+  render([]);
+  assert.equal(container.children.length, 0);
+  assert.equal(container.textContent, 'No recorded reasons are available for this report week.');
 });
 
 test('teacher review warns below the report label and blocks release for unmarked drafts when grade viewing is off', () => {
@@ -660,10 +790,11 @@ test('adviser cards and review evidence omit Journal outside eligible JHS sectio
   assert.match(styles, /\.report-card-metrics \.rc-metric\.absences\.no-records \.rc-metric-val \{ color: var\(--gray-500\); \}/);
   assert.match(styles, /#review-modal \.data-source-grid \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 520px\) \{\s*#review-modal \.data-source-grid \{ grid-template-columns: 1fr; \}/);
-  assert.match(styles, /#review-modal \.data-source-card \{[\s\S]*?min-height: 0;[\s\S]*?padding: 10px 12px;/);
-  assert.match(styles, /#review-modal \.ds-label \{[^}]*font-size: 11px;/);
-  assert.match(styles, /#review-modal \.ds-val \{[^}]*font-size: 14px;/);
-  assert.match(styles, /#review-modal \.ds-detail \{[^}]*font-size: 11px;/);
+  assert.match(styles, /#review-modal \.data-source-card \{[^}]*display: flex;[^}]*min-height: 68px;[^}]*padding: 9px 10px;/);
+  assert.match(styles, /#review-modal \.ds-icon \{ width: 28px; height: 28px; \}/);
+  assert.match(styles, /#review-modal \.ds-label \{[^}]*font-size: 8\.5px;[^}]*text-transform: uppercase;/);
+  assert.match(styles, /#review-modal \.ds-val \{[^}]*font-size: 12px;/);
+  assert.match(styles, /#review-modal \.ds-detail \{[^}]*font-size: 10px;/);
   assert.doesNotMatch(page, /review-evidence-note/);
   const student = {
     id: '4', displayName: 'Ari Student', initials: 'AS',
@@ -734,7 +865,8 @@ test('adviser cards and review evidence omit Journal outside eligible JHS sectio
   assert.match(elements['review-evidence'].innerHTML, /1\/2 submitted/);
   assert.doesNotMatch(elements['review-evidence'].innerHTML, /1\/3 submitted/);
   assert.match(elements['review-evidence'].innerHTML, /1 not submitted · Pending work is not counted/);
-  assert.match(elements['review-evidence'].innerHTML, /<span class="ds-label">Attendance<\/span><\/div><div class="ds-content"><strong class="ds-val">1\/2 present/);
+  assert.match(elements['review-evidence'].innerHTML, /class="data-source-card ds-attendance"><span class="ds-icon"[^>]*><i data-lucide="user-round-check"><\/i><\/span><div class="ds-content"><strong class="ds-val">1\/2 present/);
+  assert.match(elements['review-evidence'].innerHTML, /<div class="ds-detail">1 late<\/div><div class="ds-label">Attendance<\/div><\/div><\/div>/);
   assert.match(elements['review-evidence'].innerHTML, /1 late/);
   assert.equal(detailCount(), 3);
 

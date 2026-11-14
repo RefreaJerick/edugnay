@@ -44,6 +44,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
 
     const FEATURE_PREVIEW_INTERVAL = 6000;
     const FEATURE_PREVIEW_SWIPE_THRESHOLD = 48;
+    const featureMobileLayout = window.matchMedia('(max-width: 860px)');
     const termDrafts = {};
     let featurePreviewTimer = null;
     let featurePreviewAutoPlayStopped = false;
@@ -51,10 +52,8 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
 
     function renderOnboardingFeaturePreviews() {
       const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
-      const featureCount = String(ONBOARDING_FEATURES.length).padStart(2, '0');
 
-      previewTrack.innerHTML = ONBOARDING_FEATURES.map((feature, index) => {
-        const featureIndex = String(index + 1).padStart(2, '0');
+      previewTrack.innerHTML = ONBOARDING_FEATURES.map(feature => {
         const hasPreviewImage = Boolean(feature.imageSrc);
         const previewContent = hasPreviewImage
           ? `<div class="onboarding-showcase-preview-media">
@@ -66,9 +65,8 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
               <span>Screenshot will be added here.</span>
             </div>`;
 
-        return `<article class="onboarding-showcase-preview-slide" id="onboardingFeatureSlide-${feature.id}" data-feature-id="${feature.id}" aria-label="Feature ${featureIndex} of ${featureCount}: ${feature.previewLabel}">
+        return `<article class="onboarding-showcase-preview-slide" id="onboardingFeatureSlide-${feature.id}" data-feature-id="${feature.id}" aria-label="${feature.previewLabel}">
           <div class="onboarding-showcase-preview-copy">
-            <span class="onboarding-showcase-preview-index">${featureIndex} / ${featureCount}</span>
             <h2>${feature.title}</h2>
             <p>${feature.description}</p>
           </div>
@@ -103,10 +101,13 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
 
       document.querySelectorAll('.onboarding-showcase-preview-slide').forEach(slide => {
         slide.classList.toggle('is-active', slide === selectedSlide);
+        if (featureMobileLayout.matches) slide.setAttribute('aria-hidden', String(slide !== selectedSlide));
       });
       document.querySelectorAll('.onboarding-feature-indicator').forEach(indicator => {
         indicator.classList.toggle('is-active', indicator.dataset.featureId === featureId);
       });
+
+      if (!featureMobileLayout.matches) return;
 
       const tabStrip = selectedTab.parentElement;
       const tabBounds = selectedTab.getBoundingClientRect();
@@ -116,6 +117,30 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
         tabStrip.scrollBy({ left: tabBounds.left - stripBounds.left, behavior });
       } else if (tabBounds.right > stripBounds.right) {
         tabStrip.scrollBy({ left: tabBounds.right - stripBounds.right, behavior });
+      }
+    }
+
+    function syncOnboardingFeatureLayout() {
+      const preview = document.getElementById('onboardingFeaturePreview');
+      const isMobile = featureMobileLayout.matches;
+      preview.setAttribute('role', isMobile ? 'tabpanel' : 'group');
+      if (isMobile) {
+        preview.tabIndex = 0;
+        preview.removeAttribute('aria-label');
+        preview.setAttribute('aria-labelledby', document.querySelector('.onboarding-feature-tab[aria-selected="true"]').id);
+      } else {
+        preview.removeAttribute('tabindex');
+        preview.removeAttribute('aria-labelledby');
+        preview.setAttribute('aria-label', 'Academix platform features');
+      }
+      document.querySelectorAll('.onboarding-showcase-preview-slide').forEach(slide => {
+        if (isMobile) slide.setAttribute('aria-hidden', String(!slide.classList.contains('is-active')));
+        else slide.removeAttribute('aria-hidden');
+      });
+      if (isMobile) startOnboardingFeatureAutoPlay();
+      else if (featurePreviewTimer) {
+        window.clearInterval(featurePreviewTimer);
+        featurePreviewTimer = null;
       }
     }
 
@@ -131,7 +156,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
 
     function handleOnboardingFeaturePreviewPointerDown(event) {
       featurePreviewPointer = null;
-      if (!window.matchMedia('(max-width: 860px)').matches || !['touch', 'pen'].includes(event.pointerType) || event.isPrimary === false) return;
+      if (!featureMobileLayout.matches || !['touch', 'pen'].includes(event.pointerType) || event.isPrimary === false) return;
 
       stopOnboardingFeatureAutoPlay();
       featurePreviewPointer = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
@@ -168,7 +193,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
     }
 
     function startOnboardingFeatureAutoPlay() {
-      if (featurePreviewAutoPlayStopped || featurePreviewTimer || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (!featureMobileLayout.matches || featurePreviewAutoPlayStopped || featurePreviewTimer || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
       featurePreviewTimer = window.setInterval(showNextOnboardingFeature, FEATURE_PREVIEW_INTERVAL);
     }
@@ -186,7 +211,8 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
       window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', event => {
         if (event.matches) stopOnboardingFeatureAutoPlay();
       });
-      startOnboardingFeatureAutoPlay();
+      featureMobileLayout.addEventListener('change', syncOnboardingFeatureLayout);
+      syncOnboardingFeatureLayout();
     }
 
     function handleOnboardingFeatureTabKeydown(event) {

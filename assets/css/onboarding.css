@@ -1185,11 +1185,6 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
 .onboarding-showcase-preview {
   max-width: 930px;
   margin: clamp(30px, 5vw, 50px) auto 0;
-  overflow: hidden;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--panel-radius);
-  background: var(--theme-surface);
-  box-shadow: 0 10px 26px rgba(15, 37, 69, .08);
   text-align: left;
 }
 
@@ -1220,44 +1215,54 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
 
 .onboarding-showcase-preview-track {
   display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
   min-width: 0;
 }
 
 .onboarding-showcase-preview-slide {
   display: grid;
-  grid-area: 1 / 1;
-  grid-template-columns: minmax(220px, .34fr) minmax(0, 1fr);
+  grid-column: span 7;
+  min-height: 300px;
   min-width: 0;
-  background: var(--theme-surface);
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--panel-radius);
+  background: var(--navy);
+  box-shadow: 0 10px 26px rgba(15, 37, 69, .08);
   text-align: left;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity .35s ease, visibility 0s linear .35s;
 }
 
-.onboarding-showcase-preview-slide.is-active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transition: opacity .35s ease;
+.onboarding-showcase-preview-slide:first-child {
+  grid-column: span 12;
+  min-height: 390px;
+}
+
+.onboarding-showcase-preview-slide:nth-child(3),
+.onboarding-showcase-preview-slide:nth-child(4) {
+  grid-column: span 5;
+}
+
+.onboarding-showcase-preview-slide::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(8, 29, 57, .96), rgba(8, 29, 57, .72) 42%, rgba(8, 29, 57, 0) 90%);
+  pointer-events: none;
 }
 
 .onboarding-showcase-preview-copy {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: clamp(22px, 4vw, 36px);
-  background: var(--navy);
+  justify-content: flex-end;
+  grid-area: 1 / 1;
+  z-index: 2;
+  box-sizing: border-box;
+  width: min(100%, 440px);
+  padding: clamp(22px, 3vw, 32px);
   color: var(--white);
-}
-
-.onboarding-showcase-preview-index {
-  margin-bottom: 28px;
-  color: var(--gold);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .8px;
 }
 
 .onboarding-showcase-preview-copy h2 {
@@ -1280,9 +1285,11 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
 .onboarding-showcase-preview-stage {
   display: flex;
   align-items: stretch;
+  position: absolute;
+  inset: 0;
   box-sizing: border-box;
   min-width: 0;
-  /* padding: clamp(14px, 3vw, 24px); */
+  min-height: 0;
   overflow: hidden;
   background: var(--gray-100);
 }
@@ -1291,6 +1298,7 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
   display: flex;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 .onboarding-showcase-placeholder {
@@ -1315,13 +1323,20 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
   width: 100%;
   height: 100%;
   min-width: 0;
-  /* aspect-ratio: 1897 / 1198; */
   flex: 0 0 auto;
-  /* border: 1px solid var(--gray-200); */
-  /* border-radius: var(--radius-sm); */
   background: var(--gray-100);
   object-fit: cover;
   object-position: center;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .onboarding-showcase-preview-image {
+    transition: transform .35s ease;
+  }
+
+  .onboarding-showcase-preview-slide:hover .onboarding-showcase-preview-image {
+    transform: scale(1.04);
+  }
 }
 
 .onboarding-showcase-placeholder svg {
@@ -1350,10 +1365,6 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
 
   .onboarding-hero-reveal {
     animation: none;
-  }
-
-  .onboarding-showcase-preview-slide {
-    transition: none;
   }
 
   .onboarding-feature-indicator {
@@ -1613,12 +1624,61 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
 }
 
 @media (max-width: 860px) {
+  .onboarding-showcase-preview {
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--panel-radius);
+    background: var(--navy);
+    box-shadow: 0 10px 26px rgba(15, 37, 69, .08);
+  }
+
+  .onboarding-showcase-preview-track {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .onboarding-showcase-preview-slide,
+  .onboarding-showcase-preview-slide:first-child,
+  .onboarding-showcase-preview-slide:nth-child(3),
+  .onboarding-showcase-preview-slide:nth-child(4) {
+    grid-area: 1 / 1;
+    min-height: clamp(420px, 75vw, 520px);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .35s ease, visibility 0s linear .35s;
+  }
+
+  .onboarding-showcase-preview-slide.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity .35s ease;
+  }
+
   .onboarding-feature-indicators {
     display: flex;
   }
 
   .onboarding-showcase-preview {
     touch-action: pan-y pinch-zoom;
+  }
+}
+
+@media (min-width: 861px) {
+  .onboarding-feature-tabs,
+  .onboarding-showcase-inner > .scroll-fade-wrap:has(.onboarding-feature-tabs) {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) and (prefers-reduced-motion: reduce) {
+  .onboarding-showcase-preview-slide,
+  .onboarding-showcase-preview-slide.is-active {
+    transition: none;
   }
 }
 
@@ -1659,16 +1719,8 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
     margin-left: auto;
   }
 
-  .onboarding-showcase-preview-slide {
-    grid-template-columns: 1fr;
-  }
-
   .onboarding-showcase-preview-copy {
     padding: 24px;
-  }
-
-  .onboarding-showcase-preview-index {
-    margin-bottom: 16px;
   }
 
   .onboarding-registration .onboarding-academic-grid {
@@ -1753,14 +1805,6 @@ html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
 
   .onboarding-showcase-preview-copy {
     padding: 22px;
-  }
-
-  .onboarding-showcase-preview-index {
-    margin-bottom: 14px;
-  }
-
-  .onboarding-showcase-preview-stage {
-    /* padding: 12px; */
   }
 
   .onboarding-showcase-benefits {

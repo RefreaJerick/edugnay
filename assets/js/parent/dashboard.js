@@ -42,6 +42,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
     let backendCurrentDate = '';
     let attendanceLoadError = '';
     let assignmentsRequestId = 0;
+    let lastRenderedAssignmentsChild = null;
 
     const ATTENDANCE_SUBJECT_META = {
       mathematics: { name: 'Mathematics', color: 'var(--blue-mid)' },
@@ -295,10 +296,12 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
         return;
       }
 
-      container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-        icon: 'clock', title: 'Loading assignments', text: 'Checking upcoming work...'
-      });
-      lucide.createIcons();
+      if (lastRenderedAssignmentsChild !== selectedChild || !container.innerHTML) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'clock', title: 'Loading assignments', text: 'Checking upcoming work...'
+        });
+        lucide.createIcons();
+      }
 
       let response;
       try {
@@ -310,6 +313,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
         if (requestId !== assignmentsRequestId || selectedChild !== currentChild || activeDailyTab !== 'assignments') return;
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Assignments could not be loaded', text: 'Try again to check upcoming work.' })
           + '<button type="button" class="top-btn secondary" id="retry-upcoming-assignments">Try again</button>';
+        lastRenderedAssignmentsChild = selectedChild;
         document.getElementById('retry-upcoming-assignments').addEventListener('click', renderUpcomingAssignments);
         lucide.createIcons();
         return;
@@ -326,6 +330,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
           icon: 'clipboard-check', title: 'No upcoming assignments',
           text: 'Published assignments due today or later will appear here.'
         });
+        lastRenderedAssignmentsChild = selectedChild;
         lucide.createIcons();
         return;
       }
@@ -357,6 +362,7 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
           </div>`;
       }).join('')}
     </div>`;
+      lastRenderedAssignmentsChild = selectedChild;
       lucide.createIcons();
     }
 
