@@ -68,6 +68,41 @@ test('student assignment page has a responsive controls panel and desktop period
   assert.match(source, /class="assignment-results"/);
 });
 
+test('student submitted-file View opens the protected preview in a new tab', () => {
+  assert.match(source, /<a class="assignment-file-text-action" id="assignmentSubmittedFileView" target="_blank" rel="noopener">View<\/a>/);
+  assert.doesNotMatch(source, /id="assignmentOwnPreviewModal"/);
+
+  const modalHelpers = source.match(/    function ownSubmissionFor\(assignmentId\) \{[\s\S]*?    function closeAssignmentSubmissionModal\(\) \{[\s\S]*?\n    \}/)?.[0];
+  assert.ok(modalHelpers);
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, {
+      hidden: false, href: '', textContent: '', value: '', style: {},
+      removeAttribute() {},
+      classList: { add() {}, remove() {}, toggle() {} }
+    });
+    return elements.get(id);
+  };
+  const context = vm.createContext({
+    ASSIGNMENTS: [{ id: '7', title: 'Homework', subject: 'Math', teacher: 'Teacher',
+      onlineSubmissionEnabled: true, electiveClassId: null }],
+    STUDENT_SUBMISSIONS: [{ id: '12', assignmentId: '7', fileName: 'work.docx', fileUrl: '/download/12' }],
+    activeSubmissionAssignmentId: null,
+    document: { getElementById: element },
+    window: { EDUGNAY_API: {
+      getAssignmentSubmissionPreviewUrl: (assignmentId, submissionId) => `/api/assignments/${assignmentId}/submissions/${submissionId}/preview`,
+      getAssignmentSubmissionDownloadUrl: (assignmentId, submissionId) => `/api/assignments/${assignmentId}/submissions/${submissionId}/download`
+    } },
+    isElectiveAssignment: () => false,
+    formatDate: value => value,
+    lucide: { createIcons() {} }
+  });
+  vm.runInContext(`${modalHelpers}; openAssignmentSubmissionModal('7');`, context);
+  assert.equal(element('assignmentSubmittedFileView').href, '/api/assignments/7/submissions/12/preview');
+  assert.equal(element('assignmentSubmittedFileDownload').href, '/api/assignments/7/submissions/12/download');
+  assert.equal(element('assignmentSubmissionModal').hidden, false);
+});
+
 test('student assignment page inline scripts parse', () => {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
   assert.ok(scripts.length);

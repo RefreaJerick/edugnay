@@ -18,7 +18,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
   const documentEvents = {};
   function element(id) {
     if (!elements.has(id)) elements.set(id, {
-      id, value: id === 'type-filter' ? 'all' : '', hidden: id === 'materialPreviewModal',
+      id, value: id === 'type-filter' ? 'all' : '', hidden: false,
       innerHTML: '', textContent: '', listeners: {}, children: [],
       addEventListener(name, callback) { this.listeners[name] = callback; },
       replaceChildren(...children) { this.children = children; },
@@ -49,6 +49,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
     lucide: { createIcons() {} },
     showAppToast: message => messages.push(message),
     window: {
+      EDUGNAY_PAGE_LOADING: { ready() {} },
       EDUGNAY_API: {
         isBackendAvailable: true,
         getMaterialFile: (id, download) => {
@@ -75,12 +76,17 @@ function material(type, id) {
     type, originalFileName: `lesson.${type}`, academicTermName: 'Quarter 1', postedAt: '2026-10-05' };
 }
 
-test('student material rows show preview only for browser-supported types and download for every file', () => {
-  const page = createPage(['pdf', 'png', 'mp4', 'docx'].map((type, index) => material(type, index + 1)));
+test('student material previews open supported files in a new tab and keep every download', () => {
+  const page = createPage(['pdf', 'jpg', 'png', 'mp4', 'docx'].map((type, index) => material(type, index + 1)));
   const html = page.element('materials-container').innerHTML;
-  assert.equal((html.match(/data-material-action="preview"/g) || []).length, 3);
-  assert.equal((html.match(/data-material-action="download"/g) || []).length, 4);
-  assert.match(html, /aria-label="Preview pdf lesson"[^>]*><i data-lucide="eye"><\/i><span class="material-action-label">Preview<\/span>/);
+  assert.equal((html.match(/target="_blank" rel="noopener"/g) || []).length, 4);
+  assert.equal((html.match(/data-material-action="download"/g) || []).length, 5);
+  for (const [type, id] of [['pdf', 1], ['jpg', 2], ['png', 3], ['mp4', 4]]) {
+    assert.match(html, new RegExp(`<a class="material-action" href="/api/materials/${id}/file" target="_blank" rel="noopener" aria-label="Preview ${type} lesson"`));
+  }
+  assert.doesNotMatch(html, /aria-label="Preview docx lesson"/);
+  assert.match(html, /<div class="material-meta">\s*<span>PDF<\/span>\s*<span class="material-meta-dot"><\/span>\s*<span>Posted/);
+  assert.doesNotMatch(html, /class="badge badge-blue"/);
   assert.match(html, /aria-label="Download pdf lesson"[^>]*><i data-lucide="download"><\/i><span class="material-action-label">Download<\/span>/);
   assert.doesNotMatch(html, /class="material-row" data-material-id=/);
 });
@@ -114,7 +120,7 @@ test('student materials distinguish an empty API result from a failed or missing
   const unavailable = createPage([]);
   unavailable.context.window.EDUGNAY_API.isBackendAvailable = false;
   await unavailable.documentEvents.DOMContentLoaded();
-  assert.match(unavailable.element('materials-container').innerHTML, /Materials unavailable: The school API is unavailable/);
+  assert.match(unavailable.element('materials-container').innerHTML, /Materials unavailable: Learning materials aren’t available right now/);
 });
 
 test('download requests the authorized attachment and uses the original filename', async () => {
@@ -136,32 +142,4 @@ test('download failure is visible and restores the button', async () => {
   assert.deepEqual(page.messages, ['File unavailable.']);
   assert.equal(button.disabled, false);
   assert.deepEqual(page.downloads, []);
-});
-
-test('PDF preview fetches the protected file and releases its object URL on close', async () => {
-  const page = createPage([material('pdf', 4)]);
-  await vm.runInContext('openMaterialPreview(MATERIAL_RECORDS[0])', page.context);
-  assert.deepEqual(page.requests, [{ id: '4', download: undefined }]);
-  assert.equal(page.element('materialPreviewModal').hidden, false);
-  assert.equal(page.element('materialPreviewContent').children[0].tagName, 'IFRAME');
-  vm.runInContext('closeMaterialPreview()', page.context);
-  assert.equal(page.element('materialPreviewModal').hidden, true);
-  assert.deepEqual(page.revoked, ['blob:test']);
-});
-
-test('video preview uses the authorized streaming URL with credentials', async () => {
-  const page = createPage([material('mp4', 5)]);
-  await vm.runInContext('openMaterialPreview(MATERIAL_RECORDS[0])', page.context);
-  const video = page.element('materialPreviewContent').children[0];
-  assert.equal(video.tagName, 'VIDEO');
-  assert.equal(video.crossOrigin, 'use-credentials');
-  assert.equal(video.src, '/api/materials/5/file');
-  assert.deepEqual(page.requests, []);
-});
-
-test('preview failure shows a message instead of an empty viewer', async () => {
-  const page = createPage([material('pdf', 4)], async () => { throw new Error('File unavailable.'); });
-  await vm.runInContext('openMaterialPreview(MATERIAL_RECORDS[0])', page.context);
-  assert.equal(page.element('materialPreviewMessage').textContent, 'File unavailable.');
-  assert.deepEqual(page.element('materialPreviewContent').children, []);
 });

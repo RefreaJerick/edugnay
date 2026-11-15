@@ -555,43 +555,6 @@
   text-decoration: underline;
 }
 
-#assignmentOwnPreviewModal .modal {
-  width: min(980px, 100%);
-  max-width: 980px;
-}
-
-#assignmentOwnPreviewDownload {
-  text-decoration: none;
-}
-
-.assignment-own-preview-body {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: min(68vh, 720px);
-  padding: 12px !important;
-  background: var(--gray-50);
-}
-
-.assignment-own-preview-message {
-  display: grid;
-  flex: 1 1 auto;
-  place-items: center;
-  min-height: 220px;
-  color: var(--gray-500);
-  font-size: 12px;
-  text-align: center;
-}
-
-.assignment-own-preview-frame {
-  display: block;
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 68vh;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  background: var(--theme-surface);
-}
-
 .assignment-detail-notice {
   margin-top: 0;
   color: var(--gray-500);
@@ -811,20 +774,6 @@
 }
 
 @media (max-width: 560px) {
-  #assignmentOwnPreviewModal .modal {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .assignment-own-preview-body,
-  .assignment-own-preview-frame {
-    min-height: 54vh;
-  }
-
-  .assignment-own-preview-body {
-    padding: 8px !important;
-  }
-
   #assignmentSubmissionModal .modal-body {
     padding: 16px !important;
   }

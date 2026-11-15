@@ -6,148 +6,102 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-grades.html'), 'utf8');
 const source = fs.readFileSync(path.join(__dirname, '../../assets/js/student/grades.js'), 'utf8');
-const start = source.indexOf('    function clearGradePreview()');
-const end = source.indexOf('    async function loadStudentGradesFromApi()', start);
-assert.ok(start >= 0 && end > start);
+const buttonStart = source.indexOf('    function updateGradeDownloadButton()');
+const buttonEnd = source.indexOf('    function renderAcademicYearSelect()', buttonStart);
+const downloadStart = source.indexOf('    async function downloadGrades()');
+const downloadEnd = source.indexOf('    async function loadStudentGradesFromApi()', downloadStart);
+assert.ok(buttonStart >= 0 && buttonEnd > buttonStart && downloadStart >= 0 && downloadEnd > downloadStart);
 
-function previewHarness(requestFile) {
-  const nodes = Object.fromEntries([
-    'gradePreviewModal', 'gradePreviewFrame', 'gradePreviewMessage', 'gradePreviewDownload',
-    'gradePreviewYear', 'gradePreviewClose', 'gradeDownloadButton'
-  ].map(id => [id, { hidden: id === 'gradePreviewModal', disabled: id === 'gradePreviewDownload',
-    textContent: '', focus() { this.focused = true; }, removeAttribute(name) { delete this[name]; } }]));
-  const revoked = [];
-  const links = [];
+function downloadHarness(requestFile) {
+  const nodes = { gradeDownloadButton: { disabled: false }, gradeYearSelect: { disabled: false } };
   const blobs = [];
+  const links = [];
+  const revoked = [];
   const timers = [];
-  const shell = { inert: false };
-  const bodyClasses = new Set();
+  const messages = [];
   let selectedYear = { id: '4', label: '2026-2027' };
-  let nextUrl = 0;
   const context = {
     Blob,
     URL: {
-      createObjectURL(blob) { blobs.push(blob); return `blob:grade-${++nextUrl}`; },
+      createObjectURL(blob) { blobs.push(blob); return `blob:grade-${blobs.length}`; },
       revokeObjectURL(url) { revoked.push(url); }
     },
     window: { EDUGNAY_API: { requestFile } },
     document: {
-      activeElement: nodes.gradeDownloadButton,
       getElementById(id) { return nodes[id]; },
-      querySelector(selector) { return selector === '.shell' ? shell : null; },
-      createElement() { const link = { click() { this.clicked = true; }, remove() {} }; links.push(link); return link; },
-      body: { classList: {
-        add(name) { bodyClasses.add(name); }, remove(name) { bodyClasses.delete(name); }
-      }, appendChild() {} }
+      createElement() {
+        const link = { click() { this.clicked = true; }, remove() {} };
+        links.push(link);
+        return link;
+      },
+      body: { appendChild() {} }
     },
     getSelectedAcademicYear() { return selectedYear; },
-    updateGradeDownloadButton() {},
+    showAppToast(message, type) { messages.push({ message, type }); },
     setTimeout(callback) { timers.push(callback); }
   };
   const actions = vm.runInNewContext(`
-    let gradePreviewLoading = false;
-    let gradePreviewRequest = 0;
-    let gradePreviewObjectUrl = null;
-    let gradePreviewBuffer = null;
-    let gradePreviewFileName = '';
-    let gradePreviewReturnFocus = null;
-    ${source.slice(start, end)}
-    ({ openGradePreview, closeGradePreview, downloadPreviewedGrades, handleGradePreviewKeydown })
+    let gradeLoading = false;
+    let gradeDownloading = false;
+    let gradeLoadError = '';
+    let gradeAccessDenied = false;
+    let STUDENT_GRADE_YEARS = [{ id: '4' }, { id: '3' }];
+    ${source.slice(buttonStart, buttonEnd)}
+    ${source.slice(downloadStart, downloadEnd)}
+    ({ downloadGrades })
   `, context);
-  return { ...actions, nodes, shell, links, blobs, timers, revoked, bodyClasses, selectYear(year) { selectedYear = year; } };
+  return { ...actions, nodes, blobs, links, revoked, timers, messages,
+    selectYear(year) { selectedYear = year; } };
 }
 
-test('grade button opens a preview and downloads the same PDF, then cleans up on close', async () => {
+test('Download grades fetches the selected year once and downloads its PDF', async () => {
   assert.match(html, /id="gradeDownloadButton"/);
-  assert.match(html, /id="gradePreviewFrame"/);
-  assert.match(source, /gradeDownloadButton'\)\.addEventListener\('click', openGradePreview\)/);
-  const requested = [];
-  const ui = previewHarness(async url => {
-    requested.push(url);
-    return { buffer: new Uint8Array([37, 80, 68, 70]), contentType: 'application/pdf', fileName: 'grades-4.pdf' };
+  assert.doesNotMatch(html, /id="gradePreviewModal"/);
+  assert.match(source, /gradeDownloadButton'\)\.addEventListener\('click', downloadGrades\)/);
+  const requests = [];
+  let complete;
+  const ui = downloadHarness(url => {
+    requests.push(url);
+    return new Promise(resolve => { complete = resolve; });
   });
-  await ui.openGradePreview();
-  assert.deepEqual(requested, ['/final-grades/student-copy.pdf?academicYearId=4']);
-  assert.equal(ui.nodes.gradePreviewModal.hidden, false);
-  assert.equal(ui.shell.inert, true);
-  assert.equal(ui.nodes.gradePreviewFrame.src, 'blob:grade-1');
-  assert.equal(ui.nodes.gradePreviewDownload.disabled, true);
-  assert.equal(ui.nodes.gradePreviewMessage.textContent, 'Opening PDF preview...');
-  ui.nodes.gradePreviewFrame.onload();
-  assert.equal(ui.nodes.gradePreviewDownload.disabled, false);
-  ui.downloadPreviewedGrades();
-  assert.equal(ui.links[0].href, 'blob:grade-2');
-  assert.deepEqual(new Uint8Array(await ui.blobs[0].arrayBuffer()), new Uint8Array(await ui.blobs[1].arrayBuffer()));
+  const downloading = ui.downloadGrades();
+  await ui.downloadGrades();
+  assert.deepEqual(requests, ['/final-grades/student-copy.pdf?academicYearId=4']);
+  assert.equal(ui.nodes.gradeDownloadButton.disabled, true);
+  assert.equal(ui.nodes.gradeYearSelect.disabled, true);
+  complete({ buffer: new Uint8Array([37, 80, 68, 70]), contentType: 'application/pdf', fileName: 'grades-4.pdf' });
+  await downloading;
+  assert.equal(ui.links[0].href, 'blob:grade-1');
   assert.equal(ui.links[0].download, 'grades-4.pdf');
   assert.equal(ui.links[0].clicked, true);
-  ui.closeGradePreview();
-  assert.equal(ui.nodes.gradePreviewModal.hidden, true);
-  assert.equal(ui.shell.inert, false);
-  assert.equal(ui.nodes.gradePreviewFrame.hidden, true);
-  assert.deepEqual(ui.revoked, ['blob:grade-1']);
+  assert.deepEqual(new Uint8Array(await ui.blobs[0].arrayBuffer()), new Uint8Array([37, 80, 68, 70]));
+  assert.equal(ui.nodes.gradeDownloadButton.disabled, false);
+  assert.equal(ui.nodes.gradeYearSelect.disabled, false);
   ui.timers[0]();
-  assert.deepEqual(ui.revoked, ['blob:grade-1', 'blob:grade-2']);
-  assert.equal(ui.nodes.gradeDownloadButton.focused, true);
+  assert.deepEqual(ui.revoked, ['blob:grade-1']);
 
   ui.selectYear({ id: '3', label: '2025-2026' });
-  await ui.openGradePreview();
-  assert.equal(requested[1], '/final-grades/student-copy.pdf?academicYearId=3');
-  assert.equal(ui.nodes.gradePreviewFrame.src, 'blob:grade-3');
-  ui.closeGradePreview();
-});
-
-test('grade preview keeps download disabled when loading fails', async () => {
-  const ui = previewHarness(async () => { throw new Error('Grades unavailable'); });
-  await ui.openGradePreview();
-  assert.equal(ui.nodes.gradePreviewModal.hidden, false);
-  assert.equal(ui.nodes.gradePreviewMessage.textContent, 'Grades unavailable');
-  assert.equal(ui.nodes.gradePreviewDownload.disabled, true);
-  assert.equal(ui.nodes.gradePreviewFrame.hidden, true);
-  ui.closeGradePreview();
-});
-
-test('grade preview rejects a non-PDF response', async () => {
-  const ui = previewHarness(async () => ({ buffer: new Uint8Array([1, 2]), contentType: 'text/html' }));
-  await ui.openGradePreview();
-  assert.match(ui.nodes.gradePreviewMessage.textContent, /preview is unavailable/);
-  assert.equal(ui.nodes.gradePreviewDownload.disabled, true);
-  assert.equal(ui.nodes.gradePreviewFrame.hidden, true);
-});
-
-test('PDF viewer failure leaves the modal open with download disabled', async () => {
-  const ui = previewHarness(async () => ({
-    buffer: new Uint8Array([37, 80, 68, 70]), contentType: 'application/pdf'
-  }));
-  await ui.openGradePreview();
-  ui.nodes.gradePreviewFrame.onerror();
-  assert.match(ui.nodes.gradePreviewMessage.textContent, /could not be displayed/);
-  assert.equal(ui.nodes.gradePreviewDownload.disabled, true);
-  assert.equal(ui.nodes.gradePreviewFrame.hidden, true);
-  ui.closeGradePreview();
-});
-
-test('closing during a grade fetch ignores its late response', async () => {
-  let complete;
-  const ui = previewHarness(() => new Promise(resolve => { complete = resolve; }));
-  const opening = ui.openGradePreview();
-  assert.equal(ui.nodes.gradePreviewMessage.textContent, 'Preparing preview...');
-  assert.equal(ui.nodes.gradePreviewDownload.disabled, true);
-  ui.closeGradePreview();
+  const next = ui.downloadGrades();
   complete({ buffer: new Uint8Array([37, 80, 68, 70]), contentType: 'application/pdf' });
-  await opening;
-  assert.equal(ui.nodes.gradePreviewModal.hidden, true);
-  assert.equal(ui.nodes.gradePreviewFrame.hidden, true);
-  assert.deepEqual(ui.revoked, []);
+  await next;
+  assert.equal(requests[1], '/final-grades/student-copy.pdf?academicYearId=3');
+  assert.equal(ui.links[1].download, 'student-grades-3.pdf');
 });
 
-test('Escape closes the grade preview and returns focus', async () => {
-  const ui = previewHarness(async () => ({
-    buffer: new Uint8Array([37, 80, 68, 70]), contentType: 'application/pdf'
-  }));
-  await ui.openGradePreview();
-  let prevented = false;
-  ui.handleGradePreviewKeydown({ key: 'Escape', preventDefault() { prevented = true; } });
-  assert.equal(prevented, true);
-  assert.equal(ui.nodes.gradePreviewModal.hidden, true);
-  assert.equal(ui.nodes.gradeDownloadButton.focused, true);
+test('a failed grade request reports the error and restores the controls', async () => {
+  const ui = downloadHarness(async () => { throw new Error('Grades unavailable'); });
+  await ui.downloadGrades();
+  assert.deepEqual(ui.messages, [{ message: 'Grades unavailable', type: 'error' }]);
+  assert.equal(ui.links.length, 0);
+  assert.equal(ui.nodes.gradeDownloadButton.disabled, false);
+  assert.equal(ui.nodes.gradeYearSelect.disabled, false);
+});
+
+test('a non-PDF response is not downloaded', async () => {
+  const ui = downloadHarness(async () => ({ buffer: new Uint8Array([1, 2]), contentType: 'text/html' }));
+  await ui.downloadGrades();
+  assert.match(ui.messages[0].message, /PDF could not be downloaded/);
+  assert.equal(ui.links.length, 0);
+  assert.equal(ui.nodes.gradeDownloadButton.disabled, false);
+  assert.equal(ui.nodes.gradeYearSelect.disabled, false);
 });

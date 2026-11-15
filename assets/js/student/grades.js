@@ -8,12 +8,7 @@ lucide.createIcons();
     let gradeLoadError = '';
     let gradeAccessDenied = false;
     let gradeAccessRedirecting = false;
-    let gradePreviewLoading = false;
-    let gradePreviewRequest = 0;
-    let gradePreviewObjectUrl = null;
-    let gradePreviewBuffer = null;
-    let gradePreviewFileName = '';
-    let gradePreviewReturnFocus = null;
+    let gradeDownloading = false;
 
     function getDefaultAcademicYear(years) {
       return years.find(year => year.status === 'active') || years[0] || null;
@@ -43,8 +38,10 @@ lucide.createIcons();
     }
 
     function updateGradeDownloadButton() {
-      document.getElementById('gradeDownloadButton').disabled = gradeLoading || gradePreviewLoading
+      document.getElementById('gradeDownloadButton').disabled = gradeLoading || gradeDownloading
         || Boolean(gradeLoadError) || gradeAccessDenied || !getSelectedAcademicYear();
+      document.getElementById('gradeYearSelect').disabled = gradeLoading || gradeDownloading
+        || Boolean(gradeLoadError) || !STUDENT_GRADE_YEARS.length;
     }
 
     function renderAcademicYearSelect() {
@@ -52,7 +49,7 @@ lucide.createIcons();
       select.innerHTML = STUDENT_GRADE_YEARS.map(year =>
         '<option value="' + escapeHtml(year.id) + '">' + escapeHtml(year.label) + '</option>'
       ).join('');
-      select.disabled = gradeLoading || !STUDENT_GRADE_YEARS.length || Boolean(gradeLoadError);
+      select.disabled = gradeLoading || gradeDownloading || !STUDENT_GRADE_YEARS.length || Boolean(gradeLoadError);
       if (activeAcademicYearId) select.value = activeAcademicYearId;
     }
 
@@ -187,105 +184,31 @@ lucide.createIcons();
       lucide.createIcons();
     }
 
-    function clearGradePreview() {
-      const frame = document.getElementById('gradePreviewFrame');
-      frame.onload = null;
-      frame.onerror = null;
-      frame.removeAttribute('src');
-      frame.hidden = true;
-      if (gradePreviewObjectUrl) URL.revokeObjectURL(gradePreviewObjectUrl);
-      gradePreviewObjectUrl = null;
-      gradePreviewBuffer = null;
-      gradePreviewFileName = '';
-      document.getElementById('gradePreviewDownload').disabled = true;
-    }
-
-    function closeGradePreview() {
-      const modal = document.getElementById('gradePreviewModal');
-      if (modal.hidden) return;
-      gradePreviewRequest += 1;
-      clearGradePreview();
-      modal.hidden = true;
-      document.body.classList.remove('grade-preview-open');
-      document.querySelector('.shell').inert = false;
-      gradePreviewLoading = false;
-      updateGradeDownloadButton();
-      gradePreviewReturnFocus?.focus();
-      gradePreviewReturnFocus = null;
-    }
-
-    async function openGradePreview() {
+    async function downloadGrades() {
       const year = getSelectedAcademicYear();
-      if (!year || gradePreviewLoading) return;
-      const request = ++gradePreviewRequest;
-      const modal = document.getElementById('gradePreviewModal');
-      const frame = document.getElementById('gradePreviewFrame');
-      const message = document.getElementById('gradePreviewMessage');
-      clearGradePreview();
-      gradePreviewReturnFocus = document.activeElement;
-      document.getElementById('gradePreviewYear').textContent = 'School year ' + year.label;
-      message.textContent = 'Preparing preview...';
-      message.hidden = false;
-      modal.hidden = false;
-      document.body.classList.add('grade-preview-open');
-      document.querySelector('.shell').inert = true;
-      document.getElementById('gradePreviewClose').focus();
-      gradePreviewLoading = true;
+      if (!year || gradeDownloading) return;
+      gradeDownloading = true;
       updateGradeDownloadButton();
       try {
         const file = await window.EDUGNAY_API.requestFile(
           '/final-grades/student-copy.pdf?academicYearId=' + encodeURIComponent(year.id)
         );
-        if (request !== gradePreviewRequest) return;
         if (!String(file.contentType || '').toLowerCase().startsWith('application/pdf')) {
-          throw new Error('The grade preview is unavailable. Please try again.');
+          throw new Error('The grade PDF could not be downloaded. Please try again.');
         }
-        gradePreviewBuffer = file.buffer;
-        gradePreviewObjectUrl = URL.createObjectURL(new Blob([gradePreviewBuffer], { type: 'application/pdf' }));
-        gradePreviewFileName = file.fileName || 'student-grades-' + year.id + '.pdf';
-        message.textContent = 'Opening PDF preview...';
-        frame.onload = () => {
-          if (request !== gradePreviewRequest) return;
-          frame.hidden = false;
-          message.hidden = true;
-          document.getElementById('gradePreviewDownload').disabled = false;
-        };
-        frame.onerror = () => {
-          if (request !== gradePreviewRequest) return;
-          message.textContent = 'The PDF preview could not be displayed. Please close and try again.';
-          message.hidden = false;
-          document.getElementById('gradePreviewDownload').disabled = true;
-        };
-        frame.src = gradePreviewObjectUrl;
+        const url = URL.createObjectURL(new Blob([file.buffer], { type: 'application/pdf' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.fileName || 'student-grades-' + year.id + '.pdf';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
       } catch (error) {
-        if (request !== gradePreviewRequest) return;
-        message.textContent = error.message || 'The grade preview could not be loaded. Please try again.';
-        message.hidden = false;
+        showAppToast(error.message || 'The grade PDF could not be downloaded. Please try again.', 'error');
       } finally {
-        if (request === gradePreviewRequest) {
-          gradePreviewLoading = false;
-          updateGradeDownloadButton();
-        }
-      }
-    }
-
-    function downloadPreviewedGrades() {
-      if (!gradePreviewBuffer) return;
-      const url = URL.createObjectURL(new Blob([gradePreviewBuffer], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = gradePreviewFileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-    }
-
-    function handleGradePreviewKeydown(event) {
-      if (document.getElementById('gradePreviewModal').hidden) return;
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeGradePreview();
+        gradeDownloading = false;
+        updateGradeDownloadButton();
       }
     }
 
@@ -325,14 +248,7 @@ lucide.createIcons();
       updateGradeTabOrientation();
       wideGradeLayout.addEventListener('change', updateGradeTabOrientation);
       document.getElementById('gradeYearSelect').addEventListener('change', event => selectAcademicYear(event.target.value));
-      document.getElementById('gradeDownloadButton').addEventListener('click', openGradePreview);
-      document.getElementById('gradePreviewDownload').addEventListener('click', downloadPreviewedGrades);
-      document.getElementById('gradePreviewClose').addEventListener('click', closeGradePreview);
-      document.getElementById('gradePreviewDone').addEventListener('click', closeGradePreview);
-      document.getElementById('gradePreviewModal').addEventListener('click', event => {
-        if (event.target === event.currentTarget) closeGradePreview();
-      });
-      document.addEventListener('keydown', handleGradePreviewKeydown);
+      document.getElementById('gradeDownloadButton').addEventListener('click', downloadGrades);
       list.innerHTML = '';
 
       try {

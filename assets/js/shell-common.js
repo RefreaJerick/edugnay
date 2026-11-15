@@ -1544,6 +1544,15 @@ function getApiAssignmentSubmissionDownloadUrl(assignmentId, submissionId) {
   return `${EDUGNAY_API_BASE_URL}/assignments/${assignment}/submissions/${submission}/download`;
 }
 
+function getApiAssignmentSubmissionPreviewUrl(assignmentId, submissionId) {
+  const assignment = Number(assignmentId);
+  const submission = Number(submissionId);
+  if (!EDUGNAY_API_BASE_URL || !Number.isSafeInteger(assignment) || assignment < 1
+    || !Number.isSafeInteger(submission) || submission < 1) return null;
+
+  return `${EDUGNAY_API_BASE_URL}/assignments/${assignment}/submissions/${submission}/preview`;
+}
+
 async function getApiAssignmentSubmissionPreview(assignmentId, submissionId) {
   const assignment = Number(assignmentId);
   const submission = Number(submissionId);
@@ -2338,6 +2347,7 @@ window.EDUGNAY_API = {
   getFinalGradesOverview: getApiFinalGradesOverview,
   getAssignmentSubmissions: getApiAssignmentSubmissions,
   getAssignmentSubmissionDownloadUrl: getApiAssignmentSubmissionDownloadUrl,
+  getAssignmentSubmissionPreviewUrl: getApiAssignmentSubmissionPreviewUrl,
   getAssignmentSubmissionPreview: getApiAssignmentSubmissionPreview,
   submitAssignment: submitApiAssignment,
   getGradingCategories: getApiGradingCategories,

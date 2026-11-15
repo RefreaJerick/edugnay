@@ -4,10 +4,6 @@ lucide.createIcons();
     const MATERIAL_PERIODS = [];
     const MATERIALS_BY_SUBJECT = {};
     let currentSubject = '';
-    let previewRequest = 0;
-    let previewObjectUrl = null;
-    let previewMaterial = null;
-    let previewReturnFocus = null;
 
     function groupMaterials() {
       Object.keys(MATERIALS_BY_SUBJECT).forEach(key => delete MATERIALS_BY_SUBJECT[key]);
@@ -137,14 +133,14 @@ lucide.createIcons();
           <div class="material-info">
             <div class="material-title">${window.EDUGNAY_CONFIG.escapeHtml(m.title)}</div>
             <div class="material-meta">
-              <span class="badge badge-blue">${meta.label}</span>
+              <span>${meta.label}</span>
               <span class="material-meta-dot"></span>
               <span>Posted ${window.EDUGNAY_CONFIG.escapeHtml(formatMaterialDate(m.postedAt))}</span>
               ${communicationLabel ? `<span class="material-meta-dot"></span><span>${window.EDUGNAY_CONFIG.escapeHtml(communicationLabel)}</span>` : ''}
             </div>
           </div>
           <div class="material-actions">
-            ${['pdf', 'jpg', 'png', 'mp4'].includes(m.type) ? `<button class="material-action" type="button" data-material-action="preview" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(m.id)}" aria-label="Preview ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}"><i data-lucide="eye"></i><span class="material-action-label">Preview</span></button>` : ''}
+            ${['pdf', 'jpg', 'png', 'mp4'].includes(m.type) ? `<a class="material-action" href="${window.EDUGNAY_CONFIG.escapeHtml(window.EDUGNAY_API.materialFileUrl(m.id))}" target="_blank" rel="noopener" aria-label="Preview ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}"><i data-lucide="eye"></i><span class="material-action-label">Preview</span></a>` : ''}
             <button class="material-action" type="button" data-material-action="download" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(m.id)}" aria-label="Download ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}"><i data-lucide="download"></i><span class="material-action-label">Download</span></button>
           </div>
         </div>`;
@@ -176,78 +172,6 @@ lucide.createIcons();
       }
     }
 
-    function clearMaterialPreview() {
-      const content = document.getElementById('materialPreviewContent');
-      const video = content.querySelector('video');
-      if (video) {
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-      }
-      content.replaceChildren();
-      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-      previewObjectUrl = null;
-    }
-
-    function closeMaterialPreview() {
-      previewRequest += 1;
-      document.getElementById('materialPreviewModal').hidden = true;
-      document.body.classList.remove('material-preview-open');
-      clearMaterialPreview();
-      previewMaterial = null;
-      previewReturnFocus?.focus();
-      previewReturnFocus = null;
-    }
-
-    async function openMaterialPreview(material) {
-      const request = ++previewRequest;
-      previewMaterial = material;
-      previewReturnFocus = document.activeElement;
-      clearMaterialPreview();
-      const modal = document.getElementById('materialPreviewModal');
-      const message = document.getElementById('materialPreviewMessage');
-      const content = document.getElementById('materialPreviewContent');
-      document.getElementById('materialPreviewTitle').textContent = material.title;
-      document.getElementById('materialPreviewType').textContent = (TYPE_META[material.type]?.label || 'Material') + ' preview';
-      content.innerHTML = '';
-      message.textContent = '';
-      message.hidden = true;
-      modal.hidden = false;
-      document.body.classList.add('material-preview-open');
-      document.getElementById('materialPreviewClose').focus();
-
-      if (material.type === 'mp4') {
-        const video = document.createElement('video');
-        video.controls = true;
-        video.preload = 'metadata';
-        video.crossOrigin = 'use-credentials';
-        video.addEventListener('loadedmetadata', () => { if (request === previewRequest) message.hidden = true; });
-        video.addEventListener('error', () => { if (request === previewRequest) { message.textContent = 'The video could not be loaded. Try Download.'; message.hidden = false; } });
-        video.src = window.EDUGNAY_API.materialFileUrl(material.id);
-        content.replaceChildren(video);
-        return;
-      }
-
-      try {
-        const file = await window.EDUGNAY_API.getMaterialFile(material.id);
-        if (request !== previewRequest) return;
-        previewObjectUrl = URL.createObjectURL(new Blob([file.buffer], { type: file.contentType }));
-        const viewer = document.createElement(material.type === 'pdf' ? 'iframe' : 'img');
-        if (viewer.tagName === 'IFRAME') viewer.title = `${material.title} preview`;
-        else viewer.alt = '';
-        viewer.addEventListener('load', () => { if (request === previewRequest) message.hidden = true; });
-        viewer.addEventListener('error', () => { if (request === previewRequest) message.textContent = 'The preview could not be displayed. Try Download.'; });
-        viewer.src = previewObjectUrl;
-        content.replaceChildren(viewer);
-      } catch (error) {
-        if (request === previewRequest) {
-          content.replaceChildren();
-          message.textContent = error.message || 'The preview could not be loaded. Try Download.';
-          message.hidden = false;
-        }
-      }
-    }
-
     document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('materials-container').innerHTML = '';
       try {
@@ -267,35 +191,11 @@ lucide.createIcons();
     });
 
     document.getElementById('materials-container').addEventListener('click', event => {
-      const button = event.target.closest('[data-material-action]');
+      const button = event.target.closest('[data-material-action="download"]');
       if (!button) return;
       const material = MATERIAL_RECORDS.find(item => String(item.id) === button.dataset.materialId);
       if (!material) return;
-      if (button.dataset.materialAction === 'preview') openMaterialPreview(material);
-      else downloadMaterial(material, button);
-    });
-
-    document.getElementById('materialPreviewClose').addEventListener('click', closeMaterialPreview);
-    document.getElementById('materialPreviewDone').addEventListener('click', closeMaterialPreview);
-    document.getElementById('materialPreviewDownload').addEventListener('click', event => {
-      if (previewMaterial) downloadMaterial(previewMaterial, event.currentTarget);
-    });
-    document.getElementById('materialPreviewModal').addEventListener('click', event => {
-      if (event.target === event.currentTarget) closeMaterialPreview();
-    });
-    document.addEventListener('keydown', event => {
-      if (document.getElementById('materialPreviewModal').hidden) return;
-      if (event.key === 'Escape') closeMaterialPreview();
-      if (event.key === 'Tab') {
-        const buttons = [...document.querySelectorAll('#materialPreviewModal button:not(:disabled)')];
-        if (event.shiftKey && document.activeElement === buttons[0]) {
-          event.preventDefault();
-          buttons.at(-1).focus();
-        } else if (!event.shiftKey && document.activeElement === buttons.at(-1)) {
-          event.preventDefault();
-          buttons[0].focus();
-        }
-      }
+      downloadMaterial(material, button);
     });
 
 window.EDUGNAY_PAGE_EVENTS.bind({

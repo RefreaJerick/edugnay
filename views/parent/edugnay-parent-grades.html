@@ -169,7 +169,10 @@
             <span>School year</span>
             <select id="parentGradeYearSelect" aria-label="School year" disabled></select>
           </label>
-          <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-label="Grading period"></div>
+          <div class="grade-period-control">
+            <div class="grade-period-label" id="parentGradePeriodLabel">Grading period</div>
+            <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-labelledby="parentGradePeriodLabel"></div>
+          </div>
         </div>
 
         <section class="panel grades-subject-panel" aria-labelledby="parentSubjectGradesTitle">
