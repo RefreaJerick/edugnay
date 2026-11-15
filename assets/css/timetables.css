@@ -143,7 +143,7 @@ button.timetable-event:focus-visible { outline: none; box-shadow: 0 0 0 3px var(
   .timetable-export-actions .btn { flex: 1 1 120px; }
 }
 @media (max-width: 520px) { .timetable-unscheduled-item { align-items: stretch; flex-direction: column; min-height: 104px; padding: 14px; } .timetable-unscheduled-item .timetable-button { width: 100%; margin-top: 14px; } }
-@media (max-width: 420px) { .timetable-grid { grid-template-columns: 1fr; } .timetable-day { min-height: 0; } }
-@media (min-width: 1280px) and (max-width: 1699px), (min-width: 761px) and (max-width: 1180px), (min-width: 421px) and (max-width: 760px) {
+@media (max-width: 340px) { .timetable-grid { grid-template-columns: 1fr; } .timetable-day { min-height: 0; } }
+@media (min-width: 1280px) and (max-width: 1699px), (min-width: 761px) and (max-width: 1180px), (min-width: 341px) and (max-width: 760px) {
   .timetable-day-preview { display: flex; }
 }

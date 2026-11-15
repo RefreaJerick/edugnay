@@ -129,7 +129,8 @@ test('two- and four-column weeks show a muted, non-interactive next Monday witho
   const css = read('assets/css/timetables.css');
   assert.match(css, /\.timetable-day-preview\s*\{\s*display: none; background: var\(--gray-50\)/);
   assert.match(css, /\.timetable-day-preview \.timetable-day-head[^}]*color: var\(--gray-400\)/);
-  assert.match(css, /@media \(min-width: 1280px\) and \(max-width: 1699px\), \(min-width: 761px\) and \(max-width: 1180px\), \(min-width: 421px\) and \(max-width: 760px\)\s*\{\s*\.timetable-day-preview\s*\{\s*display: flex/);
+  assert.match(css, /@media \(max-width: 340px\)\s*\{\s*\.timetable-grid\s*\{\s*grid-template-columns: 1fr;/);
+  assert.match(css, /@media \(min-width: 1280px\) and \(max-width: 1699px\), \(min-width: 761px\) and \(max-width: 1180px\), \(min-width: 341px\) and \(max-width: 760px\)\s*\{\s*\.timetable-day-preview\s*\{\s*display: flex/);
 
   const source = read('assets/js/timetables.js').replace(
     "  document.addEventListener('DOMContentLoaded', async () => {",
