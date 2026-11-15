@@ -20,16 +20,21 @@ lucide.createIcons();
         })[0] || null;
     }
 
-    function setAssignmentPeriods(terms) {
+    function setAssignmentPeriods(terms, sections = []) {
       const termById = new Map(terms.map(function (term) { return [String(term.id), term]; }));
       const assignedTerms = ASSIGNMENTS.map(function (assignment) {
         return termById.get(String(assignment.academicPeriodId));
       }).filter(Boolean);
-      const levels = new Set(assignedTerms.map(function (term) { return String(term.schoolLevelId); }));
-      const years = new Set(assignedTerms.map(function (term) { return String(term.academicYearId); }));
+      const availableYears = new Set(assignedTerms.map(function (term) {
+        return String(term.academicYearId) + ':' + String(term.schoolLevelId);
+      }));
+      sections.filter(function (section) {
+        return section.status === 'active' && section.academicYearStatus === 'active';
+      }).forEach(function (section) {
+        availableYears.add(String(section.academicYearId) + ':' + String(section.schoolLevelId));
+      });
       ASSIGNMENT_PERIODS = terms.filter(function (term) {
-        return levels.has(String(term.schoolLevelId)) &&
-          (years.has(String(term.academicYearId)) || term.status === 'active');
+        return availableYears.has(String(term.academicYearId) + ':' + String(term.schoolLevelId));
       }).sort(function (first, second) {
         return String(second.academicYearLabel).localeCompare(String(first.academicYearLabel)) ||
           Number(first.sequenceNumber) - Number(second.sequenceNumber);
@@ -55,7 +60,7 @@ lucide.createIcons();
       }
       yearSelect.innerHTML = years.length
         ? years.map(function (year) { return '<option value="' + escapeHtml(year[0]) + '">' + escapeHtml(year[1] || 'School year') + '</option>'; }).join('')
-        : '<option value="">No school years</option>';
+        : '<option value="">' + (backendAssignmentsError ? 'School years unavailable' : 'No school years') + '</option>';
       yearSelect.value = selectedAssignmentYearId;
       yearSelect.disabled = !years.length || Boolean(backendAssignmentsError);
       const periods = ASSIGNMENT_PERIODS.filter(function (term) { return String(term.academicYearId) === selectedAssignmentYearId; });
@@ -65,7 +70,7 @@ lucide.createIcons();
             return '<option value="' + escapeHtml(String(term.id)) + '"' +
               (term.status === 'upcoming' ? ' disabled' : '') + '>' + escapeHtml(term.name) + '</option>';
           }).join('')
-        : '<option value="">No grading periods</option>';
+        : '<option value="">' + (backendAssignmentsError ? 'Grading periods unavailable' : 'No grading periods') + '</option>';
       select.disabled = !periods.length || Boolean(backendAssignmentsError);
       select.value = selectedAssignmentPeriodId;
       document.getElementById('assignmentPeriodTabs').innerHTML = periods.map(function (term) {
@@ -123,9 +128,10 @@ lucide.createIcons();
         if (session?.role !== 'student') throw new Error('Sign in with a student account to view assignments.');
         STUDENT_ID = String(session.apiUserId || session.userId);
         if (!STUDENT_ID || STUDENT_ID === 'undefined') throw new Error('Your student account could not be identified.');
-        const [assignments, terms, historyResponse] = await Promise.all([
+        const [assignments, terms, sections, historyResponse] = await Promise.all([
           window.EDUGNAY_API.getAssignments(),
           window.EDUGNAY_API.getAcademicTerms(),
+          window.EDUGNAY_API.getSections(),
           window.EDUGNAY_API.getAssignmentHistory()
         ]);
         ASSIGNMENT_HISTORY = Array.isArray(historyResponse) ? historyResponse : [];
@@ -145,7 +151,7 @@ lucide.createIcons();
           const pastDue = assignment.dueDate && assignment.dueDate < today;
           return { ...assignment, status: assignment.submissionStatus || (submitted ? 'submitted' : pastDue ? 'not_submitted' : 'pending') };
         });
-        setAssignmentPeriods(terms);
+        setAssignmentPeriods(terms, sections);
         backendAssignmentsError = '';
         return true;
       } catch (error) {
@@ -230,10 +236,14 @@ lucide.createIcons();
       const visible = getVisibleAssignments();
 
       if (!visible.length) {
+        const inPeriod = getAssignmentsInSelectedPeriod();
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'clipboard-check',
-          title: 'No assignments found',
-          text: selectedAssignmentPeriodId || ASSIGNMENTS.length ? 'Try another status, subject, or search term.' : 'Assignments will appear when a grading period is available.'
+          title: !selectedAssignmentPeriodId ? 'No grading periods available'
+            : inPeriod.length ? 'No assignments found' : 'No assignments in this grading period',
+          text: !selectedAssignmentPeriodId ? 'Grading periods for your enrolled section will appear here when available.'
+            : inPeriod.length ? 'Try another status, subject, or search term.'
+              : 'No assignments have been posted for this period yet.'
         });
         if (window.lucide) lucide.createIcons();
         return;

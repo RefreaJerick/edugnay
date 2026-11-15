@@ -49,6 +49,106 @@ test('student assignments stay within the selected school year and grading perio
   assert.equal(context.selectedAssignmentPeriodId, '6');
 });
 
+test('an enrolled student sees the active period before any assignments are posted', () => {
+  assert.ok(periodHelpers);
+  const terms = [
+    { id: 11, academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 3, status: 'closed', sequenceNumber: 1 },
+    { id: 12, academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 3, status: 'active', sequenceNumber: 2 },
+    { id: 13, academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 3, status: 'upcoming', sequenceNumber: 3 },
+    { id: 22, academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 4, status: 'active', sequenceNumber: 2 }
+  ];
+  const sections = [{ academicYearId: 2, schoolLevelId: 3, status: 'active', academicYearStatus: 'active' }];
+  const context = vm.createContext({
+    ASSIGNMENTS: [],
+    ASSIGNMENT_PERIODS: [],
+    selectedAssignmentYearId: '',
+    selectedAssignmentPeriodId: '',
+    terms,
+    sections
+  });
+  vm.runInContext(`${periodHelpers}; setAssignmentPeriods(terms, sections);`, context);
+  assert.deepEqual(Array.from(context.ASSIGNMENT_PERIODS, term => term.id), [11, 12, 13]);
+  assert.equal(context.selectedAssignmentYearId, '2');
+  assert.equal(context.selectedAssignmentPeriodId, '12');
+  vm.runInContext('setAssignmentPeriods(terms, [])', context);
+  assert.equal(context.ASSIGNMENT_PERIODS.length, 0);
+  assert.equal(context.selectedAssignmentPeriodId, '');
+});
+
+test('loading zero assignments still selects the enrolled section’s active period', async () => {
+  const start = source.indexOf('    function latestSelectableAssignmentPeriod(periods)');
+  const end = source.indexOf('    function formatDate(isoDate)', start);
+  assert.ok(start >= 0 && end > start);
+  const calls = [];
+  const context = vm.createContext({
+    BACKEND_ASSIGNMENTS_ENABLED: true,
+    STUDENT_ID: null,
+    ASSIGNMENTS: [],
+    ASSIGNMENT_HISTORY: [],
+    STUDENT_SUBMISSIONS: [],
+    ASSIGNMENT_PERIODS: [],
+    selectedAssignmentYearId: '',
+    selectedAssignmentPeriodId: '',
+    backendAssignmentsLoading: true,
+    backendAssignmentsError: '',
+    console,
+    window: {
+      EDUGNAY_SCHOOL_READY: Promise.resolve(),
+      EDUGNAY_API: {
+        getCurrentUser: async () => ({ role: 'student', apiUserId: 9 }),
+        getAssignments: async () => [],
+        getAcademicTerms: async () => [
+          { id: 12, academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 3, status: 'active', sequenceNumber: 2 },
+          { id: 22, academicYearId: 2, academicYearLabel: '2026-2027', schoolLevelId: 4, status: 'active', sequenceNumber: 2 }
+        ],
+        getSections: async () => {
+          calls.push('sections');
+          return [{ academicYearId: 2, schoolLevelId: 3, status: 'active', academicYearStatus: 'active' }];
+        },
+        getAssignmentHistory: async () => []
+      }
+    }
+  });
+  const loaded = await vm.runInContext(`${source.slice(start, end)}; loadBackendAssignments()`, context);
+  assert.equal(loaded, true);
+  assert.deepEqual(calls, ['sections']);
+  assert.equal(context.selectedAssignmentYearId, '2');
+  assert.equal(context.selectedAssignmentPeriodId, '12');
+  assert.deepEqual(Array.from(context.ASSIGNMENT_PERIODS, term => term.id), [12]);
+  assert.equal(context.backendAssignmentsError, '');
+});
+
+test('student assignment empty messages distinguish no posts from filtered results', () => {
+  const start = source.indexOf('    function renderAssignments()');
+  const end = source.indexOf('    function renderAssignmentHistory()', start);
+  assert.ok(start >= 0 && end > start);
+  const list = { innerHTML: '' };
+  let inPeriod = [];
+  const context = vm.createContext({
+    BACKEND_ASSIGNMENTS_ENABLED: true,
+    backendAssignmentsLoading: false,
+    backendAssignmentsError: '',
+    selectedAssignmentPeriodId: '12',
+    renderAssignmentHistory() {},
+    getVisibleAssignments: () => [],
+    getAssignmentsInSelectedPeriod: () => inPeriod,
+    document: { getElementById: () => list },
+    window: { EDUGNAY_CONFIG: { renderPanelEmptyState: ({ title, text }) => `${title}: ${text}` }, lucide: null },
+    lucide: { createIcons() {} }
+  });
+  vm.runInContext(`${source.slice(start, end)}; renderAssignments();`, context);
+  assert.match(list.innerHTML, /No assignments in this grading period: No assignments have been posted for this period yet/);
+  inPeriod = [{ id: '1' }];
+  vm.runInContext('renderAssignments()', context);
+  assert.match(list.innerHTML, /No assignments found: Try another status, subject, or search term/);
+  context.selectedAssignmentPeriodId = '';
+  vm.runInContext('renderAssignments()', context);
+  assert.match(list.innerHTML, /No grading periods available/);
+  context.backendAssignmentsError = 'Assignments could not be loaded.';
+  vm.runInContext('renderAssignments()', context);
+  assert.match(list.innerHTML, /Assignments unavailable: Assignments could not be loaded/);
+});
+
 test('student elective assignments also follow the selected grading period', () => {
   assert.match(source, /function getAssignmentsForCurrentView\(\)\s*\{\s*return getAssignmentsInSelectedPeriod\(\);/);
   assert.doesNotMatch(source, /getAssignmentsForCurrentView\(\)[\s\S]{0,180}ASSIGNMENTS\.filter\(isElectiveAssignment\)/);
@@ -138,6 +238,11 @@ test('student year dropdown, mobile periods, and desktop tabs render from the sa
   assert.doesNotMatch(elements.get('assignmentPeriodFilter').innerHTML, /Quarter/);
   assert.match(elements.get('assignmentPeriodTabs').innerHTML, /data-academic-period-id="6" aria-selected="true"/);
   assert.match(elements.get('assignmentPeriodTabs').innerHTML, /Semester 1[\s\S]*Semester 2/);
+  context.ASSIGNMENT_PERIODS = [];
+  context.backendAssignmentsError = 'Assignments could not be loaded.';
+  vm.runInContext('renderPeriodFilter()', context);
+  assert.match(elements.get('assignmentYearFilter').innerHTML, /School years unavailable/);
+  assert.match(elements.get('assignmentPeriodFilter').innerHTML, /Grading periods unavailable/);
 });
 
 test('student quarter controls are ordered and lock upcoming periods', () => {

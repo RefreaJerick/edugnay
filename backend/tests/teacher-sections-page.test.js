@@ -1087,12 +1087,10 @@ test('Publish Grades shows actionable blockers and hides the warning when ready'
   assert.match(sectionsStyles, /@media \(max-width: 560px\)[\s\S]*?\.publish-preview-row \{ grid-template-columns: minmax\(0, 1fr\);/);
 });
 
-test('published section status starts hidden and follows actual period records', () => {
-  assert.match(sectionsSource, /class="section-status-item is-published badge badge-green" data-publication-status="published" hidden/);
-  assert.match(sectionsSource, /data-publication-status="published" hidden/);
-  assert.match(sectionsSource, /publicationStatus\.hidden = grades\.length === 0/);
-  assert.match(sectionsStyles, /\.section-status-item\[hidden\][\s\S]*?display:\s*none;/);
-  assert.match(sectionsStyles, /\.section-subject \.section-status-item\.is-published\.badge\s*\{[^}]*color:\s*var\(--pill-color, var\(--gray-600\)\);/s);
+test('published grades use the Score Recording banner without a header label', () => {
+  assert.doesNotMatch(sectionsSource, /data-publication-status="published"|id="sectionPublicationStatus"/);
+  assert.match(sectionsSource, /id="publishedGradesBanner"/);
+  assert.doesNotMatch(sectionsStyles, /\.section-subject \.section-status-item\.is-published/);
 });
 
 test('published section status follows saved grades for the selected period', () => {
@@ -1103,28 +1101,26 @@ test('published section status follows saved grades for the selected period', ()
     if (!elements.has(id)) elements.set(id, { hidden: false, style: {}, textContent: '' });
     return elements.get(id);
   };
-  const publicationStatus = { hidden: true };
   let grades = [];
+  let backendMode = true;
   const context = vm.createContext({
-    document: {
-      getElementById: element,
-      querySelector: () => publicationStatus
-    },
-    isBackendGradeMode: () => true,
+    document: { getElementById: element },
+    isBackendGradeMode: () => backendMode,
     getPublishedGradesForPeriod: () => grades,
     getBackendTermId: () => 'term-1',
     BACKEND_TERMS: [{ id: 'term-1', status: 'active' }]
   });
   vm.runInContext(functionSource, context);
   context.updatePublishedGradesBanner('period-1');
-  assert.equal(publicationStatus.hidden, true);
   assert.equal(element('publishedGradesBanner').style.display, 'none');
 
   grades = [{ publishedAt: '2026-10-18T00:00:00.000Z' }];
   context.updatePublishedGradesBanner('period-1');
-  assert.equal(publicationStatus.hidden, false);
   assert.equal(element('publishedGradesBanner').style.display, 'flex');
   assert.equal(element('republishGradesButton').style.display, 'inline-flex');
+  backendMode = false;
+  context.updatePublishedGradesBanner('period-1');
+  assert.equal(element('publishedGradesBanner').style.display, 'none');
 });
 
 test('direct section access stops before subject APIs when no assignment exists', () => {
@@ -1338,7 +1334,7 @@ test('section subject dropdown follows its navy and gold header style on desktop
   assert.match(sectionsSource, /id="sectionSubjectSelect" class="section-subject-select"[^>]*hidden/);
   assert.match(sectionsStyles, /\.section-header \.section-subject \.searchable-select-input\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.1\) !important;[^}]*color:\s*var\(--white\) !important;/s);
   assert.match(sectionsStyles, /\.section-header \.section-subject \.searchable-select-control::after\s*\{[^}]*border-top-color:\s*#f7d980;/s);
-  assert.match(sectionsStyles, /@media \(max-width: 420px\)[\s\S]*?\.section-header \.section-subject \.searchable-select:not\(\[hidden\]\)\s*\{[^}]*flex:\s*1 1 200px;/);
+  assert.match(sectionsStyles, /@media \(max-width: 1024px\)[\s\S]*?\.section-header \.section-subject \.searchable-select:not\(\[hidden\]\)\s*\{[^}]*width:\s*100%;[^}]*flex:\s*1 1 100%;/);
   assert.match(modalStyles, /\.searchable-select-menu\s*\{[^}]*background:\s*var\(--theme-surface\);/s);
 });
 

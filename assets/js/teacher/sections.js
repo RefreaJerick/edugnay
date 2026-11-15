@@ -919,10 +919,8 @@ lucide.createIcons();
 
     function updatePublishedGradesBanner(academicPeriodId) {
       const banner = document.getElementById('publishedGradesBanner');
-      const publicationStatus = document.querySelector('[data-publication-status="published"]');
       if (!isBackendGradeMode()) {
         banner.style.display = 'none';
-        if (publicationStatus) publicationStatus.hidden = true;
         return;
       }
       const status = document.getElementById('publishedPeriodStatus');
@@ -930,7 +928,6 @@ lucide.createIcons();
       const grades = getPublishedGradesForPeriod(academicPeriodId);
       const term = BACKEND_TERMS.find(item => String(item.id) === String(getBackendTermId(academicPeriodId)));
 
-      if (publicationStatus) publicationStatus.hidden = grades.length === 0;
       banner.style.display = grades.length ? 'flex' : 'none';
       button.style.display = grades.length && term?.status === 'active' ? 'inline-flex' : 'none';
       if (!grades.length) return;
