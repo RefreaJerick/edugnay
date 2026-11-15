@@ -1,27 +1,34 @@
 lucide.createIcons();
 
     let MATERIAL_RECORDS = [];
+    let MATERIAL_SUBJECTS = [];
     const MATERIAL_PERIODS = [];
     const MATERIALS_BY_SUBJECT = {};
     let currentSubject = '';
 
     function groupMaterials() {
       Object.keys(MATERIALS_BY_SUBJECT).forEach(key => delete MATERIALS_BY_SUBJECT[key]);
+      function subjectKey(item) {
+        return item.scopeType === 'elective' || item.electiveClassId != null
+          ? `elective:${item.electiveClassId}`
+          : `subject:${item.subjectId}:${item.communicationComponentCode || ''}`;
+      }
+      function addSubject(item) {
+        const key = subjectKey(item);
+        if (MATERIALS_BY_SUBJECT[key]) return MATERIALS_BY_SUBJECT[key];
+        const elective = item.scopeType === 'elective' || item.electiveClassId != null;
+        return MATERIALS_BY_SUBJECT[key] = {
+          label: elective
+            ? `${item.subjectName || 'Elective'} · ${item.className || 'Elective class'}`
+            : item.communicationComponentName || item.subjectName || 'Subject',
+          teacher: item.teacherName || 'Subject teacher',
+          elective,
+          items: []
+        };
+      }
+      MATERIAL_SUBJECTS.forEach(addSubject);
       MATERIAL_RECORDS.forEach(material => {
-        const isElective = material.scopeType === 'elective' || material.electiveClassId != null;
-        const subjectKey = isElective ? `elective:${material.electiveClassId}`
-          : `subject:${material.subjectId}:${material.communicationComponentCode || ''}`;
-        if (!MATERIALS_BY_SUBJECT[subjectKey]) {
-          MATERIALS_BY_SUBJECT[subjectKey] = {
-            label: isElective
-              ? `${material.subjectName || 'Elective'} · ${material.className || 'Elective class'}`
-              : material.communicationComponentName || material.subjectName || 'Subject',
-            teacher: material.teacherName || 'Subject teacher',
-            elective: isElective,
-            items: []
-          };
-        }
-        MATERIALS_BY_SUBJECT[subjectKey].items.push(material);
+        addSubject(material).items.push(material);
       });
       currentSubject = Object.keys(MATERIALS_BY_SUBJECT)[0] || '';
     }
@@ -52,6 +59,7 @@ lucide.createIcons();
     function renderSubjectTabs() {
       const tabs = document.getElementById('subject-tabs');
       if (!tabs) return;
+      tabs.hidden = !Object.keys(MATERIALS_BY_SUBJECT).length;
       tabs.innerHTML = Object.entries(MATERIALS_BY_SUBJECT).map(([subjectId, data]) => `
         <button class="subject-tab${subjectId === currentSubject ? ' active' : ''}" data-subject="${window.EDUGNAY_CONFIG.escapeHtml(subjectId)}">
           ${window.EDUGNAY_CONFIG.escapeHtml(data.label)}
@@ -84,6 +92,8 @@ lucide.createIcons();
       const data = MATERIALS_BY_SUBJECT[currentSubject];
       const container = document.getElementById('materials-container');
       if (!data) {
+        document.getElementById('panel-title').textContent = 'Learning Materials';
+        document.getElementById('panel-sub').textContent = '';
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'folder-open',
           title: 'No learning materials yet',
@@ -93,6 +103,16 @@ lucide.createIcons();
       }
       const query = document.getElementById('search-input').value.toLowerCase();
       const typeFilter = document.getElementById('type-filter').value;
+
+      if (!data.items.length) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'folder-open',
+          title: 'No learning materials yet',
+          text: 'Materials shared by your teachers will appear here.'
+        });
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
 
       const filtered = data.items.filter(m => {
         if (query && !m.title.toLowerCase().includes(query)) return false;
@@ -177,7 +197,10 @@ lucide.createIcons();
       try {
         if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('Learning materials aren’t available right now. Refresh and try again.');
         await window.EDUGNAY_SCHOOL_READY;
-        MATERIAL_RECORDS = await window.EDUGNAY_API.getMaterials();
+        [MATERIAL_SUBJECTS, MATERIAL_RECORDS] = await Promise.all([
+          window.EDUGNAY_API.getStudentMaterialSubjects(),
+          window.EDUGNAY_API.getMaterials()
+        ]);
       } catch (error) {
         document.getElementById('materials-container').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'cloud-off', title: 'Materials unavailable', text: error.message || 'Refresh the page and try again.'

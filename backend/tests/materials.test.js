@@ -126,6 +126,43 @@ test('student list is published and enrollment scoped', async () => {
   assert.deepEqual(lastValues, [1, 12, 12]);
 });
 
+test('student material subjects come from current enrolled classes without any uploaded files', async () => {
+  const originalExecute = database.execute;
+  const originalSelection = process.env.SHS_SELECTION_ENABLED;
+  const queries = [];
+  process.env.SHS_SELECTION_ENABLED = 'true';
+  database.execute = async (sql, values) => {
+    queries.push({ sql, values });
+    if (sql.includes('FROM section_students')) return [[
+      { subjectId: 2, subjectName: 'Science', communicationComponentCode: null, teacherName: 'Ms. Reyes' },
+      { subjectId: 3, subjectName: 'Communication', communicationComponentCode: 'english', teacherName: 'Mr. Cruz' }
+    ]];
+    if (sql.includes('FROM shs_elective_class_students')) return [[
+      { electiveClassId: 51, subjectName: 'Literature', className: '11-A', teacherName: 'Ms. Santos' }
+    ]];
+    throw new Error('Unexpected query');
+  };
+  try {
+    const result = await call(controller.listStudentMaterialSubjects, {
+      user: { id: 12, schoolId: 1, role: 'student' }
+    });
+    assert.equal(result.error, null);
+    assert.deepEqual(result.data.subjects.map(subject => subject.scopeType), ['section', 'section', 'elective']);
+    assert.deepEqual(result.data.subjects.map(subject => subject.subjectId || subject.electiveClassId), ['2', '3', '51']);
+    assert.equal(result.data.subjects[1].communicationComponentName, 'Effective Communication');
+    assert.deepEqual(queries.map(query => query.values), [[1, 12], [1, 12]]);
+    assert.match(queries[0].sql, /section_students\.withdrawn_at IS NULL/);
+    assert.match(queries[0].sql, /academic_years\.status = 'active'/);
+    assert.match(queries[0].sql, /subjects\.is_active = TRUE/);
+    assert.match(queries[1].sql, /members\.withdrawn_at IS NULL/);
+    assert.match(queries[1].sql, /classHasStarted|term_class/);
+  } finally {
+    database.execute = originalExecute;
+    if (originalSelection === undefined) delete process.env.SHS_SELECTION_ENABLED;
+    else process.env.SHS_SELECTION_ENABLED = originalSelection;
+  }
+});
+
 test('assigned student can open a PDF from the private dot-directory', async () => {
   const filePath = path.join(materialUploadDirectory, material.storedFileName);
   await fs.writeFile(filePath, '%PDF-1.4\nTest material');

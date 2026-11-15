@@ -199,6 +199,66 @@ async function listMaterials(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function listStudentMaterialSubjects(req, res, next) {
+  try {
+    const database = getDatabase();
+    const [sectionSubjects] = await database.execute(
+      `SELECT DISTINCT subjects.id AS subjectId, subjects.name AS subjectName,
+        section_teachers.communication_component_code AS communicationComponentCode,
+        teachers.display_name AS teacherName
+       FROM section_students
+       JOIN sections ON sections.id = section_students.section_id
+         AND sections.school_id = section_students.school_id AND sections.status = 'active'
+       JOIN academic_years ON academic_years.id = sections.academic_year_id
+         AND academic_years.school_id = sections.school_id AND academic_years.status = 'active'
+       JOIN section_teachers ON section_teachers.section_id = sections.id
+         AND section_teachers.school_id = sections.school_id
+       JOIN subjects ON subjects.id = section_teachers.subject_id
+         AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
+       JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id
+         AND teachers.school_id = sections.school_id
+       WHERE section_students.school_id = ? AND section_students.student_user_id = ?
+         AND section_students.withdrawn_at IS NULL
+       ORDER BY subjects.name, section_teachers.communication_component_code`,
+      [req.user.schoolId, req.user.id]
+    );
+    let electiveSubjects = [];
+    if (process.env.SHS_SELECTION_ENABLED === 'true') {
+      [electiveSubjects] = await database.execute(
+        `SELECT elective_class.id AS electiveClassId, offerings.subject_name AS subjectName,
+          elective_class.class_name AS className, teachers.display_name AS teacherName
+         FROM shs_elective_class_students AS members
+         JOIN shs_elective_classes AS elective_class ON elective_class.id = members.elective_class_id
+           AND elective_class.school_id = members.school_id AND elective_class.is_active = TRUE
+         JOIN shs_offerings AS offerings ON offerings.id = elective_class.offering_id
+           AND offerings.school_id = elective_class.school_id AND offerings.is_active = TRUE
+         JOIN academic_years AS years ON years.id = offerings.academic_year_id
+           AND years.school_id = offerings.school_id AND years.status = 'active'
+         JOIN users AS teachers ON teachers.id = elective_class.teacher_user_id
+           AND teachers.school_id = elective_class.school_id
+         WHERE members.school_id = ? AND members.student_user_id = ?
+           AND members.withdrawn_at IS NULL
+           AND ${classHasStartedSql('elective_class.id', 'elective_class.school_id')}
+         ORDER BY offerings.subject_name, elective_class.class_name`,
+        [req.user.schoolId, req.user.id]
+      );
+    }
+    res.json({ subjects: [
+      ...sectionSubjects.map(row => ({
+        scopeType: 'section', subjectId: String(row.subjectId),
+        communicationComponentCode: row.communicationComponentCode || null,
+        subjectName: row.subjectName,
+        communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
+        teacherName: row.teacherName
+      })),
+      ...electiveSubjects.map(row => ({
+        scopeType: 'elective', electiveClassId: String(row.electiveClassId),
+        subjectName: row.subjectName, className: row.className, teacherName: row.teacherName
+      }))
+    ] });
+  } catch (error) { next(error); }
+}
+
 async function checkSignature(file) {
   const handle = await fs.promises.open(file.path, 'r');
   try {
@@ -461,4 +521,4 @@ async function openMaterial(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { authorizeUpload, authorizeElectiveUpload, listMaterials, createMaterial, updateMaterial, deleteMaterial, openMaterial };
+module.exports = { authorizeUpload, authorizeElectiveUpload, listMaterials, listStudentMaterialSubjects, createMaterial, updateMaterial, deleteMaterial, openMaterial };

@@ -15,6 +15,10 @@
   animation: fadeUp 0.38s ease both;
 }
 
+.subject-tab-bar[hidden] {
+  display: none;
+}
+
 .subject-tab {
   display: flex;
   align-items: center;

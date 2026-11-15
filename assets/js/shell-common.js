@@ -3427,6 +3427,11 @@ function applyCurrentDateToGradingBanners() {
     return response.materials || [];
   }
 
+  async function getApiStudentMaterialSubjects() {
+    const response = await requestApi('/materials/subjects');
+    return response.subjects || [];
+  }
+
   async function uploadApiMaterial(sectionId, subjectId, values) {
     const form = new FormData();
     form.set('file', values.file);
@@ -3899,6 +3904,7 @@ function applyCurrentDateToGradingBanners() {
       return requestApiMultipart(`/shs-teaching/classes/${Number(classId)}/materials`, formData);
     },
     getMaterials: getApiMaterials,
+    getStudentMaterialSubjects: getApiStudentMaterialSubjects,
     uploadMaterial: uploadApiMaterial,
     updateMaterial: updateApiMaterial,
     deleteMaterial: deleteApiMaterial,

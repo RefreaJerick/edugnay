@@ -9,7 +9,7 @@ const page = pageFs.readFileSync(path.join(__dirname, '../../views/student/edugn
 const script = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)]
   .map(match => match[1]).find(source => source.includes('let MATERIAL_RECORDS'));
 
-function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayBuffer(1), contentType: 'application/pdf' })) {
+function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayBuffer(1), contentType: 'application/pdf' }), subjects = []) {
   const elements = new Map();
   const downloads = [];
   const messages = [];
@@ -33,6 +33,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
     activeElement: { focus() {} },
     body: { classList: { add() {}, remove() {} }, append() {} },
     getElementById: element,
+    querySelectorAll() { return []; },
     addEventListener(name, callback) { documentEvents[name] = callback; },
     createElement(tagName) {
       return tagName === 'a' ? {
@@ -52,6 +53,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
       EDUGNAY_PAGE_LOADING: { ready() {} },
       EDUGNAY_API: {
         isBackendAvailable: true,
+        getStudentMaterialSubjects: async () => subjects,
         getMaterialFile: (id, download) => {
           requests.push({ id, download });
           return getMaterialFile(id, download);
@@ -64,10 +66,10 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
 
       }
     },
-    records
+    records, subjects
   });
   vm.runInContext(script, context);
-  vm.runInContext('MATERIAL_RECORDS = records; groupMaterials(); renderSubjectTabs(); renderMaterials();', context);
+  vm.runInContext('MATERIAL_SUBJECTS = subjects; MATERIAL_RECORDS = records; groupMaterials(); renderSubjectTabs(); renderMaterials();', context);
   return { context, element, downloads, messages, requests, revoked, documentEvents };
 }
 
@@ -105,12 +107,60 @@ test('elective materials get separate class tabs and a clear group label', () =>
   assert.match(page.element('materials-container').innerHTML, /Research guide/);
 });
 
+test('current subjects appear with zero materials and a subject-specific empty state', async () => {
+  const subjects = [
+    { scopeType: 'section', subjectId: '1', subjectName: 'Science', teacherName: 'Ms. Reyes' },
+    { scopeType: 'section', subjectId: '2', subjectName: 'Mathematics', teacherName: 'Mr. Cruz' }
+  ];
+  const page = createPage([], undefined, subjects);
+  page.context.window.EDUGNAY_SCHOOL_READY = Promise.resolve();
+  await page.documentEvents.DOMContentLoaded();
+  assert.match(page.element('subject-tabs').innerHTML, /Science[\s\S]*tab-count">0/);
+  assert.match(page.element('subject-tabs').innerHTML, /Mathematics[\s\S]*tab-count">0/);
+  assert.equal(page.element('subject-tabs').hidden, false);
+  vm.runInContext("switchSubject('subject:1:', null)", page.context);
+  assert.equal(page.element('panel-title').textContent, 'Science Materials');
+  assert.match(page.element('materials-container').innerHTML, /No learning materials yet/);
+});
+
+test('empty elective classes keep separate tabs and published materials join their matching tab', () => {
+  const subjects = [
+    { scopeType: 'elective', electiveClassId: '51', subjectName: 'Literature', className: '11-A', teacherName: 'Ms. Reyes' },
+    { scopeType: 'elective', electiveClassId: '52', subjectName: 'Literature', className: '11-B', teacherName: 'Mr. Cruz' }
+  ];
+  const records = [{ id: '8', scopeType: 'elective', electiveClassId: '52', subjectName: 'Literature',
+    className: '11-B', title: 'Reading', type: 'pdf', postedAt: '2026-10-05' }];
+  const page = createPage(records, undefined, subjects);
+  assert.equal(vm.runInContext('Object.keys(MATERIALS_BY_SUBJECT).length', page.context), 2);
+  assert.match(page.element('subject-tabs').innerHTML, /Literature · 11-A[\s\S]*tab-count">0/);
+  assert.match(page.element('subject-tabs').innerHTML, /Literature · 11-B[\s\S]*tab-count">1/);
+  vm.runInContext("switchSubject('elective:52', null)", page.context);
+  assert.match(page.element('materials-container').innerHTML, /Reading/);
+});
+
+test('materials missing from the current subject list remain visible', () => {
+  const page = createPage([material('pdf', 4)], undefined, [
+    { scopeType: 'section', subjectId: '2', subjectName: 'Mathematics' }
+  ]);
+  assert.equal(vm.runInContext('Object.keys(MATERIALS_BY_SUBJECT).length', page.context), 2);
+  assert.match(page.element('subject-tabs').innerHTML, /Mathematics[\s\S]*Science/);
+});
+
 test('student materials distinguish an empty API result from a failed or missing API', async () => {
   const empty = createPage([]);
   empty.context.window.EDUGNAY_SCHOOL_READY = Promise.resolve();
   empty.context.window.EDUGNAY_API.getMaterials = async () => [];
   await empty.documentEvents.DOMContentLoaded();
   assert.match(empty.element('materials-container').innerHTML, /No learning materials yet/);
+  assert.equal(empty.element('subject-tabs').hidden, true);
+  assert.equal(empty.element('panel-title').textContent, 'Learning Materials');
+
+  const subjectsFailed = createPage([]);
+  subjectsFailed.context.window.EDUGNAY_SCHOOL_READY = Promise.resolve();
+  subjectsFailed.context.window.EDUGNAY_API.getStudentMaterialSubjects = async () => { throw new Error('Subjects request failed.'); };
+  subjectsFailed.context.window.EDUGNAY_API.getMaterials = async () => [];
+  await subjectsFailed.documentEvents.DOMContentLoaded();
+  assert.match(subjectsFailed.element('materials-container').innerHTML, /Materials unavailable: Subjects request failed/);
 
   const failed = createPage([]);
   failed.context.window.EDUGNAY_SCHOOL_READY = Promise.resolve();
