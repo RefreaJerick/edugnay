@@ -1295,8 +1295,8 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
 }
 
 .onboarding-feature-tab[aria-selected='true'] {
-  border-color: var(--blue-pale);
-  background: var(--blue-xpale);
+  /* border-color: var(--blue-pale);
+  background: var(--blue-xpale); */
   color: var(--theme-accent-text);
   box-shadow: none;
 }
