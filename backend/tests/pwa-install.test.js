@@ -31,6 +31,12 @@ test('install assets reach each portal page without adding offline data caching'
     }
   }
   assert.doesNotMatch(read('push-sw.js'), /addEventListener\(['"]fetch['"]|caches\.open|cache\.put/);
+  const styles = read('assets/css/styles.css');
+  assert.match(styles, /\.pwa-install-dialog\s*\{[^}]*position:\s*fixed/);
+  assert.match(styles, /\.pwa-install-dialog\s*\{[^}]*inset:\s*0/);
+  assert.match(styles, /\.pwa-install-dialog\s*\{[^}]*margin:\s*auto/);
+  assert.match(styles, /\.pwa-dialog-icon\s*\{/);
+  assert.match(styles, /\.pwa-dialog-close\s*\{/);
 });
 
 function loadInstallPage({ standalone = false, apple = false, portal = true } = {}) {
@@ -38,7 +44,19 @@ function loadInstallPage({ standalone = false, apple = false, portal = true } = 
   const documentEvents = {};
   const registrations = [];
   const controls = [];
-  const onboardingButton = { hidden: false, addEventListener(name, handler) { this[name] = handler; } };
+  function createButton() {
+    const handlers = {};
+    return {
+      hidden: false,
+      isConnected: true,
+      focused: false,
+      addEventListener(name, handler) { handlers[name] = handler; },
+      setAttribute() {},
+      click() { return handlers.click?.({ currentTarget: this }); },
+      focus() { this.focused = true; }
+    };
+  }
+  const onboardingButton = createButton();
   const dropdown = portal ? {
     querySelector() { return {}; },
     insertBefore(button) { controls.push(button); }
@@ -50,11 +68,29 @@ function loadInstallPage({ standalone = false, apple = false, portal = true } = 
     getElementById(id) { return id === 'tbProfileDropdown' ? dropdown : dialog; },
     querySelectorAll() { return portal ? controls : [onboardingButton]; },
     createElement(tag) {
-      if (tag === 'button') return { hidden: false, addEventListener(name, handler) { this[name] = handler; }, setAttribute() {} };
-      const close = { addEventListener() {}, focus() {} };
-      dialog = { setAttribute() {}, querySelector(selector) {
-        return selector === 'p' ? this.copy ||= {} : close;
-      }, showModal() { this.open = true; }, close() { this.open = false; } };
+      if (tag === 'button') return createButton();
+      const handlers = {};
+      const close = createButton();
+      const description = { textContent: '' };
+      const title = { textContent: '' };
+      const icon = {};
+      dialog = {
+        open: false,
+        innerHTML: '',
+        setAttribute() {},
+        addEventListener(name, handler) { handlers[name] = handler; },
+        querySelector(selector) {
+          if (selector === '.pwa-dialog-description') return description;
+          if (selector === '.pwa-dialog-icon') return icon;
+          if (selector === '.pwa-dialog-close') return close;
+          return title;
+        },
+        showModal() { this.open = true; },
+        close() { this.open = false; handlers.close?.(); },
+        get description() { return description; },
+        get markup() { return this.innerHTML; },
+        get closeButton() { return close; }
+      };
       return dialog;
     },
     body: { appendChild() {} }
@@ -74,7 +110,7 @@ function loadInstallPage({ standalone = false, apple = false, portal = true } = 
     get dialog() { return dialog; } };
 }
 
-test('the install control opens the browser prompt and hides after installation', async () => {
+test('the install control opens the browser prompt and remains visible after installation', async () => {
   const page = loadInstallPage();
   const button = page.controls[0];
   assert.equal(button.hidden, false);
@@ -83,15 +119,19 @@ test('the install control opens the browser prompt and hides after installation'
   page.windowEvents.beforeinstallprompt({
     preventDefault() { prevented = true; },
     prompt() { prompted = true; return Promise.resolve(); },
-    userChoice: Promise.resolve({ outcome: 'accepted' })
+    userChoice: Promise.resolve({ outcome: 'dismissed' })
   });
   await button.click();
   assert.equal(prevented, true);
   assert.equal(prompted, true);
+  assert.equal(page.dialog, undefined);
   await button.click();
-  assert.match(page.dialog.copy.textContent, /browser menu/);
+  assert.match(page.dialog.description.textContent, /browser menu/);
   page.windowEvents.appinstalled();
-  assert.equal(button.hidden, true);
+  assert.equal(button.hidden, false);
+  await button.click();
+  assert.match(page.dialog.description.textContent, /already installed/i);
+  assert.equal(button.hidden, false);
   page.windowEvents.load();
   await Promise.resolve();
   assert.equal(page.registrations.length, 1);
@@ -103,6 +143,15 @@ test('onboarding provides browser instructions when a prompt is unavailable', as
   const page = loadInstallPage({ apple: true, portal: false });
   await page.controls[0].click();
   assert.equal(page.dialog.open, true);
-  assert.match(page.dialog.copy.textContent, /Safari.*Share.*Add to Home Screen/);
-  assert.equal(loadInstallPage({ standalone: true }).controls[0].hidden, true);
+  assert.match(page.dialog.description.textContent, /Safari.*Share.*Add to Home Screen/);
+  assert.match(page.dialog.markup, /pwa-dialog-heading/);
+  assert.match(page.dialog.markup, /aria-label="Close install information"/);
+  await page.dialog.closeButton.click();
+  assert.equal(page.dialog.open, false);
+  assert.equal(page.controls[0].focused, true);
+
+  const installedPage = loadInstallPage({ standalone: true });
+  assert.equal(installedPage.controls[0].hidden, false);
+  await installedPage.controls[0].click();
+  assert.match(installedPage.dialog.description.textContent, /already installed/i);
 });

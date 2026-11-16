@@ -2546,27 +2546,55 @@ html.profile-chip-page .tb-profile-name { overflow: hidden; text-overflow: ellip
 .tb-sound-toggle { white-space: nowrap; }
 
 .pwa-install-dialog {
-  width: min(360px, calc(100% - 32px));
-  padding: 24px;
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  box-sizing: border-box;
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 32px));
+  max-height: min(480px, calc(100dvh - 32px));
+  overflow: auto;
+  padding: 22px;
   border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--theme-surface);
-  color: var(--gray-700);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, .2);
+  color: var(--gray-800);
+  box-shadow: 0 20px 48px rgba(11, 31, 58, .2), 0 3px 10px rgba(16, 40, 80, .06);
 }
-.pwa-install-dialog::backdrop { background: rgba(0, 0, 0, .45); }
-.pwa-install-dialog h2 { margin: 0 0 10px; font-size: 18px; color: var(--theme-text); }
-.pwa-install-dialog p { margin: 0 0 18px; line-height: 1.5; }
-.pwa-install-dialog button {
-  padding: 9px 16px;
-  border: 0;
-  border-radius: var(--button-radius);
-  background: var(--navy);
-  color: var(--white);
-  font: inherit;
+.pwa-install-dialog::backdrop { background: rgba(15, 35, 65, .48); }
+.pwa-dialog-heading { display: flex; align-items: center; gap: 12px; }
+.pwa-dialog-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--blue-xpale);
+  color: var(--theme-accent-text);
+}
+.pwa-dialog-icon svg { width: 18px; height: 18px; }
+.pwa-dialog-title { min-width: 0; margin: 0; color: var(--gray-800); font-size: 16px; font-weight: 700; }
+.pwa-dialog-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--theme-surface);
+  color: var(--gray-500);
   cursor: pointer;
 }
-.pwa-install-dialog button:focus-visible { outline: 3px solid var(--button-focus-ring); }
+.pwa-dialog-close:hover { border-color: var(--blue-pale); background: var(--blue-xpale); color: var(--theme-accent-text); }
+.pwa-dialog-close svg { width: 16px; height: 16px; }
+.pwa-dialog-close:focus-visible { outline: 2px solid var(--blue-mid); outline-offset: 2px; }
+.pwa-dialog-description { margin: 16px 0 0; color: var(--gray-500); font-size: 13px; line-height: 1.55; }
+@media (max-width: 600px) {
+  .pwa-install-dialog { padding: 20px; }
+}
 .tb-sound-toggle .tb-sound-state { margin-left: auto; color: var(--theme-accent-text); font-size: 11px; font-weight: 700; }
 .tb-sound-toggle[aria-checked="false"] .tb-sound-state { color: var(--gray-400); }
 .tb-sound-toggle:disabled { opacity: .55; cursor: not-allowed; }

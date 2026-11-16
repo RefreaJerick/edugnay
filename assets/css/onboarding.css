@@ -1206,7 +1206,6 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   cursor: pointer;
 }
 .onboarding-showcase-action-install:hover { background: var(--blue-xpale); }
-.onboarding-showcase-action-install[hidden] { display: none; }
 
 html[data-theme="dark"] .onboarding-showcase-action-primary {
   border-color: var(--gray-200);
