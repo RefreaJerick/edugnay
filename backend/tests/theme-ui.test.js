@@ -291,7 +291,7 @@ test('school accent gives the Teacher Classes section header a solid palette sha
   assert.ok(gradientRule);
   assert.match(gradientRule[1], /background:\s*linear-gradient/);
   assert.doesNotMatch(gradientRule[1], /\.section-header|\.profile-header-card/);
-  assert.match(theme, /html\[data-school-accent\] body \.section-header \{ background: var\(--school-accent-sidebar\); \}/);
+  assert.match(theme, /html\[data-school-accent\] body :is\(\.section-header, \.pipeline-banner\) \{ background: var\(--school-accent-sidebar\); \}/);
 });
 
 test('school accent keeps shared profile header cards on a solid palette shade', () => {
@@ -378,7 +378,7 @@ test('assignment list headings have no fill on student or parent pages', () => {
   const css = read('assets/css/student/assignments.css');
   const header = css.match(/\.assignment-list-head\s*\{([^}]*)\}/)?.[1] || '';
   assert.doesNotMatch(header, /background/);
-  assert.match(header, /border-bottom: 1px solid var\(--gray-100\)/);
+  assert.match(header, /border-bottom: 1px solid var\(--panel-divider\)/);
   for (const role of ['student', 'parent']) {
     const html = read(`views/${role}/edugnay-${role}-assignments.html`);
     assert.match(html, /class="assignment-list-head"/);

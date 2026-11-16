@@ -780,7 +780,6 @@
     #gen-modal .gen-loading-view { display: none; }
     #gen-modal .gen-loading-view[hidden] { display: none; }
     #gen-modal.is-generating .review-modal-head,
-    #gen-modal.is-generating .gen-intro,
     #gen-modal.is-generating .gen-note-panel,
     #gen-modal.is-generating #gen-message,
     #gen-modal.is-generating #start-generation { display: none; }
@@ -1151,13 +1150,6 @@
 .gen-progress-title { font-size: 15px; }
 .gen-progress-sub { font-size: 11px; }
 .gen-bar-fill { background: var(--blue-mid); }
-.gen-intro {
-  margin: 0 0 16px;
-  color: var(--gray-600);
-  font-size: 12px;
-  line-height: 1.6;
-  text-align: left;
-}
 .gen-note-panel {
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
@@ -1224,7 +1216,6 @@
   font-size: 9.5px;
   line-height: 1.35;
 }
-.gen-student-note-head span,
 .gen-student-note-meta {
   color: var(--gray-400);
   font-size: 9px;
@@ -1259,14 +1250,12 @@
   font-size: 11px;
   text-align: center;
 }
-.gen-start-button,
 .gen-review-button {
   width: 100%;
   justify-content: center;
   padding: 11px;
   margin-top: 16px;
 }
-.gen-start-button:disabled { cursor: wait; opacity: .65; }
 .teacher-note-review-section { margin-bottom: 18px; }
 .teacher-note-review {
   padding: 10px 12px;
@@ -1720,7 +1709,6 @@
 .gen-student-note-grade { margin-top: 0; }
 .gen-student-note-head > span { flex: 0 0 auto; }
 .teacher-note-input { min-height: 64px; }
-.gen-start-button { min-height: 48px; }
 .modal-close:focus-visible, .recommended-action-remove:focus-visible,
 .btn-sm:focus-visible, .top-btn:focus-visible {
   outline: 3px solid var(--blue-mid);
@@ -2268,4 +2256,75 @@
     background: transparent;
     color: var(--red-dark);
   }
+}
+
+/* Weekly report generation dialog. */
+#pipeline-journal[hidden],
+#gen-journal-source[hidden] { display: none !important; }
+#gen-modal .gen-modal { width: min(900px, calc(100vw - 40px)); max-width: 900px; }
+#gen-modal .review-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+#gen-modal .gen-included { flex: 0 0 auto; padding-bottom: 16px; border-bottom: 1px solid var(--gray-200); }
+#gen-modal .gen-included h3 { margin: 0 0 9px; color: var(--gray-800); font-size: 12px; }
+#gen-modal .gen-included ul { display: flex; flex-wrap: wrap; gap: 7px 18px; margin: 0; padding: 0; list-style: none; }
+#gen-modal .gen-included li { display: flex; align-items: center; gap: 5px; color: var(--gray-700); font-size: 11px; }
+#gen-modal .gen-included li svg { flex: 0 0 auto; width: 17px; height: 17px; color: var(--theme-accent-text); }
+#gen-modal .gen-included p { margin: 9px 0 0; color: var(--gray-500); font-size: 10px; line-height: 1.5; }
+#gen-modal .gen-note-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--theme-surface);
+}
+#gen-modal .gen-note-head { padding: 0 0 12px; background: transparent; }
+#gen-modal .gen-note-title { font-size: 12px; }
+#gen-modal .gen-note-title span { margin-left: 3px; color: var(--gray-500); font-size: 10px; font-weight: 400; }
+#gen-modal .gen-note-help { max-width: none; margin-top: 4px; }
+#gen-modal .gen-note-visibility { display: flex; align-items: center; gap: 5px; margin: 4px 0 0; color: var(--gray-500); font-size: 10px; }
+#gen-modal .gen-note-visibility svg { width: 12px; height: 12px; }
+#gen-modal .gen-note-count { color: var(--gray-500); font-weight: 500; }
+#gen-modal .gen-student-notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start; min-height: 0; max-height: none; padding-right: 14px; overflow-y: auto; }
+#gen-modal .gen-student-note-row { padding: 12px 0; border-bottom: 1px solid var(--gray-200); }
+#gen-modal .gen-student-note-row:nth-child(even) { border-left: 0; }
+#gen-modal .gen-student-note-head { gap: 9px; margin: 0; }
+#gen-modal .gen-student-avatar { --avatar-size: 30px; }
+#gen-modal .gen-student-note-copy { flex: 1 1 auto; }
+#gen-modal .gen-student-note-name { font-size: 11px; }
+#gen-modal .gen-note-toggle { flex: 0 0 auto; padding: 6px; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--theme-accent-text); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+#gen-modal .gen-note-toggle:hover { background: var(--surface-blue-soft); }
+#gen-modal .gen-note-toggle:focus-visible { outline: 3px solid var(--blue-mid); outline-offset: 2px; }
+#gen-modal .gen-note-toggle span { color: inherit; font-size: inherit; }
+#gen-modal .gen-student-note-editor { margin: 10px 0 0 37px; }
+#gen-modal .gen-student-note-editor[hidden] { display: none; }
+#gen-modal .gen-student-note-meta { justify-content: flex-end; }
+#gen-modal #gen-message { flex: 0 0 auto; margin: 10px 0 0; }
+#gen-modal .gen-modal-foot { flex: 0 0 auto; align-items: center; justify-content: space-between; }
+#gen-modal .gen-draft-count { color: var(--gray-500); font-size: 10px; }
+#gen-modal .gen-modal-foot .review-modal-foot-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+#gen-modal .gen-modal-foot .top-btn { width: auto; min-height: 38px; justify-content: center; }
+#gen-modal .gen-start-button { width: auto; min-height: 38px; margin: 0; padding: 8px 16px; }
+#gen-modal.is-generating .gen-included,
+#gen-modal.is-generating .gen-modal-foot { display: none; }
+#gen-modal.is-generating .review-body { overflow-y: auto; }
+
+@media (max-width: 760px) {
+  #gen-modal .gen-modal { width: min(100%, calc(100vw - 20px)); }
+  #gen-modal .gen-student-notes { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 520px) {
+  #gen-modal .gen-included ul { display: grid; gap: 6px; }
+  #gen-modal .gen-note-head { flex-direction: row; }
+  #gen-modal .gen-draft-count { display: none; }
+  #gen-modal .gen-modal-foot .review-modal-foot-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); width: 100%; }
+  #gen-modal .gen-modal-foot .top-btn { width: 100%; }
+  #gen-modal .gen-student-note-editor { margin-left: 0; }
 }

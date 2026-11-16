@@ -22,7 +22,7 @@ test('Quick Actions icons use panel-heading colors only in Dark mode', () => {
 
   for (const role of ['admin', 'teacher', 'platform']) {
     const page = read(`views/${role}/edugnay-${role}-dashboard.html`);
-    assert.match(page, /href="\.\.\/\.\.\/assets\/css\/styles\.css"/);
+    assert.match(page, /href="\.\.\/\.\.\/assets\/css\/styles\.css(?:\?v=\d+)?"/);
     assert.match(page, /class="qa-icon"/);
   }
 });

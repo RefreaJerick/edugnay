@@ -7,6 +7,7 @@
   let studentRoster = [];
   let assignments = [];
   let attendance = null;
+  let attendanceRequestId = 0;
   let qrReader = null;
   let qrControls = null;
   let qrStream = null;
@@ -29,6 +30,12 @@
   const canEditAssignmentStatus = assignment => Boolean(canEdit() && electiveClass.activePeriodId
     && String(assignment?.academicPeriodId) === String(electiveClass.activePeriodId));
   const toast = (message, type = 'success') => window.showAppToast?.(message, type);
+
+  function publishedGradeTone(grade, policy) {
+    const threshold = Number(policy?.passingGradeThreshold ?? 75);
+    if (grade >= threshold) return 'grade-pass';
+    return grade >= Math.max(0, threshold - 5) ? 'grade-warn' : 'grade-fail';
+  }
 
   function updateHeaderGradeStatus(workspaceData) {
     if (!electiveClass || String(electiveClass.electiveClassId) !== classId) return;
@@ -100,6 +107,17 @@
       empty: { icon: 'book-x', title: 'Class unavailable', text: message }
     });
     window.TeacherClassViews?.renderAttendanceRows({ empty: { icon: 'book-x', title: 'Class unavailable', text: message } });
+    const attendancePanel = document.querySelector('#content-attendance .attendance-entry-panel');
+    if (attendancePanel) setAttendanceActionsUnavailable(attendancePanel);
+    const warning = document.getElementById('attLockBanner');
+    warning.hidden = false;
+    warning.style.display = 'flex';
+    warning.querySelector('.publish-info-title').textContent = 'Attendance unavailable';
+    warning.querySelector('.publish-info-sub').textContent = message;
+    for (const selector of ['#content-assignments .panel-head-actions button', '#content-materials .panel-head-actions button']) {
+      const button = document.querySelector(selector);
+      if (button) button.hidden = true;
+    }
     window.TeacherClassViews?.renderAttendanceHistory({ error: message });
     window.TeacherClassViews?.renderAssignments([], { icon: 'book-x', title: 'Class unavailable', text: message });
     window.TeacherClassViews?.renderMaterials([], { icon: 'book-x', title: 'Class unavailable', text: message });
@@ -131,9 +149,9 @@
     document.getElementById('attendancePanelSub').textContent = 'Attendance for this class and date.';
     document.getElementById('scorePanelTitle').textContent = 'Score Recording: ' + electiveClass.subjectName;
     document.getElementById('scoreSectionName').textContent = electiveClass.className;
-    document.getElementById('assignmentPanelTitle').textContent = 'Assignments';
+    document.getElementById('assignmentPanelTitle').textContent = 'Assignments: ' + electiveClass.subjectName;
     document.getElementById('assignmentPanelSub').textContent = 'Assignments for this class.';
-    document.querySelector('#content-materials .panel-sub').textContent = 'Materials for this class.';
+    document.querySelector('#content-materials .panel-sub').textContent = `${electiveClass.className} · ${electiveClass.subjectName} · 0 files uploaded`;
     const assignmentButton = document.querySelector('#content-assignments .panel-head-actions button');
     if (assignmentButton) {
       assignmentButton.hidden = !canEdit();
@@ -229,13 +247,16 @@
           .map(item => [String(item.studentId), Number(item.finalGrade)]));
         (workspace.students || []).forEach(student => {
           const row = progressByStudent.get(String(student.studentId || student.id));
-          if (row) row.grade = published.get(String(student.studentId || student.id)) ?? null;
+          if (row) {
+            row.grade = published.get(String(student.studentId || student.id)) ?? null;
+            row.gradeTone = row.grade == null ? 'grade-unavailable' : publishedGradeTone(row.grade, workspace.scope?.policy);
+          }
         });
         columns[4].periodName = workspace.term?.name || 'Current period';
         updateStudents();
       }).catch(() => {
         errors.add('Final grades unavailable');
-        progressByStudent.forEach(student => { student.grade = 'Unavailable'; });
+        progressByStudent.forEach(student => { student.grade = null; student.gradeTone = 'grade-unavailable'; });
         updateStudents();
       });
       await Promise.allSettled([attendanceLoad, gradeLoad]);
@@ -254,21 +275,49 @@
   async function loadAttendance(date = '', { preserve = false } = {}) {
     const panel = document.querySelector('#content-attendance .attendance-entry-panel');
     if (!panel) return;
-    if (!preserve) document.getElementById('attendancePanelSub').innerHTML = '';
-    if (!preserve) window.TeacherClassViews.renderAttendanceRows({ loading: true });
+    const requestId = ++attendanceRequestId;
+    const loadedDate = attendance?.attendanceDate || attendance?.currentDate;
+    const keepCurrent = preserve && attendance && (!date || date === loadedDate);
+    if (!keepCurrent) {
+      attendance = null;
+      roster = [];
+      setAttendanceActionsUnavailable(panel);
+      document.getElementById('attPanelTitle').textContent = 'Attendance';
+      document.getElementById('attendancePanelSub').innerHTML = '';
+      for (const id of ['countP', 'countA', 'countL', 'countE']) document.getElementById(id).textContent = '—';
+      window.TeacherClassViews.renderAttendanceRows({ loading: true });
+    }
     try {
-      attendance = await window.EDUGNAY_API.getShsElectiveAttendance(electiveClass.electiveClassId, date);
+      const loaded = await window.EDUGNAY_API.getShsElectiveAttendance(electiveClass.electiveClassId, date);
+      if (requestId !== attendanceRequestId) return false;
+      attendance = loaded;
       roster = attendance.students || [];
       renderAttendance();
       return true;
     } catch (error) {
-      if (!preserve) {
+      if (requestId !== attendanceRequestId) return false;
+      if (!keepCurrent) {
         attendance = null;
         document.getElementById('attendancePanelSub').textContent = 'Attendance unavailable';
         window.TeacherClassViews.renderAttendanceRows({ empty: { icon: 'triangle-alert', title: 'Attendance unavailable', text: error.message } });
-        document.getElementById('qrAttendanceButton').disabled = true;
+        const warning = document.getElementById('attLockBanner');
+        warning.hidden = false;
+        warning.style.display = 'flex';
+        warning.querySelector('.publish-info-title').textContent = 'Attendance unavailable';
+        warning.querySelector('.publish-info-sub').textContent = error.message || 'Reload the Attendance tab and try again.';
       } else toast(error.message || 'Attendance could not refresh.', 'error');
       return false;
+    }
+  }
+
+  function setAttendanceActionsUnavailable(panel) {
+    const saveButton = panel.querySelector('.attendance-entry-actions .top-btn.primary');
+    const allPresentButton = panel.querySelector('.attendance-entry-actions button[data-page-click="p5026ce80c219"]');
+    const qrButton = document.getElementById('qrAttendanceButton');
+    for (const button of [saveButton, allPresentButton, qrButton]) {
+      if (!button) continue;
+      button.disabled = true;
+      button.onclick = null;
     }
   }
 
@@ -336,30 +385,48 @@
       empty: { icon: 'users', title: 'No students enrolled', text: 'Confirmed class placements will appear here.' }
     });
     const warning = document.getElementById('attLockBanner');
-    warning.hidden = true;
-    warning.style.display = 'none';
+    const readOnly = !editable;
+    const pastLocked = date < (attendance.currentDate || localToday()) && !attendance.canEdit;
+    warning.hidden = !readOnly;
+    warning.style.display = readOnly ? 'flex' : 'none';
+    if (readOnly) {
+      warning.querySelector('.publish-info-title').textContent = pastLocked
+        ? 'Past attendance is read-only' : 'Attendance is read-only';
+      warning.querySelector('.publish-info-sub').textContent = pastLocked
+        ? 'To allow changes for this date, ask your school administrator to enable “Allow Teachers to Edit Past Attendance” in System Config.'
+        : 'This class is not available for attendance changes.';
+    }
     window.lucide?.createIcons();
 
   }
 
   async function saveAttendance() {
+    if (!attendance || !attendance.canEdit || !canEdit()) return;
     const button = document.querySelector('#content-attendance .attendance-entry-actions .top-btn.primary');
     const date = document.getElementById('attDate').value;
+    if (!roster.length || date !== (attendance.attendanceDate || attendance.currentDate)) return;
+    const requestId = attendanceRequestId;
     const statusByCode = { P: 'present', A: 'absent', L: 'late', E: 'excused' };
     const records = [...document.querySelectorAll('#attTbody tr[data-student-id]')].map(row => ({
       studentId: row.dataset.studentId,
       status: statusByCode[row.querySelector('.att-btn.selected')?.textContent.trim()] || 'pending',
       remarks: row.querySelector('[data-attendance-remark]').value.trim()
     }));
-    if (records.some(record => record.status === 'pending')) return toast('Set an attendance status for every student before saving.', 'error');
+    if (records.length !== roster.length || records.some(record => record.status === 'pending'))
+      return toast('Set an attendance status for every student before saving.', 'error');
     button.disabled = true;
     try {
-      attendance = await window.EDUGNAY_API.saveShsElectiveAttendance(electiveClass.electiveClassId, { attendanceDate: date, records });
+      const saved = await window.EDUGNAY_API.saveShsElectiveAttendance(electiveClass.electiveClassId, { attendanceDate: date, records });
+      if (requestId !== attendanceRequestId) return;
+      attendance = saved;
       roster = attendance.students || [];
       renderAttendance();
       void loadAttendanceHistory({ preserve: true });
       toast('Attendance saved.');
-    } catch (error) { toast(error.message || 'Attendance could not be saved.', 'error'); button.disabled = false; }
+    } catch (error) {
+      toast(error.message || 'Attendance could not be saved.', 'error');
+      if (requestId === attendanceRequestId) button.disabled = false;
+    }
   }
 
   async function openQrAttendance() {
@@ -734,6 +801,8 @@
       if (request !== materialsRequest) return false;
       const materials = Array.isArray(data) ? data : [];
       document.querySelector('#tab-materials .tab-count').textContent = String(materials.length);
+      if (!countOnly) document.querySelector('#content-materials .panel-sub').textContent =
+        `${electiveClass.className} · ${electiveClass.subjectName} · ${materials.length} files uploaded`;
       if (!countOnly) window.TeacherClassViews.renderMaterials(materials.map(item => ({
         ...item, canEdit: canEdit(), canDelete: canEdit()
       })), { icon: 'folder-open', title: 'No learning materials', text: 'Files shared with this class will appear here.' });
@@ -832,6 +901,10 @@
     getClass: () => electiveClass,
     getStudent: id => studentRoster.find(student => String(student.id) === String(id)) || null,
     updateHeaderGradeStatus,
+    syncShsPublishedGrades: workspace => {
+      headerGradeWorkspacePromise = Promise.resolve(workspace);
+      loadedTabs.delete('students');
+    },
     getAssignment: id => assignments.find(item => String(item.id) === String(id)) || null,
     prepareAssignmentGrading,
     assignmentGradePayload,

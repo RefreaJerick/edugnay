@@ -462,6 +462,7 @@ test('SHS Add Component keeps the shared form and saves the selected policy cate
     escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
     categoryCode: item => item.code === 'written' ? 'WW' : item.code === 'examination' ? 'QA' : 'PT',
     api: () => ({ createShsGradingItem: async values => { calls.values = values; } }),
+    flushPendingScores: async () => true,
     toast() {}
   });
   vm.runInContext(`${configure}; globalThis.configure = configureAddAssessmentModal;`, context);
@@ -501,6 +502,20 @@ test('SHS assignment loading does not hold the grade workspace and the roster he
   assert.match(teaching, /columns\[4\]\.periodName = workspace\.term\?\.name/);
 });
 
+test('elective class tabs follow the shared grade, attendance, assignment, and material display', () => {
+  const teaching = read('assets/js/teacher/elective-class.js');
+  const tone = teaching.match(/function publishedGradeTone\(grade, policy\) \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(tone);
+  const colors = vm.runInNewContext(`${tone}; [publishedGradeTone(80, { passingGradeThreshold: 80 }),
+    publishedGradeTone(79, { passingGradeThreshold: 80 }), publishedGradeTone(74, { passingGradeThreshold: 80 })]`);
+  assert.deepEqual(Array.from(colors), ['grade-pass', 'grade-warn', 'grade-fail']);
+  assert.match(teaching, /row\.gradeTone = row\.grade == null \? 'grade-unavailable'/);
+  assert.match(teaching, /student\.grade = null; student\.gradeTone = 'grade-unavailable'/);
+  assert.match(teaching, /warning\.style\.display = readOnly \? 'flex' : 'none'/);
+  assert.match(teaching, /assignmentPanelTitle'\)\.textContent = 'Assignments: ' \+ electiveClass\.subjectName/);
+  assert.match(teaching, /materials\.length\} files uploaded/);
+});
+
 test('SHS core and elective publish previews use the shared warning and grade-card layout', async () => {
   const source = read('assets/js/teacher/shs-gradebook.js');
   const helpers = source.match(/  function setPublishPreview\([\s\S]*?(?=  async function publish\()/)?.[0];
@@ -525,7 +540,9 @@ test('SHS core and elective publish previews use the shared warning and grade-ca
       openModal() {}, lucide: { createIcons() {} }
     },
     escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;'),
+    finalGradeTone: grade => grade >= 75 ? 'grade-pass' : grade >= 70 ? 'grade-warn' : 'grade-fail',
     setVisible(element, visible) { element.hidden = !visible; },
+    flushPendingScores: async () => true,
     api: () => ({ previewShsGrades: async () => { throw new Error('Preview unavailable.'); } })
   });
   vm.runInContext(helpers, context);
@@ -545,7 +562,7 @@ test('SHS core and elective publish previews use the shared warning and grade-ca
     assert.deepEqual(node('publishGradeWarningText').children.map(item => item.textContent), [
       'Ana: Resolve the missing score for Test A.', 'Ben: Resolve the missing score for Test B.'
     ]);
-    assert.match(node('publishGradeSummary').innerHTML, new RegExp(data.scope.className));
+    assert.match(node('publishGradeSummary').textContent, new RegExp(data.scope.className));
     assert.deepEqual(Array.from(rendered.at(-1), row => row.value), ['Incomplete', 'Incomplete']);
     assert.equal(node('publishGradesConfirmButton').disabled, true);
     assert.match(node('publishGradesConfirmButton').innerHTML, /data-lucide="send".*Publish Grades/);
@@ -565,7 +582,7 @@ test('SHS core and elective publish previews use the shared warning and grade-ca
     assert.equal(node('publishGradeWarningText').children.length, 0);
     assert.equal(rendered.at(-1)[0].value, '88');
     assert.equal(node('publishGradesConfirmButton').disabled, false);
-    assert.match(node('publishGradeSummary').innerHTML, /Reason for republishing/);
+    assert.doesNotMatch(node('publishGradeSummary').textContent, /Reason for republishing/);
   }
   await context.openPublishPreview({ term: { id: 5 }, scope: {}, published: [] }, {}, true, () => {});
   assert.equal(node('publishGradeFeedback').textContent, 'Preview unavailable.');

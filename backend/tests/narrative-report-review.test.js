@@ -37,7 +37,7 @@ test('adviser week options include the current week and retain completed weeks w
   assert.match(script, /if \(!weeks\.length\) \{\s*\$\('report-week-notice'\)\.hidden = true;/);
 });
 
-function weekNoticeHarness({ endDate = '2026-10-23', today = '2026-10-23', fail = false, gate } = {}) {
+function weekNoticeHarness({ endDate = '2026-10-23', today = '2026-10-23', fail = false, gate, journalApplicable = false } = {}) {
   const noticeText = { textContent: '' };
   const elements = {
     'report-section': { value: '15' },
@@ -46,6 +46,7 @@ function weekNoticeHarness({ endDate = '2026-10-23', today = '2026-10-23', fail 
     'reports-grid': { innerHTML: '' },
     'week-caption': { textContent: '' },
     'pipeline-context': { textContent: '' },
+    'pipeline-journal': { hidden: true },
     'count-total': { textContent: '' }, 'count-drafts': { textContent: '' },
     'count-confirmed': { textContent: '' }, 'count-follow-up': { textContent: '' }
   };
@@ -68,7 +69,7 @@ function weekNoticeHarness({ endDate = '2026-10-23', today = '2026-10-23', fail 
       if (gate) await gate;
       if (fail) throw new Error('Weekly reports could not be loaded.');
       if (url.includes('/weekly-evidence?')) return {
-        section: { gradeLevel: 'Grade 8', name: 'St. Peter' },
+        section: { gradeLevel: 'Grade 8', name: 'St. Peter', journalApplicable },
         reportWeek: { startDate: '2026-10-19', endDate, dataThroughDate: today }
       };
       return { reports: [] };
@@ -97,6 +98,18 @@ test('week notice shows current or past guidance after loading and stays hidden 
   await failed.loadWeek();
   assert.equal(failed.elements['report-week-notice'].hidden, true);
   assert.equal(failed.messages.emptyState.title, 'Weekly reports unavailable');
+});
+
+test('journal preparation step follows the selected section eligibility', async () => {
+  const elementary = weekNoticeHarness({ journalApplicable: false });
+  await elementary.loadWeek();
+  assert.equal(elementary.elements['pipeline-journal'].hidden, true);
+  const jhs = weekNoticeHarness({ journalApplicable: true });
+  await jhs.loadWeek();
+  assert.equal(jhs.elements['pipeline-journal'].hidden, false);
+  const failed = weekNoticeHarness({ journalApplicable: true, fail: true });
+  await failed.loadWeek();
+  assert.equal(failed.elements['pipeline-journal'].hidden, true);
 });
 
 test('week notice is hidden when the section has no selectable report weeks', () => {
@@ -674,7 +687,7 @@ test('report pipeline keeps its desktop stages and exposes the grouped mobile fl
   assert.match(page, /id="pipeline-toggle" type="button" aria-controls="pipeline-flow" aria-expanded="true"[^>]*hidden/);
   assert.match(page, /id="pipeline-flow" role="group" aria-label="Report preparation steps"/);
   assert.match(page, /class="pipeline-data-heading">Collect data<\/h3>/);
-  assert.match(page, /class="pipeline-data-sources"[\s\S]*?>Attendance<[\s\S]*?>Assignments<[\s\S]*?>Academic<[\s\S]*?>Journal</);
+  assert.match(page, /class="pipeline-data-sources"[\s\S]*?>Attendance<[\s\S]*?>Assignments<[\s\S]*?>Academic<[\s\S]*?>Journal reflections</);
   assert.match(page, /class="flow-step ai"[\s\S]*?>AI draft<[\s\S]*?class="flow-step final"[\s\S]*?>To parent</);
   assert.ok(page.indexOf('id="generation-state"') < page.indexOf('id="pipeline-flow"'), 'availability status stays visible outside the collapsible flow');
 

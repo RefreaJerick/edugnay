@@ -370,15 +370,14 @@ async function saveScore(req, res, next) {
     const itemId = id(req.body.gradingItemId, 'grading item ID');
     const item = (await loadItems(connection, scope, termId, true)).find(row => Number(row.id) === itemId);
     if (!item) fail('Grading item not found in this class.', 404);
-    if (item.usedInPublishedGrades) fail('Published grades protect this score component from changes.', 409);
     const studentId = id(req.body.studentId, 'student ID');
     const student = (await roster(connection, scope, true)).find(row => Number(row.studentId) === studentId);
     if (!student)
       fail('The learner is not an active member of this class.', 403);
-    const score = Number(req.body.score);
-    if (req.body.score === null || req.body.score === undefined || String(req.body.score).trim() === ''
-      || !Number.isFinite(score) || score < 0 || score > Number(item.maxScore)
-      || Math.abs(Math.round(score * 100) - score * 100) > 1e-7)
+    const score = req.body.score === null || req.body.score === undefined || String(req.body.score).trim() === ''
+      ? null : Number(req.body.score);
+    if (score !== null && (!Number.isFinite(score) || score < 0 || score > Number(item.maxScore)
+      || Math.abs(Math.round(score * 100) - score * 100) > 1e-7))
       fail('Score must be between zero and the maximum score.');
     await connection.execute(
       `INSERT INTO student_scores (school_id, grading_item_id, student_user_id, score, recorded_by_user_id)
@@ -501,15 +500,8 @@ async function preview(req, res, next) {
 async function publishCommunicationComponent(connection, req, scope, termId, previewResult) {
   const componentCode = scope.communicationComponentCode;
   const scopeValues = [scope.schoolId, scope.sectionId, scope.subjectId, componentCode, termId];
-  const [priorRows] = await connection.execute(
-    `SELECT COUNT(*) AS total FROM shs_communication_component_grades
-     WHERE school_id = ? AND section_id = ? AND subject_id = ?
-       AND communication_component_code = ? AND academic_term_id = ?`, scopeValues
-  );
   const correctionReason = String(req.body.correctionReason || '').trim();
-  if (Number(priorRows[0]?.total || 0) && (correctionReason.length < 10 || correctionReason.length > 500)) {
-    fail('Republishing changed grades requires a correction reason of 10 to 500 characters.', 409);
-  }
+  if (correctionReason.length > 500) fail('Correction reason cannot exceed 500 characters.');
   const [versions] = await connection.execute(
     `SELECT COALESCE(MAX(publication_version), 0) AS currentVersion
      FROM shs_grade_publication_history WHERE school_id = ? AND section_id = ?
@@ -653,13 +645,8 @@ async function publish(req, res, next) {
       ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL'
       : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL';
     const scopeValues = scope.kind === 'core' ? [scope.sectionId, scope.subjectId] : [scope.classId];
-    const [priorRows] = await connection.execute(
-      `SELECT COUNT(*) AS total FROM published_final_grades WHERE school_id = ? AND academic_term_id = ? AND ${scopeSql}`,
-      [scope.schoolId, termId, ...scopeValues]
-    );
     const correctionReason = String(req.body.correctionReason || '').trim();
-    if (Number(priorRows[0]?.total || 0) && (correctionReason.length < 10 || correctionReason.length > 500))
-      fail('Republishing changed grades requires a correction reason of 10 to 500 characters.', 409);
+    if (correctionReason.length > 500) fail('Correction reason cannot exceed 500 characters.');
     const [versionRows] = await connection.execute(
       `SELECT COALESCE(MAX(publication_version), 0) AS currentVersion
        FROM shs_grade_publication_history WHERE school_id = ? AND academic_term_id = ? AND ${scopeSql}`,

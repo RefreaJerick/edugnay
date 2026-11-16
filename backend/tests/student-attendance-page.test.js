@@ -189,7 +189,7 @@ test('student empty months show zero summary cards and failure/retry states do n
   assert.equal(page.elements.get('summary-strip').hidden, false);
   const unavailable = createPage({ isBackendAvailable: false });
   await unavailable.load();
-  assert.match(unavailable.elements.get('attendance-load-message').textContent, /not configured/);
+  assert.match(unavailable.elements.get('attendance-load-message').textContent, /Attendance isn’t available right now/);
   assert.equal(unavailable.elements.get('cal-prev').disabled, true);
   assert.equal(unavailable.elements.get('cal-next').disabled, true);
   assert.equal(unavailable.elements.get('cal-today').disabled, true);

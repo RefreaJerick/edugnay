@@ -309,7 +309,7 @@ test('SHS core Score Recording stays loading until the gradebook renders or show
       close() {},
       renderCategoryTabs() {},
       setVisible() {},
-      setFeedback: () => events.push('error shown'),
+      setFeedback: (_host, _message, isError) => { if (isError) events.push('error shown'); },
       render: () => events.push('gradebook rendered'),
       api: () => ({ getShsGradeWorkspace: () => workspace })
     });
@@ -831,7 +831,9 @@ test('published teacher grades use the configured passing threshold for their st
   assert.equal(context.getGradeStatusTone(72, 75, 70), 'grade-warn');
   assert.equal(context.getGradeStatusTone(80, 83, 78), 'grade-warn');
   assert.equal(context.getGradeStatusTone(83, 83, 78), 'grade-pass');
-  assert.match(sectionsSource, /gradeTone: grade \? getGradeStatusTone\(grade\.finalGrade\) : 'grade-unavailable'/);
+  assert.match(sectionsSource, /gradeTone: grade \? \(USE_SHS_CORE_GRADEBOOK/);
+  assert.match(sectionsSource, /SHS_CORE_STUDENT_PASSING_THRESHOLD \?\? PASSING_GRADE_THRESHOLD/);
+  assert.match(sectionsSource, /: getGradeStatusTone\(grade\.finalGrade\)\) : 'grade-unavailable'/);
   assert.match(sectionsSource, /class="published-grade-value \$\{progress\.gradeTone\}"/);
 });
 
@@ -1558,6 +1560,7 @@ test('a changed submission count reopens the delete warning', async () => {
   const context = {
     pendingTeacherDelete: { kind: 'assignment', id: '4', gradingItemId: null, expectedSubmissionCount: 2 },
     teacherDeletePending: false,
+    USE_SHS_CORE_GRADEBOOK: false,
     document: { getElementById: id => id === 'teacherDeleteConfirmButton' ? button : { textContent: 'Wrong task' } },
     window: { EDUGNAY_API: { async deleteAssignment(id, count) {
       assert.equal(id, '4');
@@ -1570,6 +1573,22 @@ test('a changed submission count reopens the delete warning', async () => {
   await vm.runInNewContext(`${confirmSource}; confirmTeacherDelete();`, context);
   assert.deepEqual(refreshed, [['assignment', '4', 'Wrong task', undefined]]);
   assert.equal(context.teacherDeletePending, false);
+});
+
+test('the shared Retry action is reserved for Elem and JHS score saves', () => {
+  const handler = sectionsScript.match(/pf1a8e21cf312: function\(event\) \{[^\n]*\}/)?.[0];
+  assert.ok(handler);
+  for (const [elective, core, expectedCalls] of [[false, false, 1], [false, true, 0], [true, false, 0]]) {
+    let calls = 0;
+    const context = vm.createContext({
+      isElectiveClassPage: () => elective,
+      USE_SHS_CORE_GRADEBOOK: core,
+      retryFailedScoreSaves: () => { calls++; }
+    });
+    vm.runInContext(`globalThis.retry = ({ ${handler} }).pf1a8e21cf312;`, context);
+    context.retry({});
+    assert.equal(calls, expectedCalls);
+  }
 });
 
 test('modified teacher page scripts still parse', () => {

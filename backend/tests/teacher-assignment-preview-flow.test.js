@@ -9,10 +9,15 @@ const modalStart = source.indexOf('    function openModal(id) {');
 const modalEnd = source.indexOf("    document.querySelectorAll('.modal-backdrop').forEach", modalStart);
 const previewStart = source.indexOf('    function assignmentPreviewHasUnsavedScore()');
 const previewEnd = source.indexOf('    function openStatusModal(id) {', previewStart);
+const submissionsStart = source.indexOf('    async function openElectiveAssignmentSubmissions(');
+const submissionsEnd = source.indexOf('    function assignmentPreviewHasUnsavedScore()', submissionsStart);
+const coreEditStart = source.indexOf('    function canEditShsCoreAssignmentScore(');
+const coreEditEnd = source.indexOf('    function getGradeStudents()', coreEditStart);
 const escapeStart = source.indexOf("    document.addEventListener('keydown', event => {");
 const escapeEnd = source.indexOf('    function renderAssignments() {', escapeStart);
 assert.ok(modalStart >= 0 && modalEnd > modalStart && previewStart >= 0 && previewEnd > previewStart
-  && escapeStart >= 0 && escapeEnd > escapeStart);
+  && escapeStart >= 0 && escapeEnd > escapeStart && submissionsStart >= 0 && submissionsEnd > submissionsStart
+  && coreEditStart >= 0 && coreEditEnd > coreEditStart);
 
 function element() {
   const classes = new Set();
@@ -30,7 +35,8 @@ function element() {
   };
 }
 
-function harness({ canEdit = true, preview, save, refresh } = {}) {
+function harness({ canEdit = true, preview, save, refresh, mode = 'k10', termStatus = 'active',
+  yearStatus = 'active', policy = {}, legacyCommunication = false, publishedGrades = false } = {}) {
   const ids = ['assignmentSubmissionsModal', 'assignmentSubmissionPreviewModal',
     'assignmentSubmissionPreviewStudent', 'assignmentSubmissionPreviewFileName',
     'assignmentSubmissionPreviewPosition', 'assignmentSubmissionPreviewScoreInput',
@@ -49,11 +55,17 @@ function harness({ canEdit = true, preview, save, refresh } = {}) {
     { id: 101, studentId: 1, studentName: 'First Student', fileName: 'first.pdf', fileUrl: '/first' },
     { id: 102, studentId: 2, studentName: 'Second Student', fileName: 'second.pdf', fileUrl: '/second' }
   ];
-  const assignment = { id: '11', categoryId: 3, maxScore: 20, academicPeriodId: 'term-1' };
+  const assignment = { id: '11', categoryId: 3, gradingItemId: 99, maxScore: 20, academicPeriodId: 'term-1' };
   const records = [];
+  const workspace = { items: [{ id: 99, usedInPublishedGrades: true }], scores: records,
+    term: { id: 'term-1', status: termStatus },
+    scope: { policy, yearStatus, legacyCommunication },
+    published: publishedGrades ? [{ studentId: 1, finalGrade: 85 }] : [] };
   const saves = [];
+  const toasts = [];
   const revoked = [];
   const created = [];
+  let gradebookRefreshes = 0;
   let allowDiscard = false;
   const api = {
     getAssignmentSubmissionDownloadUrl: (_assignmentId, submissionId) => `/download/${submissionId}`,
@@ -62,13 +74,25 @@ function harness({ canEdit = true, preview, save, refresh } = {}) {
       saves.push(values);
       if (save) return save(values);
       return { gradingItemId: values.gradingItemId, studentId: values.studentId, score: values.score };
-    }
+    },
+    saveShsScore: async values => {
+      saves.push(values);
+      if (save) return save(values);
+      return { gradingItemId: values.gradingItemId, studentId: values.studentId, score: values.score };
+    },
+    getShsGradeWorkspace: async () => workspace
   };
   const context = vm.createContext({
     assignmentPreviewState: null, assignmentPreviewObjectUrl: null, assignmentPreviewRequestId: 0,
     teacherDeletePending: false, materialUploadInProgress: false, qrAttendanceSaving: false,
     pendingTeacherDelete: null, qrAttendanceReturnFocus: null,
     BACKEND_SUBMISSIONS: new Map([['11', submissions]]), BACKEND_STUDENT_SCORES: records,
+    BACKEND_GRADING_ITEMS: [{ id: 99, usedInPublishedGrades: true }],
+    BACKEND_TERMS: [{ id: 'term-1', status: termStatus }],
+    shsCoreSubmissionWorkspace: mode === 'core' ? workspace : null,
+    electiveReviewWorkspace: { scores: records, term: { status: termStatus }, scope: { policy: {} },
+      published: workspace.published },
+    CURRENT_SECTION_ID: 4, CURRENT_SUBJECT_ID: 5, CURRENT_COMMUNICATION_COMPONENT_CODE: '',
     BACKEND_GRADE_ERROR: '', Blob, alert() {}, resetMaterialUploadForm() {}, stopQrScanner() {},
     document: {
       getElementById(id) { return elements[id]; },
@@ -77,7 +101,13 @@ function harness({ canEdit = true, preview, save, refresh } = {}) {
         return match ? listInputs.get(Number(match[1])) : null;
       }
     },
-    window: { EDUGNAY_API: api, confirm: () => allowDiscard, setTimeout() {} },
+    window: { EDUGNAY_API: api, confirm: () => allowDiscard, setTimeout() {},
+      EDUGNAY_CONFIG: { escapeHtml: value => String(value), formatDateTime: value => String(value) },
+      EDUGNAY_PAGE_EVENTS: { register: () => 'handler' },
+      AcademixElectiveClass: { getAssignment: () => assignment, getClass: () => ({ electiveClassId: 6 }), canEdit: () => canEdit },
+      AcademixShsGradebook: { refresh: async () => { gradebookRefreshes++; } } },
+    lucide: { createIcons() {} }, showAppToast: message => toasts.push(message),
+    loadElectiveAssignmentReview: async () => ({ assignment, submissions }),
     URL: {
       createObjectURL() { const url = `blob:preview-${created.length + 1}`; created.push(url); return url; },
       revokeObjectURL(url) { revoked.push(url); }
@@ -85,17 +115,66 @@ function harness({ canEdit = true, preview, save, refresh } = {}) {
     getTeacherAssignments: () => [assignment],
     getGradeStudents: () => [{ id: 1, displayName: 'First Student' }, { id: 2, displayName: 'Second Student' }],
     getAssignmentScoreRecords: () => records,
-    getBackendGradingItemForAssignment: () => ({ id: 99 }),
+    getBackendGradingItemForAssignment: () => ({ id: 99, usedInPublishedGrades: true }),
+    getPublishedGradesForPeriod: () => workspace.published,
     isBackendGradeMode: () => true,
+    isElectiveClassPage: () => mode === 'elective',
+    USE_SHS_CORE_GRADEBOOK: mode === 'core',
     hasScoreEditingAccess: () => canEdit,
     requireScoreEditingAccess: () => canEdit,
-    renderScoreTable() {}, switchAcademicPeriod: refresh || (async () => {}), openAssignmentSubmissionsModal() {}
+    renderScoreTable() {}, switchAcademicPeriod: refresh || (async () => {}),
+    openAssignmentSubmissionsModal() {}, openElectiveAssignmentSubmissions() {}
   });
-  vm.runInContext(source.slice(modalStart, modalEnd) + source.slice(previewStart, previewEnd), context);
+  vm.runInContext(source.slice(coreEditStart, coreEditEnd)
+    + source.slice(modalStart, modalEnd) + source.slice(previewStart, previewEnd), context);
   const flow = vm.runInContext('({ openAssignmentSubmissionPreview, saveAssignmentPreviewScore, advanceAssignmentSubmissionPreview, previousAssignmentSubmissionPreview, closeAssignmentSubmissionPreview, saveAssignmentSubmissionScore })', context);
-  return { flow, context, elements, records, saves, revoked, created, listInputs,
+  return { flow, context, workspace, elements, records, saves, toasts, revoked, created, listInputs,
+    get gradebookRefreshes() { return gradebookRefreshes; },
     allowDiscard(value) { allowDiscard = value; } };
 }
+
+for (const mode of ['core', 'elective']) {
+  test(`published ${mode} submissions list renders an editable score field only in the active term`, async () => {
+    for (const termStatus of ['active', 'closed']) {
+      const h = harness({ mode, termStatus });
+      let rendered;
+      h.context.window.TeacherClassViews = { renderAssignmentSubmissions: value => { rendered = value; } };
+      vm.runInContext(source.slice(submissionsStart, submissionsEnd), h.context);
+      await vm.runInContext(mode === 'core'
+        ? 'openAssignmentSubmissionsModal(11)' : 'openElectiveAssignmentSubmissions(11)', h.context);
+      const score = rendered.columns.find(column => column.key === 'score').render(rendered.rows[0]);
+      assert.equal(score.includes('disabled'), termStatus !== 'active');
+    }
+  });
+}
+
+test('core assignment scoring matches the SHS gradebook read-only rules', async () => {
+  for (const options of [
+    { yearStatus: 'closed' }, { policy: null }, { legacyCommunication: true }, { termStatus: 'closed' }
+  ]) {
+    const h = harness({ mode: 'core', ...options });
+    let rendered;
+    h.context.window.TeacherClassViews = { renderAssignmentSubmissions: value => { rendered = value; } };
+    vm.runInContext(source.slice(submissionsStart, submissionsEnd), h.context);
+    await vm.runInContext('openAssignmentSubmissionsModal(11)', h.context);
+    const score = rendered.columns.find(column => column.key === 'score').render(rendered.rows[0]);
+    assert.match(score, /disabled/);
+    await h.flow.openAssignmentSubmissionPreview(11, 101);
+    assert.equal(h.elements.assignmentSubmissionPreviewScoreInput.disabled, true);
+  }
+});
+
+test('an open core submission preview stops saving if the term becomes read-only', async () => {
+  const h = harness({ mode: 'core' });
+  await h.flow.openAssignmentSubmissionPreview(11, 101);
+  h.workspace.term.status = 'closed';
+  const input = h.elements.assignmentSubmissionPreviewScoreInput;
+  input.value = '8'; input.oninput();
+  assert.equal(await h.flow.saveAssignmentPreviewScore(), false);
+  assert.equal(h.saves.length, 0);
+  assert.equal(input.disabled, true);
+  assert.match(h.elements.assignmentSubmissionPreviewScoreFeedback.textContent, /read-only/);
+});
 
 test('preview saves in place, saves before Next, and finishes at the last file', async () => {
   const h = harness();
@@ -175,6 +254,62 @@ test('the existing submissions-list score input still saves and clears scores', 
   await h.flow.saveAssignmentSubmissionScore('11', '1', input);
   assert.equal(h.records[0].score, null);
   assert.equal(h.listInputs.get(1).value, '');
+});
+
+for (const mode of ['core', 'elective']) {
+  test(`published ${mode} assignment scores save and clear from the list and preview`, async () => {
+    const h = harness({ mode, publishedGrades: true });
+    const listInput = element();
+    listInput.max = '20';
+    listInput.value = '8';
+    await h.flow.saveAssignmentSubmissionScore('11', '1', listInput);
+    assert.equal(h.records[0].score, 8);
+    await h.flow.openAssignmentSubmissionPreview(11, 101);
+    const previewInput = h.elements.assignmentSubmissionPreviewScoreInput;
+    assert.equal(previewInput.disabled, false);
+    previewInput.value = '10'; previewInput.oninput();
+    assert.equal(await h.flow.saveAssignmentPreviewScore(), true);
+    assert.equal(h.records[0].score, 10);
+    previewInput.value = ''; previewInput.oninput();
+    assert.equal(await h.flow.saveAssignmentPreviewScore(), true);
+    assert.equal(h.records[0].score, null);
+    assert.equal(h.listInputs.get(1).value, '');
+    assert.deepEqual(h.saves.map(item => item.score), [8, 10, null]);
+    assert.equal(h.gradebookRefreshes, 3);
+    assert.deepEqual(h.toasts, Array(3).fill('Score saved. Re-publish grades to update the published result.'));
+  });
+
+  test(`${mode} assignment scoring remains read-only outside the active term`, async () => {
+    const h = harness({ mode, termStatus: 'closed' });
+    await h.flow.openAssignmentSubmissionPreview(11, 101);
+    assert.equal(h.elements.assignmentSubmissionPreviewScoreInput.disabled, true);
+    const listInput = element();
+    listInput.max = '20';
+    listInput.value = '8';
+    await h.flow.saveAssignmentSubmissionScore('11', '1', listInput);
+    assert.equal(h.saves.length, 0);
+  });
+}
+
+test('Elem and JHS assignment score saves show the reminder only for a published term', async () => {
+  for (const publishedGrades of [false, true]) {
+    const h = harness({ publishedGrades });
+    const input = element();
+    input.max = '20';
+    input.value = '8';
+    await h.flow.saveAssignmentSubmissionScore('11', '1', input);
+    assert.deepEqual(h.toasts, publishedGrades
+      ? ['Score saved. Re-publish grades to update the published result.'] : []);
+  }
+});
+
+test('failed assignment score saves never show a published-grade reminder', async () => {
+  const h = harness({ publishedGrades: true, save: async () => { throw new Error('Save failed.'); } });
+  await h.flow.openAssignmentSubmissionPreview(11, 101);
+  const input = h.elements.assignmentSubmissionPreviewScoreInput;
+  input.value = '8'; input.oninput();
+  assert.equal(await h.flow.saveAssignmentPreviewScore(), false);
+  assert.deepEqual(h.toasts, []);
 });
 
 test('invalid and failed scores keep the current submission and protect unsaved work', async () => {

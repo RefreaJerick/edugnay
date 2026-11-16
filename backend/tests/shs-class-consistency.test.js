@@ -28,11 +28,11 @@ test('SHS core and elective cards show linked grading category and separate subm
 test('SHS score columns use configured exam names and newest-first order', () => {
   assert.match(controller, /ORDER BY recorded_at DESC, id DESC/);
   const render = gradebook.match(/function renderTable\([\s\S]*?(?=\r?\n  async function saveScore\()/)?.[0];
-  const categoryCode = gradebook.match(/function categoryCode\([\s\S]*?(?=\r?\n  function publishedGradeFor\()/)?.[0];
-  assert.ok(render && categoryCode);
+  const categoryHelpers = gradebook.match(/function categoryCode\([\s\S]*?(?=\r?\n  function scoreFor\()/)?.[0];
+  assert.ok(render && categoryHelpers);
   let options;
   const context = vm.createContext({ window: { TeacherClassViews: { renderScoreTable(value) { options = value; } } } });
-  vm.runInContext(`${categoryCode}\n${render}`, context);
+  vm.runInContext(`${categoryHelpers}\n${render}`, context);
   context.renderTable({}, { scope: { policy: { components: [{ code: 'examination', name: 'Examinations', weight: 30,
     examParts: { term_exam: { name: 'Term Exam', weight: 40 } } }] } },
   items: [{ id: 2, title: 'Quiz', maxScore: 25, componentCode: 'examination', examPartCode: 'term_exam' }] }, {}, true, () => {});

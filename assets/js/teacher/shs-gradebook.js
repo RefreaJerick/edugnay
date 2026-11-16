@@ -6,6 +6,11 @@
   let activeContext = null;
   let pendingMount = null;
   let resultsVersion = 0;
+  let scoreEditVersion = 0;
+  const pendingExports = new WeakSet();
+  const pendingScores = new Map();
+  const scoreSaveChains = new Map();
+  let scoreSaveQueue = Promise.resolve();
 
   function setVisible(element, visible) {
     if (!element) return;
@@ -25,13 +30,19 @@
     return { WW: 'WW', PT: 'PT', QA: 'Exams' }[categoryCode(component)] || component.name;
   }
 
-  function publishedGradeFor(data, studentId) {
-    return data.published.find(row => String(row.studentId) === String(studentId));
-  }
-
   function scoreFor(data, studentId, itemId) {
     return data.scores.find(row => String(row.studentId) === String(studentId)
       && String(row.gradingItemId) === String(itemId));
+  }
+
+  function finalGradeTone(grade, policy) {
+    const numericGrade = Number(grade);
+    if (grade == null || !Number.isFinite(numericGrade)) return 'grade-unavailable';
+    const configuredThreshold = policy?.passingGradeThreshold;
+    const passingThreshold = configuredThreshold != null && Number.isFinite(Number(configuredThreshold))
+      ? Number(configuredThreshold) : 75;
+    if (numericGrade >= passingThreshold) return 'grade-pass';
+    return numericGrade >= Math.max(0, passingThreshold - 5) ? 'grade-warn' : 'grade-fail';
   }
 
   function setFeedback(host, message, isError = false) {
@@ -39,6 +50,127 @@
     if (!status) return;
     status.textContent = message;
     status.setAttribute('role', isError ? 'alert' : 'status');
+    host.querySelector('#scoreSaveFeedback')?.classList.toggle('is-error', isError);
+  }
+
+  function updateSaveStatus(host) {
+    const records = [...pendingScores.values()];
+    const failed = records.find(record => record.failed || record.invalid);
+    const retry = host.querySelector('#scoreSaveRetry');
+    if (retry) retry.hidden = !records.some(record => record.failed && !record.invalid);
+    if (failed) setFeedback(host, failed.error || 'Score not saved. Try again.', true);
+    else if (records.some(record => record.saving)) setFeedback(host, 'Saving changes…');
+    else if (records.length) setFeedback(host, 'Unsaved changes');
+    else setFeedback(host, 'All changes saved');
+    updateExportState(host);
+  }
+
+  function visibleScoreRows(host) {
+    return [...host.querySelectorAll('#scoreTbody tr[data-student-id]')]
+      .filter(row => !row.hidden && row.style.display !== 'none');
+  }
+
+  function updateExportState(host) {
+    const button = host.querySelector('#exportScoresButton');
+    if (!button || !activeContext || activeContext.host !== host) return;
+    const hasScores = Boolean(activeContext.data.items?.length && activeContext.data.students?.length);
+    const visible = visibleScoreRows(host).length;
+    const exportPending = pendingExports.has(activeContext.data);
+    button.disabled = !hasScores || !visible || pendingScores.size > 0 || exportPending;
+    button.title = exportPending ? 'Preparing score records.'
+      : pendingScores.size ? 'Wait until all score changes are saved before exporting.'
+        : !visible ? 'No student scores to export.' : 'Download visible score records as CSV.';
+  }
+
+  function validScore(input, item) {
+    if (input.validity?.valid === false) return false;
+    if (input.value === '') return true;
+    const score = Number(input.value);
+    return Number.isFinite(score) && score >= 0 && score <= Number(item.maxScore)
+      && Math.abs(Math.round(score * 100) - score * 100) <= 1e-7;
+  }
+
+  function savePendingScore(record) {
+    if (record.promise) return record.promise;
+    const previous = scoreSaveQueue;
+    const promise = previous.catch(() => {}).then(async () => {
+      if (pendingScores.get(record.key) !== record) return true;
+      record.saving = true;
+      record.failed = false;
+      updateSaveStatus(record.host);
+      const current = () => pendingScores.get(record.key) === record;
+      const saved = await saveScore(record.input, record.data, record.scope, true, record.reload,
+        record.value, current);
+      if (current()) {
+        if (saved) {
+          record.input.dataset.savedValue = record.value;
+          pendingScores.delete(record.key);
+        }
+        else {
+          record.failed = true;
+          record.error = 'Score not saved. Retry to save this score.';
+        }
+      }
+      record.saving = false;
+      if (activeContext?.host === record.host) {
+        updateSaveStatus(record.host);
+        if (saved === 'refresh-failed' && !pendingScores.has(record.key))
+          setFeedback(record.host, 'Score saved. Calculated results could not refresh.', true);
+      }
+      return saved;
+    });
+    record.promise = promise;
+    scoreSaveQueue = promise.catch(() => {});
+    scoreSaveChains.set(record.key, promise);
+    promise.finally(() => {
+      if (scoreSaveChains.get(record.key) === promise) scoreSaveChains.delete(record.key);
+    });
+    return promise;
+  }
+
+  function scheduleScoreSave(input, data, scope, reload, immediate = false) {
+    const item = data.items.find(row => String(row.id) === input.dataset.scoreItem);
+    if (!item) return;
+    const key = `${input.dataset.studentId}:${item.id}`;
+    const previous = pendingScores.get(key);
+    if (previous?.timer) clearTimeout(previous.timer);
+    if (!previous && !scoreSaveChains.has(key) && input.dataset.savedValue === input.value) return;
+    if (previous && previous.input === input && previous.value === input.value && !previous.invalid) {
+      if (immediate && !previous.failed) {
+        clearTimeout(previous.timer);
+        previous.timer = null;
+        savePendingScore(previous);
+      }
+      return;
+    }
+    const record = { key, input, data, scope, reload, host: activeContext.host, value: input.value };
+    scoreEditVersion += 1;
+    if (!validScore(input, item)) {
+      record.invalid = true;
+      record.error = `Score not saved. Enter a value from 0 to ${item.maxScore} with at most two decimal places.`;
+    }
+    pendingScores.set(key, record);
+    updateSaveStatus(record.host);
+    if (!record.invalid) record.timer = setTimeout(() => {
+      record.timer = null;
+      savePendingScore(record);
+    }, immediate ? 0 : 600);
+  }
+
+  async function flushPendingScores() {
+    while (pendingScores.size) {
+      const records = [...pendingScores.values()];
+      if (records.some(record => record.invalid || record.failed)) {
+        updateSaveStatus(records[0].host);
+        return false;
+      }
+      for (const record of records) {
+        if (record.timer) clearTimeout(record.timer);
+        record.timer = null;
+      }
+      await Promise.all(records.map(savePendingScore));
+    }
+    return true;
   }
 
   function configureAddAssessmentModal(data, scope, writable, reload) {
@@ -104,18 +236,29 @@
       if (!titleInput.reportValidity() || !maxInput.reportValidity() || !selectedButton) return;
       const selectedComponent = components.find(component => String(component.code) === selectedButton.dataset.componentCode);
       if (!selectedComponent) return;
+      const examParts = Object.keys(selectedComponent.examParts || {});
+      if (examParts.length && (examGroup.hidden || !examParts.includes(examSelect.value))) {
+        updateExamParts(selectedComponent);
+        examSelect.focus();
+        toast('Choose an examination part before adding this component.', 'error');
+        return;
+      }
       const values = {
         ...scope,
         academicTermId: data.term.id,
         title: titleInput.value.trim(),
         componentCode: selectedComponent.code,
-        examPartCode: examGroup.hidden ? null : examSelect.value,
+        examPartCode: examParts.length ? examSelect.value : null,
         maxScore: maxInput.value
       };
       adding = true;
       save.disabled = true;
       saveLabel.textContent = 'Adding...';
       try {
+        if (!await flushPendingScores()) {
+          toast('Save or correct the pending scores before adding a component.', 'error');
+          return;
+        }
         await api().createShsGradingItem(values);
         window.closeModal('addCompModal');
         const refreshed = await reload(data.term.id);
@@ -141,20 +284,91 @@
 
   function applyFilters(host, category) {
     window.TeacherClassViews.filterScores(host, category);
+    const body = host.querySelector('#scoreTbody');
+    body.querySelector('#scoreSearchEmpty')?.remove();
+    const rows = host.querySelectorAll('#scoreTbody tr[data-student-id]');
+    if (rows.length && !visibleScoreRows(host).length && host.querySelector('#scoreStudentSearch').value.trim()) {
+      const empty = document.createElement('tr');
+      empty.id = 'scoreSearchEmpty';
+      empty.className = 'panel-empty-row';
+      const cell = document.createElement('td');
+      cell.colSpan = host.querySelector('#scoreTheadRow').children.length;
+      cell.textContent = 'No students match your search.';
+      empty.appendChild(cell);
+      body.appendChild(empty);
+    }
+    updateExportState(host);
   }
 
-  function exportScoresCsv(host, data) {
-    const columns = [...host.querySelectorAll('#scoreTheadRow .comp-head-cell')].map(cell => {
+  async function downloadScoresCsv(host, data, scope, button) {
+    if (!visibleScoreRows(host).length) return false;
+    if (pendingExports.has(data)) return false;
+    pendingExports.add(data);
+    updateExportState(host);
+    try {
+      let fresh;
+      let editVersion;
+      do {
+        if (!await flushPendingScores() || activeContext?.data !== data || !visibleScoreRows(host).length) return false;
+        editVersion = scoreEditVersion;
+        fresh = await api().getShsGradeWorkspace({ ...scope, academicTermId: data.term.id });
+        if (activeContext?.data !== data || !visibleScoreRows(host).length) return false;
+      } while (editVersion !== scoreEditVersion || pendingScores.size);
+      exportScoresCsv(host, fresh, data);
+      return true;
+    } catch (error) {
+      toast(error.message || 'Score CSV could not be prepared. Try again.', 'error');
+      return false;
+    } finally {
+      pendingExports.delete(data);
+      if (activeContext?.host) updateExportState(activeContext.host);
+    }
+  }
+
+  function exportScoresCsv(host, data, displayedData) {
+    const displayedItems = displayedData.items || [];
+    const freshItems = data.items || [];
+    const sameItems = displayedItems.length === freshItems.length && displayedItems.every((item, index) => {
+      const fresh = freshItems[index];
+      return String(item.id) === String(fresh.id) && item.title === fresh.title
+        && Number(item.maxScore) === Number(fresh.maxScore)
+        && item.componentCode === fresh.componentCode;
+    });
+    if (!sameItems || String(data.term?.id) !== String(displayedData.term?.id))
+      throw new Error('Score Recording changed. Reload the grading period, then export again.');
+    const headers = [...host.querySelectorAll('#scoreTheadRow .comp-head-cell')];
+    if (headers.length !== freshItems.length)
+      throw new Error('Score Recording changed. Reload the grading period, then export again.');
+    const columns = headers.map(cell => {
       const category = cell.querySelector('.comp-head-type');
       return `${category.dataset.categoryName || category.textContent.trim()}: ${cell.querySelector('.comp-head-name').textContent} / ${cell.querySelector('.comp-head-max').textContent.replace('/', '').trim()}`;
     });
     const metrics = [...host.querySelectorAll('#scoreTheadRow .score-average-header')].map(cell => cell.textContent.trim());
+    const components = data.scope.policy?.components || [];
+    const displayedComponents = displayedData.scope.policy?.components || [];
+    if (metrics.length !== components.length || components.length !== displayedComponents.length
+      || components.some((component, index) => component.code !== displayedComponents[index].code
+        || component.name !== displayedComponents[index].name))
+      throw new Error('Grading rules changed. Reload the grading period, then export again.');
+    const students = new Map((data.students || []).map(student => [String(student.studentId || student.id), student]));
+    const scores = new Map((data.scores || []).map(score => [`${score.studentId}:${score.gradingItemId}`, score.score]));
+    const visibleRows = visibleScoreRows(host);
+    if (!visibleRows.length) throw new Error('No student scores to export.');
     const rows = [['Student', ...columns, ...metrics, 'Final Grade'],
-      ...[...host.querySelectorAll('#scoreTbody tr[data-student-id]')].filter(row => !row.hidden).map(row => [
-        row.querySelector('.student-name').textContent,
-        ...[...row.querySelectorAll('td[data-cat] .score-input')].map(input => input.value),
-        ...[...row.querySelectorAll('.computed-cell')].map(cell => cell.textContent.trim() === '—' ? '' : cell.textContent.trim())
-      ])];
+      ...visibleRows.map(row => {
+        const studentId = row.dataset.studentId;
+        const student = students.get(studentId);
+        const inputs = [...row.querySelectorAll('td[data-cat] .score-input')];
+        if (!student || inputs.length !== freshItems.length
+          || inputs.some((input, index) => String(input.dataset.scoreItem) !== String(freshItems[index].id)))
+          throw new Error('Score Recording changed. Reload the grading period, then export again.');
+        return [
+          student.studentName || student.displayName || 'Student',
+          ...freshItems.map(item => scores.get(`${studentId}:${item.id}`) ?? ''),
+          ...components.map(component => student.componentAverages?.[component.code] ?? ''),
+          student.termGrade ?? ''
+        ];
+      })];
     const csvCell = value => {
       let valueText = String(value ?? '');
       if (/^[\s\uFEFF]*[=+\-@]/.test(valueText)) valueText = `'${valueText}`;
@@ -192,7 +406,6 @@
             || String(item.examPartCode).replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
           return name.toLowerCase() === String(item.title).trim().toLowerCase() ? '' : name;
         })(),
-        correctionRequired: Boolean(item.usedInPublishedGrades),
         canDelete: writable
       };
     });
@@ -210,57 +423,51 @@
       ],
       getScore: (student, item) => {
         const record = scoreFor(data, student.studentId || student.id, item.id);
-        return { score: record?.score ?? null, correctionRequired: Boolean(data.items.find(row => String(row.id) === String(item.id))?.usedInPublishedGrades) };
+        return { score: record?.score ?? null };
       },
       getMetrics: student => {
-        const published = publishedGradeFor(data, student.studentId || student.id);
+        const finalGrade = student.termGrade ?? null;
         return [
           ...(policy?.components || []).map(component => ({
             value: student.componentAverages?.[component.code] ?? null,
             className: 'computed-cell computed-avg'
           })),
           {
-            value: student.termGrade ?? (published ? Number(published.finalGrade) : null),
-            detail: published ? 'Published v' + Number(published.publicationVersion) : '',
-            className: 'computed-cell computed-final',
+            value: finalGrade,
+            className: `computed-cell computed-final ${finalGradeTone(finalGrade, policy)}`,
             style: 'background:var(--blue-xpale);'
           }
         ];
       },
       writable,
-      onScoreInput: input => saveScore(input, data, scope, writable, reload),
+      onScoreInput: input => scheduleScoreSave(input, data, scope, reload),
+      scoreEvent: 'input',
       empty: {
         noItems: data.scope.policy ? undefined
           : { icon: 'triangle-alert', title: 'Grading rules unavailable', text: data.scope.policyBlockReason || 'Ask the school administrator to review the grading setup.' }
       }
     });
+    host.querySelectorAll?.('#scoreTbody .score-input')?.forEach(input => {
+      input.dataset.savedValue = input.value;
+      input.addEventListener('blur', () => scheduleScoreSave(input, data, scope, reload, true));
+    });
   }
 
-  async function saveScore(input, data, scope, writable, reload) {
-    if (!writable) return;
+  async function saveScore(input, data, scope, writable, reload, score = input.value, isCurrent = () => true) {
+    if (!writable) return false;
     const itemId = input.dataset.scoreItem;
     const studentId = input.dataset.studentId;
     const item = data.items.find(row => String(row.id) === String(itemId));
-    if (!item) return;
-    const values = { ...scope, academicTermId: data.term.id, gradingItemId: itemId, studentId, score: input.value };
-    const correctionReason = input.parentElement.querySelector('[data-correction-reason]')?.value.trim() || '';
-    if (item.usedInPublishedGrades && correctionReason.length < 10) {
-      toast('Enter a correction reason of at least 10 characters.', 'error');
-      input.parentElement.querySelector('[data-correction-reason]')?.focus();
-      return;
-    }
-    input.disabled = true;
+    if (!item) return false;
+    const hadPublishedGrades = Boolean(data.published?.length);
+    const values = { ...scope, academicTermId: data.term.id, gradingItemId: itemId, studentId, score };
     try {
-      if (item.usedInPublishedGrades) {
-        await api().correctShsScore({ ...values, reason: correctionReason });
-      } else {
-        await api().saveShsScore(values);
-      }
-      input.disabled = false;
+      await api().saveShsScore(values);
+      if (!isCurrent()) return true;
       const request = ++resultsVersion;
       try {
         const fresh = await api().getShsGradeWorkspace({ ...scope, academicTermId: data.term.id });
-        if (request !== resultsVersion || activeContext?.data !== data) return;
+        if (!isCurrent() || request !== resultsVersion || activeContext?.data !== data) return true;
         data.scores = fresh.scores || [];
         data.students = fresh.students || [];
         data.published = fresh.published || [];
@@ -274,29 +481,31 @@
           });
           const final = metrics.at(-1);
           if (final) {
-            const published = publishedGradeFor(data, studentId);
-            final.textContent = student.termGrade ?? (published ? Number(published.finalGrade) : '—');
-            if (published) {
-              const detail = document.createElement('small');
-              detail.textContent = 'Published v' + Number(published.publicationVersion);
-              final.append(detail);
-            }
+            const finalGrade = student.termGrade ?? null;
+            final.textContent = finalGrade ?? '—';
+            final.classList.remove('grade-pass', 'grade-warn', 'grade-fail', 'grade-unavailable');
+            final.classList.add(finalGradeTone(finalGrade, data.scope.policy));
           }
         }
         if (data.scope.kind === 'elective') window.AcademixElectiveClass?.updateHeaderGradeStatus?.(data);
         else window.TeacherClassViews?.updateSectionHeaderFromGradebook?.(data.term.id);
         setFeedback(activeContext.host, 'All changes saved');
-        if (item.usedInPublishedGrades) {
-          toast('Score correction recorded. Republish grades to update the published result.');
+        if (data.published.length) {
+          toast('Score saved. Re-publish grades to update the published result.');
         }
       } catch {
-        if (activeContext?.data === data) setFeedback(activeContext.host, 'Score saved. Calculated results could not refresh.', true);
-        toast('Score saved, but calculated results could not refresh.', 'info');
+        if (isCurrent()) {
+          if (activeContext?.data === data) setFeedback(activeContext.host, 'Score saved. Calculated results could not refresh.', true);
+          toast(hadPublishedGrades
+            ? 'Score saved, but calculated results could not refresh. Re-publish grades to update the published result.'
+            : 'Score saved, but calculated results could not refresh.', 'info');
+        }
+        return 'refresh-failed';
       }
+      return true;
     } catch (error) {
-      toast(error.message || 'Score could not be saved.', 'error');
-      input.disabled = false;
-      input.focus();
+      if (isCurrent()) toast(error.message || 'Score could not be saved.', 'error');
+      return false;
     }
   }
 
@@ -323,10 +532,9 @@
     const className = data.scope.className || data.scope.subjectName || 'this class';
     const termName = data.term.name || 'this term';
     const count = students.length;
-    document.getElementById('publishGradeSummary').innerHTML = escapeHtml(ready
+    document.getElementById('publishGradeSummary').textContent = ready
       ? `Final grades for ${count} ${count === 1 ? 'student is' : 'students are'} ready to publish for ${termName} · ${className}.`
-      : `Review the items below before publishing grades for ${count} ${count === 1 ? 'student' : 'students'} in ${termName} · ${className}.`) +
-      (data.published.length && publishAction ? '<div class="form-group"><label class="form-label" for="shs-republish-reason">Reason for republishing<input class="form-input" id="shs-republish-reason" type="text" minlength="10" maxlength="500" placeholder="Explain why published grades are changing"></label></div>' : '');
+      : `Review the items below before publishing grades for ${count} ${count === 1 ? 'student' : 'students'} in ${termName} · ${className}.`;
     const method = document.getElementById('publishGradeMethodNote');
     method.hidden = false;
     document.getElementById('publishGradeMethodText').textContent = data.scope.policy?.method === 'adjusted_2026'
@@ -342,8 +550,7 @@
       return {
         name: row.studentName || 'Student',
         value: row.problem || !hasGrade ? 'Incomplete' : String(grade),
-        tone: row.problem || !hasGrade ? 'grade-warn'
-          : grade >= Number(data.scope.policy?.passingGradeThreshold ?? 75) ? 'grade-pass' : 'grade-fail',
+        tone: row.problem || !hasGrade ? 'grade-warn' : finalGradeTone(grade, data.scope.policy),
         ariaLabel: row.problem ? `${row.studentName || 'Student'}: ${row.problem}`
           : hasGrade ? `Final grade ${grade}.` : 'Grade incomplete.'
       };
@@ -360,6 +567,10 @@
   }
 
   async function openPublishPreview(data, scope, writable, reload) {
+    if (!await flushPendingScores()) {
+      toast('Save or correct the pending scores before publishing grades.', 'error');
+      return;
+    }
     const modal = document.getElementById('publishModal');
     modal.querySelector('.modal-title').textContent = 'Publish Grades';
     modal.querySelector('.modal-sub').textContent = 'Review the calculated grades before publishing.';
@@ -386,18 +597,16 @@
 
   async function publish(data, scope, writable, reload, ready) {
     const confirm = document.getElementById('publishGradesConfirmButton');
-    const correctionReason = document.getElementById('shs-republish-reason')?.value.trim() || '';
     if (!writable || !ready) return;
-    if (data.published.length && correctionReason.length < 10) {
-      toast('Enter a reason of at least 10 characters before republishing.', 'error');
-      document.getElementById('shs-republish-reason')?.focus();
-      return;
-    }
     confirm.disabled = true;
     try {
-      await api().publishShsGrades({ ...scope, academicTermId: data.term.id, correctionReason });
+      await api().publishShsGrades({ ...scope, academicTermId: data.term.id });
       window.closeModal('publishModal');
       const refreshed = await reload(data.term.id);
+      if (refreshed) {
+        const workspace = activeContext?.data;
+        if (workspace?.scope.kind === 'elective') window.AcademixElectiveClass?.syncShsPublishedGrades?.(workspace);
+      }
       toast(refreshed ? data.published.length ? 'Grades republished. Previous versions remain in the history.' : 'Grades published.'
         : 'Grades published, but Score Recording could not refresh.', refreshed ? 'success' : 'info');
     } catch (error) {
@@ -434,7 +643,14 @@
       (String(row.id) === String(term?.id) ? 'selected' : '') + '>' + escapeHtml(row.name) + (row.status === 'active' ? ' (Active)' : '') + '</option>').join('')
       : '<option value="">No grading periods available</option>';
     periodSelect.disabled = !data.terms.length;
-    periodSelect.onchange = () => reload(periodSelect.value);
+    periodSelect.onchange = async () => {
+      const nextTerm = periodSelect.value;
+      if (!await flushPendingScores()) {
+        periodSelect.value = String(term.id);
+        return;
+      }
+      await reload(nextTerm);
+    };
     const addButton = host.querySelector('#addScoreComponentButton');
     host.querySelector('#addScoreComponentLabel').textContent = 'Add Component';
     addButton.onclick = () => { configureAddAssessmentModal(data, scope, writable, reload); window.openModal('addCompModal'); };
@@ -445,9 +661,8 @@
     publishButton.disabled = !writable || !items.length || !students.length;
     const exportButton = host.querySelector('#exportScoresButton');
     setVisible(exportButton, true);
-    exportButton.disabled = !items.length || !students.length;
-    exportButton.title = exportButton.disabled ? 'Add score components and students before exporting.' : '';
-    exportButton.onclick = () => exportScoresCsv(host, data);
+    updateExportState(host);
+    exportButton.onclick = () => downloadScoresCsv(host, data, scope, exportButton);
     const lockBanner = host.querySelector('#quarterLockBanner');
     const lockBadge = host.querySelector('#quarterLockBadge');
     const needsLockNotice = !writable;
@@ -463,9 +678,13 @@
     setVisible(publishedBanner, data.published.length > 0);
     if (data.published.length) {
       document.getElementById('publishedPeriodName').textContent = term?.name || 'Grading period';
-      document.getElementById('publishedPeriodStatus').textContent = data.scope.communicationComponentName
-          ? `Published ${data.scope.communicationComponentName} component grades for this grading period.`
-          : 'Published grades for this class and grading period.';
+      const publishedAt = data.published.reduce((latest, grade) =>
+        !latest || new Date(grade.publishedAt).getTime() > new Date(latest).getTime() ? grade.publishedAt : latest, null);
+      const publishedDate = publishedAt && Number.isFinite(new Date(publishedAt).getTime())
+        ? new Date(publishedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+        : 'date unavailable';
+      document.getElementById('publishedPeriodStatus').textContent =
+        `Published on ${publishedDate} · ${data.published.length} ${data.published.length === 1 ? 'student' : 'students'} saved for this subject and term.`;
       const republish = document.getElementById('republishGradesButton');
       setVisible(republish, writable);
       republish.onclick = () => openPublishPreview(data, scope, writable, reload);
@@ -475,31 +694,48 @@
     search.oninput = () => applyFilters(host, host.querySelector('.cat-tab.active')?.dataset.cat || 'all');
     search.value = '';
     renderTable(host, data, scope, writable, reload);
+    applyFilters(host, host.querySelector('.cat-tab.active')?.dataset.cat || 'all');
     if (data.scope.kind === 'core') {
       window.TeacherClassViews?.updateSectionHeaderFromGradebook?.(term?.id);
+      window.TeacherClassViews?.syncShsPublishedGrades?.(data);
     } else if (data.scope.kind === 'elective') {
       window.AcademixElectiveClass?.updateHeaderGradeStatus?.(data);
     }
-    const status = host.querySelector('#scoreSaveStatus');
     const hasScoreRows = Boolean(items.length && students.length);
-    status.textContent = !hasScoreRows ? 'No scores to save'
-      : writable ? 'Scores save when you leave a score field.' : 'Scores are read-only for this class or grading period.';
+    setFeedback(host, !hasScoreRows ? 'No scores to save'
+      : writable ? 'Scores save automatically' : 'Scores are read-only for this class or grading period.');
     const retry = host.querySelector('#scoreSaveRetry');
     retry.hidden = true;
+    retry.onclick = async () => {
+      retry.disabled = true;
+      try {
+        await Promise.all([...pendingScores.values()].filter(record => record.failed && !record.invalid).map(record => {
+          record.failed = false;
+          record.promise = null;
+          return savePendingScore(record);
+        }));
+      } finally {
+        retry.disabled = false;
+        updateSaveStatus(host);
+      }
+    };
     configureAddAssessmentModal(data, scope, writable, reload);
     window.lucide?.createIcons();
   }
 
   async function mount(host, initialScope) {
+    if (activeContext && !await flushPendingScores()) return false;
     close(host);
     let version = (versions.get(host) || 0) + 1;
     versions.set(host, version);
     let scope = { ...initialScope };
     const load = async termId => {
+      if (activeContext?.host === host && !await flushPendingScores()) return false;
       version += 1;
       versions.set(host, version);
       const requestVersion = version;
       if (activeContext?.host === host) activeContext = null;
+      setFeedback(host, 'Loading Score Recording…');
       const componentMenu = document.getElementById('scoreComponentMenu');
       if (componentMenu) componentMenu.hidden = true;
       host.querySelectorAll?.('.score-comp-menu-trigger[aria-expanded="true"]')
@@ -586,5 +822,5 @@
     return promise;
   }
 
-  window.AcademixShsGradebook = { mount, show, close, getDeleteContext, refresh };
+  window.AcademixShsGradebook = { mount, show, close, getDeleteContext, refresh, flush: flushPendingScores };
 })();

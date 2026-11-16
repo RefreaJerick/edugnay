@@ -8,7 +8,7 @@ const { normalizeClassIds, validateRecordedChoices, meetingsConflict } = require
 const controller = require('../controllers/shsSelectionController');
 
 const root = path.resolve(__dirname, '../..');
-const read = file => pageFs.readFileSync(path.join(root, file), 'utf8');
+const read = file => pageFs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
 const elective = (id, code = `E${id}`, extra = {}) => ({ id, catalogCode: code, subjectName: code,
   classActive: 1, offeringActive: 1, teacherStatus: 'active', teacherRole: 'teacher', capacity: 20,
   enrolledCount: 0, instructionalHours: 80, meetings: [], ...extra });
@@ -64,7 +64,6 @@ test('My Electives spaces its panels and uses shared empty, count, and checkbox 
   const sharedStyles = read('assets/css/styles.css');
   const timetableStyles = read('assets/css/timetables.css');
   assert.match(student, /assets\/js\/student\/shs-selection\.js\?v=\d+/);
-  assert.match(student, /assets\/js\/student\/shs-selection\.js\?v=7/);
   assert.match(student, /class="portal-overview" aria-labelledby="elective-page-title"[\s\S]*?Student workspace[\s\S]*?id="elective-page-title">My Electives[\s\S]*?id="elective-overview-context"/);
   const overview = student.match(/<section class="portal-overview"[\s\S]*?<\/section>/)?.[0] || '';
   assert.equal((overview.match(/class="portal-overview-description"/g) || []).length, 1);

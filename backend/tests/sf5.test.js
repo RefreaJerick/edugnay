@@ -180,11 +180,11 @@ test('SF5 supports mixed active-year selections and retains individual closed-ye
   assert.match(page, /templates\.length <= 5[\s\S]*formCodes\.every\(code => \['SF1', 'SF2', 'SF3', 'SF5', 'SF8'\]\.includes\(code\)\)/);
   assert.match(page, /includesSf5[\s\S]*sf5Only[\s\S]*academicYearStatus[\s\S]*gradeCode/);
   assert.match(page, /!includesSf5 \|\| \/\^grade-\(\?:\[2-9\]\|10\)\$\//);
-  assert.match(page, /\['SF2', 'SF3', 'SF5', 'SF8'\]\.includes\(form\.formCode\) && form\.pages\.length > 1/);
+  assert.match(page, /\['SF2', 'SF3', 'SF5', 'SF8', 'SF10'\]\.includes\(form\.formCode\) && form\.pages\.length > 1/);
   assert.match(page, /renderSf5Breakdown\(form\)/);
   assert.match(api, /templates\.length > 5[\s\S]*'SF1', 'SF2', 'SF3', 'SF5', 'SF8'/);
   assert.match(api, /breakdown: form\.breakdown \|\| \[\]/);
-  assert.match(api, /getMyAdvisorySections\(\['SF5', 'SF9'\]\.includes\(template\.formCode\)\)/);
+  assert.match(api, /getMyAdvisorySections\(\['SF5', 'SF9', 'SF10'\]\.includes\(template\.formCode\)\)/);
 });
 
 test('SF5 warning stays visible in individual and combined previews and repeats after download', async () => {

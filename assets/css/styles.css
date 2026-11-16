@@ -2542,7 +2542,31 @@ html.profile-chip-page .tb-profile-name { overflow: hidden; text-overflow: ellip
 }
 .tb-dropdown-item:hover { background: var(--blue-xpale); color: var(--theme-accent-text); }
 .tb-dropdown-item.danger:hover { background: var(--red-pale); color: var(--red); }
+.tb-dropdown-item[hidden] { display: none; }
 .tb-sound-toggle { white-space: nowrap; }
+
+.pwa-install-dialog {
+  width: min(360px, calc(100% - 32px));
+  padding: 24px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--theme-surface);
+  color: var(--gray-700);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .2);
+}
+.pwa-install-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.pwa-install-dialog h2 { margin: 0 0 10px; font-size: 18px; color: var(--theme-text); }
+.pwa-install-dialog p { margin: 0 0 18px; line-height: 1.5; }
+.pwa-install-dialog button {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: var(--button-radius);
+  background: var(--navy);
+  color: var(--white);
+  font: inherit;
+  cursor: pointer;
+}
+.pwa-install-dialog button:focus-visible { outline: 3px solid var(--button-focus-ring); }
 .tb-sound-toggle .tb-sound-state { margin-left: auto; color: var(--theme-accent-text); font-size: 11px; font-weight: 700; }
 .tb-sound-toggle[aria-checked="false"] .tb-sound-state { color: var(--gray-400); }
 .tb-sound-toggle:disabled { opacity: .55; cursor: not-allowed; }

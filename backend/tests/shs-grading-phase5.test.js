@@ -9,7 +9,7 @@ const { requireShsTeachingEnabled } = require('../utils/shsTeachingAccess');
 const { loadPublishedElectiveGrades, publishedSectionGradeFilter } = require('../controllers/gradesController');
 
 const root = path.resolve(__dirname, '../..');
-const read = name => pageFs.readFileSync(path.join(root, name), 'utf8');
+const read = name => pageFs.readFileSync(path.join(root, name), 'utf8').replace(/\r\n/g, '\n');
 
 test('SHS grading periods work without a scheduled meeting while writes still require an active period', async () => {
   const controller = read('backend/controllers/shsGradesController.js');
@@ -72,13 +72,14 @@ test('SHS workspace provides the shared score grid with policy-based component a
   assert.match(controller, /componentAverages/);
   assert.match(controller, /calculateTermGrade\(scope\.policy, items, studentScores\)/);
   assert.match(gradebook, /metricHeaders: \[/);
-  assert.match(gradebook, /component\.name.*Avg/);
   assert.match(gradebook, /student\.componentAverages/);
   assert.match(gradebook, /Final Grade/);
 });
 
 test('SHS score table passes policy metrics to the shared renderer', () => {
   const gradebook = read('assets/js/teacher/shs-gradebook.js');
+  const toneSource = gradebook.match(/function finalGradeTone\(grade, policy\) \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(toneSource);
   const match = gradebook.match(/function renderTable\(host, data, scope, writable, reload\) \{[\s\S]*?\n  \}\n\n  async function saveScore/);
   assert.ok(match, 'SHS score table renderer should exist');
   const source = match[0].replace(/\n\n  async function saveScore$/, '');
@@ -86,28 +87,122 @@ test('SHS score table passes policy metrics to the shared renderer', () => {
   const context = {
     window: { TeacherClassViews: { renderScoreTable: options => { rendered = options; } } },
     categoryCode: item => String(item.componentCode || item.code).toUpperCase(),
+    shortCategoryName: item => item.code === 'WW' ? 'WW' : item.name,
     scoreFor: () => null,
-    publishedGradeFor: () => null,
     saveScore() {}
   };
   const data = {
-    scope: { policy: { components: [{ code: 'WW', name: 'Written Work', weight: 20 }] } },
+    scope: { policy: { passingGradeThreshold: 75, components: [{ code: 'WW', name: 'Written Work', weight: 20 }] } },
     items: [{ id: 'assessment-1', componentCode: 'WW', maxScore: 20 }],
     students: [{ studentId: 'student-1', componentAverages: { WW: 85 }, termGrade: 87 }],
     scores: [],
     published: []
   };
-  vm.runInNewContext(`${source}; renderTable({}, data, {}, true, () => {});`, { ...context, data });
+  const render = () => vm.runInNewContext(`${toneSource}; ${source}; renderTable({}, data, {}, true, () => {});`, { ...context, data });
+  render();
+  assert.equal(rendered.scoreEvent, 'input');
   assert.equal(Array.from(rendered.metricHeaders, item => item.label).join('|'), 'WW Avg|Final Grade');
   assert.equal(Array.from(rendered.getMetrics(data.students[0]), item => item.value).join('|'), '85|87');
+  assert.match(rendered.getMetrics(data.students[0]).at(-1).className, /grade-pass/);
+  for (const [grade, tone] of [[74, 'grade-warn'], [69, 'grade-fail'], [null, 'grade-unavailable']]) {
+    data.students[0].termGrade = grade;
+    assert.match(rendered.getMetrics(data.students[0]).at(-1).className, new RegExp(tone));
+  }
+  data.scope.policy.passingGradeThreshold = 80;
+  data.students[0].termGrade = 79;
+  assert.match(rendered.getMetrics(data.students[0]).at(-1).className, /grade-warn/);
+  data.scope.policy.passingGradeThreshold = 0;
+  data.students[0].termGrade = 0;
+  assert.match(rendered.getMetrics(data.students[0]).at(-1).className, /grade-pass/);
+  data.students[0].termGrade = null;
+  data.published = [{ studentId: 'student-1', finalGrade: 90, publicationVersion: 1 }];
+  assert.equal(rendered.getMetrics(data.students[0]).at(-1).value, null);
+  assert.match(rendered.getMetrics(data.students[0]).at(-1).className, /grade-unavailable/);
   assert.equal(rendered.empty.noItems, undefined);
   assert.equal(rendered.empty.noStudents, undefined);
 
   data.scope.policy = null;
   data.scope.policyBlockReason = 'Ask the school administrator to review the grading setup.';
-  vm.runInNewContext(`${source}; renderTable({}, data, {}, true, () => {});`, { ...context, data });
+  render();
   assert.equal(rendered.empty.noItems.title, 'Grading rules unavailable');
   assert.equal(rendered.empty.noItems.text, data.scope.policyBlockReason);
+});
+
+test('SHS score refresh updates the final-grade color after saving', async () => {
+  const gradebook = read('assets/js/teacher/shs-gradebook.js');
+  const toneSource = gradebook.match(/function finalGradeTone\(grade, policy\) \{[\s\S]*?\n  \}/)?.[0];
+  const saveSource = gradebook.match(/async function saveScore\([^\n]+\) \{[\s\S]*?\n  \}\n\n  function setPublishPreview/)?.[0]
+    .replace(/\n\n  function setPublishPreview$/, '');
+  assert.ok(toneSource && saveSource);
+  const tones = new Set(['grade-pass']);
+  const final = {
+    classList: {
+      remove: (...names) => names.forEach(name => tones.delete(name)),
+      add: name => tones.add(name)
+    },
+    textContent: ''
+  };
+  const row = { dataset: { studentId: 'student-1' }, querySelectorAll: () => [final] };
+  const host = { querySelectorAll: () => [row] };
+  const data = {
+    scope: { policy: { passingGradeThreshold: 75, components: [] }, kind: 'core' },
+    term: { id: 1 }, items: [{ id: 'item-1' }], students: [], published: []
+  };
+  let nextGrade = 74;
+  const context = vm.createContext({
+    activeContext: { host, data }, resultsVersion: 0,
+    api: () => ({ saveShsScore: async () => {}, getShsGradeWorkspace: async () => ({
+      students: [{ studentId: 'student-1', termGrade: nextGrade }], published: []
+    }) }),
+    finalGradeTone: vm.runInNewContext(`(${toneSource})`),
+    setFeedback() {}, toast() {},
+    window: { TeacherClassViews: { updateSectionHeaderFromGradebook() {} } }
+  });
+  vm.runInContext(saveSource, context);
+  const input = { dataset: { scoreItem: 'item-1', studentId: 'student-1' }, parentElement: { querySelector: () => null }, value: '10' };
+  await vm.runInContext('saveScore', context)(input, data, {}, true, () => {});
+  assert.equal(final.textContent, 74);
+  assert.deepEqual([...tones], ['grade-warn']);
+  nextGrade = null;
+  await vm.runInContext('saveScore', context)(input, data, {}, true, () => {});
+  assert.equal(final.textContent, '—');
+  assert.deepEqual([...tones], ['grade-unavailable']);
+});
+
+test('published SHS score items save normally for core and elective classes', async () => {
+  const controller = read('backend/controllers/shsGradesController.js');
+  const save = controller.match(/async function saveScore\([\s\S]*?(?=async function correctScore\()/)?.[0];
+  assert.ok(save);
+  for (const [kind, rawScore] of [['core', 20], ['elective', '']]) {
+    const statements = [];
+    let committed = false;
+    let response;
+    let failure;
+    const connection = {
+      beginTransaction: async () => {},
+      execute: async (sql, values) => { statements.push({ sql, values }); return [[]]; },
+      commit: async () => { committed = true; }, rollback: async () => {}, release() {}
+    };
+    const context = vm.createContext({
+      getDatabase: () => ({ getConnection: async () => connection }),
+      resolveScope: async () => ({ kind, schoolId: 1, policy: {}, subjectName: 'Math', className: 'Class A' }),
+      lockYear: async () => {}, id: value => Number(value), assertTerm: async () => {},
+      loadItems: async () => [{ id: 2, title: 'Test', maxScore: 25, usedInPublishedGrades: true }],
+      roster: async () => [{ studentId: 3, studentName: 'Learner' }],
+      writeAuditLog: async () => {}, fail: message => { throw new Error(message); },
+      Number, String, Math
+    });
+    vm.runInContext(save, context);
+    await context.saveScore({ user: { id: 4 }, body: {
+      academicTermId: 5, gradingItemId: 2, studentId: 3, score: rawScore
+    } }, { json: value => { response = value; } }, error => { failure = error; });
+    assert.equal(failure, undefined);
+    assert.equal(committed, true);
+    assert.equal(response.saved, true);
+    assert.match(statements[0].sql, /INSERT INTO student_scores/);
+    assert.equal(statements[0].values[3], rawScore === '' ? null : rawScore);
+    assert.equal(statements.some(entry => /published_final_grades|shs_grade_publication_history/.test(entry.sql)), false);
+  }
 });
 
 test('SHS score footer explains saving only when score rows exist', () => {
@@ -116,13 +211,13 @@ test('SHS score footer explains saving only when score rows exist', () => {
     .replace(/\n\n  async function mount$/, '');
   assert.ok(source, 'SHS gradebook renderer should exist');
 
-  function renderStatus(items, students, termStatus = 'active') {
+  function renderStatus(items, students, termStatus = 'active', published = []) {
     const nodes = new Map();
     const node = key => {
-      if (!nodes.has(key)) nodes.set(key, { textContent: '', innerHTML: '', hidden: false, disabled: false, value: '', title: '' });
+      if (!nodes.has(key)) nodes.set(key, { textContent: '', innerHTML: '', hidden: false, disabled: false, value: '', title: '', dataset: {} });
       return nodes.get(key);
     };
-    const host = { querySelector: selector => node(selector) };
+    const host = { classList: { add() {} }, querySelector: selector => node(selector) };
     const context = vm.createContext({
       window: {
         TeacherClassViews: { updateSectionHeaderFromGradebook() {} },
@@ -135,6 +230,8 @@ test('SHS score footer explains saving only when score rows exist', () => {
       renderCategoryTabs() {},
       applyFilters() {},
       renderTable() {},
+      setFeedback: (_host, message) => { node('#scoreSaveStatus').textContent = message; },
+      updateExportState() {},
       configureAddAssessmentModal() {},
       openPublishPreview() {}
     });
@@ -142,18 +239,23 @@ test('SHS score footer explains saving only when score rows exist', () => {
       scope: { kind: 'core', subjectName: 'English', className: 'Section A', yearLabel: '2026–2027', yearStatus: 'active', policy: { components: [] } },
       term: { id: '1', name: 'Term 1', status: termStatus },
       terms: [{ id: '1', name: 'Term 1', status: termStatus }],
-      items, students, published: []
+      items, students, published
     };
     context.host = host;
     context.data = data;
     vm.runInContext(`${source}; render(host, data, {}, () => {});`, context);
-    return node('#scoreSaveStatus').textContent;
+    return { status: node('#scoreSaveStatus').textContent,
+      banner: node('publishedGradesBanner'), publishedStatus: node('publishedPeriodStatus').textContent };
   }
 
-  assert.equal(renderStatus([], []), 'No scores to save');
-  assert.equal(renderStatus([{ id: '1' }], []), 'No scores to save');
-  assert.equal(renderStatus([{ id: '1' }], [{ studentId: '1' }]), 'Scores save when you leave a score field.');
-  assert.equal(renderStatus([{ id: '1' }], [{ studentId: '1' }], 'closed'), 'Scores are read-only for this class or grading period.');
+  assert.equal(renderStatus([], []).status, 'No scores to save');
+  assert.equal(renderStatus([{ id: '1' }], []).status, 'No scores to save');
+  assert.equal(renderStatus([{ id: '1' }], [{ studentId: '1' }]).status, 'Scores save automatically');
+  assert.equal(renderStatus([{ id: '1' }], [{ studentId: '1' }], 'closed').status, 'Scores are read-only for this class or grading period.');
+  const published = renderStatus([{ id: '1' }], [{ studentId: '1' }], 'active',
+    [{ studentId: '1', publishedAt: '2026-11-16T08:00:00.000Z' }]);
+  assert.equal(published.banner.hidden, false);
+  assert.match(published.publishedStatus, /Published on .* · 1 student saved for this subject and term/);
 });
 test('SHS grading chooses the method from the class academic year, not the device date', () => {
   const controller = read('backend/controllers/shsGradesController.js');
@@ -280,9 +382,13 @@ test('published elective query enforces role and school filters when released', 
 
 test('teacher gradebook links elective assignments only through scoped grading items', () => {
   const controller = read('backend/controllers/shsGradesController.js');
+  const insertion = controller.match(/async function insertItem\([\s\S]*?(?=async function createLinkedAssignmentItem\()/)?.[0];
+  assert.ok(insertion);
   assert.match(controller, /assertElectiveTeacher/);
-  assert.match(controller, /shs_elective_class_id = \? FOR UPDATE/);
-  assert.match(controller, /UPDATE assignments SET academic_term_id = \?, max_score = \?, grading_item_id = \?/);
+  assert.match(insertion, /scope\.kind === 'elective'[\s\S]*?shs_elective_class_id = \?/);
+  assert.match(insertion, /FOR UPDATE/);
+  assert.match(insertion, /UPDATE assignments SET academic_term_id = \?, max_score = \?, grading_item_id = \?/);
+  assert.match(insertion, /AND grading_item_id IS NULL/);
   assert.match(controller, /Resolve missing scores and assessment items before publishing/);
   assert.match(read('assets/js/teacher/elective-class.js'), /#content-scores \.panel/);
 });
@@ -293,14 +399,20 @@ test('teacher section and elective pages use the same Strengthened SHS gradebook
   assert.match(sections, /id="content-scores"/);
   assert.match(sections, /id="scoreTbody"/);
   assert.doesNotMatch(sections, /shs-core-gradebook|elective-class-workspace/);
-  assert.match(sections, /AcademixShsGradebook\?\.mount/);
+  assert.match(sections, /AcademixShsGradebook\?\.show/);
   const electivePage = read('views/teacher/edugnay-teacher-sections.html');
   const electiveScript = read('assets/js/teacher/elective-class.js');
   assert.match(electivePage, /teacher\/shs-gradebook\.js/);
-  assert.match(electiveScript, /AcademixShsGradebook\?\.mount/);
+  assert.match(electiveScript, /AcademixShsGradebook\.show/);
   assert.match(sectionApi, /subjects\.shs_subject_type AS shsSubjectType/);
   const gradebook = read('assets/js/teacher/shs-gradebook.js');
-  assert.match(gradebook, /correctShsScore/);
+  assert.match(gradebook, /saveShsScore/);
+  assert.doesNotMatch(gradebook, /correctionRequired|Published v|shs-republish-reason/);
+  const shsController = read('backend/controllers/shsGradesController.js');
+  const normalSave = shsController.match(/async function saveScore\([\s\S]*?(?=async function correctScore\()/)?.[0];
+  assert.ok(normalSave);
+  assert.doesNotMatch(normalSave, /usedInPublishedGrades/);
+  assert.doesNotMatch(shsController, /Republishing changed grades requires a correction reason/);
   assert.match(gradebook, /Grade preview/);
   assert.match(gradebook, /data\.scope\.classActive && data\.scope\.offeringActive/);
   assert.match(gradebook, /host\.querySelector\('#scorePanelTitle'\)/);

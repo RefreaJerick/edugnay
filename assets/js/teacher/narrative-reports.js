@@ -267,6 +267,7 @@
     const requestId = ++state.weekRequestId;
     if (!sectionId || !startDate) return;
     $('report-week-notice').hidden = true;
+    $('pipeline-journal').hidden = true;
     state.evidence = null;
     state.reports = [];
     $('reports-grid').innerHTML = '';
@@ -281,6 +282,7 @@
       ]);
       if (requestId !== state.weekRequestId || $('report-section').value !== sectionId || $('report-week').value !== startDate) return;
       state.evidence = evidence;
+      $('pipeline-journal').hidden = evidence.section.journalApplicable !== true;
       state.reports = drafts.reports || [];
       state.gradesEnabled = drafts.section?.gradesEnabled !== false;
       const label = `${formatDate(evidence.reportWeek.startDate)}–${formatDate(evidence.reportWeek.endDate)}`;
@@ -333,15 +335,29 @@
   function showGeneration() {
     const candidates = generationCandidates();
     if (state.busy || !state.generationEnabled || !candidates.length) return;
-    $('gen-subtitle').textContent = `${state.evidence.section.gradeLevel} · ${state.evidence.section.name} · ${candidates.length} learner${candidates.length === 1 ? '' : 's'} without drafts`;
-    $('gen-count').textContent = `${candidates.length} learners`;
+    $('gen-journal-source').hidden = state.evidence.section.journalApplicable !== true;
+    $('gen-subtitle').textContent = `${state.evidence.section.gradeLevel} · ${state.evidence.section.name} · ${formatDate(state.evidence.reportWeek.startDate)}–${formatDate(state.evidence.reportWeek.endDate)}`;
+    $('gen-count').textContent = `${candidates.length} learner${candidates.length === 1 ? '' : 's'}`;
+    $('gen-draft-count').textContent = `${candidates.length} draft${candidates.length === 1 ? '' : 's'} will be created`;
     const list = $('gen-students');
     list.replaceChildren();
     for (const student of candidates) {
       const row = document.createElement('div');
       row.className = 'gen-student-note-row';
+      row.dataset.studentId = String(student.id);
       const head = document.createElement('div');
       head.className = 'gen-student-note-head';
+      const avatar = document.createElement('span');
+      avatar.className = 'gen-student-avatar person-avatar person-avatar--compact';
+      if (window.EDUGNAY_AVATAR?.render) {
+        window.EDUGNAY_AVATAR.render(avatar, {
+          id: student.id, name: student.displayName, initials: studentInitials(student),
+          avatarUrl: student.avatarUrl, role: 'student'
+        }, { size: 'compact' });
+      } else {
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.textContent = studentInitials(student);
+      }
       const identity = document.createElement('div');
       identity.className = 'gen-student-note-copy';
       const name = document.createElement('strong');
@@ -351,9 +367,21 @@
       grade.className = 'gen-student-note-grade';
       grade.textContent = state.evidence.section.gradeLevel;
       identity.append(name, grade);
-      const optional = document.createElement('span');
-      optional.textContent = 'Optional';
-      head.append(identity, optional);
+      const toggle = document.createElement('button');
+      toggle.className = 'gen-note-toggle';
+      toggle.type = 'button';
+      toggle.dataset.studentName = student.displayName;
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-controls', `gen-note-${student.id}`);
+      toggle.setAttribute('aria-label', `Add note for ${student.displayName}`);
+      const toggleLabel = document.createElement('span');
+      toggleLabel.textContent = '+ Add note';
+      toggle.append(toggleLabel);
+      head.append(avatar, identity, toggle);
+      const editor = document.createElement('div');
+      editor.className = 'gen-student-note-editor';
+      editor.id = `gen-note-${student.id}`;
+      editor.hidden = true;
       const note = document.createElement('textarea');
       note.className = 'teacher-note-input';
       note.placeholder = 'Add a relevant classroom observation…';
@@ -362,14 +390,30 @@
       note.setAttribute('aria-label', `Optional teacher note for ${student.displayName}`);
       const meta = document.createElement('div');
       meta.className = 'gen-student-note-meta';
-      const visibility = document.createElement('span');
-      visibility.textContent = 'Visible to teachers only';
       const counter = document.createElement('span');
       counter.textContent = '0/1000';
       note.addEventListener('input', () => { counter.textContent = `${note.value.length}/1000`; });
-      meta.append(visibility, counter);
-      row.append(head, note, meta);
+      meta.append(counter);
+      editor.append(note, meta);
+      row.append(head, editor);
       list.append(row);
+      toggle.addEventListener('click', () => {
+        const opening = editor.hidden;
+        list.querySelectorAll('.gen-student-note-editor:not([hidden])').forEach(openEditor => {
+          openEditor.hidden = true;
+          const openToggle = openEditor.parentElement.querySelector('.gen-note-toggle');
+          openToggle.setAttribute('aria-expanded', 'false');
+          openToggle.setAttribute('aria-label', `Add note for ${openToggle.dataset.studentName}`);
+          openToggle.querySelector('span').textContent = '+ Add note';
+        });
+        if (opening) {
+          editor.hidden = false;
+          toggle.setAttribute('aria-expanded', 'true');
+          toggle.setAttribute('aria-label', `Hide note for ${student.displayName}`);
+          toggleLabel.textContent = 'Hide';
+          note.focus();
+        }
+      });
     }
     setGenerationLoading(false);
     setMessage('gen-message', !state.generationEnabled
@@ -384,7 +428,9 @@
     modal.classList.toggle('is-generating', loading);
     $('gen-progress').hidden = !loading;
     if (!loading) $('gen-progress-detail').textContent = '';
-    $('start-generation-label').textContent = loading ? 'Generating...' : 'Start Generation';
+    const count = generationCandidates().length;
+    $('start-generation-label').textContent = loading ? 'Generating...' : `Generate ${count} draft${count === 1 ? '' : 's'}`;
+    $('gen-draft-count').textContent = `${count} draft${count === 1 ? '' : 's'} will be created`;
     $('start-generation').disabled = loading || !state.generationEnabled || !generationCandidates().length;
     $('start-generation').setAttribute('aria-busy', String(loading));
     $('gen-close').disabled = loading;
@@ -426,6 +472,12 @@
         }
       }
       await loadWeek();
+      const remaining = new Set(generationCandidates().map(student => String(student.id)));
+      $('gen-students').querySelectorAll('.gen-student-note-row').forEach(row => {
+        if (!remaining.has(row.dataset.studentId)) row.remove();
+      });
+      $('gen-count').textContent = `${remaining.size} learner${remaining.size === 1 ? '' : 's'}`;
+      if (!remaining.size) $('gen-students').textContent = 'All selected learners now have drafts.';
       setMessage('gen-message', `${generated} draft${generated === 1 ? '' : 's'} generated.${failed.length ? ` ${failed.length} could not be generated: ${failed.join('; ')}` : ' Review each draft before confirmation.'}`, Boolean(failed.length));
       if (generated) showAppToast(`${generated} draft${generated === 1 ? '' : 's'} generated.${failed.length ? ' Some learners could not be generated.' : ''}`);
     } catch (error) {

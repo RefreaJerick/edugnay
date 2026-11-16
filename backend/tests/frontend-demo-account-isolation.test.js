@@ -44,7 +44,9 @@ test('parent reports use linked-child backend data without demo records', () => 
 test('admin account list keeps a visible backend load error and disables local account fallback', () => {
   assert.doesNotMatch(adminUsers, /LOCAL_USERS|EDUGNAY_CONFIG\.(getUsers|getUserById|createUser|updateUser|deleteUser)/);
   assert.match(adminUsers, /usersLoading \|\| usersLoadError/);
-  assert.match(adminUsers, /Try again when the connection is ready\./);
+  assert.match(adminUsers, /User accounts unavailable/);
+  assert.match(adminUsers, /Refresh the page and try again\./);
+  assert.match(adminUsers, />Retry<\/button>/);
   assert.doesNotMatch(parentProfile, /localParent|EDUGNAY_PARENT\.currentUser/);
   assert.doesNotMatch(studentProfile, /localStudent|EDUGNAY_STUDENT\.currentUser/);
   assert.match(studentMaterials, /let MATERIAL_RECORDS = \[\];/);
@@ -52,7 +54,7 @@ test('admin account list keeps a visible backend load error and disables local a
 
 test('account profile pages use live identity and assignments instead of SCC demo details', () => {
   assert.match(adminProfile, /id="admin-profile-load-notice"/);
-  assert.match(adminProfile, /renderAdminProfile\(\{ displayName: 'Loading profile\.\.\.', schoolEmail: '', profile: \{\} \}\)/);
+  assert.match(adminProfile, /loadAdminProfile\(\)/);
   assert.match(adminProfile, /setAdminProfileLoadState\('Profile unavailable'/);
   assert.match(adminProfile, /renderAdminAccessDetails\(adminApiUser\)/);
 

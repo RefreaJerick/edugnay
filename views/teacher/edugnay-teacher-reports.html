@@ -20,6 +20,8 @@
   <script src="../../assets/js/teacher/shell.js?v=5"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/theme.css">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <script src="../../assets/js/pwa-install.js" defer></script>
 </head>
 <body data-page-title="Narrative Reports" data-page-loading="Loading reports...">
 
@@ -200,7 +202,7 @@
           <div class="flow-step"><span class="flow-step-icon"><i data-lucide="user-check"></i></span><span class="flow-step-label">Attendance</span><span class="flow-step-sub">Confirmed records</span></div>
           <div class="flow-step"><span class="flow-step-icon"><i data-lucide="clipboard-check"></i></span><span class="flow-step-label">Assignments</span><span class="flow-step-sub">Across subjects</span></div>
           <div class="flow-step"><span class="flow-step-icon"><i data-lucide="chart-no-axes-column"></i></span><span class="flow-step-label">Academic</span><span class="flow-step-sub">Candidates only</span></div>
-          <div class="flow-step"><span class="flow-step-icon"><i data-lucide="notebook-pen"></i></span><span class="flow-step-label">Journal</span><span class="flow-step-sub">Values Education</span></div>
+          <div class="flow-step" id="pipeline-journal" hidden><span class="flow-step-icon"><i data-lucide="notebook-pen"></i></span><span class="flow-step-label">Journal reflections</span><span class="flow-step-sub">Configured JHS subject</span></div>
         </div>
       </div>
       <div class="flow-step ai"><span class="flow-step-icon"><i data-lucide="sparkles"></i></span><span class="flow-step-label">AI draft</span><span class="flow-step-sub">Adviser reviews</span></div>
@@ -265,12 +267,17 @@
 <div class="modal-backdrop" id="gen-modal" aria-hidden="true">
   <div class="review-modal gen-modal" role="dialog" aria-modal="true" aria-labelledby="gen-title" tabindex="-1">
     <div class="review-modal-head"><span class="pipeline-icon"><i data-lucide="sparkles"></i></span><div><h2 class="review-modal-title" id="gen-title">Generate Weekly Reports</h2><p class="review-modal-sub" id="gen-subtitle"></p></div><button class="modal-close" id="gen-close" type="button" data-close-modal aria-label="Close generation dialog"><i data-lucide="x"></i></button></div>
-    <div class="review-body"><p class="gen-intro">Drafts use confirmed attendance, assignment completion, and relevant Values Education reflections from the selected week. Academic grades are included only for follow-up candidates. Each draft still needs adviser review.</p>
-      <div class="gen-note-panel"><div class="gen-note-head"><div><strong class="gen-note-title">Optional learner notes</strong><p class="gen-note-help">Add relevant classroom observations. Avoid unnecessary sensitive details.</p></div><span class="gen-note-count" id="gen-count"></span></div><div class="gen-student-notes" id="gen-students"></div></div>
+    <div class="review-body">
+      <section class="gen-included" aria-labelledby="gen-included-title">
+        <h3 id="gen-included-title">Included in each draft</h3>
+        <ul><li><i data-lucide="user-check" aria-hidden="true"></i>Confirmed attendance</li><li><i data-lucide="clipboard-check" aria-hidden="true"></i>Assignment completion</li><li id="gen-journal-source" hidden><i data-lucide="notebook-pen" aria-hidden="true"></i>Journal reflections</li></ul>
+        <p>Academic grades are included only for follow-up candidates. Every draft still needs adviser review before release.</p>
+      </section>
+      <div class="gen-note-panel"><div class="gen-note-head"><div><strong class="gen-note-title">Learner notes <span>Optional</span></strong><p class="gen-note-help">Add relevant classroom observations. Avoid unnecessary sensitive details.</p><p class="gen-note-visibility"><i data-lucide="lock-keyhole" aria-hidden="true"></i>Visible to teachers only</p></div><span class="gen-note-count" id="gen-count"></span></div><div class="gen-student-notes" id="gen-students"></div></div>
       <p class="reports-message" id="gen-message" role="status"></p>
       <div class="gen-loading-view" id="gen-progress" role="status" aria-live="polite" aria-atomic="true" hidden><span class="academix-page-loader-mark" aria-hidden="true"><img src="../../assets/images/edUgnay-logo-circle.png" alt=""></span><strong id="gen-loading-title">Generating reports</strong><p id="gen-progress-detail"></p></div>
-      <button class="top-btn primary gen-start-button" id="start-generation" type="button"><i data-lucide="sparkles"></i> <span id="start-generation-label">Start Generation</span></button>
     </div>
+    <div class="review-modal-foot gen-modal-foot"><span class="gen-draft-count" id="gen-draft-count"></span><div class="review-modal-foot-actions"><button class="top-btn secondary" type="button" data-close-modal>Cancel</button><button class="top-btn primary gen-start-button" id="start-generation" type="button"><i data-lucide="sparkles"></i><span id="start-generation-label">Generate drafts</span></button></div></div>
   </div>
 </div>
 <div class="modal-backdrop" id="review-modal" aria-hidden="true">

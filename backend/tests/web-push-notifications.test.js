@@ -296,7 +296,7 @@ test('notification settings explain denied, unsupported, unconfigured, and faile
   const cases = [
     [{ permission: 'denied' }, 'Blocked in browser settings'],
     [{ supportsPush: false }, 'Not supported in this browser or connection'],
-    [{ keyConfig: { enabled: false, publicKey: null } }, 'Not configured yet'],
+    [{ keyConfig: { enabled: false, publicKey: null } }, 'Device notifications are not available right now'],
     [{ failRequest: true }, 'Device notifications could not be loaded']
   ];
   for (const [options, expectedStatus] of cases) {
