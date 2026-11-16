@@ -268,6 +268,10 @@
     }
   }
 
+  function invalidateStudentListTab() {
+    loadedTabs.delete('students');
+  }
+
   function localToday() {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
   }
@@ -421,6 +425,7 @@
       attendance = saved;
       roster = attendance.students || [];
       renderAttendance();
+      invalidateStudentListTab();
       void loadAttendanceHistory({ preserve: true });
       toast('Attendance saved.');
     } catch (error) {
@@ -461,6 +466,7 @@
       });
       document.getElementById('qrAttendanceFinalReview').hidden = true;
       document.getElementById('qrAttendanceScanGroups').hidden = false;
+      window.TeacherClassViews.setQrAttendanceReviewing(false);
       renderQrWorkspace();
       window.openModal('qrAttendanceModal');
       document.querySelector('#qrAttendanceModal .modal-close')?.focus();
@@ -503,6 +509,7 @@
         if (button) setAtt(button, code);
       }
     });
+    window.TeacherClassViews.setQrAttendanceReviewing(true);
     document.getElementById('qrAttendanceScanGroups').hidden = true;
     document.getElementById('qrAttendanceFinalReview').hidden = false;
     document.getElementById('qrScannerStartButton').hidden = true;
@@ -515,6 +522,7 @@
   function showQrAttendanceReviewMode(reviewing) {
     if (reviewing) return openQrAttendanceFinalReview();
     qrDraftRecords = [];
+    window.TeacherClassViews.setQrAttendanceReviewing(false);
     document.getElementById('qrAttendanceScanGroups').hidden = false;
     document.getElementById('qrAttendanceFinalReview').hidden = true;
     document.getElementById('qrScannerStartButton').hidden = false;
@@ -606,6 +614,7 @@
     }));
     try {
       qrSession = await window.EDUGNAY_API.confirmShsElectiveQrAttendance(qrSession.session.id, records);
+      invalidateStudentListTab();
       qrDraftRecords = [];
       toast('QR attendance confirmed.');
       window.closeModal('qrAttendanceModal');
@@ -903,7 +912,7 @@
     updateHeaderGradeStatus,
     syncShsPublishedGrades: workspace => {
       headerGradeWorkspacePromise = Promise.resolve(workspace);
-      loadedTabs.delete('students');
+      invalidateStudentListTab();
     },
     getAssignment: id => assignments.find(item => String(item.id) === String(id)) || null,
     prepareAssignmentGrading,

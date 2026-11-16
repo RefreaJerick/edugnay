@@ -2492,6 +2492,10 @@ html[data-theme="dark"] .assignment-resubmission-option input:focus-visible + sp
   display: none;
 }
 
+.qr-attendance-workspace.reviewing .qr-attendance-final-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .qr-scanner-column {
   min-width: 0;
 }
@@ -2718,6 +2722,10 @@ html[data-theme="dark"] .assignment-resubmission-option input:focus-visible + sp
   }
 
   .qr-attendance-final-list {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-attendance-workspace.reviewing .qr-attendance-final-list {
     grid-template-columns: 1fr;
   }
 }

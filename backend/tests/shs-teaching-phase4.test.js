@@ -516,6 +516,43 @@ test('elective class tabs follow the shared grade, attendance, assignment, and m
   assert.match(teaching, /materials\.length\} files uploaded/);
 });
 
+test('elective attendance and published grades invalidate Student List data', () => {
+  const teaching = read('assets/js/teacher/elective-class.js');
+  const invalidateSource = teaching.match(/function invalidateStudentListTab\(\) \{[\s\S]*?\n  \}/)?.[0];
+  const manualSource = teaching.match(/async function saveAttendance\(\) \{[\s\S]*?\n  \}\r?\n\r?\n  async function openQrAttendance/)?.[0];
+  const qrSource = teaching.match(/async function confirmQrAttendance\(\) \{[\s\S]*?\n  \}\r?\n\r?\n  function stopQrCamera/)?.[0];
+  const syncSource = teaching.match(/syncShsPublishedGrades: workspace => \{[\s\S]*?\n    \},/)?.[0];
+  const tabLoader = teaching.match(/function loadTab\(tab, \{ force = false \} = \{\}\) \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(invalidateSource);
+  assert.ok(manualSource);
+  assert.ok(qrSource);
+  assert.ok(syncSource);
+  assert.ok(tabLoader);
+
+  const loadedTabs = new Set(['students']);
+  const context = vm.createContext({ loadedTabs });
+  vm.runInContext(invalidateSource + '; invalidateStudentListTab();', context);
+  assert.equal(loadedTabs.has('students'), false);
+
+  assert.match(manualSource, /saveShsElectiveAttendance\([\s\S]*?invalidateStudentListTab\(\)/);
+  assert.match(qrSource, /confirmShsElectiveQrAttendance\([\s\S]*?invalidateStudentListTab\(\)/);
+  assert.match(syncSource, /headerGradeWorkspacePromise = Promise\.resolve\(workspace\);[\s\S]*?invalidateStudentListTab\(\)/);
+  assert.match(tabLoader, /students: \(\) => loadStudents\(\{ preserve \}\)/);
+});
+
+test('elective QR review enters and exits the shared full-width review mode', () => {
+  const teaching = read('assets/js/teacher/elective-class.js');
+  const openSource = teaching.match(/async function openQrAttendance\(\) \{[\s\S]*?\n  \}\r?\n\r?\n  function renderQrWorkspace/)?.[0];
+  const reviewSource = teaching.match(/function openQrAttendanceFinalReview\(\) \{[\s\S]*?\n  \}\r?\n\r?\n  function showQrAttendanceReviewMode/)?.[0];
+  const backSource = teaching.match(/function showQrAttendanceReviewMode\(reviewing\) \{[\s\S]*?\n  \}\r?\n\r?\n  async function startQrCamera/)?.[0];
+  assert.ok(openSource);
+  assert.ok(reviewSource);
+  assert.ok(backSource);
+  assert.match(openSource, /setQrAttendanceReviewing\(false\)/);
+  assert.match(reviewSource, /renderQrAttendanceFinalReview\([\s\S]*?setQrAttendanceReviewing\(true\)/);
+  assert.match(backSource, /qrDraftRecords = \[\];\s*window\.TeacherClassViews\.setQrAttendanceReviewing\(false\)/);
+});
+
 test('SHS core and elective publish previews use the shared warning and grade-card layout', async () => {
   const source = read('assets/js/teacher/shs-gradebook.js');
   const helpers = source.match(/  function setPublishPreview\([\s\S]*?(?=  async function publish\()/)?.[0];

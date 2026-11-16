@@ -977,6 +977,26 @@ lucide.createIcons();
       );
     }
 
+    function mergePublishedGradeRows(existingGrades, publishedGrades, scope) {
+      const publishedByStudent = new Map((Array.isArray(publishedGrades) ? publishedGrades : [])
+        .map(grade => [String(grade.studentId), grade]));
+      const unchangedGrades = (Array.isArray(existingGrades) ? existingGrades : []).filter(grade =>
+        String(grade.sectionId) !== String(scope.sectionId)
+        || String(grade.subjectId) !== String(scope.subjectId)
+        || String(grade.academicTermId) !== String(scope.academicTermId)
+        || !publishedByStudent.has(String(grade.studentId))
+      );
+      return [
+        ...unchangedGrades,
+        ...Array.from(publishedByStudent.values(), grade => ({
+          ...grade,
+          sectionId: String(scope.sectionId),
+          subjectId: String(scope.subjectId),
+          academicTermId: String(scope.academicTermId)
+        }))
+      ];
+    }
+
     function updatePublishedGradesBanner(academicPeriodId) {
       const banner = document.getElementById('publishedGradesBanner');
       if (!isBackendGradeMode()) {
@@ -1630,6 +1650,7 @@ lucide.createIcons();
     window.TeacherClassViews = {
       renderStudents: renderSharedStudentTable,
       openStudentDetails: openTeacherStudentDetails,
+      setQrAttendanceReviewing,
       updateSectionHeaderFromGradebook: academicPeriodId => {
         if (!academicPeriodId) return;
         ACTIVE_ACADEMIC_PERIOD_ID = String(academicPeriodId);
@@ -3247,8 +3268,12 @@ lucide.createIcons();
       });
     }
 
+    function setQrAttendanceReviewing(reviewing) {
+      document.querySelector('.qr-attendance-workspace')?.classList.toggle('reviewing', Boolean(reviewing));
+    }
+
     function showQrAttendanceReviewMode(reviewing) {
-      document.querySelector('.qr-attendance-workspace').classList.toggle('reviewing', reviewing);
+      window.TeacherClassViews.setQrAttendanceReviewing(reviewing);
       document.getElementById('qrAttendanceScanGroups').hidden = reviewing;
       document.getElementById('qrAttendanceFinalReview').hidden = !reviewing;
       const startButton = document.getElementById('qrScannerStartButton');
@@ -3360,9 +3385,11 @@ lucide.createIcons();
         const savedData = await window.EDUGNAY_API.confirmQrAttendance(qrAttendanceContext.sessionId, records);
         syncBackendQrAttendance(savedData);
         BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
+        renderTeacherStudentList();
         confirmed = true;
         qrAttendanceSaving = false;
         await loadAttendanceForDate(APP_TODAY);
+        renderTeacherStudentList();
         renderAttendanceHistory();
         closeModal('qrAttendanceModal');
         showAppToast('QR attendance confirmed.');
@@ -3638,7 +3665,9 @@ lucide.createIcons();
         });
         saved = true;
         BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
+        renderTeacherStudentList();
         await loadAttendanceForDate(date);
+        renderTeacherStudentList();
         rows.forEach(row => { delete row.dataset.manualChoice; });
         showAppToast('Attendance saved.');
       } catch (error) {
@@ -3913,6 +3942,8 @@ lucide.createIcons();
         }
 
         const result = await window.EDUGNAY_API.publishFinalGrades({ ...scope, transferReviewAcknowledged: document.getElementById('transferPublishAcknowledged').checked });
+        BACKEND_PUBLISHED_GRADES = mergePublishedGradeRows(BACKEND_PUBLISHED_GRADES, result.grades, scope);
+        renderTeacherStudentList();
         const publishedItemIds = new Set((result.gradingItemIds || []).map(String));
         BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.map(item => publishedItemIds.has(String(item.id))
           ? { ...item, usedInPublishedGrades: true } : item);
@@ -3927,9 +3958,10 @@ lucide.createIcons();
           BACKEND_GRADING_ITEMS = gradingItems.filter(item => item.subjectId === String(scope.subjectId)
             && (item.communicationComponentCode || null) === (scope.communicationComponentCode || null));
           updatePublishedGradesBanner(document.getElementById('academicPeriodSelect').value);
+          renderTeacherStudentList();
           showAppToast(`Grades published for ${result.publishedCount} students.`);
         } catch (refreshError) {
-          showAppToast(`Grades were published for ${result.publishedCount} students, but the status could not refresh. Reload the page to verify it.`, 'info');
+          showAppToast('Grades were published and the Student List was updated, but the publish status could not refresh.', 'info');
         }
       } catch (error) {
         setPublishGradeFeedback(error.message || 'Grades could not be published.', true);

@@ -82,6 +82,48 @@ test('regular attendance passes saved records to the shared row renderer', () =>
   assert.equal(rendered.recordsByStudent['7'].status, 'present');
 });
 
+test('manual and QR attendance saves refresh Student List progress', () => {
+  const qrSource = extractSourceBetween(sectionsScript,
+    'async function confirmQrAttendance()', '\n    async function supportsNativeQrScanner()');
+  const manualSource = extractSourceBetween(sectionsScript,
+    'async function saveAttendance()', '\n    function filterStudents(query)');
+
+  for (const source of [qrSource, manualSource]) {
+    const saveIndex = source.indexOf('BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData)');
+    assert.ok(saveIndex >= 0, 'save response should update the attendance cache');
+    assert.ok(source.indexOf('renderTeacherStudentList()', saveIndex) > saveIndex,
+      'the Student List should redraw after the saved attendance is cached');
+  }
+});
+
+test('published grade response updates the Student List while preserving unrelated grades', () => {
+  const mergeSource = extractSourceBetween(sectionsScript,
+    'function mergePublishedGradeRows(', '\n    function updatePublishedGradesBanner(');
+  const publishSource = extractSourceBetween(sectionsScript,
+    'async function publishGrades()', '\n    function getTeacherAssignments()');
+  assert.ok(mergeSource);
+  assert.match(publishSource, /BACKEND_PUBLISHED_GRADES = mergePublishedGradeRows\(BACKEND_PUBLISHED_GRADES, result\.grades, scope\);\s*renderTeacherStudentList\(\);/);
+  assert.match(publishSource, /BACKEND_PUBLISHED_GRADES = publishedGrades;[\s\S]*?renderTeacherStudentList\(\);/);
+
+  const context = vm.createContext({});
+  vm.runInContext(mergeSource + '; globalThis.merge = mergePublishedGradeRows;', context);
+  const existing = [
+    { sectionId: '11', subjectId: '22', academicTermId: '33', studentId: '1', finalGrade: 73 },
+    { sectionId: '11', subjectId: '22', academicTermId: '33', studentId: '2', finalGrade: 92 },
+    { sectionId: '11', subjectId: '22', academicTermId: '34', studentId: '1', finalGrade: 84 },
+    { sectionId: '12', subjectId: '22', academicTermId: '33', studentId: '1', finalGrade: 89 }
+  ];
+  const merged = JSON.parse(JSON.stringify(context.merge(existing,
+    [{ studentId: 1, finalGrade: 80 }],
+    { sectionId: 11, subjectId: 22, academicTermId: 33 })));
+  assert.deepEqual(merged, [
+    { sectionId: '11', subjectId: '22', academicTermId: '33', studentId: '2', finalGrade: 92 },
+    { sectionId: '11', subjectId: '22', academicTermId: '34', studentId: '1', finalGrade: 84 },
+    { sectionId: '12', subjectId: '22', academicTermId: '33', studentId: '1', finalGrade: 89 },
+    { studentId: 1, finalGrade: 80, sectionId: '11', subjectId: '22', academicTermId: '33' }
+  ]);
+});
+
 test('student and attendance updates tolerate shared empty table rows', () => {
   assert.match(sectionsSource, /if \(workspace\.term\?\.name\) \{\s*const sectionPeriodName = document\.getElementById\('sectionPeriodName'\);\s*if \(sectionPeriodName\) sectionPeriodName\.textContent = workspace\.term\.name;\s*if \(studentGradePeriodName\) studentGradePeriodName\.textContent = workspace\.term\.name;/);
   assert.match(sectionsSource, /querySelectorAll\('#attTbody tr\[data-student-id\]'\)/);
@@ -778,6 +820,30 @@ test('shared QR review renderers build the scan and final-review rows', () => {
   assert.equal(element('qrAttendanceProgress').textContent, '0 students need a status');
 });
 
+test('QR review mode is shared and uses responsive two-column student cards', () => {
+  const modeSource = extractSourceBetween(sectionsScript,
+    'function setQrAttendanceReviewing(', '\n    function showQrAttendanceReviewMode(');
+  const transitionSource = extractSourceBetween(sectionsScript,
+    'function showQrAttendanceReviewMode(', '\n    function openQrAttendanceFinalReview(');
+  assert.ok(modeSource);
+  assert.match(sectionsScript, /setQrAttendanceReviewing,\s*updateSectionHeaderFromGradebook:/);
+  assert.match(transitionSource, /window\.TeacherClassViews\.setQrAttendanceReviewing\(reviewing\)/);
+  assert.match(sectionsStyles, /\.qr-attendance-workspace\.reviewing\s+\.qr-attendance-final-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(sectionsStyles, /@media \(max-width:\s*760px\)[\s\S]*?\.qr-attendance-workspace\.reviewing\s+\.qr-attendance-final-list\s*\{\s*grid-template-columns:\s*1fr;/);
+
+  const toggles = [];
+  const context = vm.createContext({
+    document: {
+      querySelector(selector) {
+        assert.equal(selector, '.qr-attendance-workspace');
+        return { classList: { toggle: (className, enabled) => toggles.push([className, enabled]) } };
+      }
+    }
+  });
+  vm.runInContext(modeSource + '; setQrAttendanceReviewing(true); setQrAttendanceReviewing(false);', context);
+  assert.deepEqual(toggles, [['reviewing', true], ['reviewing', false]]);
+});
+
 test('shared grade preview renderer escapes learner content and limits status classes', () => {
   const renderer = extractSourceBetween(sectionsSource,
     'function renderSharedGradePreviewRows(', '\n    function renderSharedAssignmentCards(');
@@ -835,6 +901,13 @@ test('published teacher grades use the configured passing threshold for their st
   assert.match(sectionsSource, /SHS_CORE_STUDENT_PASSING_THRESHOLD \?\? PASSING_GRADE_THRESHOLD/);
   assert.match(sectionsSource, /: getGradeStatusTone\(grade\.finalGrade\)\) : 'grade-unavailable'/);
   assert.match(sectionsSource, /class="published-grade-value \$\{progress\.gradeTone\}"/);
+});
+
+test('SHS Core published grade synchronization redraws the shared Student List', () => {
+  const sync = sectionsScript.match(/syncShsPublishedGrades: workspace => \{[\s\S]*?\n      \},/)?.[0];
+  assert.ok(sync);
+  assert.match(sync, /BACKEND_PUBLISHED_GRADES = \(workspace\.published \|\| \[\]\)\.map/);
+  assert.match(sync, /renderTeacherStudentList\(\)/);
 });
 
 test('shared score table keeps calculated grade details accessible', () => {
