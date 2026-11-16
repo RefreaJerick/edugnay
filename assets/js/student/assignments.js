@@ -220,6 +220,11 @@ lucide.createIcons();
       });
     }
 
+    function replacementLimitReached(assignment, submission) {
+      return Boolean(submission?.fileName) && assignment.maxResubmissions != null
+        && Number(submission.resubmissionCount || 0) >= assignment.maxResubmissions;
+    }
+
     function renderAssignments() {
       renderAssignmentHistory();
       const list = document.getElementById('assignmentList');
@@ -253,16 +258,18 @@ lucide.createIcons();
         const status = STATUS_META[item.status];
         const onlineLabel = item.onlineSubmissionEnabled ? 'Available' : 'Not available';
         const onlineClass = item.onlineSubmissionEnabled ? 'available' : 'not-available';
-        const hasOnlineSubmission = STUDENT_SUBMISSIONS.some(function (record) {
-          return record.assignmentId === item.id;
-        });
+        const ownSubmission = ownSubmissionFor(item.id);
+        const hasOnlineSubmission = Boolean(ownSubmission?.fileName);
+        const limitReached = replacementLimitReached(item, ownSubmission);
         const readOnlyElective = isElectiveAssignment(item) && item.electiveMembershipActive === false;
         const submissionAction = readOnlyElective
           ? hasOnlineSubmission ? '<button class="top-btn secondary assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">View submission</button>'
             : '<span class="assignment-action-muted">Enrollment ended</span>'
           : item.onlineSubmissionEnabled
-          ? '<button class="top-btn assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">' +
-              '<i data-lucide="file-up" style="width:13px;height:13px;"></i> ' + (hasOnlineSubmission ? 'Replace file' : 'Submit work') + '</button>'
+          ? limitReached
+            ? '<button class="top-btn secondary assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">View submission</button>'
+            : '<button class="top-btn assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">' +
+                '<i data-lucide="file-up" style="width:13px;height:13px;"></i> ' + (hasOnlineSubmission ? 'Replace file' : 'Submit work') + '</button>'
           : '<span class="assignment-action-muted">Submit in class</span>';
         const assignmentScope = [
           isElectiveAssignment(item) ? 'Elective class' + (item.className ? ' · ' + item.className : '') : '',
@@ -306,23 +313,65 @@ lucide.createIcons();
       }).join('');
     }
 
+    function showAssignmentScore(item) {
+      const row = document.getElementById('assignmentScoreRow');
+      row.hidden = item.onlineSubmissionEnabled !== true || !item.gradingItemId || !(Number(item.maxScore) > 0);
+      if (row.hidden) return;
+      const value = document.getElementById('assignmentScoreValue');
+      value.classList.toggle('is-pending', item.studentScore == null);
+      value.textContent = item.studentScore == null
+        ? 'Not graded yet' : `${Number(item.studentScore)} / ${Number(item.maxScore)}`;
+    }
+
+    function showAssignmentDueBadge(item) {
+      const badge = document.getElementById('assignmentDueBadge');
+      const due = item.dueDate;
+      const today = item.schoolCurrentDate;
+      badge.hidden = true;
+      if (!due || !today) return;
+      const days = (Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000;
+      const label = days === 0 ? 'Today' : days === 1 ? 'Tomorrow'
+        : days < 0 && item.submissionStatus !== 'submitted' && item.status !== 'submitted' ? 'Overdue' : '';
+      if (!label) return;
+      badge.textContent = label;
+      badge.classList.toggle('is-overdue', label === 'Overdue');
+      badge.hidden = false;
+    }
+
+    function assignmentFileType(name) {
+      const ext = String(name || '').split('.').pop().toLowerCase();
+      return ({ pdf: 'PDF document', doc: 'Word document', docx: 'Word document',
+        ppt: 'PowerPoint file', pptx: 'PowerPoint file', xls: 'Excel file', xlsx: 'Excel file' })[ext] || 'Submitted file';
+    }
+
     function openAssignmentHistoryDetail(id) {
       const item = ASSIGNMENT_HISTORY.find(function (row) { return String(row.id) === String(id); });
       if (!item) return;
       activeSubmissionAssignmentId = null;
       document.getElementById('submissionModalTitle').textContent = 'Previous section work';
-      document.getElementById('submissionModalSub').textContent = item.sectionName + ' · ' + item.academicTermName + ' · Read only';
-      document.getElementById('assignmentDetailTitle').textContent = item.title || '—';
-      document.getElementById('assignmentDetailSubject').textContent = item.communicationComponentName || item.subjectName || '—';
+      document.getElementById('submissionModalSub').textContent = [item.title, item.communicationComponentName || item.subjectName].filter(Boolean).join(' · ');
       document.getElementById('assignmentDetailTeacher').textContent = item.teacherName || '—';
       document.getElementById('assignmentDetailDueDate').textContent = item.dueDate ? formatDate(item.dueDate) : 'No due date';
+      showAssignmentDueBadge(item);
       document.getElementById('assignmentDetailInstructions').textContent = item.description || 'No additional instructions were provided.';
       document.getElementById('assignmentOnlineNotice').textContent = (STATUS_META[item.submissionStatus] || STATUS_META.pending).label;
+      showAssignmentScore(item);
       document.getElementById('assignmentSubmissionForm').hidden = true;
       document.getElementById('assignmentSubmissionSubmit').hidden = true;
       document.getElementById('assignmentSubmittedFile').hidden = true;
+      document.getElementById('assignmentSubmittedFileLabel').textContent = 'Submitted file';
+      document.getElementById('assignmentSubmissionCancel').textContent = 'Close';
+      document.getElementById('assignmentReplacementNotice').hidden = true;
       const link = document.getElementById('assignmentHistoryDownload');
       link.hidden = !item.fileAvailable;
+      document.getElementById('assignmentSubmittedFileView').hidden = true;
+      document.getElementById('assignmentSubmittedFileDownload').hidden = true;
+      if (item.fileAvailable) {
+        document.getElementById('assignmentSubmittedFile').hidden = false;
+        document.getElementById('assignmentSubmittedFileName').textContent = item.fileName || 'Submitted file';
+        document.getElementById('assignmentSubmittedFileType').textContent = assignmentFileType(item.fileName);
+        document.getElementById('assignmentSubmittedFileActions').hidden = false;
+      }
       if (item.fileAvailable) link.href = window.EDUGNAY_API.getHistoricalSubmissionUrl(item.id);
       const modal = document.getElementById('assignmentSubmissionModal');
       modal.hidden = false;
@@ -348,6 +397,7 @@ lucide.createIcons();
     }
 
     let activeSubmissionAssignmentId = null;
+    let selectedAssignmentFile = null;
 
     function ownSubmissionFor(assignmentId) {
       return STUDENT_SUBMISSIONS.find(function (record) {
@@ -363,59 +413,81 @@ lucide.createIcons();
 
       activeSubmissionAssignmentId = assignment.id;
       const ownSubmission = ownSubmissionFor(assignment.id);
-      const hasOnlineSubmission = Boolean(ownSubmission);
+      const hasOnlineSubmission = Boolean(ownSubmission?.fileName);
+      const limitReached = replacementLimitReached(assignment, ownSubmission);
       const readOnlyElective = isElectiveAssignment(assignment) && assignment.electiveMembershipActive === false;
       const downloadUrl = ownSubmission?.fileUrl
         ? window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignment.id, ownSubmission.id) : null;
       document.getElementById('assignmentSubmittedFile').hidden = !ownSubmission?.fileName;
+      document.getElementById('assignmentSubmittedFileLabel').textContent = 'Current submission';
       document.getElementById('assignmentSubmittedFileName').textContent = ownSubmission?.fileName || '';
+      document.getElementById('assignmentSubmittedFileType').textContent = assignmentFileType(ownSubmission?.fileName);
       document.getElementById('assignmentSubmittedFileActions').hidden = !downloadUrl;
       document.getElementById('assignmentSubmittedFileView').href = downloadUrl
         ? window.EDUGNAY_API.getAssignmentSubmissionPreviewUrl(assignment.id, ownSubmission.id) : '';
       const submittedFileDownload = document.getElementById('assignmentSubmittedFileDownload');
       submittedFileDownload.href = downloadUrl || '';
+      document.getElementById('assignmentSubmittedFileView').hidden = false;
+      submittedFileDownload.hidden = false;
       const submissionDownload = document.getElementById('assignmentHistoryDownload');
       submissionDownload.hidden = true;
       submissionDownload.removeAttribute('href');
       document.getElementById('submissionModalTitle').textContent = readOnlyElective
         ? 'Elective submission details'
+        : limitReached ? 'Submission details'
         : assignment.onlineSubmissionEnabled
         ? hasOnlineSubmission ? 'Replace submission' : 'Submit assignment'
         : 'Assignment details';
-      document.getElementById('submissionModalSub').textContent = readOnlyElective
-        ? 'Your earlier submission remains available. New work can no longer be submitted for this class.'
-        : assignment.onlineSubmissionEnabled
-        ? 'Review the details and upload your work.'
-        : 'Review the assignment details and instructions.';
-      document.getElementById('assignmentDetailTitle').textContent = assignment.title || '—';
-      document.getElementById('assignmentDetailSubject').textContent = assignment.subject || '—';
+      document.getElementById('submissionModalSub').textContent = [assignment.title, assignment.subject].filter(Boolean).join(' · ');
       document.getElementById('assignmentDetailTeacher').textContent = assignment.teacher || '—';
       document.getElementById('assignmentDetailDueDate').textContent = assignment.dueDate
         ? formatDate(assignment.dueDate)
         : '—';
+      showAssignmentDueBadge(assignment);
       document.getElementById('assignmentDetailInstructions').textContent = assignment.instructions ||
         "No additional instructions were provided.";
+      showAssignmentScore(assignment);
 
       const submissionForm = document.getElementById('assignmentSubmissionForm');
       const submitButton = document.getElementById('assignmentSubmissionSubmit');
-      const canSubmitOnline = assignment.onlineSubmissionEnabled === true && !readOnlyElective;
+      const canSubmitOnline = assignment.onlineSubmissionEnabled === true && !readOnlyElective && !limitReached;
       submissionForm.hidden = !canSubmitOnline;
       submitButton.hidden = !canSubmitOnline;
+      document.getElementById('assignmentSubmissionCancel').textContent = canSubmitOnline ? 'Cancel' : 'Close';
       submitButton.innerHTML = '<i data-lucide="send" style="width:13px;height:13px;"></i> ' +
         (hasOnlineSubmission ? 'Replace file' : 'Submit work');
       const onlineNotice = document.getElementById('assignmentOnlineNotice');
       onlineNotice.textContent = readOnlyElective
         ? hasOnlineSubmission ? 'Enrollment ended · previous submission available' : 'Enrollment ended'
+        : limitReached ? 'Replacement limit reached'
         : canSubmitOnline
         ? 'Online submission available'
         : 'Submit in class';
       onlineNotice.classList.toggle('is-available', canSubmitOnline);
       onlineNotice.classList.toggle('is-classroom', !canSubmitOnline);
+      const replacementNotice = document.getElementById('assignmentReplacementNotice');
+      replacementNotice.hidden = !assignment.onlineSubmissionEnabled || readOnlyElective || limitReached;
+      if (!replacementNotice.hidden) {
+        const remaining = Math.max(0, assignment.maxResubmissions - Number(ownSubmission?.resubmissionCount || 0));
+        replacementNotice.classList.toggle('is-warning', hasOnlineSubmission && remaining === 1);
+        replacementNotice.textContent = assignment.maxResubmissions == null
+          ? 'File replacements are unlimited.'
+          : !hasOnlineSubmission
+            ? assignment.maxResubmissions === 0
+              ? 'You cannot replace the file after your first upload.'
+              : `After your first upload, you can replace the file ${remaining} ${remaining === 1 ? 'time' : 'times'}.`
+            : remaining === 1 ? '1 replacement remaining. Make sure this is the right file before replacing it.'
+              : `${remaining} replacements remaining.`;
+      }
 
       const fileInput = document.getElementById('assignmentSubmissionFile');
       fileInput.value = '';
-      document.getElementById('assignmentSubmissionFileHint').textContent = 'PDF, Word, PowerPoint, or Excel.';
+      selectedAssignmentFile = null;
+      document.getElementById('assignmentDropzoneText').textContent = 'Choose a file or drag it here';
+      document.getElementById('assignmentSubmissionFileHint').textContent = 'PDF, Word, PowerPoint, or Excel · up to 10 MB';
       document.getElementById('assignmentSubmissionFileHint').style.color = '';
+      document.getElementById('assignmentDropzone').classList.remove('is-invalid', 'is-dragging');
+      submitButton.disabled = true;
 
       const modal = document.getElementById('assignmentSubmissionModal');
       modal.hidden = false;
@@ -428,31 +500,43 @@ lucide.createIcons();
       modal.classList.remove('open');
       modal.hidden = true;
       activeSubmissionAssignmentId = null;
+      selectedAssignmentFile = null;
     }
 
     function validateAssignmentSubmission() {
-      const fileInput = document.getElementById('assignmentSubmissionFile');
       const hint = document.getElementById('assignmentSubmissionFileHint');
-      const file = fileInput.files[0];
+      const zone = document.getElementById('assignmentDropzone');
+      const button = document.getElementById('assignmentSubmissionSubmit');
+      const file = selectedAssignmentFile;
       const supportedTypes = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
       const extension = file?.name.split('.').pop().toLowerCase();
+      const error = !file ? 'Choose a file before submitting.'
+        : !supportedTypes.includes(extension) ? 'Choose a supported file type.'
+        : file.size > 10 * 1024 * 1024 ? 'Choose a file smaller than 10 MB.' : '';
+      button.disabled = Boolean(error);
+      zone.classList.toggle('is-invalid', Boolean(error && file));
+      document.getElementById('assignmentDropzoneText').textContent = file
+        ? file.name : 'Choose a file or drag it here';
+      hint.textContent = error || 'PDF, Word, PowerPoint, or Excel · up to 10 MB';
+      hint.style.color = error ? 'var(--red)' : '';
+      return !error;
+    }
 
-      if (!file) {
-        hint.textContent = 'Choose a file before submitting.';
-        hint.style.color = 'var(--red)';
-        fileInput.focus();
-        return false;
+    function handleAssignmentDrop(event) {
+      event.preventDefault();
+      const dropzone = document.getElementById('assignmentDropzone');
+      dropzone.classList.remove('is-dragging');
+      const files = event.dataTransfer?.files;
+      if (files?.length !== 1) {
+        selectedAssignmentFile = null;
+        document.getElementById('assignmentDropzoneText').textContent = 'Choose a file or drag it here';
+        document.getElementById('assignmentSubmissionSubmit').disabled = true;
+        document.getElementById('assignmentSubmissionFileHint').textContent = 'Drop one file at a time.';
+        dropzone.classList.add('is-invalid');
+        return;
       }
-      if (!supportedTypes.includes(extension)) {
-        hint.textContent = 'Choose a supported file type.';
-        hint.style.color = 'var(--red)';
-        fileInput.focus();
-        return false;
-      }
-
-      hint.textContent = 'PDF, Word, PowerPoint, or Excel.';
-      hint.style.color = '';
-      return true;
+      selectedAssignmentFile = files[0];
+      validateAssignmentSubmission();
     }
 
     async function submitStudentAssignment() {
@@ -460,10 +544,10 @@ lucide.createIcons();
 
       const button = document.getElementById('assignmentSubmissionSubmit');
       if (button.disabled) return;
-      const originalLabel = button.textContent;
+      const originalLabel = button.innerHTML;
       button.disabled = true;
       button.textContent = 'Submitting...';
-      const file = document.getElementById('assignmentSubmissionFile').files[0];
+      const file = selectedAssignmentFile;
       try {
         if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('Assignments can’t be submitted right now. Refresh and try again.');
         await window.EDUGNAY_API.submitAssignment(activeSubmissionAssignmentId, file);
@@ -474,7 +558,7 @@ lucide.createIcons();
         return;
       } finally {
         button.disabled = false;
-        button.textContent = originalLabel;
+        button.innerHTML = originalLabel;
       }
       closeAssignmentSubmissionModal();
       renderPeriodFilter();
@@ -540,7 +624,12 @@ lucide.createIcons();
       });
       document.getElementById('assignmentSubmissionClose').addEventListener('click', closeAssignmentSubmissionModal);
       document.getElementById('assignmentSubmissionCancel').addEventListener('click', closeAssignmentSubmissionModal);
-      document.getElementById('assignmentSubmissionFile').addEventListener('change', validateAssignmentSubmission);
+      const fileInput = document.getElementById('assignmentSubmissionFile');
+      const dropzone = document.getElementById('assignmentDropzone');
+      fileInput.addEventListener('change', () => { selectedAssignmentFile = fileInput.files[0] || null; validateAssignmentSubmission(); });
+      dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('is-dragging'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-dragging'));
+      dropzone.addEventListener('drop', handleAssignmentDrop);
       document.getElementById('assignmentSubmissionSubmit').addEventListener('click', submitStudentAssignment);
       window.EDUGNAY_PAGE_LOADING.ready();
     });

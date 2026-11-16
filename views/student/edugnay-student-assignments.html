@@ -221,7 +221,7 @@
 
   <!-- ASSIGNMENT DETAILS AND SUBMISSION MODAL -->
   <div class="modal-backdrop dashboard-modal-backdrop" id="assignmentSubmissionModal" hidden>
-    <div class="modal" style="max-width:520px;">
+    <div class="modal assignment-submission-modal">
       <div class="modal-head">
         <div class="modal-heading">
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-list"></i></div>
@@ -235,27 +235,25 @@
         </button>
       </div>
       <div class="modal-body">
+        <div class="assignment-overview">
         <div class="assignment-detail-grid" id="assignmentDetailGrid">
-          <div class="assignment-detail-item">
-            <div class="assignment-detail-label">ASSIGNMENT TITLE</div>
-            <div class="assignment-detail-value" id="assignmentDetailTitle">—</div>
-          </div>
-          <div class="assignment-detail-item">
-            <div class="assignment-detail-label">SUBJECT</div>
-            <div class="assignment-detail-value" id="assignmentDetailSubject">—</div>
-          </div>
           <div class="assignment-detail-item">
             <div class="assignment-detail-label">TEACHER</div>
             <div class="assignment-detail-value" id="assignmentDetailTeacher">—</div>
           </div>
           <div class="assignment-detail-item">
             <div class="assignment-detail-label">DUE DATE</div>
-            <div class="assignment-detail-value" id="assignmentDetailDueDate">—</div>
+            <div class="assignment-detail-value"><span id="assignmentDetailDueDate">—</span><span class="assignment-due-badge" id="assignmentDueBadge" hidden></span></div>
+          </div>
+          <div class="assignment-score-row" id="assignmentScoreRow" hidden>
+            <div class="assignment-detail-label">SCORE</div>
+            <div class="assignment-score-value" id="assignmentScoreValue"></div>
           </div>
         </div>
         <div class="assignment-detail-block">
           <div class="form-label">Instructions</div>
           <div class="assignment-detail-instructions" id="assignmentDetailInstructions">No additional instructions were provided.</div>
+        </div>
         </div>
         <div class="assignment-submission-section">
           <div class="assignment-submission-heading">
@@ -263,21 +261,27 @@
             <div class="assignment-detail-notice" id="assignmentOnlineNotice"></div>
           </div>
           <div class="assignment-submitted-file" id="assignmentSubmittedFile" hidden>
-            <div class="form-label">Submitted file</div>
+            <div class="form-label" id="assignmentSubmittedFileLabel">Current submission</div>
             <div class="assignment-submitted-file-row">
-              <div class="assignment-submitted-file-name" id="assignmentSubmittedFileName"></div>
+              <div class="assignment-submitted-file-icon" aria-hidden="true"><i data-lucide="file-text"></i></div>
+              <div class="assignment-submitted-file-copy"><div class="assignment-submitted-file-name" id="assignmentSubmittedFileName"></div><div class="assignment-submitted-file-type" id="assignmentSubmittedFileType"></div></div>
               <div class="assignment-submitted-file-actions" id="assignmentSubmittedFileActions">
                 <a class="assignment-file-text-action" id="assignmentSubmittedFileView" target="_blank" rel="noopener">View</a>
                 <a class="assignment-file-text-action" id="assignmentSubmittedFileDownload">Download</a>
+                <a class="assignment-file-text-action" id="assignmentHistoryDownload" hidden>Download your submitted file</a>
               </div>
             </div>
           </div>
           <div class="form-group" id="assignmentSubmissionForm">
-            <label class="form-label" for="assignmentSubmissionFile">File</label>
-            <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
-            <span class="form-hint" id="assignmentSubmissionFileHint">PDF, Word, PowerPoint, or Excel.</span>
+            <label class="form-label" for="assignmentSubmissionFile">Upload new file</label>
+            <label class="assignment-dropzone" id="assignmentDropzone" for="assignmentSubmissionFile">
+              <input type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" aria-describedby="assignmentSubmissionFileHint">
+              <i data-lucide="upload-cloud" aria-hidden="true"></i>
+              <span class="assignment-dropzone-title" id="assignmentDropzoneText">Choose a file or drag it here</span>
+              <span class="form-hint" id="assignmentSubmissionFileHint" role="status">PDF, Word, PowerPoint, or Excel · up to 10 MB</span>
+            </label>
           </div>
-          <a class="top-btn secondary" id="assignmentHistoryDownload" hidden>Download your submitted file</a>
+          <p class="form-hint" id="assignmentReplacementNotice" hidden></p>
         </div>
       </div>
       <div class="modal-foot">

@@ -52,7 +52,8 @@ const connection = {
         communicationComponentCode: values[3], academicTermId: values[4],
         gradingCategoryId: values[5], gradingItemId: null,
         teacherUserId: 5, title: values[9], description: values[10], dueAt: values[11],
-        maxScore: values[12], onlineSubmissionEnabled: values[13], status: values[14],
+        maxScore: values[12], onlineSubmissionEnabled: values[13],
+        maxResubmissions: values[14], status: values[15],
         subjectGradingComponentId: values[6], subjectGradingExamPartId: values[7],
         sectionName: 'St. John', sectionGrade: 'Grade 8', subjectName: 'English'
       };
@@ -72,7 +73,7 @@ const connection = {
         academicTermId: values[1], gradingCategoryId: values[2],
         subjectGradingComponentId: values[3], subjectGradingExamPartId: values[4],
         title: values[5], description: values[6], dueAt: values[7], maxScore: values[8],
-        onlineSubmissionEnabled: values[9], status: values[10]
+        onlineSubmissionEnabled: values[9], maxResubmissions: values[10], status: values[11]
       });
       return [{ affectedRows: 1 }];
     }
@@ -106,7 +107,8 @@ async function create(options = {}) {
     user: { id: 5, schoolId: 1, role: 'teacher' },
     body: {
       sectionId: 8, subjectId: 4, academicTermId: 6,
-      gradingCategoryId: 3, title: 'Project', maxScore: 50, status: options.status
+      gradingCategoryId: 3, title: 'Project', maxScore: 50, status: options.status,
+      maxResubmissions: options.maxResubmissions
     }
   }, {
     status(code) { result.status = code; return this; },
@@ -121,8 +123,8 @@ test('graded assignment and score component commit with a direct link', async ()
   assert.equal(result.status, 201);
   assert.equal(result.body.assignment.gradingItemId, 18);
   assert.match(assignmentInsert.sql, /status, published_at\)[\s\S]*CASE WHEN \? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END/);
-  assert.equal(assignmentInsert.values[14], 'published');
   assert.equal(assignmentInsert.values[15], 'published');
+  assert.equal(assignmentInsert.values[16], 'published');
   assert.ok(queries.findIndex(sql => sql.startsWith('INSERT INTO assignments'))
     < queries.findIndex(sql => sql.startsWith('INSERT INTO grading_items')));
   assert.ok(queries.some(sql => sql.startsWith('UPDATE assignments SET grading_item_id')));
@@ -139,9 +141,24 @@ test('graded assignment and score component commit with a direct link', async ()
 test('a draft assignment is created without a publish timestamp', async () => {
   const result = await create({ status: 'draft' });
   assert.ifError(result.error);
-  assert.equal(assignmentInsert.values[14], 'draft');
   assert.equal(assignmentInsert.values[15], 'draft');
+  assert.equal(assignmentInsert.values[16], 'draft');
   assert.match(assignmentInsert.sql, /CASE WHEN \? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END/);
+});
+
+test('teacher can choose unlimited or 1 to 5 replacements, but not a custom count', async () => {
+  const limited = await create({ maxResubmissions: 5 });
+  assert.ifError(limited.error);
+  assert.equal(limited.body.assignment.maxResubmissions, 5);
+  const unlimited = await create({ maxResubmissions: null });
+  assert.ifError(unlimited.error);
+  assert.equal(unlimited.body.assignment.maxResubmissions, null);
+  for (const invalid of [0, 6, -1, 1.5]) {
+    const result = await create({ maxResubmissions: invalid });
+    assert.equal(result.error?.status, 400);
+    assert.match(result.error?.message, /unlimited or 1 to 5/);
+    assert.equal(assignmentInsert, null);
+  }
 });
 
 test('assignment content edit and status change are recorded together', async () => {
@@ -153,7 +170,7 @@ test('assignment content edit and status change are recorded together', async ()
     id: 14, schoolId: 1, sectionId: 8, subjectId: 4, academicTermId: 6,
     gradingCategoryId: null, subjectGradingComponentId: null, subjectGradingExamPartId: null,
     gradingItemId: null, teacherUserId: 5, title: 'Homework', description: 'Old description',
-    dueAt: null, maxScore: null, onlineSubmissionEnabled: 0, status: 'draft',
+    dueAt: null, maxScore: null, onlineSubmissionEnabled: 0, maxResubmissions: 0, status: 'draft',
     sectionName: 'St. John', sectionGrade: 'Grade 8', subjectName: 'English'
   };
   const result = { error: null, body: null };
@@ -164,6 +181,7 @@ test('assignment content edit and status change are recorded together', async ()
 
   assert.ifError(result.error);
   assert.equal(result.body.assignment.status, 'published');
+  assert.equal(result.body.assignment.maxResubmissions, 0);
   assert.match(assignmentUpdate.sql, /WHEN status <> 'published' AND \? = 'published' THEN CURRENT_TIMESTAMP/);
   assert.equal(assignmentUpdate.values[0], 'published');
   assert.equal(auditEntries.length, 1);

@@ -779,6 +779,7 @@ function normalizeApiAssignment(record) {
     subjectName: record.subjectName || '',
     academicPeriodId: record.academicTermId ? String(record.academicTermId) : null,
     gradingItemId: record.gradingItemId ? String(record.gradingItemId) : null,
+    shsComponentCode: record.shsComponentCode || null,
     categoryId: record.subjectGradingComponentCode || record.gradingCategoryCode || (record.gradingCategoryId ? String(record.gradingCategoryId) : null),
     subjectGradingComponentId: record.subjectGradingComponentId == null ? null : Number(record.subjectGradingComponentId),
     subjectGradingExamPartId: record.subjectGradingExamPartId == null ? null : Number(record.subjectGradingExamPartId),
@@ -789,6 +790,7 @@ function normalizeApiAssignment(record) {
     onlineSubmissionEnabled: record.onlineSubmissionEnabled === undefined
       ? true
       : Boolean(record.onlineSubmissionEnabled),
+    maxResubmissions: record.maxResubmissions == null ? null : Number(record.maxResubmissions),
     maxScore: record.maxScore === null || record.maxScore === undefined ? null : Number(record.maxScore)
   };
 }
@@ -801,7 +803,7 @@ async function getApiAssignments(filters = {}) {
     }
   });
   const query = params.toString();
-  const response = await requestApi(`/assignments${query ? `?${query}` : ''}`);
+  const response = await requestApi(`/assignments${query ? `?${query}` : ''}`, { cache: 'no-store' });
   return (response?.assignments || []).map(normalizeApiAssignment).filter(Boolean);
 }
 
@@ -986,7 +988,9 @@ async function createApiAssignment(values = {}) {
       dueAt: dueAt ? `${String(dueAt).slice(0, 10)}T23:59:00` : null,
       maxScore: values.maxScore ?? null,
       status: values.status || 'published',
-      onlineSubmissionEnabled: values.onlineSubmissionEnabled === true
+      onlineSubmissionEnabled: values.onlineSubmissionEnabled === true,
+      maxResubmissions: values.maxResubmissions ?? null,
+      grade: values.grade || null
     })
   });
   return normalizeApiAssignment(response?.assignment);
@@ -1003,10 +1007,13 @@ async function updateApiAssignment(assignmentId, values = {}) {
       domainCode: values.domainCode,
       title: values.title,
       description: values.description ?? values.instructions,
-      dueAt: values.dueAt || values.dueDate ? `${String(values.dueAt || values.dueDate).slice(0, 10)}T23:59:00` : null,
-      maxScore: values.maxScore ?? null,
+      dueAt: values.dueAt === undefined && values.dueDate === undefined ? undefined
+        : values.dueAt || values.dueDate ? `${String(values.dueAt || values.dueDate).slice(0, 10)}T23:59:00` : null,
+      maxScore: values.maxScore === undefined ? undefined : values.maxScore,
       status: values.status,
-      onlineSubmissionEnabled: values.onlineSubmissionEnabled
+      onlineSubmissionEnabled: values.onlineSubmissionEnabled,
+      maxResubmissions: values.maxResubmissions,
+      grade: values.grade || null
     })
   });
   return normalizeApiAssignment(response?.assignment);
@@ -1530,6 +1537,7 @@ async function getApiAssignmentSubmissions(assignmentId) {
     studentId: String(record.studentId),
     fileUrl: record.fileUrl || null,
     fileSize: record.fileSizeBytes,
+    resubmissionCount: Number(record.resubmissionCount || 0),
     submittedAt: record.submittedAt || record.updatedAt || null,
     status: record.submissionStatus || 'pending'
   })) : [];
@@ -3861,6 +3869,7 @@ function applyCurrentDateToGradingBanners() {
     createShsGradingItem: values => requestApi('/shs-grades/items', {
       method: 'POST', body: JSON.stringify(values)
     }),
+    deleteShsGradingItem: (itemId, scope) => requestApi(`/shs-grades/items/${Number(itemId)}?${new URLSearchParams(scope)}`, { method: 'DELETE' }),
     saveShsScore: values => requestApi('/shs-grades/scores', {
       method: 'PUT', body: JSON.stringify(values)
     }),

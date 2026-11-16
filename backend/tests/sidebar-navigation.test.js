@@ -512,8 +512,10 @@ test('teacher sidebar uses a school- and teacher-scoped session snapshot before 
   const commonShell = pageFs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
 
   assert.ok(pages.length > 0, 'expected teacher pages with a Reports navigation group');
-  assert.doesNotMatch(styles, /teacher-nav-ready|#reports-nav\s+\[data-teacher-access\][^{]*\{\s*visibility:\s*hidden/,
-    'the teacher menu must not be hidden or replaced by reserved blank link slots while loading');
+  assert.doesNotMatch(styles, /teacher-nav-pending|#reports-nav\s+\[data-teacher-access\][^{]*\{\s*visibility:\s*hidden/,
+    'regular teacher links stay visible while access is checked');
+  assert.doesNotMatch(teacherShell, /teacher-nav-pending/,
+    'the teacher shell never hides the complete navigation');
   assert.doesNotMatch(styles, /\.sidebar\s+\[data-teacher-access\]\[hidden\]/,
     'root access classes are the single source of sidebar visibility');
   assert.match(styles, /html\.teacher-nav-hide-reports .*data-teacher-access="reports"[\s\S]*?display:\s*none !important/,
@@ -536,6 +538,8 @@ test('teacher sidebar uses a school- and teacher-scoped session snapshot before 
 
   for (const filename of pages) {
     const html = pageFs.readFileSync(path.join(teacherViews, filename), 'utf8');
+    assert.match(html, /assets\/css\/styles\.css\?v=5/, `${filename} loads the updated sidebar styles`);
+    assert.match(html, /assets\/js\/teacher\/shell\.js\?v=5/, `${filename} loads the updated teacher shell`);
     const reportsNav = html.match(/<div class="nav-section" id="reports-nav">([\s\S]*?)<\/div>\s*<div class="nav-section">/);
     assert.ok(reportsNav, `${filename} should have a complete Reports group`);
     const labels = [...reportsNav[1].matchAll(/data-teacher-access="([^"]+)"[\s\S]*?<span class="nav-label">([^<]+)/g)]
@@ -889,10 +893,12 @@ test('cached teacher navigation renders immediately, then removes a freshly revo
   assert.equal(savedPointer.teacherId, '50');
 });
 
-test('cold teacher navigation shows the existing menu and icons before data loads', async () => {
+test('cold teacher navigation keeps regular links visible while access loads', async () => {
   const harness = createTeacherShellHarness({ teachingSections: [] });
+  assert.equal(harness.rootClasses.has('teacher-nav-pending'), false, 'the whole menu is never hidden');
   const initialization = harness.listeners.get('DOMContentLoaded')();
 
+  assert.equal(harness.rootClasses.has('teacher-nav-pending'), false, 'regular links remain visible during access checks');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-reports-group'), true, 'an unverified Reports group collapses without leaving a gap');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-sf-templates'), true, 'unverified links do not flash before access is checked');
   assert.equal(harness.lucideRenderCount, 1, 'static sidebar icons render before access and page-data requests');
@@ -905,6 +911,40 @@ test('cold teacher navigation shows the existing menu and icons before data load
   assert.equal(harness.rootClasses.has('teacher-nav-hide-journals'), true, 'the Journal link remains hidden without an assignment');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-sf-templates'), false, 'school-enabled SF Templates becomes visible after context loads');
   assert.equal(harness.rootClasses.has('teacher-nav-hide-reports-group'), false, 'the group appears without reserving space while unverified');
+
+  const nextPage = createTeacherShellHarness({
+    cachedSnapshot: JSON.parse(harness.storage.get(`${teacherNavPrefix}10:50`)),
+    pathname: '/views/teacher/edugnay-teacher-announcements.html'
+  });
+  assert.equal(nextPage.rootClasses.has('teacher-nav-pending'), false, 'navigation never blanks the whole menu');
+  assert.equal(nextPage.rootClasses.has('teacher-nav-hide-sf-templates'), false, 'verified Reports access is restored before page initialization');
+});
+
+test('cold teacher navigation stays visible after an access error', async () => {
+  const harness = createTeacherShellHarness({ failures: { session: true } });
+  const initialization = harness.listeners.get('DOMContentLoaded')();
+  assert.equal(harness.rootClasses.has('teacher-nav-pending'), false);
+
+  harness.resolveSchoolReady();
+  await initialization;
+
+  assert.equal(harness.rootClasses.has('teacher-nav-pending'), false);
+  assert.equal(harness.rootClasses.has('teacher-nav-hide-reports-group'), true, 'unverified Reports links remain hidden');
+  assert.equal(harness.sectionsNav.children[0].textContent, 'Assigned sections could not be loaded');
+});
+
+test('incomplete teacher access snapshots hide only unverified links', async () => {
+  const harness = createTeacherShellHarness({ cachedSnapshot: {
+    version: 1, schoolId: '10', teacherId: '50',
+    access: { reports: false, journals: false }, sections: []
+  } });
+  assert.equal(harness.rootClasses.has('teacher-nav-pending'), false);
+  assert.equal(harness.rootClasses.has('teacher-nav-hide-reports-group'), true);
+  const initialization = harness.listeners.get('DOMContentLoaded')();
+  harness.resolveSchoolReady();
+  await initialization;
+  assert.equal(harness.rootClasses.has('teacher-nav-pending'), false);
+  assert.equal(harness.rootClasses.has('teacher-nav-hide-sf-templates'), false);
 });
 
 test('My Classes sidebar includes SHS assignments and keeps their saved links stable', async () => {

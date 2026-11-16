@@ -128,12 +128,15 @@ async function loadItems(db, scope, termId, forUpdate = false) {
     `SELECT id, title, max_score AS maxScore, shs_component_code AS componentCode,
       shs_exam_part_code AS examPartCode,
       communication_component_code AS communicationComponentCode,
-      used_in_published_grades AS usedInPublishedGrades
+      used_in_published_grades AS usedInPublishedGrades,
+      (SELECT assignment.id FROM assignments AS assignment
+        WHERE assignment.school_id = grading_items.school_id
+          AND assignment.grading_item_id = grading_items.id LIMIT 1) AS assignmentId
      FROM grading_items WHERE school_id = ? AND academic_term_id = ?
        AND ${scope.kind === 'core'
          ? 'section_id = ? AND subject_id = ? AND shs_elective_class_id IS NULL AND communication_component_code <=> ?'
          : 'shs_elective_class_id = ? AND section_id IS NULL AND subject_id IS NULL'}
-     ORDER BY recorded_at, id${forUpdate ? ' FOR UPDATE' : ''}`,
+     ORDER BY recorded_at DESC, id DESC${forUpdate ? ' FOR UPDATE' : ''}`,
     [scope.schoolId, termId, ...(scope.kind === 'core'
       ? [scope.sectionId, scope.subjectId, scope.communicationComponentCode]
       : [scope.classId])]
@@ -229,7 +232,10 @@ async function workspace(req, res, next) {
       method: scope.policy.method, gradingMode: scope.policy.gradingMode,
       passingGradeThreshold: scope.policy.passingGradeThreshold, gradeRounding: scope.policy.gradeRounding,
       requiredExamParts: requiredParts(scope.policy), source: scope.policy.source
-    }, policyBlockReason: policyBlockReason(scope.group, scope.yearLabel, scope.gradeCode) }, terms, term, students, items, scores, published });
+    }, policyBlockReason: policyBlockReason(scope.group, scope.yearLabel, scope.gradeCode) }, terms, term, students,
+    items: items.map(item => ({ ...item, maxScore: Number(item.maxScore) })),
+    scores: scores.map(score => ({ ...score, score: score.score == null ? null : Number(score.score) })),
+    published });
   } catch (error) { next(error); }
 }
 
@@ -242,13 +248,14 @@ async function insertItem(connection, req, scope, termId, values, options = {}) 
     if (componentParts.length ? !componentParts.includes(part) : part !== null)
       fail('Choose a valid examination part.');
     const assignmentId = values.assignmentId ? id(values.assignmentId, 'assignment ID') : null;
-    if (assignmentId && scope.kind !== 'elective') fail('Only elective assignments can be linked here.');
     let assignment = null;
     if (assignmentId) {
       const [rows] = await connection.execute(
         `SELECT id, title, grading_item_id AS gradingItemId FROM assignments
-         WHERE school_id = ? AND id = ? AND shs_elective_class_id = ? FOR UPDATE`,
-        [scope.schoolId, assignmentId, scope.classId]
+         WHERE school_id = ? AND id = ? AND ${scope.kind === 'elective'
+           ? 'shs_elective_class_id = ?' : 'section_id = ? AND subject_id = ? AND communication_component_code <=> ?'} FOR UPDATE`,
+        [scope.schoolId, assignmentId, ...(scope.kind === 'elective'
+          ? [scope.classId] : [scope.sectionId, scope.subjectId, scope.communicationComponentCode])]
       );
       assignment = rows[0];
       if (!assignment || assignment.gradingItemId) fail('This assignment is unavailable or already graded.', 409);
@@ -272,8 +279,11 @@ async function insertItem(connection, req, scope, termId, values, options = {}) 
     if (assignment) {
       await connection.execute(
         `UPDATE assignments SET academic_term_id = ?, max_score = ?, grading_item_id = ?
-         WHERE school_id = ? AND id = ? AND shs_elective_class_id = ? AND grading_item_id IS NULL`,
-        [termId, maxScore, result.insertId, scope.schoolId, assignmentId, scope.classId]
+         WHERE school_id = ? AND id = ? AND ${scope.kind === 'elective'
+           ? 'shs_elective_class_id = ?' : 'section_id = ? AND subject_id = ? AND communication_component_code <=> ?'}
+           AND grading_item_id IS NULL`,
+        [termId, maxScore, result.insertId, scope.schoolId, assignmentId, ...(scope.kind === 'elective'
+          ? [scope.classId] : [scope.sectionId, scope.subjectId, scope.communicationComponentCode])]
       );
     }
     if (options.recordActivity !== false) {
@@ -286,10 +296,11 @@ async function insertItem(connection, req, scope, termId, values, options = {}) 
     return result.insertId;
 }
 
-async function createLinkedAssignmentItem(connection, req, electiveClassId, assignmentId, values) {
-    const lookup = await resolveScope(connection, req.user, { electiveClassId });
+async function createLinkedAssignmentItem(connection, req, classScope, assignmentId, values) {
+    const selector = typeof classScope === 'object' ? classScope : { electiveClassId: classScope };
+    const lookup = await resolveScope(connection, req.user, selector);
     await lockYear(connection, lookup);
-    const scope = await resolveScope(connection, req.user, { electiveClassId }, true);
+    const scope = await resolveScope(connection, req.user, selector, true);
     const termId = id(values.academicTermId, 'term ID');
     await assertTerm(connection, scope, termId, true);
     return insertItem(connection, req, scope, termId, { ...values, assignmentId }, { recordActivity: false });
@@ -308,6 +319,41 @@ async function createItem(req, res, next) {
     const itemId = await insertItem(connection, req, scope, termId, req.body);
     await connection.commit(); started = false;
     res.status(201).json({ id: itemId });
+  } catch (error) { if (started) await connection.rollback(); next(error); } finally { connection.release(); }
+}
+
+async function deleteItem(req, res, next) {
+  const connection = await getDatabase().getConnection(); let started = false;
+  try {
+    await connection.beginTransaction(); started = true;
+    const lookup = await resolveScope(connection, req.user, req.query);
+    await lockYear(connection, lookup);
+    const scope = await resolveScope(connection, req.user, req.query, true);
+    const termId = id(req.query.academicTermId, 'term ID');
+    await assertTerm(connection, scope, termId, true);
+    const itemId = id(req.params.itemId, 'score component ID');
+    const item = (await loadItems(connection, scope, termId, true))
+      .find(row => Number(row.id) === itemId);
+    if (!item) fail('Score component was not found.', 404);
+    if (item.usedInPublishedGrades) fail('This component was used in published grades and cannot be deleted.', 409);
+    if (item.assignmentId) fail('This component belongs to an assignment. Delete the assignment and component together.', 409);
+    const [prompts] = await connection.execute(
+      'SELECT id FROM journal_prompts WHERE school_id = ? AND grading_item_id = ? LIMIT 1 FOR UPDATE',
+      [scope.schoolId, itemId]
+    );
+    if (prompts.length) fail('This component belongs to a journal prompt and cannot be deleted separately.', 409);
+    const [[saved]] = await connection.execute(
+      'SELECT COUNT(*) AS total FROM student_scores WHERE school_id = ? AND grading_item_id = ?',
+      [scope.schoolId, itemId]
+    );
+    await connection.execute('DELETE FROM student_scores WHERE school_id = ? AND grading_item_id = ?', [scope.schoolId, itemId]);
+    await connection.execute('DELETE FROM grading_items WHERE school_id = ? AND id = ?', [scope.schoolId, itemId]);
+    await writeAuditLog(connection, req, 'shs_grading_item_deleted', 'grading_item', itemId, {
+      itemName: item.title, subjectName: scope.subjectName, className: scope.className,
+      academicTermId: termId, deletedScoreCount: Number(saved.total)
+    });
+    await connection.commit(); started = false;
+    res.json({ deletedGradingItemId: itemId, deletedScoreCount: Number(saved.total) });
   } catch (error) { if (started) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
@@ -663,4 +709,4 @@ async function publish(req, res, next) {
   } catch (error) { if (started) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
-module.exports = { resolveScope, workspace, createItem, createLinkedAssignmentItem, saveScore, correctScore, preview, publish };
+module.exports = { resolveScope, workspace, createItem, deleteItem, createLinkedAssignmentItem, saveScore, correctScore, preview, publish };

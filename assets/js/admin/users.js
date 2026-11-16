@@ -447,9 +447,6 @@
       if (data.role === 'student' && !/^\d{12}$/.test(data.lrn)) {
         return 'The LRN must contain exactly 12 digits.';
       }
-      if (data.role === 'parent' && !data.parentLinks.length) {
-        return 'Please link at least one student to the parent account.';
-      }
       if (data.role === 'parent' && data.parentLinks.some(link => !link.relationship)) {
         return 'Please choose a relationship for every linked student.';
       }

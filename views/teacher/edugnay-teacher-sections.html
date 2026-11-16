@@ -14,14 +14,14 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/styles.css?v=4">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=5">
   <link rel="stylesheet" href="../../assets/css/teacher/sections.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js?v=12"></script>
   <script src="../../assets/js/teacher/shs-gradebook.js?v=15"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
-  <script src="../../assets/js/teacher/shell.js?v=4"></script>
+  <script src="../../assets/js/teacher/shell.js?v=5"></script>
   <script src="../../assets/js/teacher/elective-class.js?v=15" defer></script>
   <script src="../../assets/vendor/zxing/zxing-browser.min.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -155,6 +155,18 @@
             <input class="school-toggle-input" type="checkbox" id="assignOnlineSubmissionInput">
             <span class="school-toggle-control" aria-hidden="true"></span>
           </label>
+          <fieldset class="assignment-resubmission-limit" id="assignResubmissionLimitGroup" hidden>
+            <legend class="form-label">Maximum replacements</legend>
+            <div class="assignment-resubmission-options">
+              <label class="assignment-resubmission-option"><input type="radio" name="assignResubmissionLimit" value="" aria-label="Unlimited replacements" checked><span aria-hidden="true">∞</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="assignResubmissionLimit" value="1"><span>1</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="assignResubmissionLimit" value="2"><span>2</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="assignResubmissionLimit" value="3"><span>3</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="assignResubmissionLimit" value="4"><span>4</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="assignResubmissionLimit" value="5"><span>5</span></label>
+            </div>
+            <p class="form-hint">The first upload does not count.</p>
+          </fieldset>
           <label class="school-toggle-row">
             <span class="school-toggle-copy">
               <strong>Include in Score Recording</strong>
@@ -233,6 +245,19 @@
             <input class="school-toggle-input" type="checkbox" id="editAssignmentOnlineInput">
             <span class="school-toggle-control" aria-hidden="true"></span>
           </label>
+          <fieldset class="assignment-resubmission-limit" id="editAssignmentResubmissionLimitGroup" hidden>
+            <legend class="form-label">Maximum replacements</legend>
+            <div class="assignment-resubmission-options">
+              <label class="assignment-resubmission-option"><input type="radio" name="editAssignmentResubmissionLimit" value="" aria-label="Unlimited replacements"><span aria-hidden="true">∞</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="editAssignmentResubmissionLimit" value="1"><span>1</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="editAssignmentResubmissionLimit" value="2"><span>2</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="editAssignmentResubmissionLimit" value="3"><span>3</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="editAssignmentResubmissionLimit" value="4"><span>4</span></label>
+              <label class="assignment-resubmission-option"><input type="radio" name="editAssignmentResubmissionLimit" value="5"><span>5</span></label>
+            </div>
+            <p class="form-hint">The first upload does not count.</p>
+            <p class="form-hint" id="editAssignmentLegacyResubmissionLimit" hidden></p>
+          </fieldset>
           <label class="school-toggle-row">
             <span class="school-toggle-copy">
               <strong>Include in Score Recording</strong>

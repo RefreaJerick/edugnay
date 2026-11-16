@@ -17,10 +17,17 @@
   let assignmentGradeWorkspace = null;
   let assignmentGradeRequest = 0;
   let headerGradeWorkspacePromise = null;
+  let assignmentsRequest = 0;
+  let materialsRequest = 0;
+  const loadedTabs = new Set();
+  const pendingTabs = new Map();
+  let attendanceDay = '';
 
   const escapeHtml = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
   const canEdit = () => Boolean(electiveClass && electiveClass.yearStatus === 'active'
     && electiveClass.classActive && electiveClass.offeringActive && electiveClass.teacherStatus === 'active');
+  const canEditAssignmentStatus = assignment => Boolean(canEdit() && electiveClass.activePeriodId
+    && String(assignment?.academicPeriodId) === String(electiveClass.activePeriodId));
   const toast = (message, type = 'success') => window.showAppToast?.(message, type);
 
   function updateHeaderGradeStatus(workspaceData) {
@@ -119,8 +126,8 @@
     document.getElementById('sectionEncodingStatus').innerHTML = canEdit()
       ? '' : 'Read only';
     document.querySelector('#tab-students .tab-count').textContent = String(electiveClass.enrolledCount || 0);
-    document.querySelector('#tab-assignments .tab-count').textContent = '0';
-    document.querySelector('#tab-materials .tab-count').textContent = '0';
+    document.querySelector('#tab-assignments .tab-count').textContent = '—';
+    document.querySelector('#tab-materials .tab-count').textContent = '—';
     document.getElementById('attendancePanelSub').textContent = 'Attendance for this class and date.';
     document.getElementById('scorePanelTitle').textContent = 'Score Recording: ' + electiveClass.subjectName;
     document.getElementById('scoreSectionName').textContent = electiveClass.className;
@@ -154,16 +161,18 @@
     qrModal.addEventListener('click', event => { if (event.target === qrModal) stopQrCamera(); });
     qrModal.addEventListener('keydown', event => { if (event.key === 'Escape') stopQrCamera(); });
     window.addEventListener('edugnay:teacher-materials-changed', event => {
-      if (String(event.detail?.classId) === String(electiveClass.electiveClassId)) void loadMaterials();
+      if (String(event.detail?.classId) === String(electiveClass.electiveClassId)) void loadTab('materials', { force: true });
     });
     void loadHeaderGradeWorkspace().catch(() => {});
     window.lucide?.createIcons();
     const requestedTab = new URLSearchParams(window.location.search).get('tab');
     const activeTab = ['students', 'scores', 'attendance', 'assignments', 'materials'].includes(requestedTab) ? requestedTab : 'students';
+    if (activeTab !== 'assignments') void loadAssignments({ countOnly: true });
+    if (activeTab !== 'materials') void loadMaterials({ countOnly: true });
     return window.switchTab?.(activeTab);
   }
 
-  async function loadStudents() {
+  async function loadStudents({ preserve = false } = {}) {
     const columns = [
       { key: 'number', label: '#' },
       { key: 'student', label: 'Student' },
@@ -171,7 +180,7 @@
       { key: 'attendanceRate', label: 'Attendance Rate', render: student => `<span class="badge badge-${student.attendanceTone || 'gray'}">${escapeHtml(student.attendanceRate ?? '—')}</span>` },
       { key: 'grade', label: 'Final Grade', periodName: 'Current period', render: student => `<span class="published-grade-value ${student.grade == null ? 'grade-unavailable' : student.gradeTone || ''}">${student.grade == null ? '—' : escapeHtml(student.grade)}</span>` }
     ];
-    window.TeacherClassViews.renderStudents({ columns, loading: true });
+    if (!preserve) window.TeacherClassViews.renderStudents({ columns, loading: true });
     try {
       const data = await window.EDUGNAY_API.getShsElectiveRoster(electiveClass.electiveClassId);
       const students = data.students || [];
@@ -230,8 +239,11 @@
         updateStudents();
       });
       await Promise.allSettled([attendanceLoad, gradeLoad]);
+      return true;
     } catch (error) {
-      window.TeacherClassViews.renderStudents({ columns, meta: 'Students unavailable', empty: { icon: 'triangle-alert', title: 'Students unavailable', text: error.message } });
+      if (!preserve) window.TeacherClassViews.renderStudents({ columns, meta: 'Students unavailable', empty: { icon: 'triangle-alert', title: 'Students unavailable', text: error.message } });
+      else toast(error.message || 'Students could not refresh.', 'error');
+      return false;
     }
   }
 
@@ -239,25 +251,29 @@
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
   }
 
-  async function loadAttendance(date = '') {
+  async function loadAttendance(date = '', { preserve = false } = {}) {
     const panel = document.querySelector('#content-attendance .attendance-entry-panel');
     if (!panel) return;
-    document.getElementById('attendancePanelSub').innerHTML = '';
-    window.TeacherClassViews.renderAttendanceRows({ loading: true });
+    if (!preserve) document.getElementById('attendancePanelSub').innerHTML = '';
+    if (!preserve) window.TeacherClassViews.renderAttendanceRows({ loading: true });
     try {
       attendance = await window.EDUGNAY_API.getShsElectiveAttendance(electiveClass.electiveClassId, date);
       roster = attendance.students || [];
       renderAttendance();
+      return true;
     } catch (error) {
-      attendance = null;
-      document.getElementById('attendancePanelSub').textContent = 'Attendance unavailable';
-      window.TeacherClassViews.renderAttendanceRows({ empty: { icon: 'triangle-alert', title: 'Attendance unavailable', text: error.message } });
-      document.getElementById('qrAttendanceButton').disabled = true;
+      if (!preserve) {
+        attendance = null;
+        document.getElementById('attendancePanelSub').textContent = 'Attendance unavailable';
+        window.TeacherClassViews.renderAttendanceRows({ empty: { icon: 'triangle-alert', title: 'Attendance unavailable', text: error.message } });
+        document.getElementById('qrAttendanceButton').disabled = true;
+      } else toast(error.message || 'Attendance could not refresh.', 'error');
+      return false;
     }
   }
 
-  async function loadAttendanceHistory() {
-    window.TeacherClassViews.renderAttendanceHistory({ loading: true });
+  async function loadAttendanceHistory({ preserve = false } = {}) {
+    if (!preserve) window.TeacherClassViews.renderAttendanceHistory({ loading: true });
     try {
       const result = await window.EDUGNAY_API.getShsElectiveAttendanceHistory(electiveClass.electiveClassId);
       const sessions = Array.isArray(result.sessions) ? result.sessions : [];
@@ -273,8 +289,11 @@
         students: [...students.values()], dates, records,
         emptyText: 'Saved attendance records for this class will appear here.'
       });
+      return true;
     } catch (error) {
-      window.TeacherClassViews.renderAttendanceHistory({ error: error.message || 'Attendance history could not be loaded.' });
+      if (!preserve) window.TeacherClassViews.renderAttendanceHistory({ error: error.message || 'Attendance history could not be loaded.' });
+      else toast(error.message || 'Attendance history could not refresh.', 'error');
+      return false;
     }
   }
 
@@ -298,7 +317,7 @@
     document.getElementById('countL').textContent = counts.late;
     document.getElementById('countE').textContent = counts.excused;
     const saveButton = panel.querySelector('.attendance-entry-actions .top-btn.primary');
-    const allPresentButton = panel.querySelector('.attendance-entry-actions button[onclick^="markAll"]');
+    const allPresentButton = panel.querySelector('.attendance-entry-actions button[data-page-click="p5026ce80c219"]');
     const qrButton = document.getElementById('qrAttendanceButton');
     saveButton.disabled = !editable || !roster.length;
     saveButton.onclick = saveAttendance;
@@ -338,7 +357,7 @@
       attendance = await window.EDUGNAY_API.saveShsElectiveAttendance(electiveClass.electiveClassId, { attendanceDate: date, records });
       roster = attendance.students || [];
       renderAttendance();
-      void loadAttendanceHistory();
+      void loadAttendanceHistory({ preserve: true });
       toast('Attendance saved.');
     } catch (error) { toast(error.message || 'Attendance could not be saved.', 'error'); button.disabled = false; }
   }
@@ -523,7 +542,7 @@
       qrDraftRecords = [];
       toast('QR attendance confirmed.');
       window.closeModal('qrAttendanceModal');
-      await loadAttendance(attendance.attendanceDate);
+      await loadAttendance(attendance.attendanceDate, { preserve: true });
     } catch (error) { toast(error.message || 'QR attendance could not be confirmed.', 'error'); }
   }
 
@@ -547,29 +566,58 @@
       : parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  async function loadAssignments() {
-    window.TeacherClassViews.renderAssignments([], { loading: true, label: 'Loading assignments', rows: 3 });
+  async function loadAssignments({ countOnly = false, preserve = false } = {}) {
+    const request = ++assignmentsRequest;
+    if (!countOnly && !preserve) window.TeacherClassViews.renderAssignments([], { loading: true, label: 'Loading assignments', rows: 3 });
     try {
       const data = await window.EDUGNAY_API.getAssignments({ electiveClassId: electiveClass.electiveClassId });
-      assignments = Array.isArray(data) ? data : [];
-      document.getElementById('assignmentCount').textContent = String(assignments.length);
+      if (request !== assignmentsRequest) return false;
+      const loaded = Array.isArray(data) ? data : [];
+      document.getElementById('assignmentCount').textContent = String(loaded.length);
+      if (countOnly) return true;
+      assignments = loaded;
+      let counts = null;
+      let unavailableCounts = 0;
+      try {
+        const rosterResult = await window.EDUGNAY_API.getShsElectiveRoster(electiveClass.electiveClassId);
+        if (request !== assignmentsRequest) return false;
+        const students = rosterResult.students || [];
+        const results = await Promise.allSettled(assignments.map(item => window.EDUGNAY_API.getAssignmentSubmissions(item.id)));
+        if (request !== assignmentsRequest) return false;
+        counts = new Map(results.map((result, index) => {
+          if (result.status !== 'fulfilled') { unavailableCounts++; return [String(assignments[index].id), null]; }
+          return [String(assignments[index].id), {
+            submitted: students.filter(student => result.value.some(record => String(record.studentId) === String(student.id)
+              && record.status === 'submitted')).length,
+            total: students.length
+          }];
+        }));
+      } catch { unavailableCounts = assignments.length; }
+      document.getElementById('assignmentPanelSub').textContent = unavailableCounts
+        ? `Some submission counts could not be loaded for ${unavailableCounts} assignment${unavailableCounts === 1 ? '' : 's'}.`
+        : 'Assignments can be linked to an assessment in Score Recording.';
       const items = assignments.map(item => {
-        const actions = [];
+        const count = counts?.get(String(item.id));
+        const actions = [{
+          label: item.onlineSubmissionEnabled || !canEditAssignmentStatus(item) ? 'View Status' : 'Update Status',
+          icon: item.onlineSubmissionEnabled || !canEditAssignmentStatus(item) ? 'eye' : 'check-square',
+          onClick: () => window.TeacherClassViews.openElectiveAssignmentStatus(item.id)
+        }];
         if (item.onlineSubmissionEnabled) actions.push({
-          label: 'View Submissions', icon: 'inbox', onClick: () => loadSubmissions(item.id)
+          label: 'View Submissions', icon: 'inbox', onClick: () => window.TeacherClassViews.openElectiveAssignmentSubmissions(item.id)
         });
         if (canEdit()) actions.push(
           { label: 'Edit Assignment', icon: 'pencil', menu: true, onClick: () => window.openEditAssignmentModal?.(item.id) },
-          { label: 'Delete Assignment', icon: 'trash-2', menu: true, danger: true, onClick: () => window.openTeacherDeleteModal?.('assignment', item.id, item.title) }
+          { label: item.gradingItemId ? 'Delete Assignment & Component' : 'Delete Assignment', icon: 'trash-2', menu: true, danger: true, onClick: () => window.openTeacherDeleteModal?.('assignment', item.id, item.title) }
         );
         return {
           id: item.id,
           title: item.title,
           subjectName: item.subjectName || electiveClass.subjectName,
           dueLabel: formatShortDate(item.dueDate || item.dueAt),
-          gradingLabel: item.onlineSubmissionEnabled ? 'Online submissions enabled' : 'Online submissions disabled',
-          submittedCount: item.submittedCount ?? item.submissionCount,
-          totalCount: item.totalCount,
+          gradingLabel: `${window.TeacherClassViews.shsAssignmentGradingLabel(item)} · Online submissions ${item.onlineSubmissionEnabled ? 'enabled' : 'disabled'}`,
+          submittedCount: count?.submitted ?? null,
+          totalCount: count?.total ?? null,
           statusLabel: item.publicationStatus === 'draft' ? 'Draft' : item.publicationStatus === 'published' ? 'Published' : '',
           actions
         };
@@ -577,10 +625,15 @@
       window.TeacherClassViews.renderAssignments(items, {
         icon: 'clipboard-check', title: 'No assignments yet', text: 'Assignments created for this class will appear here.'
       });
+      return true;
     } catch (error) {
-      assignments = [];
-      document.getElementById('assignmentCount').textContent = '0';
-      window.TeacherClassViews.renderAssignments([], { icon: 'triangle-alert', title: 'Assignments unavailable', text: error.message });
+      if (request !== assignmentsRequest) return false;
+      if (!preserve) {
+        assignments = [];
+        document.getElementById('assignmentCount').textContent = '—';
+        if (!countOnly) window.TeacherClassViews.renderAssignments([], { icon: 'triangle-alert', title: 'Assignments unavailable', text: error.message });
+      } else toast(error.message || 'Assignments could not refresh.', 'error');
+      return false;
     }
   }
 
@@ -591,6 +644,8 @@
     const description = document.getElementById('assignInstructionsInput').value.trim();
     const dueDate = document.getElementById('assignDueInput').value;
     if (!title || !dueDate) return toast('Enter an assignment title and due date.', 'error');
+    const limitChoice = document.querySelector('input[name="assignResubmissionLimit"]:checked');
+    const maxResubmissions = limitChoice?.value ? Number(limitChoice.value) : null;
     let grade;
     try { grade = assignmentGradePayload(false); }
     catch (error) { return toast(error.message, 'error'); }
@@ -599,11 +654,14 @@
       await window.EDUGNAY_API.createShsElectiveAssignment(electiveClass.electiveClassId, {
         title, description, dueAt: dueDate + 'T23:59:00',
         onlineSubmissionEnabled: document.getElementById('assignOnlineSubmissionInput').checked,
+        maxResubmissions,
         status: 'published', grade
       });
       window.closeModal('addAssignmentModal');
-      toast('Assignment added.');
-      await loadAssignments();
+      await loadTab('assignments', { force: true });
+      const scoresRefreshed = await refreshScoresAfterAssignment();
+      toast(scoresRefreshed ? 'Assignment added.' : 'Assignment added, but Score Recording could not refresh.',
+        scoresRefreshed ? 'success' : 'info');
     } catch (error) {
       toast(error.message || 'The assignment could not be added.', 'error');
     } finally {
@@ -668,48 +726,25 @@
       examPartCode: partsGroup.hidden ? null : partsSelect.value, maxScore: maxScore.value };
   }
 
-  async function loadSubmissions(assignmentId) {
-    const assignment = assignments.find(item => String(item.id) === String(assignmentId));
-    const columns = [
-      { key: 'studentName', label: 'Student', render: item => escapeHtml(item.studentName || 'Student') },
-      { key: 'status', label: 'Status', render: item => escapeHtml(item.status || 'pending') },
-      { key: 'submittedAt', label: 'Submitted at', render: item => escapeHtml(item.submittedAt ? new Date(item.submittedAt).toLocaleString() : 'Not submitted') },
-      { key: 'file', label: 'File', render: item => {
-        const fileUrl = item.fileName ? window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignmentId, item.id) : '';
-        return fileUrl
-          ? '<a class="row-btn view" href="' + escapeHtml(fileUrl) + '" target="_blank" rel="noopener">Download</a>'
-          : '<span class="assignment-file-unavailable">No file</span>';
-      } }
-    ];
-    window.TeacherClassViews.renderAssignmentSubmissions({
-      subtitle: assignment?.title || 'Submissions for this class assignment', columns, loading: true
-    });
-    window.openModal('assignmentSubmissionsModal');
-    try {
-      const submissions = await window.EDUGNAY_API.getAssignmentSubmissions(assignmentId);
-      window.TeacherClassViews.renderAssignmentSubmissions({
-        subtitle: assignment?.title || 'Submissions for this class assignment',
-        columns,
-        rows: submissions,
-        empty: { title: 'No submissions yet', text: 'Student submissions will appear here.' }
-      });
-    } catch (error) {
-      window.TeacherClassViews.renderAssignmentSubmissions({ columns, error: error.message || 'Submissions could not be loaded.' });
-    }
-  }
-
-  async function loadMaterials() {
-    window.TeacherClassViews.renderMaterials([], { loading: true, label: 'Loading learning materials', rows: 3 });
+  async function loadMaterials({ countOnly = false, preserve = false } = {}) {
+    const request = ++materialsRequest;
+    if (!countOnly && !preserve) window.TeacherClassViews.renderMaterials([], { loading: true, label: 'Loading learning materials', rows: 3 });
     try {
       const data = await window.EDUGNAY_API.getMaterials({ electiveClassId: electiveClass.electiveClassId });
+      if (request !== materialsRequest) return false;
       const materials = Array.isArray(data) ? data : [];
       document.querySelector('#tab-materials .tab-count').textContent = String(materials.length);
-      window.TeacherClassViews.renderMaterials(materials.map(item => ({
+      if (!countOnly) window.TeacherClassViews.renderMaterials(materials.map(item => ({
         ...item, canEdit: canEdit(), canDelete: canEdit()
       })), { icon: 'folder-open', title: 'No learning materials', text: 'Files shared with this class will appear here.' });
+      return true;
     } catch (error) {
-      document.querySelector('#tab-materials .tab-count').textContent = '0';
-      window.TeacherClassViews.renderMaterials([], { icon: 'triangle-alert', title: 'Materials unavailable', text: error.message });
+      if (request !== materialsRequest) return false;
+      if (!preserve) {
+        if (!countOnly) window.TeacherClassViews.renderMaterials([], { icon: 'triangle-alert', title: 'Materials unavailable', text: error.message });
+        document.querySelector('#tab-materials .tab-count').textContent = '—';
+      } else toast(error.message || 'Materials could not refresh.', 'error');
+      return false;
     }
   }
 
@@ -725,7 +760,7 @@
       await window.EDUGNAY_API.uploadShsElectiveMaterial(electiveClass.electiveClassId, { title, status, file });
       window.closeModal('uploadModal');
       toast('Learning material uploaded.');
-      await loadMaterials();
+      await loadTab('materials', { force: true });
     } catch (error) {
       toast(error.message || 'The material could not be uploaded.', 'error');
     } finally {
@@ -734,33 +769,66 @@
   }
   async function loadGrades(academicTermId = '') {
     const panel = document.querySelector('#content-scores .panel');
-    if (!panel) return;
+    if (!panel) return false;
     if (!window.AcademixShsGradebook?.mount) {
       window.TeacherClassViews.renderScoreTable({
         host: panel,
         empty: { noItems: { icon: 'triangle-alert', title: 'Gradebook unavailable', text: 'Reload the page to open Score Recording.' } }
       });
-      return;
+      return false;
     }
     const scope = { electiveClassId: electiveClass.electiveClassId };
     if (academicTermId) scope.academicTermId = academicTermId;
-    await window.AcademixShsGradebook.mount(panel, scope);
+    return window.AcademixShsGradebook.show(panel, scope);
   }
 
-  function loadTab(tab) {
+  function loadTab(tab, { force = false } = {}) {
     if (!electiveClass) return Promise.resolve();
+    if (tab === 'attendance' && attendanceDay && attendanceDay !== localToday()) force = true;
+    if (!force && loadedTabs.has(tab)) return Promise.resolve(true);
+    if (!force && pendingTabs.has(tab)) return pendingTabs.get(tab);
+    const preserve = loadedTabs.has(tab);
     const loaders = {
-      students: () => loadStudents(),
-      scores: () => loadGrades(),
-      attendance: async () => { await loadAttendance(document.getElementById('attDate').value || ''); await loadAttendanceHistory(); },
-      assignments: () => loadAssignments(),
-      materials: () => loadMaterials()
+      students: () => loadStudents({ preserve }),
+      scores: async () => {
+        if (force && loadedTabs.has('scores')) {
+          const refreshed = await window.AcademixShsGradebook?.refresh?.();
+          if (refreshed != null) return refreshed;
+        }
+        return loadGrades();
+      },
+      attendance: async () => {
+        const date = attendanceDay && attendanceDay !== localToday() ? localToday() : document.getElementById('attDate').value || '';
+        const [current, history] = await Promise.all([loadAttendance(date, { preserve }), loadAttendanceHistory({ preserve })]);
+        if (current) attendanceDay = localToday();
+        return current && history;
+      },
+      assignments: () => loadAssignments({ preserve }),
+      materials: () => loadMaterials({ preserve })
     };
-    return loaders[tab]?.();
+    const pending = Promise.resolve().then(() => loaders[tab]?.()).then(result => {
+      if (result === false || (tab === 'scores' && result !== true)) loadedTabs.delete(tab);
+      else loadedTabs.add(tab);
+      return result;
+    }).finally(() => { if (pendingTabs.get(tab) === pending) pendingTabs.delete(tab); });
+    pendingTabs.set(tab, pending);
+    return pending;
+  }
+
+  async function refreshScoresAfterAssignment() {
+    try {
+      if (pendingTabs.has('scores')) await pendingTabs.get('scores');
+      if (!loadedTabs.has('scores')) return true;
+      return await loadTab('scores', { force: true }) === true;
+    } catch {
+      loadedTabs.delete('scores');
+      return false;
+    }
   }
 
   window.AcademixElectiveClass = {
     canEdit,
+    canEditAssignmentStatus,
     getClass: () => electiveClass,
     getStudent: id => studentRoster.find(student => String(student.id) === String(id)) || null,
     updateHeaderGradeStatus,
@@ -768,7 +836,8 @@
     prepareAssignmentGrading,
     assignmentGradePayload,
     loadTab,
-    refresh: loadTab,
+    refreshScoresAfterAssignment,
+    refresh: tab => loadTab(tab, { force: true }),
     stopCamera: stopQrCamera
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopQrCamera(); });

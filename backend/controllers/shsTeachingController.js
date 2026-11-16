@@ -43,6 +43,7 @@ async function classList(req, res, next) {
         o.is_active AS offeringActive, g.grade_code AS gradeCode, g.display_name AS gradeName,
         ${req.user.role === 'parent' || req.user.role === 'student' ? 'm.student_user_id AS studentId,' : 'NULL AS studentId,'}
         y.label AS schoolYear, y.status AS yearStatus, t.account_status AS teacherStatus,
+        active_term.id AS activePeriodId,
         (SELECT active_term.name FROM academic_terms active_term
           WHERE active_term.school_id = ec.school_id
             AND active_term.academic_year_id = o.academic_year_id

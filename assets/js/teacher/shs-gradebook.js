@@ -3,6 +3,9 @@
   const escapeHtml = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
   const toast = (message, type = 'success') => window.showAppToast?.(message, type);
   const versions = new WeakMap();
+  let activeContext = null;
+  let pendingMount = null;
+  let resultsVersion = 0;
 
   function setVisible(element, visible) {
     if (!element) return;
@@ -16,6 +19,10 @@
     if (value.includes('performance')) return 'PT';
     if (value.includes('exam')) return 'QA';
     return value.toUpperCase();
+  }
+
+  function shortCategoryName(component) {
+    return { WW: 'WW', PT: 'PT', QA: 'Exams' }[categoryCode(component)] || component.name;
   }
 
   function publishedGradeFor(data, studentId) {
@@ -111,8 +118,8 @@
       try {
         await api().createShsGradingItem(values);
         window.closeModal('addCompModal');
-        toast('Score component added.');
-        await reload(data.term.id);
+        const refreshed = await reload(data.term.id);
+        toast(refreshed ? 'Score component added.' : 'Score component added, but Score Recording could not refresh.', refreshed ? 'success' : 'info');
       } catch (error) {
         toast(error.message || 'Score component could not be added.', 'error');
       } finally {
@@ -136,6 +143,35 @@
     window.TeacherClassViews.filterScores(host, category);
   }
 
+  function exportScoresCsv(host, data) {
+    const columns = [...host.querySelectorAll('#scoreTheadRow .comp-head-cell')].map(cell => {
+      const category = cell.querySelector('.comp-head-type');
+      return `${category.dataset.categoryName || category.textContent.trim()}: ${cell.querySelector('.comp-head-name').textContent} / ${cell.querySelector('.comp-head-max').textContent.replace('/', '').trim()}`;
+    });
+    const metrics = [...host.querySelectorAll('#scoreTheadRow .score-average-header')].map(cell => cell.textContent.trim());
+    const rows = [['Student', ...columns, ...metrics, 'Final Grade'],
+      ...[...host.querySelectorAll('#scoreTbody tr[data-student-id]')].filter(row => !row.hidden).map(row => [
+        row.querySelector('.student-name').textContent,
+        ...[...row.querySelectorAll('td[data-cat] .score-input')].map(input => input.value),
+        ...[...row.querySelectorAll('.computed-cell')].map(cell => cell.textContent.trim() === '—' ? '' : cell.textContent.trim())
+      ])];
+    const csvCell = value => {
+      let valueText = String(value ?? '');
+      if (/^[\s\uFEFF]*[=+\-@]/.test(valueText)) valueText = `'${valueText}`;
+      return `"${valueText.replace(/"/g, '""')}"`;
+    };
+    const csv = '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+    const filename = [data.scope.yearLabel, data.scope.className, data.scope.subjectName, data.term?.name]
+      .filter(Boolean).join('-').replace(/[^\p{L}\p{N}._-]+/gu, '-').slice(0, 140) + '-scores.csv';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Score CSV download started.');
+  }
+
   function renderTable(host, data, scope, writable, reload) {
     const policy = data.scope.policy;
     const items = (data.items || []).map(item => {
@@ -147,9 +183,17 @@
         maxScore: item.maxScore,
         categoryCode: categoryCode(item),
         categoryName: category?.name || item.componentCode || 'Assessment',
+        categoryHeader: shortCategoryName(category || item),
         examPartId: item.examPartId || '',
-        examPartName: item.examPartCode ? String(item.examPartCode).replaceAll('_', ' ') : '',
-        correctionRequired: Boolean(item.usedInPublishedGrades)
+        examPartName: (() => {
+          if (!item.examPartCode) return '';
+          const configured = category?.examParts?.[item.examPartCode];
+          const name = (typeof configured === 'object' ? configured?.name : null)
+            || String(item.examPartCode).replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+          return name.toLowerCase() === String(item.title).trim().toLowerCase() ? '' : name;
+        })(),
+        correctionRequired: Boolean(item.usedInPublishedGrades),
+        canDelete: writable
       };
     });
     window.TeacherClassViews.renderScoreTable({
@@ -158,7 +202,7 @@
       students: data.students || [],
       metricHeaders: [
         ...(policy?.components || []).map(component => ({
-          label: `${({ WW: 'WW', PT: 'PT', QA: 'Exams' })[categoryCode(component)] || component.name} Avg`,
+          label: `${shortCategoryName(component)} Avg`,
           title: `${component.name}: ${Number(component.weight) || 0}% of the final grade`,
           className: 'score-average-header'
         })),
@@ -209,12 +253,46 @@
     try {
       if (item.usedInPublishedGrades) {
         await api().correctShsScore({ ...values, reason: correctionReason });
-        toast('Score correction recorded. Republish grades to update the published result.');
       } else {
         await api().saveShsScore(values);
-        toast('Score saved.');
       }
-      await reload(data.term.id);
+      input.disabled = false;
+      const request = ++resultsVersion;
+      try {
+        const fresh = await api().getShsGradeWorkspace({ ...scope, academicTermId: data.term.id });
+        if (request !== resultsVersion || activeContext?.data !== data) return;
+        data.scores = fresh.scores || [];
+        data.students = fresh.students || [];
+        data.published = fresh.published || [];
+        const student = data.students.find(row => String(row.studentId || row.id) === String(studentId));
+        const row = [...activeContext.host.querySelectorAll('#scoreTbody tr[data-student-id]')]
+          .find(node => node.dataset.studentId === String(studentId));
+        if (student && row) {
+          const metrics = [...row.querySelectorAll('.computed-cell')];
+          (data.scope.policy?.components || []).forEach((component, index) => {
+            if (metrics[index]) metrics[index].textContent = student.componentAverages?.[component.code] ?? '—';
+          });
+          const final = metrics.at(-1);
+          if (final) {
+            const published = publishedGradeFor(data, studentId);
+            final.textContent = student.termGrade ?? (published ? Number(published.finalGrade) : '—');
+            if (published) {
+              const detail = document.createElement('small');
+              detail.textContent = 'Published v' + Number(published.publicationVersion);
+              final.append(detail);
+            }
+          }
+        }
+        if (data.scope.kind === 'elective') window.AcademixElectiveClass?.updateHeaderGradeStatus?.(data);
+        else window.TeacherClassViews?.updateSectionHeaderFromGradebook?.(data.term.id);
+        setFeedback(activeContext.host, 'All changes saved');
+        if (item.usedInPublishedGrades) {
+          toast('Score correction recorded. Republish grades to update the published result.');
+        }
+      } catch {
+        if (activeContext?.data === data) setFeedback(activeContext.host, 'Score saved. Calculated results could not refresh.', true);
+        toast('Score saved, but calculated results could not refresh.', 'info');
+      }
     } catch (error) {
       toast(error.message || 'Score could not be saved.', 'error');
       input.disabled = false;
@@ -224,15 +302,30 @@
 
   function setPublishPreview(preview, data, scope, writable, publishAction, reload) {
     const modal = document.getElementById('publishModal');
-    modal.querySelector('.modal-title').textContent = publishAction ? 'Review grades' : 'Grade preview';
-    modal.querySelector('.modal-sub').textContent = data.term.name + ' · ' + (data.scope.className || data.scope.subjectName || 'This class');
+    modal.querySelector('.modal-title').textContent = publishAction ? 'Publish Grades' : 'Grade preview';
+    modal.querySelector('.modal-sub').textContent = 'Review the calculated grades before publishing.';
+    const students = preview.preview.students;
+    const problems = students.filter(row => row.problem);
+    const ready = Boolean(students.length && !problems.length && preview.preview.term?.status === 'active');
     const warning = document.getElementById('publishGradeWarning');
-    const problems = preview.preview.students.filter(row => row.problem);
-    warning.hidden = !problems.length;
-    document.getElementById('publishGradeWarningText').textContent = problems.length
-      ? problems.map(row => row.studentName + ': ' + row.problem).join(' ') : '';
-    document.getElementById('publishGradeSummary').innerHTML = escapeHtml(preview.preview.students.length + ' students · ' +
-      (problems.length ? problems.length + ' need attention.' : 'Grades are ready to review.')) +
+    const sharedProblem = problems.length > 1 && problems.length === students.length
+      && problems.every(row => row.problem === problems[0].problem) ? problems[0].problem : '';
+    const messages = sharedProblem ? [sharedProblem]
+      : problems.map(row => `${row.studentName || 'Student'}: ${row.problem}`);
+    if (!students.length) messages.push('No students are enrolled in this class.');
+    if (preview.preview.term?.status !== 'active') messages.push('Only an active term can be published.');
+    warning.hidden = ready;
+    document.getElementById('publishGradeWarningText').replaceChildren(...messages.map(message => {
+      const item = document.createElement('li');
+      item.textContent = message;
+      return item;
+    }));
+    const className = data.scope.className || data.scope.subjectName || 'this class';
+    const termName = data.term.name || 'this term';
+    const count = students.length;
+    document.getElementById('publishGradeSummary').innerHTML = escapeHtml(ready
+      ? `Final grades for ${count} ${count === 1 ? 'student is' : 'students are'} ready to publish for ${termName} · ${className}.`
+      : `Review the items below before publishing grades for ${count} ${count === 1 ? 'student' : 'students'} in ${termName} · ${className}.`) +
       (data.published.length && publishAction ? '<div class="form-group"><label class="form-label" for="shs-republish-reason">Reason for republishing<input class="form-input" id="shs-republish-reason" type="text" minlength="10" maxlength="500" placeholder="Explain why published grades are changing"></label></div>' : '');
     const method = document.getElementById('publishGradeMethodNote');
     method.hidden = false;
@@ -242,13 +335,13 @@
         ? `School-specific method: the weighted initial grade is reported directly. Rounding: ${{ round: 'nearest whole number', roundup: 'round up', truncate: 'truncate' }[data.scope.policy.gradeRounding] || 'nearest whole number'}. Passing grade: ${data.scope.policy.passingGradeThreshold}.`
         : 'Grades use the verified weighted calculation for this class.';
     const list = document.getElementById('publishPreviewStudentList');
-    list.hidden = false;
-    window.TeacherClassViews.renderGradePreviewRows(list, preview.preview.students.map(row => {
+    list.hidden = !students.length;
+    window.TeacherClassViews.renderGradePreviewRows(list, students.map(row => {
       const hasGrade = row.termGrade !== null && row.termGrade !== undefined && Number.isFinite(Number(row.termGrade));
       const grade = hasGrade ? Number(row.termGrade) : null;
       return {
         name: row.studentName || 'Student',
-        value: row.problem || (hasGrade ? String(grade) : 'Incomplete'),
+        value: row.problem || !hasGrade ? 'Incomplete' : String(grade),
         tone: row.problem || !hasGrade ? 'grade-warn'
           : grade >= Number(data.scope.policy?.passingGradeThreshold ?? 75) ? 'grade-pass' : 'grade-fail',
         ariaLabel: row.problem ? `${row.studentName || 'Student'}: ${row.problem}`
@@ -257,9 +350,8 @@
     }));
     document.getElementById('publishGradeFeedback').hidden = true;
     const confirm = document.getElementById('publishGradesConfirmButton');
-    confirm.textContent = 'Publish grades';
+    confirm.innerHTML = '<i data-lucide="send"></i> Publish Grades';
     confirm.hidden = !publishAction;
-    const ready = Boolean(preview.preview.students.length && !problems.length && preview.preview.term?.status === 'active');
     confirm.disabled = !publishAction || !writable || !ready;
     confirm.onclick = () => publish(data, scope, writable, reload, ready);
     setVisible(modal, true);
@@ -269,18 +361,26 @@
 
   async function openPublishPreview(data, scope, writable, reload) {
     const modal = document.getElementById('publishModal');
-    modal.querySelector('.modal-title').textContent = 'Grade preview';
+    modal.querySelector('.modal-title').textContent = 'Publish Grades';
+    modal.querySelector('.modal-sub').textContent = 'Review the calculated grades before publishing.';
     document.getElementById('publishGradeWarning').hidden = true;
     document.getElementById('publishGradeSummary').innerHTML = '';
     document.getElementById('publishGradeMethodNote').hidden = true;
     document.getElementById('publishPreviewStudentList').hidden = true;
     document.getElementById('publishGradesConfirmButton').hidden = true;
+    const feedback = document.getElementById('publishGradeFeedback');
+    feedback.hidden = true;
+    feedback.classList.remove('error');
+    feedback.setAttribute('role', 'status');
     window.openModal('publishModal');
     try {
       const preview = await api().previewShsGrades({ ...scope, academicTermId: data.term.id });
       setPublishPreview(preview, data, scope, writable, true, reload);
     } catch (error) {
-      document.getElementById('publishGradeSummary').textContent = error.message || 'The grade preview could not be loaded.';
+      feedback.textContent = error.message || 'The grade preview could not be loaded.';
+      feedback.classList.add('error');
+      feedback.setAttribute('role', 'alert');
+      feedback.hidden = false;
     }
   }
 
@@ -297,8 +397,9 @@
     try {
       await api().publishShsGrades({ ...scope, academicTermId: data.term.id, correctionReason });
       window.closeModal('publishModal');
-      toast(data.published.length ? 'Grades republished. Previous versions remain in the history.' : 'Grades published.');
-      await reload(data.term.id);
+      const refreshed = await reload(data.term.id);
+      toast(refreshed ? data.published.length ? 'Grades republished. Previous versions remain in the history.' : 'Grades published.'
+        : 'Grades published, but Score Recording could not refresh.', refreshed ? 'success' : 'info');
     } catch (error) {
       toast(error.message || 'Grades could not be published.', 'error');
       confirm.disabled = false;
@@ -306,6 +407,8 @@
   }
 
   function render(host, data, scope, reload) {
+    host.classList.add('shs-gradebook');
+    activeContext = { host, data, scope, reload };
     const policy = data.scope.policy;
     const term = data.term;
     const items = data.items || [];
@@ -341,7 +444,10 @@
     publishButton.onclick = () => openPublishPreview(data, scope, writable, reload);
     publishButton.disabled = !writable || !items.length || !students.length;
     const exportButton = host.querySelector('#exportScoresButton');
-    setVisible(exportButton, false);
+    setVisible(exportButton, true);
+    exportButton.disabled = !items.length || !students.length;
+    exportButton.title = exportButton.disabled ? 'Add score components and students before exporting.' : '';
+    exportButton.onclick = () => exportScoresCsv(host, data);
     const lockBanner = host.querySelector('#quarterLockBanner');
     const lockBadge = host.querySelector('#quarterLockBadge');
     const needsLockNotice = !writable;
@@ -393,6 +499,11 @@
       version += 1;
       versions.set(host, version);
       const requestVersion = version;
+      if (activeContext?.host === host) activeContext = null;
+      const componentMenu = document.getElementById('scoreComponentMenu');
+      if (componentMenu) componentMenu.hidden = true;
+      host.querySelectorAll?.('.score-comp-menu-trigger[aria-expanded="true"]')
+        ?.forEach(button => button.setAttribute('aria-expanded', 'false'));
       const addButton = host.querySelector('#addScoreComponentButton');
       const publishButton = host.querySelector('#publishGradesButton');
       const periodSelect = host.querySelector('#academicPeriodSelect');
@@ -416,11 +527,12 @@
         if (termId) query.academicTermId = termId;
         const activeScope = { ...scope };
         const data = await api().getShsGradeWorkspace(query);
-        if (versions.get(host) !== requestVersion || !host.isConnected) return;
+        if (versions.get(host) !== requestVersion || !host.isConnected) return false;
         scope = activeScope;
         render(host, data, activeScope, load);
+        return true;
       } catch (error) {
-        if (versions.get(host) !== requestVersion || !host.isConnected) return;
+        if (versions.get(host) !== requestVersion || !host.isConnected) return false;
         addButton.title = 'Score Recording is unavailable.';
         periodSelect.innerHTML = '<option value="">Grading period unavailable</option>';
         window.TeacherClassViews.renderScoreTable({
@@ -428,17 +540,51 @@
           empty: { noItems: { icon: 'triangle-alert', title: 'Gradebook unavailable', text: error.message || 'The gradebook could not be loaded.' } }
         });
         setFeedback(host, error.message || 'Gradebook unavailable.', true);
+        return false;
       }
     };
-    await load(initialScope.academicTermId || '');
+    return load(initialScope.academicTermId || '');
   }
 
   function close(host) {
     if (!host) return;
     versions.set(host, (versions.get(host) || 0) + 1);
+    host.classList.remove('shs-gradebook');
+    if (activeContext?.host === host) activeContext = null;
     const modal = document.getElementById('addCompModal');
     if (modal?.classList.contains('open')) window.closeModal('addCompModal');
   }
 
-  window.AcademixShsGradebook = { mount, close };
+  function getDeleteContext(itemId) {
+    const context = activeContext;
+    const item = context?.data.items.find(row => String(row.id) === String(itemId));
+    if (!item || context.data.term?.status !== 'active'
+      || context.data.scope.yearStatus !== 'active') return null;
+    return { item, scope: context.scope, academicTermId: context.data.term.id,
+      scoreCount: context.data.scores.filter(score => String(score.gradingItemId) === String(itemId)
+        && (score.score != null || String(score.remarks || '').trim())).length,
+      reload: context.reload };
+  }
+
+  async function refresh() {
+    try {
+      if (pendingMount) await pendingMount.promise;
+      return await activeContext?.reload(activeContext.data.term?.id);
+    } catch {
+      return false;
+    }
+  }
+
+  function show(host, scope) {
+    const sameScope = currentScope => Object.keys(scope).every(key => String(currentScope[key] || '') === String(scope[key] || ''));
+    const current = activeContext;
+    if (current?.host === host && sameScope(current.scope))
+      return Promise.resolve(true);
+    if (pendingMount?.host === host && sameScope(pendingMount.scope)) return pendingMount.promise;
+    const promise = mount(host, scope).finally(() => { if (pendingMount?.promise === promise) pendingMount = null; });
+    pendingMount = { host, scope, promise };
+    return promise;
+  }
+
+  window.AcademixShsGradebook = { mount, show, close, getDeleteContext, refresh };
 })();

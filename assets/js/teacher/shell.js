@@ -37,7 +37,10 @@ function readTeacherSidebarSnapshot() {
     if (snapshot?.version !== 1
       || String(snapshot.schoolId) !== String(pointer.schoolId)
       || String(snapshot.teacherId) !== String(pointer.teacherId)
-      || !snapshot.access || !Array.isArray(snapshot.sections)
+      || typeof snapshot.access?.reports !== 'boolean'
+      || typeof snapshot.access?.journals !== 'boolean'
+      || typeof snapshot.access?.sfTemplates !== 'boolean'
+      || !Array.isArray(snapshot.sections)
       || (snapshot.shsClasses !== undefined && !Array.isArray(snapshot.shsClasses))) return null;
     return {
       ...snapshot,

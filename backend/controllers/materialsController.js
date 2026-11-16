@@ -309,11 +309,6 @@ async function createMaterial(req, res, next) {
     if (req.materialElectiveClassId) {
       const electiveClass = await assertElectiveTeacher(connection, req.user, req.materialElectiveClassId, { write: true });
       electiveClassId = electiveClass.id;
-      const [terms] = await connection.execute(
-        `SELECT id FROM academic_terms WHERE school_id = ? AND academic_year_id = ?
-          AND school_level_id = ? AND status = 'active' LIMIT 1`,
-        [electiveClass.schoolId, electiveClass.academicYearId, electiveClass.schoolLevelId]);
-      academicTermId = terms[0]?.id || null;
     } else {
       const assignment = await teacherAssignment(connection, req.user, sectionId, subjectId, componentCode);
       if (!assignment) fail('You are not assigned to this section and subject.', 403);

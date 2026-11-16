@@ -6,12 +6,12 @@ const { promisify } = require('util');
 const { pathToFileURL } = require('url');
 const JSZip = require('jszip');
 const { getDatabase } = require('../config/database');
-const { classHasStartedSql } = require('../utils/shsClassTerms');
+const { activeTerm, classAvailable, classHasStartedSql } = require('../utils/shsClassTerms');
 const { assertGradeWriteAccess, validateGradeItemScope } = require('./gradesController');
 const { writeAuditLog } = require('../utils/auditLog');
 const { uploadDirectory } = require('../config/uploads');
-const { assertElectiveStudent, assertElectiveTeacher } = require('../utils/shsTeachingAccess');
-const { createLinkedAssignmentItem } = require('./shsGradesController');
+const { assertElectiveStudent, assertElectiveTeacher, getElectiveClass } = require('../utils/shsTeachingAccess');
+const { createLinkedAssignmentItem, resolveScope: resolveShsScope } = require('./shsGradesController');
 const { COMMUNICATION_COMPONENTS } = require('../config/shsCommunication');
 const { resolveValuesDomainCode } = require('../utils/valuesDomainItems');
 
@@ -70,6 +70,14 @@ function scoreValue(value, label, required = true) {
   return Math.round(score * 100) / 100;
 }
 
+function resubmissionLimit(value) {
+  if (value === undefined || value === null) return null;
+  if (!/^[1-5]$/.test(String(value))) {
+    throw createError('Choose unlimited or 1 to 5 file replacements.');
+  }
+  return Number(value);
+}
+
 function dateTime(value, label, required = false) {
   if (value === undefined || value === null || value === '') {
     if (required) throw createError(`${label} is required.`);
@@ -118,12 +126,14 @@ function formatAssignment(row) {
     subjectGradingExamPartId: row.subjectGradingExamPartId == null ? null : Number(row.subjectGradingExamPartId),
     domainCode: row.domainCode || null,
     gradingItemId: row.gradingItemId,
+    shsComponentCode: row.shsComponentCode || null,
     gradingCategoryCode: row.gradingCategoryCode, gradingCategoryName: row.gradingCategoryName, teacherUserId: row.teacherUserId,
     subjectGradingComponentCode: row.subjectGradingComponentCode, subjectGradingComponentName: row.subjectGradingComponentName,
     subjectGradingExamPartCode: row.subjectGradingExamPartCode, subjectGradingExamPartName: row.subjectGradingExamPartName,
     teacherName: row.teacherName, title: row.title, description: row.description,
     dueAt: row.dueAt, maxScore: row.maxScore === null ? null : Number(row.maxScore),
     onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
+    maxResubmissions: row.maxResubmissions == null ? null : Number(row.maxResubmissions),
     status: row.status, createdAt: row.createdAt, updatedAt: row.updatedAt
   };
 }
@@ -138,10 +148,11 @@ function assignmentSelect() {
     assignments.subject_grading_component_id AS subjectGradingComponentId,
     assignments.subject_grading_exam_part_id AS subjectGradingExamPartId,
     assignments.grading_item_id AS gradingItemId,
-    linked_item.domain_code AS domainCode,
+    linked_item.domain_code AS domainCode, linked_item.shs_component_code AS shsComponentCode,
     assignments.teacher_user_id AS teacherUserId,
     assignments.title, assignments.description, assignments.due_at AS dueAt, assignments.max_score AS maxScore,
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
+    assignments.max_resubmissions AS maxResubmissions,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
     sections.name AS sectionName, school_grade_levels.display_name AS sectionGrade,
     sections.shs_curriculum_code AS shsCurriculumCode, school_grade_levels.grade_code AS gradeCode,
@@ -213,6 +224,7 @@ function assignmentDetailsChanged(current, next) {
     || comparableDateTime(current.dueAt) !== comparableDateTime(next.dueAt)
     || nullableNumber(current.maxScore) !== nullableNumber(next.maxScore)
     || Number(current.onlineSubmissionEnabled) !== Number(next.onlineSubmissionEnabled)
+    || nullableNumber(current.maxResubmissions) !== nullableNumber(next.maxResubmissions)
     || ['academicTermId', 'gradingCategoryId', 'subjectGradingComponentId', 'subjectGradingExamPartId']
       .some(field => String(current[field] || '') !== String(next[field] || ''));
 }
@@ -222,7 +234,7 @@ async function getTeacherSectionSubject(connection, teacherId, sectionId, subjec
     `SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId,
       sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId, sections.status,
       sections.shs_curriculum_code AS shsCurriculumCode, school_grade_levels.grade_code AS gradeCode,
-      subjects.subject_code AS subjectCode,
+      subjects.subject_code AS subjectCode, subjects.shs_subject_type AS shsSubjectType,
       section_teachers.communication_component_code AS communicationComponentCode
     FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id
       AND sections.school_id = section_teachers.school_id
@@ -396,6 +408,19 @@ async function listAssignments(req, res, next) {
         [req.user.schoolId, req.user.id, ...assignmentIds]
       );
       const submissionsByAssignment = new Map(submissionRows.map(row => [String(row.assignmentId), row]));
+      const scoredItemIds = [...new Set(formatted.filter(item => item.onlineSubmissionEnabled && item.gradingItemId)
+        .map(item => Number(item.gradingItemId)))];
+      let scoresByItem = new Map();
+      if (scoredItemIds.length) {
+        const scorePlaceholders = scoredItemIds.map(() => '?').join(', ');
+        const [scoreRows] = await database.execute(
+          `SELECT grading_item_id AS gradingItemId, score FROM student_scores
+           WHERE school_id = ? AND student_user_id = ? AND grading_item_id IN (${scorePlaceholders})`,
+          [req.user.schoolId, req.user.id, ...scoredItemIds]
+        );
+        scoresByItem = new Map(scoreRows.map(row => [String(row.gradingItemId),
+          row.score == null ? null : Number(row.score)]));
+      }
       const currentDate = getSchoolCurrentDate();
       formatted = formatted.map(item => {
         const submission = submissionsByAssignment.get(String(item.id)) || {};
@@ -405,7 +430,9 @@ async function listAssignments(req, res, next) {
           onlineSubmissionEnabled: item.onlineSubmissionEnabled,
           dueDate: item.dueAt ? String(item.dueAt).slice(0, 10) : null
         }, currentDate);
-        return { ...item, submissionStatus,
+        return { ...item, submissionStatus, schoolCurrentDate: currentDate,
+          studentScore: item.onlineSubmissionEnabled && item.gradingItemId
+            ? scoresByItem.get(String(item.gradingItemId)) ?? null : null,
           submittedAt: submissionStatus === 'submitted' ? submission.submittedAt || null : null };
       });
     }
@@ -444,12 +471,14 @@ async function getPreviousSectionWork(database, schoolId, studentId, currentDate
       assignments.subject_id AS subjectId, assignments.academic_term_id AS academicTermId,
       assignments.communication_component_code AS communicationComponentCode,
       assignments.title, assignments.description, assignments.online_submission_enabled AS onlineSubmissionEnabled,
+      assignments.grading_item_id AS gradingItemId, assignments.max_score AS maxScore,
       DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
       subjects.name AS subjectName, teachers.display_name AS teacherName,
       academic_years.label AS academicYearLabel, academic_terms.name AS academicTermName,
       assignment_submissions.submission_status AS savedStatus,
       assignment_submissions.file_path IS NOT NULL AS hasUploadedFile,
       assignment_submissions.file_name AS fileName,
+      own_score.score AS studentScore,
       DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
     FROM assignment_submissions
     INNER JOIN assignments ON assignments.id = assignment_submissions.assignment_id
@@ -460,6 +489,9 @@ async function getPreviousSectionWork(database, schoolId, studentId, currentDate
     INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
       AND subjects.is_active = TRUE
     INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id
+    LEFT JOIN student_scores AS own_score ON own_score.school_id = assignments.school_id
+      AND own_score.grading_item_id = assignments.grading_item_id
+      AND own_score.student_user_id = assignment_submissions.student_user_id
     WHERE assignment_submissions.school_id = ? AND assignment_submissions.student_user_id = ?
         AND assignments.status = 'published'
       AND EXISTS (SELECT 1 FROM section_students
@@ -487,7 +519,14 @@ async function getPreviousSectionWork(database, schoolId, studentId, currentDate
     teacherName: row.teacherName,
     submissionStatus: parentSubmissionStatus(row, currentDate),
     submittedAt: row.submittedAt,
-    ...(includeFileName ? { fileName: row.fileName || null, fileAvailable: Boolean(row.hasUploadedFile) } : {})
+    ...(includeFileName ? {
+      fileName: row.fileName || null, fileAvailable: Boolean(row.hasUploadedFile),
+      onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
+      gradingItemId: row.gradingItemId == null ? null : String(row.gradingItemId),
+      maxScore: row.maxScore == null ? null : Number(row.maxScore),
+      studentScore: row.onlineSubmissionEnabled && row.gradingItemId && row.studentScore != null
+        ? Number(row.studentScore) : null
+    } : {})
   }));
 }
 
@@ -496,7 +535,7 @@ async function getStudentAssignmentHistory(req, res, next) {
     const currentDate = getSchoolCurrentDate();
     const history = await getPreviousSectionWork(getDatabase(), req.user.schoolId, req.user.id, currentDate, true);
     res.set('Cache-Control', 'no-store');
-    res.json({ history });
+    res.json({ history: history.map(item => ({ ...item, schoolCurrentDate: currentDate })) });
   } catch (error) { next(error); }
 }
 
@@ -718,24 +757,48 @@ async function updateStudentAssignmentStatus(req, res, next) {
     const assignment = await getAssignmentForManagement(connection, req.user, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(assignment);
-    const [currentAssignment] = await connection.execute(
-      'SELECT online_submission_enabled AS onlineSubmissionEnabled FROM assignments WHERE id = ? AND school_id = ? AND teacher_user_id = ? FOR UPDATE',
-      [assignmentId, req.user.schoolId, req.user.id]
-    );
+    let electiveClass = null;
+    if (assignment.electiveClassId) {
+      electiveClass = await assertElectiveTeacher(connection, req.user, assignment.electiveClassId, { write: true });
+      const [terms] = await connection.execute(
+        `SELECT id FROM academic_terms WHERE id = ? AND school_id = ? AND academic_year_id = ?
+          AND school_level_id = ? AND status = 'active' LIMIT 1 FOR UPDATE`,
+        [assignment.academicTermId, req.user.schoolId, electiveClass.academicYearId, electiveClass.schoolLevelId]
+      );
+      if (!terms.length) throw createError('This assignment’s grading period is not active.', 409);
+    }
+    const [currentAssignment] = assignment.electiveClassId
+      ? await connection.execute(
+        `SELECT online_submission_enabled AS onlineSubmissionEnabled FROM assignments
+         WHERE id = ? AND school_id = ? AND shs_elective_class_id = ? FOR UPDATE`,
+        [assignmentId, req.user.schoolId, assignment.electiveClassId]
+      ) : await connection.execute(
+        'SELECT online_submission_enabled AS onlineSubmissionEnabled FROM assignments WHERE id = ? AND school_id = ? AND teacher_user_id = ? FOR UPDATE',
+        [assignmentId, req.user.schoolId, req.user.id]
+      );
     if (!currentAssignment.length) throw createError('Assignment was not found.', 404);
     if (Boolean(currentAssignment[0].onlineSubmissionEnabled)) {
       throw createError('Online submission status is set when a student uploads a file.', 409);
     }
 
-    const [students] = await connection.execute(
-      `SELECT section_students.student_user_id AS studentId FROM section_students
-      INNER JOIN users ON users.id = section_students.student_user_id
-      WHERE section_students.section_id = ? AND section_students.student_user_id = ?
-        AND section_students.withdrawn_at IS NULL AND users.school_id = ?
-        AND users.role = 'student' AND users.account_status = 'active' LIMIT 1 FOR UPDATE`,
-      [assignment.sectionId, studentId, req.user.schoolId]
-    );
-    if (!students.length) throw createError('Student is not enrolled in this assignment section.', 404);
+    const [students] = assignment.electiveClassId
+      ? await connection.execute(
+        `SELECT members.student_user_id AS studentId FROM shs_elective_class_students AS members
+         INNER JOIN users ON users.id = members.student_user_id AND users.school_id = members.school_id
+         WHERE members.school_id = ? AND members.elective_class_id = ? AND members.student_user_id = ?
+           AND members.withdrawn_at IS NULL AND users.role = 'student'
+           AND users.account_status = 'active' LIMIT 1 FOR UPDATE`,
+        [req.user.schoolId, assignment.electiveClassId, studentId]
+      ) : await connection.execute(
+        `SELECT section_students.student_user_id AS studentId FROM section_students
+        INNER JOIN users ON users.id = section_students.student_user_id
+        WHERE section_students.section_id = ? AND section_students.student_user_id = ?
+          AND section_students.withdrawn_at IS NULL AND users.school_id = ?
+          AND users.role = 'student' AND users.account_status = 'active' LIMIT 1 FOR UPDATE`,
+        [assignment.sectionId, studentId, req.user.schoolId]
+      );
+    if (!students.length) throw createError(assignment.electiveClassId
+      ? 'Student is not enrolled in this elective class.' : 'Student is not enrolled in this assignment section.', 404);
 
     const [existing] = await connection.execute(
       'SELECT file_path AS filePath FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ? FOR UPDATE',
@@ -776,6 +839,34 @@ async function createAssignment(req, res, next) {
     if (!section) throw createError('You are not assigned to this section and subject.', 403);
     if (section.legacyCommunication) throw createError('This older combined Communication class is read-only. Use Effective Communication or Mabisang Komunikasyon for new assignments.', 409);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId);
+    if (section.shsCurriculumCode === 'strengthened_2026' && section.shsSubjectType === 'core') {
+      await validateTermAndCategory(connection, section, subjectId, academicTermId, null);
+      if (req.body.gradingCategoryId || req.body.subjectGradingComponentId || req.body.subjectGradingExamPartId
+        || req.body.maxScore != null) throw createError('Use this SHS subject’s grading components for scored assignments.', 409);
+      const title = requiredText(req.body.title, 255, 'Assignment title');
+      const description = optionalText(req.body.description, 10000, 'Assignment description');
+      const dueAt = dateTime(req.body.dueAt, 'Due date');
+      const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
+      const maxResubmissions = resubmissionLimit(req.body.maxResubmissions);
+      const status = req.body.status === undefined ? 'published' : String(req.body.status);
+      if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
+      const [result] = await connection.execute(
+        `INSERT INTO assignments (school_id, section_id, subject_id, communication_component_code, academic_term_id,
+          teacher_user_id, title, description, due_at, max_score, online_submission_enabled, max_resubmissions, status, published_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?,
+           CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
+        [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, req.user.id,
+          title, description, dueAt, onlineSubmissionEnabled, maxResubmissions, status, status]
+      );
+      if (req.body.grade) await createLinkedAssignmentItem(connection, req,
+        { sectionId, subjectId, communicationComponentCode }, result.insertId,
+        { ...req.body.grade, academicTermId, title });
+      const assignment = await getAssignmentForManagement(connection, req.user, result.insertId);
+      await writeAuditLog(connection, req, 'assignment_created', 'assignment', result.insertId,
+        assignmentAuditDetails(assignment, status, { scoreComponentCreated: Boolean(assignment.gradingItemId) }));
+      await connection.commit(); transactionStarted = false;
+      return res.status(201).json({ assignment: formatAssignment(assignment) });
+    }
     const gradingCategoryId = optionalId(req.body.gradingCategoryId, 'grading category ID');
     const subjectGradingComponentId = optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
     const subjectGradingExamPartId = optionalId(req.body.subjectGradingExamPartId, 'exam-part ID');
@@ -796,17 +887,18 @@ async function createAssignment(req, res, next) {
       ? await resolveValuesDomainCode(connection, section.schoolId, sectionId, subjectId, subjectGradingComponentId, req.body.domainCode)
       : null;
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
+    const maxResubmissions = resubmissionLimit(req.body.maxResubmissions);
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const [result] = await connection.execute(
       `INSERT INTO assignments (school_id, section_id, subject_id, communication_component_code, academic_term_id,
         grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title,
-        description, due_at, max_score, online_submission_enabled, status, published_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        description, due_at, max_score, online_submission_enabled, max_resubmissions, status, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
       [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId,
         subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, description, dueAt, maxScore,
-        onlineSubmissionEnabled, status, status]);
+        onlineSubmissionEnabled, maxResubmissions, status, status]);
     if (isGraded) {
       const [item] = await connection.execute(
         `INSERT INTO grading_items (school_id, section_id, subject_id, communication_component_code, academic_term_id,
@@ -839,7 +931,13 @@ async function updateAssignment(req, res, next) {
     if (!current) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(current);
     if (current.electiveClassId) {
-      await assertElectiveTeacher(connection, req.user, current.electiveClassId, { write: true });
+      const electiveClass = await assertElectiveTeacher(connection, req.user, current.electiveClassId, { write: true });
+      const [activeTerms] = await connection.execute(
+        `SELECT id FROM academic_terms WHERE id = ? AND school_id = ? AND academic_year_id = ?
+          AND school_level_id = ? AND status = 'active' LIMIT 1 FOR UPDATE`,
+        [current.academicTermId, req.user.schoolId, electiveClass.academicYearId, electiveClass.schoolLevelId]
+      );
+      if (!activeTerms.length) throw createError('This assignment’s grading period is not active.', 409);
       if ((req.body.maxScore !== undefined && req.body.maxScore !== null && req.body.maxScore !== '')
         || req.body.gradingCategoryId || req.body.subjectGradingComponentId
         || req.body.subjectGradingExamPartId || req.body.gradingItemId) {
@@ -853,27 +951,34 @@ async function updateAssignment(req, res, next) {
       const dueAt = req.body.dueAt === undefined ? current.dueAt : dateTime(req.body.dueAt, 'Due date');
       const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
         ? Boolean(current.onlineSubmissionEnabled) : req.body.onlineSubmissionEnabled === true;
+      const maxResubmissions = req.body.maxResubmissions === undefined
+        ? current.maxResubmissions : resubmissionLimit(req.body.maxResubmissions);
       const status = req.body.status === undefined ? current.status : String(req.body.status);
       if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
       const statusChanged = current.status !== status;
       const detailsChanged = current.title !== title
         || String(current.description || '') !== String(description || '')
         || comparableDateTime(current.dueAt) !== comparableDateTime(dueAt)
-        || Number(current.onlineSubmissionEnabled) !== Number(onlineSubmissionEnabled);
+        || Number(current.onlineSubmissionEnabled) !== Number(onlineSubmissionEnabled)
+        || nullableNumber(current.maxResubmissions) !== nullableNumber(maxResubmissions);
       if (req.body.grade && current.gradingItemId) throw createError('This assignment already has a score component.', 409);
       if (req.body.grade === false && current.gradingItemId) throw createError('A linked score component cannot be removed here.', 409);
       await connection.execute(
         `UPDATE assignments SET published_at = CASE
            WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
-         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, status = ?
+         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, max_resubmissions = ?, status = ?
          WHERE id = ? AND school_id = ? AND shs_elective_class_id = ?`,
-        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId, current.electiveClassId]);
+        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, maxResubmissions, status, assignmentId, req.user.schoolId, current.electiveClassId]);
       if (req.body.grade) await createLinkedAssignmentItem(connection, req, current.electiveClassId, assignmentId,
         { ...req.body.grade, title });
       const [updatedRows] = await connection.execute(
         `${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1`,
         [assignmentId, req.user.schoolId]);
       const updated = updatedRows[0];
+      if (!updated || nullableNumber(updated.maxResubmissions) !== nullableNumber(maxResubmissions)
+        || Boolean(updated.gradingItemId) !== Boolean(current.gradingItemId || req.body.grade)) {
+        throw createError('Assignment settings could not be saved. Refresh and try again.', 409);
+      }
       if (statusChanged || detailsChanged || req.body.grade) {
         await writeAuditLog(connection, req, 'assignment_updated', 'assignment', assignmentId, {
           summary: [title, updated.subjectName, updated.sectionName || updated.electiveClassName].filter(Boolean).join(' · '),
@@ -891,6 +996,52 @@ async function updateAssignment(req, res, next) {
       current.subjectId, current.communicationComponentCode);
     if (!section) throw createError('This assignment is no longer available for this class. Refresh the page and try again.', 409);
     if (section.legacyCommunication) throw createError('This older combined Communication class is read-only.', 409);
+    if (section.shsCurriculumCode === 'strengthened_2026' && section.shsSubjectType === 'core') {
+      const academicTermId = requiredAcademicTermId(req.body.academicTermId === undefined
+        ? current.academicTermId : req.body.academicTermId);
+      if (Number(academicTermId) !== Number(current.academicTermId))
+        throw createError('The assignment’s grading period cannot be changed.', 409);
+      await validateTermAndCategory(connection, section, current.subjectId, academicTermId, null);
+      if (req.body.gradingCategoryId || req.body.subjectGradingComponentId || req.body.subjectGradingExamPartId
+        || req.body.maxScore != null) throw createError('Use this SHS subject’s grading components for scored assignments.', 409);
+      const title = req.body.title === undefined ? current.title : requiredText(req.body.title, 255, 'Assignment title');
+      if (current.gradingItemId && title !== current.title)
+        throw createError('A linked score component protects the assignment title from changes.', 409);
+      if (req.body.grade && current.gradingItemId) throw createError('This assignment already has a score component.', 409);
+      const description = req.body.description === undefined ? current.description : optionalText(req.body.description, 10000, 'Assignment description');
+      const dueAt = req.body.dueAt === undefined ? current.dueAt : dateTime(req.body.dueAt, 'Due date');
+      const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
+        ? Boolean(current.onlineSubmissionEnabled) : req.body.onlineSubmissionEnabled === true;
+      const maxResubmissions = req.body.maxResubmissions === undefined
+        ? current.maxResubmissions : resubmissionLimit(req.body.maxResubmissions);
+      const status = req.body.status === undefined ? current.status : String(req.body.status);
+      if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
+      await connection.execute(
+        `UPDATE assignments SET published_at = CASE
+           WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
+         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, max_resubmissions = ?, status = ?
+         WHERE id = ? AND school_id = ? AND section_id = ? AND subject_id = ?`,
+        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, maxResubmissions,
+          status, assignmentId, req.user.schoolId, current.sectionId, current.subjectId]
+      );
+      if (req.body.grade) await createLinkedAssignmentItem(connection, req,
+        { sectionId: current.sectionId, subjectId: current.subjectId,
+          communicationComponentCode: current.communicationComponentCode }, assignmentId,
+        { ...req.body.grade, academicTermId, title });
+      const updated = await getAssignmentForManagement(connection, req.user, assignmentId);
+      if (!updated || nullableNumber(updated.maxResubmissions) !== nullableNumber(maxResubmissions)
+        || Boolean(updated.gradingItemId) !== Boolean(current.gradingItemId || req.body.grade)) {
+        throw createError('Assignment settings could not be saved. Refresh and try again.', 409);
+      }
+      if (current.status !== status || assignmentDetailsChanged(current, { ...updated, title, description, dueAt,
+        onlineSubmissionEnabled: onlineSubmissionEnabled ? 1 : 0, maxResubmissions }) || req.body.grade) {
+        await writeAuditLog(connection, req, 'assignment_updated', 'assignment', assignmentId,
+          assignmentAuditDetails(updated, status, { fromStatus: current.status, toStatus: status,
+            scoreComponentCreated: Boolean(req.body.grade) }));
+      }
+      await connection.commit(); transactionStarted = false;
+      return res.json({ assignment: formatAssignment(updated) });
+    }
     const academicTermId = requiredAcademicTermId(req.body.academicTermId === undefined ? current.academicTermId : req.body.academicTermId);
     const gradingCategoryId = req.body.gradingCategoryId === undefined ? current.gradingCategoryId : optionalId(req.body.gradingCategoryId, 'grading category ID');
     const subjectGradingComponentId = req.body.subjectGradingComponentId === undefined ? current.subjectGradingComponentId : optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
@@ -916,11 +1067,14 @@ async function updateAssignment(req, res, next) {
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
       ? Number(current.onlineSubmissionEnabled) === 1
       : req.body.onlineSubmissionEnabled === true;
+    const maxResubmissions = req.body.maxResubmissions === undefined
+      ? current.maxResubmissions : resubmissionLimit(req.body.maxResubmissions);
     const status = req.body.status === undefined ? current.status : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const statusChanged = current.status !== status;
     const detailsChanged = assignmentDetailsChanged(current, {
       title, description, dueAt, maxScore, onlineSubmissionEnabled: onlineSubmissionEnabled ? 1 : 0,
+      maxResubmissions,
       academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId
     });
     if (current.gradingItemId) {
@@ -944,10 +1098,10 @@ async function updateAssignment(req, res, next) {
       `UPDATE assignments SET published_at = CASE
          WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
        academic_term_id=?, grading_category_id=?, subject_grading_component_id=?, subject_grading_exam_part_id=?,
-       title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, status=?
+       title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, max_resubmissions=?, status=?
        WHERE id=? AND school_id=?`,
       [status, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, title,
-        description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId]);
+        description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, maxResubmissions, status, assignmentId, req.user.schoolId]);
     if (current.gradingItemId) await connection.execute(
       'UPDATE grading_items SET title = ?, max_score = ?, domain_code = ? WHERE id = ? AND school_id = ?',
       [title, maxScore, domainCode, current.gradingItemId, req.user.schoolId]
@@ -992,14 +1146,40 @@ async function deleteAssignment(req, res, next) {
         throw createError('This assignment is no longer available for this class. Refresh the page and try again.', 409);
       }
       if (section.legacyCommunication) throw createError('This older assignment is kept with the class history and cannot be deleted.', 409);
-      if (assignment.gradingItemId) await assertGradeWriteAccess(connection, req.user, assignment);
+      if (assignment.gradingItemId) {
+        if (section.shsCurriculumCode === 'strengthened_2026' && section.shsSubjectType === 'core') {
+          if (req.user.role === 'teacher') await resolveShsScope(connection, req.user, { sectionId: assignment.sectionId,
+            subjectId: assignment.subjectId, communicationComponentCode: assignment.communicationComponentCode }, true);
+          await validateTermAndCategory(connection, section, assignment.subjectId, assignment.academicTermId, null);
+        } else await assertGradeWriteAccess(connection, req.user, assignment);
+      }
+      if (section.shsCurriculumCode === 'strengthened_2026' && section.shsSubjectType === 'core' && !assignment.gradingItemId) {
+        await validateTermAndCategory(connection, section, assignment.subjectId, assignment.academicTermId, null);
+      }
     }
     assignment = await getAssignmentForManagement(connection, req.user, assignmentId, true);
     if (!assignment) throw createError('Assignment was not found.', 404);
     if (assignment.electiveClassId) {
-      await assertElectiveTeacher(connection, req.user, assignment.electiveClassId, { write: true });
+      let electiveClass;
+      if (req.user.role === 'teacher') {
+        electiveClass = await assertElectiveTeacher(connection, req.user, assignment.electiveClassId, { write: true });
+      } else {
+        electiveClass = await getElectiveClass(connection, req.user.schoolId, assignment.electiveClassId,
+          { includeArchived: true, forUpdate: true });
+        if (!electiveClass || electiveClass.yearStatus !== 'active' || !electiveClass.classActive
+          || !electiveClass.offeringActive || electiveClass.teacherStatus !== 'active'
+          || !classAvailable(electiveClass, await activeTerm(connection, electiveClass))) {
+          throw createError('This elective class is not currently available for deletion.', 409);
+        }
+      }
+      const [activeTerms] = await connection.execute(
+        `SELECT id FROM academic_terms WHERE school_id = ? AND id = ? AND academic_year_id = ?
+          AND school_level_id = ? AND status = 'active' LIMIT 1 FOR UPDATE`,
+        [req.user.schoolId, assignment.academicTermId, electiveClass.academicYearId, electiveClass.schoolLevelId]
+      );
+      if (!activeTerms.length) throw createError('This assignment’s grading period is not active.', 409);
     }
-    if (['sectionId', 'subjectId', 'communicationComponentCode', 'academicTermId', 'gradingCategoryId', 'teacherUserId', 'gradingItemId']
+    if (['sectionId', 'subjectId', 'communicationComponentCode', 'electiveClassId', 'academicTermId', 'gradingCategoryId', 'teacherUserId', 'gradingItemId']
       .some(field => String(assignment[field]) !== String(original[field]))) {
       throw createError('The assignment changed while deletion was being prepared. Reload and try again.', 409);
     }
@@ -1014,6 +1194,7 @@ async function deleteAssignment(req, res, next) {
     if (assignment.gradingItemId) {
       const [items] = await connection.execute(
         `SELECT id, section_id AS sectionId, subject_id AS subjectId,
+          shs_elective_class_id AS electiveClassId,
           communication_component_code AS communicationComponentCode,
           academic_term_id AS academicTermId, grading_category_id AS gradingCategoryId,
           teacher_user_id AS teacherUserId, used_in_published_grades AS usedInPublishedGrades
@@ -1023,6 +1204,7 @@ async function deleteAssignment(req, res, next) {
       const item = items[0];
       if (!item || Number(item.sectionId) !== Number(assignment.sectionId)
         || Number(item.subjectId) !== Number(assignment.subjectId)
+        || Number(item.electiveClassId || 0) !== Number(assignment.electiveClassId || 0)
         || (item.communicationComponentCode || null) !== (assignment.communicationComponentCode || null)
         || Number(item.academicTermId) !== Number(assignment.academicTermId)
         || Number(item.gradingCategoryId) !== Number(assignment.gradingCategoryId)
@@ -1151,15 +1333,16 @@ async function createElectiveAssignment(req, res, next) {
     const description = optionalText(req.body.description, 10000, 'Assignment description');
     const dueAt = dateTime(req.body.dueAt, 'Due date');
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true || req.body.onlineSubmissionEnabled === 'true' ? 1 : 0;
+    const maxResubmissions = resubmissionLimit(req.body.maxResubmissions);
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const [result] = await connection.execute(
       `INSERT INTO assignments (school_id, shs_elective_class_id, academic_term_id, teacher_user_id, title, description,
-        due_at, max_score, online_submission_enabled, status, published_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?,
+        due_at, max_score, online_submission_enabled, max_resubmissions, status, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?,
         CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
       [electiveClass.schoolId, electiveClass.id, activeTerms[0].id, req.user.id, title, description, dueAt,
-        onlineSubmissionEnabled, status, status]);
+        onlineSubmissionEnabled, maxResubmissions, status, status]);
     if (req.body.grade) await createLinkedAssignmentItem(connection, req, electiveClass.id, result.insertId,
       { ...req.body.grade, title });
     const [rows] = await connection.execute(
@@ -1212,26 +1395,64 @@ async function checkSubmissionFile(file) {
 }
 
 async function submitAssignment(req, res, next) {
+  let connection;
+  let transactionStarted = false;
   try {
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
     if (!req.file) throw createError('Attach one supported submission file.');
     await checkSubmissionFile(req.file);
-    const assignment = await getStudentAssignment(getDatabase(), req.user.schoolId, req.user.id, assignmentId);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [lockedAssignment] = await connection.execute(
+      'SELECT id FROM assignments WHERE id = ? AND school_id = ? FOR UPDATE',
+      [assignmentId, req.user.schoolId]
+    );
+    if (!lockedAssignment.length) throw createError('Assignment was not found.', 404);
+    const assignment = await getStudentAssignment(connection, req.user.schoolId, req.user.id, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(assignment);
     if (assignment.electiveClassId) {
-      await assertElectiveStudent(getDatabase(), req.user, assignment.electiveClassId, { write: true });
+      await assertElectiveStudent(connection, req.user, assignment.electiveClassId, { write: true });
     }
     if (!assignment.onlineSubmissionEnabled) throw createError('Online submissions are not enabled for this assignment.', 409);
     const filePath = req.file.filename;
-    const database = getDatabase();
-    const [existing] = await database.execute('SELECT file_path AS filePath FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ? LIMIT 1', [req.user.schoolId, assignmentId, req.user.id]);
-    await database.execute(`INSERT INTO assignment_submissions (school_id, assignment_id, student_user_id, file_name, file_path, file_size_bytes, submission_status, submitted_at) VALUES (?, ?, ?, ?, ?, ?, 'submitted', NOW()) ON DUPLICATE KEY UPDATE file_name=VALUES(file_name), file_path=VALUES(file_path), file_size_bytes=VALUES(file_size_bytes), submission_status='submitted', submitted_at=NOW()`, [req.user.schoolId, assignmentId, req.user.id, req.file.originalname.slice(0, 255), filePath, req.file.size]);
+    const [existing] = await connection.execute(
+      'SELECT file_path AS filePath, resubmission_count AS resubmissionCount FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ? FOR UPDATE',
+      [req.user.schoolId, assignmentId, req.user.id]
+    );
+    const previous = existing[0];
+    const isReplacement = Boolean(previous?.filePath);
+    const resubmissionCount = Number(previous?.resubmissionCount || 0) + (isReplacement ? 1 : 0);
+    if (isReplacement && assignment.maxResubmissions != null && resubmissionCount > Number(assignment.maxResubmissions)) {
+      throw createError('The maximum number of file replacements has been reached.', 409);
+    }
+    if (previous) {
+      await connection.execute(
+        `UPDATE assignment_submissions SET file_name = ?, file_path = ?, file_size_bytes = ?,
+          resubmission_count = ?, submission_status = 'submitted', submitted_at = NOW()
+         WHERE school_id = ? AND assignment_id = ? AND student_user_id = ?`,
+        [req.file.originalname.slice(0, 255), filePath, req.file.size, resubmissionCount,
+          req.user.schoolId, assignmentId, req.user.id]
+      );
+    } else {
+      await connection.execute(
+        `INSERT INTO assignment_submissions (school_id, assignment_id, student_user_id,
+          file_name, file_path, file_size_bytes, resubmission_count, submission_status, submitted_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 'submitted', NOW())`,
+        [req.user.schoolId, assignmentId, req.user.id, req.file.originalname.slice(0, 255), filePath, req.file.size]
+      );
+    }
+    await connection.commit();
+    transactionStarted = false;
     if (existing[0]?.filePath !== filePath) await removeStoredSubmission(existing[0]?.filePath);
-    res.status(201).json({ assignmentId, studentId: req.user.id, fileName: req.file.originalname, fileSizeBytes: req.file.size, submissionStatus: 'submitted' });
+    res.status(201).json({ assignmentId, studentId: req.user.id, fileName: req.file.originalname, fileSizeBytes: req.file.size, submissionStatus: 'submitted', resubmissionCount });
   } catch (error) {
+    if (transactionStarted) await connection.rollback();
     await removeUploadedFile(req.file);
     next(error);
+  } finally {
+    connection?.release();
   }
 }
 
@@ -1244,13 +1465,13 @@ async function listSubmissions(req, res, next) {
       if (req.user.role !== 'student') throw createError('Assignment was not found.', 404);
       const ownAssignment = await getStudentAssignment(database, req.user.schoolId, req.user.id, assignmentId);
       if (!ownAssignment) throw createError('Assignment was not found.', 404);
-      const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ?', [req.user.schoolId, assignmentId, req.user.id]);
+      const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, resubmission_count AS resubmissionCount, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ?', [req.user.schoolId, assignmentId, req.user.id]);
       return res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
         ...submission,
         fileUrl: filePath ? `/api/assignments/${assignmentId}/submissions/${submission.id}/download` : null
       })) });
     }
-    const [submissions] = await database.execute('SELECT assignment_submissions.id, assignment_submissions.assignment_id AS assignmentId, assignment_submissions.student_user_id AS studentId, students.display_name AS studentName, assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath, assignment_submissions.file_size_bytes AS fileSizeBytes, assignment_submissions.submission_status AS submissionStatus, assignment_submissions.submitted_at AS submittedAt, assignment_submissions.updated_at AS updatedAt FROM assignment_submissions INNER JOIN users AS students ON students.id = assignment_submissions.student_user_id AND students.school_id = assignment_submissions.school_id WHERE assignment_submissions.school_id = ? AND assignment_submissions.assignment_id = ? ORDER BY students.last_name, students.first_name', [assignment.schoolId, assignmentId]);
+    const [submissions] = await database.execute('SELECT assignment_submissions.id, assignment_submissions.assignment_id AS assignmentId, assignment_submissions.student_user_id AS studentId, students.display_name AS studentName, assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath, assignment_submissions.file_size_bytes AS fileSizeBytes, assignment_submissions.resubmission_count AS resubmissionCount, assignment_submissions.submission_status AS submissionStatus, assignment_submissions.submitted_at AS submittedAt, assignment_submissions.updated_at AS updatedAt FROM assignment_submissions INNER JOIN users AS students ON students.id = assignment_submissions.student_user_id AND students.school_id = assignment_submissions.school_id WHERE assignment_submissions.school_id = ? AND assignment_submissions.assignment_id = ? ORDER BY students.last_name, students.first_name', [assignment.schoolId, assignmentId]);
     res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
       ...submission,
       fileUrl: filePath ? `/api/assignments/${assignmentId}/submissions/${submission.id}/download` : null

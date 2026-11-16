@@ -170,9 +170,14 @@ test('student assignment page has a responsive controls panel and desktop period
 
 test('student submitted-file View opens the protected preview in a new tab', () => {
   assert.match(source, /<a class="assignment-file-text-action" id="assignmentSubmittedFileView" target="_blank" rel="noopener">View<\/a>/);
+  assert.match(source, /<a class="assignment-file-text-action" id="assignmentSubmittedFileDownload">Download<\/a>/);
+  assert.match(source, /<label class="assignment-dropzone" id="assignmentDropzone" for="assignmentSubmissionFile">[\s\S]*?<input type="file" id="assignmentSubmissionFile"/);
   assert.doesNotMatch(source, /id="assignmentOwnPreviewModal"/);
+  assert.match(source, /class="assignment-score-row" id="assignmentScoreRow" hidden>[\s\S]*?class="assignment-detail-label">SCORE/);
+  assert.ok(source.indexOf('id="assignmentScoreRow"') < source.indexOf('id="assignmentSubmittedFile"'));
+  assert.ok(source.indexOf('id="assignmentSubmissionForm"') < source.indexOf('id="assignmentReplacementNotice"'));
 
-  const modalHelpers = source.match(/    function ownSubmissionFor\(assignmentId\) \{[\s\S]*?    function closeAssignmentSubmissionModal\(\) \{[\s\S]*?\n    \}/)?.[0];
+  const modalHelpers = source.match(/    function replacementLimitReached\(assignment, submission\) \{[\s\S]*?    function closeAssignmentSubmissionModal\(\) \{[\s\S]*?\n    \}/)?.[0];
   assert.ok(modalHelpers);
   const elements = new Map();
   const element = id => {
@@ -185,11 +190,23 @@ test('student submitted-file View opens the protected preview in a new tab', () 
   };
   const context = vm.createContext({
     ASSIGNMENTS: [{ id: '7', title: 'Homework', subject: 'Math', teacher: 'Teacher',
-      onlineSubmissionEnabled: true, electiveClassId: null }],
-    STUDENT_SUBMISSIONS: [{ id: '12', assignmentId: '7', fileName: 'work.docx', fileUrl: '/download/12' }],
+      onlineSubmissionEnabled: true, maxResubmissions: 1, electiveClassId: null,
+      gradingItemId: '11', maxScore: 20, studentScore: 0 }],
+    ASSIGNMENT_HISTORY: [
+      { id: '8', title: 'Old homework', sectionName: 'St. John', academicTermName: 'Term 1',
+        subjectName: 'Math', teacherName: 'Teacher', submissionStatus: 'submitted', fileAvailable: true,
+        onlineSubmissionEnabled: true, gradingItemId: '14', maxScore: 25, studentScore: 5 },
+      { id: '9', title: 'Old classroom task', sectionName: 'St. John', academicTermName: 'Term 1',
+        subjectName: 'Math', teacherName: 'Teacher', submissionStatus: 'submitted', fileAvailable: false,
+        onlineSubmissionEnabled: false, gradingItemId: '15', maxScore: 10, studentScore: 6 }
+    ],
+    STUDENT_SUBMISSIONS: [{ id: '12', assignmentId: '7', fileName: 'work.docx', fileUrl: '/download/12', resubmissionCount: 1 }],
+    STATUS_META: { submitted: { label: 'Submitted' }, pending: { label: 'Pending' } },
     activeSubmissionAssignmentId: null,
+    selectedAssignmentFile: null,
     document: { getElementById: element },
     window: { EDUGNAY_API: {
+      getHistoricalSubmissionUrl: assignmentId => `/api/assignments/history/${assignmentId}/download`,
       getAssignmentSubmissionPreviewUrl: (assignmentId, submissionId) => `/api/assignments/${assignmentId}/submissions/${submissionId}/preview`,
       getAssignmentSubmissionDownloadUrl: (assignmentId, submissionId) => `/api/assignments/${assignmentId}/submissions/${submissionId}/download`
     } },
@@ -201,6 +218,36 @@ test('student submitted-file View opens the protected preview in a new tab', () 
   assert.equal(element('assignmentSubmittedFileView').href, '/api/assignments/7/submissions/12/preview');
   assert.equal(element('assignmentSubmittedFileDownload').href, '/api/assignments/7/submissions/12/download');
   assert.equal(element('assignmentSubmissionModal').hidden, false);
+  assert.equal(element('assignmentSubmissionForm').hidden, true);
+  assert.equal(element('assignmentSubmissionSubmit').hidden, true);
+  assert.equal(element('assignmentReplacementNotice').hidden, true);
+  assert.equal(element('assignmentScoreRow').hidden, false);
+  assert.equal(element('assignmentScoreValue').textContent, '0 / 20');
+
+  vm.runInContext("openAssignmentHistoryDetail('8')", context);
+  assert.equal(element('assignmentReplacementNotice').hidden, true);
+  assert.equal(element('assignmentHistoryDownload').hidden, false);
+  assert.equal(element('assignmentHistoryDownload').href, '/api/assignments/history/8/download');
+  assert.equal(element('assignmentSubmissionForm').hidden, true);
+  assert.equal(element('assignmentScoreValue').textContent, '5 / 25');
+
+  vm.runInContext("openAssignmentHistoryDetail('9')", context);
+  assert.equal(element('assignmentHistoryDownload').hidden, true);
+  assert.equal(element('assignmentScoreRow').hidden, true);
+
+  vm.runInContext("openAssignmentSubmissionModal('7')", context);
+  assert.equal(element('assignmentReplacementNotice').hidden, true);
+  assert.equal(element('assignmentHistoryDownload').hidden, true);
+  context.ASSIGNMENTS[0].maxResubmissions = 2;
+  vm.runInContext("openAssignmentSubmissionModal('7')", context);
+  assert.equal(element('assignmentReplacementNotice').hidden, false);
+  assert.match(element('assignmentReplacementNotice').textContent, /1 replacement remaining/);
+  context.ASSIGNMENTS[0].studentScore = null;
+  vm.runInContext("openAssignmentSubmissionModal('7')", context);
+  assert.equal(element('assignmentScoreValue').textContent, 'Not graded yet');
+  context.ASSIGNMENTS[0].gradingItemId = null;
+  vm.runInContext("openAssignmentSubmissionModal('7')", context);
+  assert.equal(element('assignmentScoreRow').hidden, true);
 });
 
 test('student assignment page inline scripts parse', () => {
@@ -209,6 +256,50 @@ test('student assignment page inline scripts parse', () => {
   scripts.forEach((match, index) => {
     assert.doesNotThrow(() => new vm.Script(match[1]), `inline script ${index + 1}`);
   });
+});
+
+test('student due badges use the school date and leave submitted past work unmarked', () => {
+  const helper = source.match(/    function showAssignmentDueBadge\(item\) \{[\s\S]*?\n    \}/)?.[0];
+  assert.ok(helper);
+  const badge = { hidden: true, textContent: '', classList: { toggle() {} } };
+  const context = vm.createContext({ document: { getElementById: () => badge }, Date });
+  vm.runInContext(helper, context);
+  for (const [dueDate, status, label] of [
+    ['2026-11-16', 'pending', 'Today'],
+    ['2026-11-17', 'pending', 'Tomorrow'],
+    ['2026-11-15', 'pending', 'Overdue']
+  ]) {
+    context.showAssignmentDueBadge({ dueDate, schoolCurrentDate: '2026-11-16', status });
+    assert.equal(badge.textContent, label);
+    assert.equal(badge.hidden, false);
+  }
+  context.showAssignmentDueBadge({ dueDate: '2026-11-15', schoolCurrentDate: '2026-11-16', status: 'submitted' });
+  assert.equal(badge.hidden, true);
+});
+
+test('student file drop validates one supported file within the upload limit', () => {
+  const helpers = source.match(/    function validateAssignmentSubmission\(\) \{[\s\S]*?(?=    async function submitStudentAssignment\(\))/)?.[0];
+  assert.ok(helpers);
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, {
+      disabled: true, textContent: '', style: {}, classList: { add() {}, remove() {}, toggle() {} }
+    });
+    return elements.get(id);
+  };
+  const context = vm.createContext({ selectedAssignmentFile: null, document: { getElementById: element } });
+  vm.runInContext(helpers, context);
+  const drop = files => context.handleAssignmentDrop({ preventDefault() {}, dataTransfer: { files } });
+  drop([{ name: 'work.pdf', size: 100 }]);
+  assert.equal(element('assignmentSubmissionSubmit').disabled, false);
+  assert.equal(element('assignmentDropzoneText').textContent, 'work.pdf');
+  drop([{ name: 'work.pdf', size: 11 * 1024 * 1024 }]);
+  assert.equal(element('assignmentSubmissionSubmit').disabled, true);
+  assert.match(element('assignmentSubmissionFileHint').textContent, /smaller than 10 MB/);
+  drop([{ name: 'work.txt', size: 100 }]);
+  assert.match(element('assignmentSubmissionFileHint').textContent, /supported file type/);
+  drop([{ name: 'one.pdf', size: 100 }, { name: 'two.pdf', size: 100 }]);
+  assert.match(element('assignmentSubmissionFileHint').textContent, /one file at a time/);
 });
 
 test('student year dropdown, mobile periods, and desktop tabs render from the same selection', () => {

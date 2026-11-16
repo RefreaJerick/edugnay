@@ -9,6 +9,7 @@ router.use(requireAuth, requireSchoolUser, requireShsTeachingEnabled, requireTea
 router.get('/workspace', controller.workspace);
 router.get('/preview', controller.preview);
 router.post('/items', controller.createItem);
+router.delete('/items/:itemId', controller.deleteItem);
 router.put('/scores', controller.saveScore);
 router.put('/scores/correction', controller.correctScore);
 router.post('/publish', controller.publish);

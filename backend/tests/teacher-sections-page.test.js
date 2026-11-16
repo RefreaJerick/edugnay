@@ -304,6 +304,7 @@ test('SHS core Score Recording stays loading until the gradebook renders or show
       CURRENT_SUBJECT_ID: '2',
       CURRENT_SUBJECT_ASSIGNMENT: { communicationComponentCode: '' },
       USE_SHS_CORE_GRADEBOOK: true,
+      activeContext: null,
       versions: new Map(),
       close() {},
       renderCategoryTabs() {},
@@ -313,7 +314,7 @@ test('SHS core Score Recording stays loading until the gradebook renders or show
       api: () => ({ getShsGradeWorkspace: () => workspace })
     });
     vm.runInContext(`${switchTabSource}\n${mountSource}\n`
-      + 'window.AcademixShsGradebook = { mount };\n'
+      + 'window.AcademixShsGradebook = { show: mount };\n'
       + `globalThis.startup = async () => {
         const requestedTab = 'scores';
         ${initialTabSource}
@@ -1413,7 +1414,9 @@ test('assignment creation uses the selected subject ID even if a label is stale'
     BACKEND_GRADE_CONTEXT: { sectionId: 'grade-7', subjectId: 'english' },
     BACKEND_SUBJECT_GRADING_CONFIG: null,
     BACKEND_ASSIGNMENTS: [],
+    USE_SHS_CORE_GRADEBOOK: false,
     getBackendTermId: () => 'q1',
+    selectedAssignmentResubmissionLimit: () => null,
     isBackendGradeMode: () => true,
     showAppToast() {},
     resetAssignmentForm() {}, closeModal() {}, renderAssignments() {}, renderScoreTable() {}
@@ -1422,9 +1425,55 @@ test('assignment creation uses the selected subject ID even if a label is stale'
   assert.equal(saved.subjectId, 'english');
 });
 
+test('SHS core assignments use the active term without a Score Recording selector', async () => {
+  const addSource = extractSourceBetween(sectionsSource,
+    'async function addShsCoreAssignment() {', '\n    function resetAssignmentForm(');
+  const fields = {
+    assignTitleInput: { value: 'Term task' }, assignInstructionsInput: { value: '' },
+    assignDueInput: { value: '2026-11-16' }, assignOnlineSubmissionInput: { checked: true },
+    assignGradingInput: { checked: false }, academicPeriodSelect: { value: '' }
+  };
+  const calls = { saved: [], toasts: [], legacyRenders: 0, shsRefreshes: 0 };
+  const context = vm.createContext({
+    document: { getElementById: id => fields[id] },
+    window: { AcademixShsGradebook: { refresh() { calls.shsRefreshes++; } }, EDUGNAY_API: { createAssignment: async values => {
+      calls.saved.push(values); return { id: '42', ...values };
+    } } },
+    BACKEND_TERMS: [{ id: 'term-1', status: 'active' }],
+    BACKEND_GRADE_CONTEXT: { sectionId: 'section-1', subjectId: 'math' },
+    BACKEND_SUBJECT_GRADING_CONFIG: null, BACKEND_ASSIGNMENTS: [],
+    selectedAssignmentResubmissionLimit: () => 2, shsCoreAssignmentGrade: () => null,
+    showAppToast: message => calls.toasts.push(message),
+    resetAssignmentForm() {}, closeModal() {}, renderAssignments() {},
+    renderScoreTable() { calls.legacyRenders++; }
+  });
+  vm.runInContext(addSource, context);
+  await context.addShsCoreAssignment();
+  assert.equal(calls.saved.length, 1);
+  assert.equal(calls.saved[0].academicTermId, 'term-1');
+  assert.equal(calls.saved[0].maxResubmissions, 2);
+  assert.equal(calls.legacyRenders, 0);
+  assert.equal(calls.shsRefreshes, 1);
+  context.BACKEND_TERMS = [{ id: 'term-2', status: 'upcoming' }];
+  await context.addShsCoreAssignment();
+  assert.equal(calls.saved.length, 1);
+  assert.match(calls.toasts.at(-1), /No active grading period/);
+});
+
+test('SHS gradebook and elective actions keep their own handlers', () => {
+  const elective = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/elective-class.js'), 'utf8');
+  assert.match(sectionsScript, /visibilitychange[\s\S]*?isReopenBackendMode\(\) && !USE_SHS_CORE_GRADEBOOK/);
+  assert.match(sectionsScript, /pf40f6cb8cd12: function\(event\) \{ if \(!isElectiveClassPage\(\)\) addAssignment\(\)/);
+  assert.match(sectionsScript, /p5adc771cd24c: function\(event\) \{ if \(!isElectiveClassPage\(\) && !USE_SHS_CORE_GRADEBOOK\)/);
+  assert.match(sectionsScript, /p9d3378202da9: function\(event\) \{ if \(!isElectiveClassPage\(\)\) saveAttendance\(\)/);
+  assert.match(sectionsScript, /p1f227c72ada4: function\(event\) \{ if \(!isElectiveClassPage\(\)\) submitSectionMaterialUpload\(\)/);
+  assert.match(elective, /assignmentSubmit\.onclick = createAssignment/);
+  assert.match(elective, /button\[data-page-click="p5026ce80c219"\]/);
+});
+
 test('delete modal allows a new component even when its subject has published grades', async () => {
   const openSource = extractSourceBetween(sectionsSource,
-    'async function openTeacherDeleteModal(kind, id, name) {', '\n    async function confirmTeacherDelete(');
+    'async function openTeacherDeleteModal(kind, id, name, shsContext = null) {', '\n    async function confirmTeacherDelete(');
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, { textContent: '', disabled: false });
@@ -1453,7 +1502,7 @@ test('delete modal allows a new component even when its subject has published gr
 
 test('linked score component opens the combined assignment deletion confirmation', async () => {
   const openSource = extractSourceBetween(sectionsSource,
-    'async function openTeacherDeleteModal(kind, id, name) {', '\n    async function confirmTeacherDelete(');
+    'async function openTeacherDeleteModal(kind, id, name, shsContext = null) {', '\n    async function confirmTeacherDelete(');
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, { textContent: '', disabled: false });
@@ -1519,7 +1568,7 @@ test('a changed submission count reopens the delete warning', async () => {
     openTeacherDeleteModal: (...args) => refreshed.push(args)
   };
   await vm.runInNewContext(`${confirmSource}; confirmTeacherDelete();`, context);
-  assert.deepEqual(refreshed, [['assignment', '4', 'Wrong task']]);
+  assert.deepEqual(refreshed, [['assignment', '4', 'Wrong task', undefined]]);
   assert.equal(context.teacherDeletePending, false);
 });
 

@@ -10,6 +10,7 @@ lucide.createIcons();
 
     function openModal(id) {
       const modal = document.getElementById(id);
+      if (id === 'addAssignmentModal') setAssignmentResubmissionLimit(false, null);
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
     }
@@ -154,31 +155,32 @@ lucide.createIcons();
       loadTeacherStudentDetails();
     }
 
-    async function openTeacherDeleteModal(kind, id, name) {
+    async function openTeacherDeleteModal(kind, id, name, shsContext = null) {
       const journalItem = kind === 'scoreComponent' ? BACKEND_GRADING_ITEMS.find(item => String(item.id) === String(id) && item.journalPromptId) : null;
       const linkedAssignment = kind === 'scoreComponent'
         ? BACKEND_ASSIGNMENTS.find(assignment => String(assignment.gradingItemId) === String(id))
-        : kind === 'assignment' ? BACKEND_ASSIGNMENTS.find(assignment => String(assignment.id) === String(id)) : null;
+        : kind === 'assignment' ? BACKEND_ASSIGNMENTS.find(assignment => String(assignment.id) === String(id))
+          || (shsContext?.item.assignmentId ? { id, title: name, gradingItemId: shsContext.item.id } : null) : null;
       const linkedItem = linkedAssignment?.gradingItemId
         ? BACKEND_GRADING_ITEMS.find(item => String(item.id) === String(linkedAssignment.gradingItemId)) : null;
       const isPair = Boolean(linkedAssignment?.gradingItemId);
       const deleteKind = isPair ? 'assignment' : kind;
-      const request = { kind: journalItem ? 'journalPrompt' : deleteKind, id: String(journalItem ? journalItem.journalPromptId : isPair ? linkedAssignment.id : id), gradingItemId: journalItem ? journalItem.id : isPair ? linkedAssignment.gradingItemId : null };
+      const request = { kind: journalItem ? 'journalPrompt' : deleteKind, id: String(journalItem ? journalItem.journalPromptId : isPair ? linkedAssignment.id : id), gradingItemId: journalItem ? journalItem.id : isPair ? linkedAssignment.gradingItemId : null, shsContext };
       const electiveClassId = new URLSearchParams(window.location.search).get('classId');
       if (kind === 'assignment' && electiveClassId) request.electiveClassId = electiveClassId;
       pendingTeacherDelete = request;
       const isMaterial = kind === 'material';
-      const isComponent = deleteKind === 'scoreComponent';
+      const isComponent = deleteKind === 'scoreComponent' || deleteKind === 'shsScoreComponent';
       document.getElementById('teacherDeleteConfirmTitle').textContent = `Delete ${journalItem ? 'journal prompt and component' : isPair ? 'assignment and component' : isComponent ? 'score component' : isMaterial ? 'learning material' : 'assignment'}?`;
       document.getElementById('teacherDeleteConfirmSub').textContent = 'This action cannot be undone.';
       document.getElementById('teacherDeleteConfirmName').textContent = isPair
         ? kind === 'scoreComponent' ? linkedItem?.name || name || 'Score component' : linkedAssignment.title
         : name || (isComponent ? 'Score component' : isMaterial ? 'Learning material' : 'Assignment');
-      const scoreCount = isComponent || isPair || journalItem ? BACKEND_STUDENT_SCORES.filter(score =>
+      const scoreCount = shsContext ? shsContext.scoreCount : isComponent || isPair || journalItem ? BACKEND_STUDENT_SCORES.filter(score =>
         String(score.gradingItemId) === String(isPair ? linkedAssignment.gradingItemId : id)
         && (score.score !== null && score.score !== undefined || String(score.remarks || '').trim())).length : 0;
-      const item = isComponent ? BACKEND_GRADING_ITEMS.find(record => String(record.id) === String(id)) : null;
-      const published = Boolean((linkedItem || item)?.usedInPublishedGrades);
+      const item = shsContext?.item || (isComponent ? BACKEND_GRADING_ITEMS.find(record => String(record.id) === String(id)) : null);
+      const published = Boolean((shsContext?.item || linkedItem || item)?.usedInPublishedGrades);
       const isAssignmentDelete = deleteKind === 'assignment' && !journalItem;
       const blocked = Boolean(published || ((isPair || journalItem) && scoreCount));
       document.getElementById('teacherDeleteConfirmDescription').textContent = journalItem
@@ -233,13 +235,31 @@ lucide.createIcons();
             closeAssignmentMenus();
             teacherDeletePending = false;
             closeModal('teacherDeleteConfirmModal');
-            await window.AcademixElectiveClass?.refresh('assignments');
-            showAppToast(deletion?.fileCleanupPending ? 'Assignment deleted, but a stored submission file still needs cleanup.' : 'Assignment deleted.', deletion?.fileCleanupPending ? 'info' : 'success');
+            const assignmentsRefreshed = await window.AcademixElectiveClass?.refresh('assignments');
+            const scoresRefreshed = request.shsContext ? await request.shsContext.reload(request.shsContext.academicTermId) : true;
+            const refreshFailed = assignmentsRefreshed === false || scoresRefreshed === false;
+            showAppToast(refreshFailed ? 'Assignment deleted, but the class could not refresh.'
+              : deletion?.fileCleanupPending ? 'Assignment deleted, but a stored submission file still needs cleanup.' : 'Assignment deleted.',
+            refreshFailed || deletion?.fileCleanupPending ? 'info' : 'success');
             return;
           }
           if (request.gradingItemId) await flushPendingBackendScoreSaves();
           const deletion = await window.EDUGNAY_API.deleteAssignment(request.id, request.expectedSubmissionCount);
           BACKEND_ASSIGNMENTS = BACKEND_ASSIGNMENTS.filter(item => String(item.id) !== request.id);
+          if (USE_SHS_CORE_GRADEBOOK) {
+            BACKEND_SUBMISSIONS.delete(request.id);
+            closeAssignmentMenus();
+            teacherDeletePending = false;
+            closeModal('teacherDeleteConfirmModal');
+            renderAssignments();
+            const refreshed = await window.AcademixShsGradebook?.refresh?.();
+            showAppToast(refreshed === false ? 'Assignment deleted, but Score Recording could not refresh.'
+              : deletion?.fileCleanupPending
+              ? 'Assignment deleted, but a stored submission file still needs cleanup.'
+              : request.gradingItemId ? 'Assignment and score component deleted.' : 'Assignment deleted.',
+            refreshed === false || deletion?.fileCleanupPending ? 'info' : 'success');
+            return;
+          }
           if (request.gradingItemId) {
             BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.filter(item => String(item.id) !== String(request.gradingItemId));
             BACKEND_STUDENT_SCORES = BACKEND_STUDENT_SCORES.filter(score => String(score.gradingItemId) !== String(request.gradingItemId));
@@ -263,7 +283,8 @@ lucide.createIcons();
           teacherDeletePending = false;
           closeModal('teacherDeleteConfirmModal');
           renderAssignments();
-          renderScoreTable(document.getElementById('academicPeriodSelect').value);
+          if (request.shsContext) await request.shsContext.reload(request.shsContext.academicTermId);
+          else renderScoreTable(document.getElementById('academicPeriodSelect').value);
           showAppToast(deletion?.fileCleanupPending ? 'Assignment deleted, but a stored submission file still needs cleanup.'
             : refreshFailed ? 'Deletion succeeded, but the lists could not refresh.'
               : request.gradingItemId ? 'Assignment and score component deleted.' : 'Assignment deleted.',
@@ -277,6 +298,14 @@ lucide.createIcons();
           closeModal('teacherDeleteConfirmModal');
           renderScoreTable(document.getElementById('academicPeriodSelect').value);
           showAppToast('Journal prompt and score component deleted.');
+        } else if (request.kind === 'shsScoreComponent') {
+          const { scope, academicTermId, reload } = request.shsContext;
+          await window.EDUGNAY_API.deleteShsGradingItem(request.id, { ...scope, academicTermId });
+          teacherDeletePending = false;
+          closeModal('teacherDeleteConfirmModal');
+          const refreshed = await reload(academicTermId);
+          showAppToast(refreshed === false ? 'Score component deleted, but Score Recording could not refresh.' : 'Score component deleted.',
+            refreshed === false ? 'info' : 'success');
         } else if (request.kind === 'scoreComponent') {
           await flushPendingBackendScoreSaves();
           await window.EDUGNAY_API.deleteGradingItem(request.id);
@@ -322,7 +351,7 @@ lucide.createIcons();
       } finally {
         teacherDeletePending = false;
         button.textContent = originalLabel;
-        if (refreshConfirmation) openTeacherDeleteModal('assignment', request.id, document.getElementById('teacherDeleteConfirmName').textContent);
+        if (refreshConfirmation) openTeacherDeleteModal('assignment', request.id, document.getElementById('teacherDeleteConfirmName').textContent, request.shsContext);
         else button.disabled = false;
       }
     }
@@ -342,7 +371,10 @@ lucide.createIcons();
       const wasOpen = !document.getElementById('scoreComponentMenu').hidden && scoreComponentMenuItemId === button.dataset.componentId;
       closeScoreComponentMenu();
       if (wasOpen) return;
-      if (!hasScoreEditingAccess(document.getElementById('academicPeriodSelect').value)) {
+      const shsContext = (USE_SHS_CORE_GRADEBOOK || isElectiveClassPage())
+        ? window.AcademixShsGradebook?.getDeleteContext?.(button.dataset.componentId) : null;
+      if ((USE_SHS_CORE_GRADEBOOK || isElectiveClassPage()) && !shsContext) return;
+      if (!shsContext && !hasScoreEditingAccess(document.getElementById('academicPeriodSelect').value)) {
         showAppToast('This grading period is not active. Ask your school administrator to review access before deleting a component.', 'error');
         return;
       }
@@ -350,10 +382,13 @@ lucide.createIcons();
       const rect = button.getBoundingClientRect();
       scoreComponentMenuItemId = button.dataset.componentId;
       const journalItem = BACKEND_GRADING_ITEMS.find(item => String(item.id) === scoreComponentMenuItemId && item.journalPromptId);
-      const selectedItem = BACKEND_GRADING_ITEMS.find(item => String(item.id) === scoreComponentMenuItemId);
+      const selectedItem = shsContext?.item || BACKEND_GRADING_ITEMS.find(item => String(item.id) === scoreComponentMenuItemId);
       const selectedCategory = BACKEND_CATEGORIES.find(category => String(category.subjectGradingComponentId) === String(selectedItem?.subjectGradingComponentId));
-      updateValuesDomainSelect(selectedCategory?.code, 'scoreComponentDomainGroup', 'scoreComponentDomainInput', selectedItem?.domainCode, true);
-      document.getElementById('scoreComponentDeleteLabel').textContent = journalItem ? 'Delete journal & component' : BACKEND_ASSIGNMENTS.some(assignment =>
+      if (shsContext) document.getElementById('scoreComponentDomainGroup').hidden = true;
+      else updateValuesDomainSelect(selectedCategory?.code, 'scoreComponentDomainGroup', 'scoreComponentDomainInput', selectedItem?.domainCode, true);
+      document.getElementById('scoreComponentDeleteLabel').textContent = shsContext
+        ? shsContext.item.assignmentId ? 'Delete assignment & component' : 'Delete component'
+        : journalItem ? 'Delete journal & component' : BACKEND_ASSIGNMENTS.some(assignment =>
         String(assignment.gradingItemId) === scoreComponentMenuItemId)
         ? 'Delete assignment & component' : 'Delete component';
       button.setAttribute('aria-expanded', 'true');
@@ -378,9 +413,15 @@ lucide.createIcons();
       } finally { event.target.disabled = false; }
     });
     document.getElementById('scoreComponentDeleteAction').addEventListener('click', () => {
+      const shsContext = (USE_SHS_CORE_GRADEBOOK || isElectiveClassPage())
+        ? window.AcademixShsGradebook?.getDeleteContext?.(scoreComponentMenuItemId) : null;
       const item = BACKEND_GRADING_ITEMS.find(record => String(record.id) === scoreComponentMenuItemId);
       closeScoreComponentMenu();
-      if (item) openTeacherDeleteModal('scoreComponent', item.id, item.name);
+      if (shsContext) openTeacherDeleteModal(shsContext.item.assignmentId ? 'assignment' : 'shsScoreComponent',
+        shsContext.item.assignmentId || shsContext.item.id, shsContext.item.title, shsContext);
+      else if (!USE_SHS_CORE_GRADEBOOK && !isElectiveClassPage() && item) {
+        openTeacherDeleteModal('scoreComponent', item.id, item.name);
+      }
     });
     document.addEventListener('click', event => {
       if (!event.target.closest('#scoreComponentMenu, .score-comp-menu-trigger')) closeScoreComponentMenu();
@@ -393,7 +434,6 @@ lucide.createIcons();
 
     /* ── TABS ── */
     function switchTab(name) {
-      if (name !== 'scores') window.AcademixShsGradebook?.close?.(document.querySelector('#content-scores .panel'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('content-' + name).classList.add('active');
@@ -405,7 +445,7 @@ lucide.createIcons();
         return window.AcademixElectiveClass?.loadTab(name);
       }
       if (name === 'scores' && USE_SHS_CORE_GRADEBOOK) {
-        return window.AcademixShsGradebook?.mount(document.querySelector('#content-scores .panel'), {
+        return window.AcademixShsGradebook?.show(document.querySelector('#content-scores .panel'), {
           sectionId: CURRENT_SECTION_ID,
           subjectId: CURRENT_SUBJECT_ID,
           communicationComponentCode: CURRENT_SUBJECT_ASSIGNMENT?.communicationComponentCode || ''
@@ -880,6 +920,8 @@ lucide.createIcons();
     let BACKEND_STUDENT_SCORES = [];
     let BACKEND_PUBLISHED_GRADES = [];
     let BACKEND_CATEGORIES = [];
+    let shsCoreAssignmentWorkspace = null;
+    let shsCoreAssignmentRequest = 0;
     let BACKEND_SUBJECT_GRADING_CONFIG = null;
     let CURRENT_GRADE_METHOD_LABEL = '';
     let BACKEND_TERMS = [];
@@ -892,13 +934,15 @@ lucide.createIcons();
     const BACKEND_SUBMISSIONS = new Map();
     const BACKEND_SUBMISSION_ERRORS = new Set();
     let BACKEND_SUBMISSIONS_LOADING = false;
+    let electiveReviewStudents = [];
+    let electiveReviewWorkspace = null;
 
     function isBackendGradeMode() {
       return Boolean(BACKEND_GRADE_CONTEXT);
     }
 
     function getGradeStudents() {
-      return BACKEND_GRADE_CONTEXT?.students || [];
+      return isElectiveClassPage() ? electiveReviewStudents : BACKEND_GRADE_CONTEXT?.students || [];
     }
 
     function getBackendTermId(academicPeriodId) {
@@ -955,7 +999,8 @@ lucide.createIcons();
 
     function getBackendGradingItemForAssignment(assignment) {
       if (assignment.gradingItemId) {
-        return BACKEND_GRADING_ITEMS.find(item => item.id === String(assignment.gradingItemId)) || null;
+        const items = isElectiveClassPage() ? electiveReviewWorkspace?.items || [] : BACKEND_GRADING_ITEMS;
+        return items.find(item => String(item.id) === String(assignment.gradingItemId)) || null;
       }
       const matches = BACKEND_GRADING_ITEMS.filter(item =>
         item.sectionId === String(BACKEND_GRADE_CONTEXT?.sectionId) &&
@@ -1356,6 +1401,13 @@ lucide.createIcons();
       }).join('');
     }
 
+    function shsAssignmentGradingLabel(assignment) {
+      if (!assignment.gradingItemId) return 'Not included in Score Recording';
+      const name = { written: 'Written/Oral Works', performance: 'Performance Tasks',
+        examination: 'Examinations' }[String(assignment.shsComponentCode || '').toLowerCase()] || 'Score component';
+      return `${name} · ${Number(assignment.maxScore)} points`;
+    }
+
     function renderSharedAssignmentCards(items = [], empty = {}) {
       const list = document.getElementById('assignmentList');
       if (!list) return;
@@ -1520,9 +1572,10 @@ lucide.createIcons();
       const tbody = host?.querySelector('#scoreTbody');
       if (!thead || !tbody) return;
       if (loading) {
+        thead.innerHTML = '<th class="sticky-col" style="min-width:180px;"># Student</th>';
         tbody.innerHTML = '';
         const footer = host.querySelector('#scoreListFooter');
-      if (footer) footer.innerHTML = '';
+        if (footer) footer.innerHTML = '';
         return;
       }
       thead.innerHTML = '<th class="sticky-col" style="min-width:180px;"># Student</th>' + items.map(item => {
@@ -1574,8 +1627,11 @@ lucide.createIcons();
       renderQrAttendanceFinalReview: renderSharedQrAttendanceFinalReview,
       renderGradePreviewRows: renderSharedGradePreviewRows,
       renderAssignments: renderSharedAssignmentCards,
+      shsAssignmentGradingLabel,
       renderMaterials: renderSharedMaterials,
       renderAssignmentSubmissions: renderSharedAssignmentSubmissions,
+      openElectiveAssignmentStatus,
+      openElectiveAssignmentSubmissions,
       renderScoreCategories: renderSharedScoreCategories,
       renderComponentChoices: renderSharedComponentChoices,
       filterScores: filterSharedScoreTable,
@@ -3908,7 +3964,9 @@ lucide.createIcons();
             || BACKEND_CATEGORIES.find(category => String(category.code).toLowerCase() === String(a.categoryId || '').toLowerCase());
           return rule && !rule.label ? { ...rule, label: rule.name } : rule;
         })();
-        const gradingLabel = gradingRule && Number(a.maxScore) > 0
+        const gradingLabel = USE_SHS_CORE_GRADEBOOK
+          ? window.TeacherClassViews.shsAssignmentGradingLabel(a)
+          : gradingRule && Number(a.maxScore) > 0
           ? ` · ${window.EDUGNAY_CONFIG.escapeHtml(gradingRule.label)} · ${a.maxScore} points`
           : ' · Not included in Score Recording';
         const actions = [{ label: a.onlineSubmissionEnabled === true ? 'View Status' : 'Update Status', icon: a.onlineSubmissionEnabled === true ? 'eye' : 'check-square', onClick: () => openStatusModal(a.id) }];
@@ -3924,7 +3982,8 @@ lucide.createIcons();
           submittedCount: submissionUnavailable ? null : submitted,
           totalCount: submissionUnavailable ? null : gradeStudents.length,
           statusLabel: a.publicationStatus === 'draft' ? 'Draft' : a.publicationStatus === 'published' ? 'Published' : '',
-          gradingLabel: gradingLabel.replace(/^\s*·\s*/, ''), actions
+          gradingLabel: gradingLabel.replace(/^\s*·\s*/, '')
+            + (USE_SHS_CORE_GRADEBOOK ? ` · Online submissions ${a.onlineSubmissionEnabled ? 'enabled' : 'disabled'}` : ''), actions
         };
       });
       window.TeacherClassViews.renderAssignments(items, {
@@ -4087,13 +4146,108 @@ lucide.createIcons();
       } catch (error) { showAppToast(error.message || 'The material could not be updated.', 'error'); button.disabled = false; }
     });
 
+    function updateAssignmentResubmissionLimitVisibility(edit = false) {
+      const toggleId = edit ? 'editAssignmentOnlineInput' : 'assignOnlineSubmissionInput';
+      const groupId = edit ? 'editAssignmentResubmissionLimitGroup' : 'assignResubmissionLimitGroup';
+      document.getElementById(groupId).hidden = !document.getElementById(toggleId).checked;
+    }
+
+    function setAssignmentResubmissionLimit(edit, value) {
+      const name = edit ? 'editAssignmentResubmissionLimit' : 'assignResubmissionLimit';
+      const selected = value == null ? '' : String(value);
+      const choices = [...document.querySelectorAll(`input[name="${name}"]`)];
+      const knownChoice = choices.some(choice => choice.value === selected);
+      choices.forEach(choice => { choice.checked = knownChoice && choice.value === selected; });
+      if (edit) {
+        const note = document.getElementById('editAssignmentLegacyResubmissionLimit');
+        note.hidden = knownChoice;
+        note.textContent = knownChoice ? '' : `Current saved limit: ${value}. Choose an option to change it.`;
+      }
+    }
+
+    function selectedAssignmentResubmissionLimit(edit = false) {
+      const name = edit ? 'editAssignmentResubmissionLimit' : 'assignResubmissionLimit';
+      const selected = document.querySelector(`input[name="${name}"]:checked`);
+      return selected ? selected.value === '' ? null : Number(selected.value) : undefined;
+    }
+
+    async function prepareShsCoreAssignmentGrading(edit = false, assignment = null) {
+      const request = ++shsCoreAssignmentRequest;
+      const prefix = edit ? 'editAssignment' : 'assign';
+      const toggle = document.getElementById(edit ? 'editAssignmentGradingInput' : 'assignGradingInput');
+      const category = document.getElementById(`${prefix}CategoryInput`);
+      const partsGroup = document.getElementById(`${prefix}ExamPartGroup`);
+      const parts = document.getElementById(`${prefix}ExamPartInput`);
+      const maxScore = document.getElementById(`${prefix}MaxScoreInput`);
+      const help = toggle.closest('.school-toggle-row').querySelector('small');
+      toggle.disabled = true;
+      toggle.checked = Boolean(assignment?.gradingItemId);
+      document.getElementById(`${prefix}GradingFields`).hidden = !toggle.checked;
+      help.textContent = 'Checking this class’s grading period…';
+      shsCoreAssignmentWorkspace = null;
+      try {
+        const workspace = await window.EDUGNAY_API.getShsGradeWorkspace({
+          sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID,
+          communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || ''
+        });
+        if (request !== shsCoreAssignmentRequest) return;
+        shsCoreAssignmentWorkspace = workspace;
+        const components = workspace.scope?.policy?.components || [];
+        const linked = workspace.items?.find(item => String(item.id) === String(assignment?.gradingItemId));
+        category.innerHTML = components.map(component => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(component.code)}">${window.EDUGNAY_CONFIG.escapeHtml(component.name)} (${Number(component.weight) || 0}%)</option>`).join('');
+        category.value = linked?.componentCode || components[0]?.code || '';
+        const updateParts = () => {
+          const component = components.find(item => item.code === category.value);
+          const choices = Object.entries(component?.examParts || {});
+          partsGroup.hidden = !choices.length;
+          parts.innerHTML = choices.map(([code, part]) => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(code)}">${window.EDUGNAY_CONFIG.escapeHtml(part?.name || code.replaceAll('_', ' '))}</option>`).join('');
+          if (linked?.examPartCode) parts.value = linked.examPartCode;
+        };
+        category.onchange = updateParts;
+        updateParts();
+        maxScore.value = linked?.maxScore || '';
+        maxScore.readOnly = Boolean(linked);
+        const available = workspace.term?.status === 'active' && workspace.scope?.yearStatus === 'active' && components.length > 0;
+        toggle.disabled = Boolean(linked) || !available;
+        help.textContent = linked ? 'Already linked to a score component.'
+          : available ? 'Add this assignment as a graded component.'
+            : 'Score Recording is unavailable for this class or grading period.';
+      } catch (error) {
+        if (request === shsCoreAssignmentRequest) help.textContent = error.message || 'Score Recording is unavailable.';
+      }
+    }
+
+    function shsCoreAssignmentGrade(edit = false, assignment = null) {
+      if (!document.getElementById(edit ? 'editAssignmentGradingInput' : 'assignGradingInput').checked
+        || assignment?.gradingItemId) return null;
+      const prefix = edit ? 'editAssignment' : 'assign';
+      const category = document.getElementById(`${prefix}CategoryInput`).value;
+      const partsGroup = document.getElementById(`${prefix}ExamPartGroup`);
+      const part = partsGroup.hidden ? null : document.getElementById(`${prefix}ExamPartInput`).value;
+      const maxScore = Number(document.getElementById(`${prefix}MaxScoreInput`).value);
+      if (shsCoreAssignmentWorkspace?.term?.status !== 'active' || !category || !(maxScore > 0)
+        || (!partsGroup.hidden && !part)) throw new Error('Choose a grading category and enter a valid highest possible score.');
+      return { academicTermId: shsCoreAssignmentWorkspace.term.id,
+        componentCode: category, examPartCode: part, maxScore };
+    }
+
+    document.getElementById('assignOnlineSubmissionInput').addEventListener('change', () => updateAssignmentResubmissionLimitVisibility());
+    document.getElementById('editAssignmentOnlineInput').addEventListener('change', () => updateAssignmentResubmissionLimitVisibility(true));
+    document.getElementById('editAssignmentResubmissionLimitGroup').addEventListener('change', () => {
+      document.getElementById('editAssignmentLegacyResubmissionLimit').hidden = true;
+    });
+
     async function addAssignment() {
+      if (USE_SHS_CORE_GRADEBOOK) return addShsCoreAssignment();
       const title = document.getElementById('assignTitleInput').value.trim();
       const instructions = document.getElementById('assignInstructionsInput').value.trim();
       const due = document.getElementById('assignDueInput').value;
       const onlineSubmissionEnabled = document.getElementById('assignOnlineSubmissionInput').checked;
+      const maxResubmissions = selectedAssignmentResubmissionLimit();
       const includeInScoreRecording = document.getElementById('assignGradingInput').checked;
-      const academicPeriodId = document.getElementById('academicPeriodSelect').value;
+      const academicPeriodId = USE_SHS_CORE_GRADEBOOK
+        ? String(BACKEND_TERMS.find(term => term.status === 'active')?.id || '')
+        : document.getElementById('academicPeriodSelect').value;
       const categoryId = includeInScoreRecording ? document.getElementById('assignCategoryInput').value : null;
       const category = includeInScoreRecording ? getBackendCategory(categoryId) : null;
       const isSubjectConfig = Boolean(BACKEND_SUBJECT_GRADING_CONFIG?.applicable);
@@ -4108,7 +4262,9 @@ lucide.createIcons();
         return;
       }
       if (!academicPeriodId) {
-        showAppToast('Select a grading period before adding an assignment.', 'error');
+        showAppToast(USE_SHS_CORE_GRADEBOOK
+          ? 'No active grading period is available for this class.'
+          : 'Select a grading period before adding an assignment.', 'error');
         return;
       }
       if (!title || !due) { alert('Please fill in task title and due date.'); return; }
@@ -4139,6 +4295,7 @@ lucide.createIcons();
             description: instructions || null,
             dueDate: due,
             onlineSubmissionEnabled,
+            maxResubmissions,
             maxScore: includeInScoreRecording ? maxScore : null
           });
           if (!assignment) throw new Error('The assignment could not be created.');
@@ -4156,7 +4313,8 @@ lucide.createIcons();
           resetAssignmentForm();
           closeModal('addAssignmentModal');
           renderAssignments();
-          renderScoreTable(academicPeriodId);
+          if (USE_SHS_CORE_GRADEBOOK) await window.AcademixShsGradebook?.refresh?.();
+          else renderScoreTable(academicPeriodId);
           showAppToast(gradeRefreshFailed ? 'Assignment added, but the score table could not refresh.' : 'Assignment added.', gradeRefreshFailed ? 'info' : 'success');
         } catch (error) {
           showAppToast(error.message || 'The assignment could not be added.', 'error');
@@ -4167,11 +4325,42 @@ lucide.createIcons();
       showAppToast(BACKEND_GRADE_ERROR || 'Assignments are not available right now. Refresh and try again.', 'error');
     }
 
+    async function addShsCoreAssignment() {
+      const title = document.getElementById('assignTitleInput').value.trim();
+      const dueDate = document.getElementById('assignDueInput').value;
+      if (!title || !dueDate) return showAppToast('Enter an assignment title and due date.', 'error');
+      const termId = BACKEND_TERMS.find(term => term.status === 'active')?.id;
+      if (!termId) return showAppToast('No active grading period is available for this class.', 'error');
+      let grade;
+      try { grade = shsCoreAssignmentGrade(); }
+      catch (error) { return showAppToast(error.message, 'error'); }
+      try {
+        const assignment = await window.EDUGNAY_API.createAssignment({
+          sectionId: BACKEND_GRADE_CONTEXT.sectionId, subjectId: BACKEND_GRADE_CONTEXT.subjectId,
+          communicationComponentCode: BACKEND_GRADE_CONTEXT.communicationComponentCode,
+          academicTermId: termId, title,
+          description: document.getElementById('assignInstructionsInput').value.trim() || null,
+          dueDate, onlineSubmissionEnabled: document.getElementById('assignOnlineSubmissionInput').checked,
+          maxResubmissions: selectedAssignmentResubmissionLimit(), grade
+        });
+        if (!assignment) throw new Error('The assignment could not be created.');
+        BACKEND_ASSIGNMENTS.push(assignment);
+        resetAssignmentForm();
+        closeModal('addAssignmentModal');
+        renderAssignments();
+        const refreshed = await window.AcademixShsGradebook?.refresh?.();
+        showAppToast(refreshed === false ? 'Assignment added, but Score Recording could not refresh.' : 'Assignment added.',
+          refreshed === false ? 'info' : 'success');
+      } catch (error) { showAppToast(error.message || 'The assignment could not be added.', 'error'); }
+    }
+
     function resetAssignmentForm() {
       document.getElementById('assignTitleInput').value = '';
       document.getElementById('assignInstructionsInput').value = '';
       document.getElementById('assignDueInput').value = '';
       document.getElementById('assignOnlineSubmissionInput').checked = false;
+      setAssignmentResubmissionLimit(false, null);
+      updateAssignmentResubmissionLimitVisibility();
       document.getElementById('assignGradingInput').checked = false;
       document.getElementById('assignGradingFields').hidden = true;
       document.getElementById('assignMaxScoreInput').value = '';
@@ -4195,6 +4384,8 @@ lucide.createIcons();
         document.getElementById('editAssignmentSubjectInput').value = assignment.communicationComponentName || assignment.subjectName || 'Class assignment';
         document.getElementById('editAssignmentDueInput').value = assignment.dueDate || String(assignment.dueAt || '').slice(0, 10);
         document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
+        setAssignmentResubmissionLimit(true, assignment.maxResubmissions);
+        updateAssignmentResubmissionLimitVisibility(true);
         openModal('editAssignmentModal');
         void window.AcademixElectiveClass.prepareAssignmentGrading(true, assignment);
         lucide.createIcons();
@@ -4210,7 +4401,11 @@ lucide.createIcons();
       document.getElementById('editAssignmentSubjectInput').value = assignment.communicationComponentName || assignment.subjectName || CURRENT_SUBJECT;
       document.getElementById('editAssignmentDueInput').value = assignment.dueDate || '';
       document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
-      const includeInScoreRecording = Boolean((assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0);
+      setAssignmentResubmissionLimit(true, assignment.maxResubmissions);
+      updateAssignmentResubmissionLimitVisibility(true);
+      const includeInScoreRecording = USE_SHS_CORE_GRADEBOOK
+        ? Boolean(assignment.gradingItemId)
+        : Boolean((assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0);
       document.getElementById('editAssignmentGradingInput').checked = includeInScoreRecording;
       document.getElementById('editAssignmentGradingFields').hidden = !includeInScoreRecording;
       const selectedCategory = assignment.subjectGradingComponentId
@@ -4222,16 +4417,22 @@ lucide.createIcons();
         'editAssignmentDomainGroup', 'editAssignmentDomainInput', assignment.domainCode, true);
       document.getElementById('editAssignmentMaxScoreInput').value = assignment.maxScore || '';
       openModal('editAssignmentModal');
+      if (USE_SHS_CORE_GRADEBOOK) {
+        document.getElementById('editAssignmentTitleInput').readOnly = Boolean(assignment.gradingItemId);
+        void prepareShsCoreAssignmentGrading(true, assignment);
+      }
       lucide.createIcons();
     }
 
     async function saveAssignmentChanges() {
       if (!activeAssignmentId) return;
+      if (USE_SHS_CORE_GRADEBOOK) return saveShsCoreAssignmentChanges();
 
       const title = document.getElementById('editAssignmentTitleInput').value.trim();
       const instructions = document.getElementById('editAssignmentInstructionsInput').value.trim();
       const dueDate = document.getElementById('editAssignmentDueInput').value;
       const onlineSubmissionEnabled = document.getElementById('editAssignmentOnlineInput').checked;
+      const maxResubmissions = selectedAssignmentResubmissionLimit(true);
       const electiveClassId = new URLSearchParams(window.location.search).get('classId');
       if (electiveClassId) {
         if (!title || !dueDate) return showAppToast('Enter an assignment title and due date.', 'error');
@@ -4240,18 +4441,29 @@ lucide.createIcons();
         let grade;
         try { grade = window.AcademixElectiveClass.assignmentGradePayload(true, assignment); }
         catch (error) { return showAppToast(error.message, 'error'); }
+        const expectedMaxResubmissions = maxResubmissions === undefined
+          ? assignment.maxResubmissions : maxResubmissions;
+        const expectsGradingItem = Boolean(assignment?.gradingItemId || grade);
         const originalDueDate = assignment?.dueDate || String(assignment?.dueAt || '').slice(0, 10);
         const dueAt = dueDate === originalDueDate ? undefined : dueDate + 'T23:59:00';
         const saveButton = document.querySelector('#editAssignmentModal .modal-foot .btn-save');
         saveButton.disabled = true;
         try {
-          await window.EDUGNAY_API.updateAssignment(activeAssignmentId, {
-            title, description: instructions || null, dueAt, onlineSubmissionEnabled, grade
+          const updated = await window.EDUGNAY_API.updateAssignment(activeAssignmentId, {
+            title, description: instructions || null, dueAt, onlineSubmissionEnabled, maxResubmissions, grade
           });
+          if (!updated) throw new Error('The assignment could not be updated.');
           closeModal('editAssignmentModal');
+          const savedId = activeAssignmentId;
           activeAssignmentId = null;
-          await window.AcademixElectiveClass.refresh('assignments');
-          showAppToast('Assignment updated.');
+          const refreshed = await window.AcademixElectiveClass.refresh('assignments');
+          const scoresRefreshed = await window.AcademixElectiveClass.refreshScoresAfterAssignment();
+          const saved = window.AcademixElectiveClass.getAssignment(savedId);
+          const verified = refreshed === true && saved?.maxResubmissions === expectedMaxResubmissions
+            && Boolean(saved.gradingItemId) === expectsGradingItem;
+          showAppToast(!verified ? 'Assignment saved, but its settings could not be verified. Reload the page to check them.'
+            : !scoresRefreshed ? 'Assignment updated, but Score Recording could not refresh.' : 'Assignment updated.',
+          verified && scoresRefreshed ? 'success' : 'info');
         } catch (error) {
           showAppToast(error.message || 'The assignment could not be updated.', 'error');
         } finally {
@@ -4314,6 +4526,7 @@ lucide.createIcons();
             description: instructions || null,
             dueDate,
             onlineSubmissionEnabled,
+            maxResubmissions,
             maxScore: includeInScoreRecording ? maxScore : null
           });
           const index = BACKEND_ASSIGNMENTS.findIndex(item => item.id === String(activeAssignmentId));
@@ -4346,7 +4559,8 @@ lucide.createIcons();
           closeModal('editAssignmentModal');
           activeAssignmentId = null;
           renderAssignments();
-          renderScoreTable(document.getElementById('academicPeriodSelect').value);
+          if (USE_SHS_CORE_GRADEBOOK) await window.AcademixShsGradebook?.refresh?.();
+          else renderScoreTable(document.getElementById('academicPeriodSelect').value);
           showAppToast('Assignment updated.');
         } catch (error) {
           showAppToast(error.message || 'The assignment could not be updated.', 'error');
@@ -4357,9 +4571,133 @@ lucide.createIcons();
       showAppToast(BACKEND_GRADE_ERROR || 'Assignments are not available right now. Refresh and try again.', 'error');
     }
 
-    function openAssignmentSubmissionsModal(assignmentId) {
+    async function saveShsCoreAssignmentChanges() {
+      const assignment = BACKEND_ASSIGNMENTS.find(item => String(item.id) === String(activeAssignmentId));
+      if (!assignment) return showAppToast('Assignment is unavailable. Refresh and try again.', 'error');
+      const title = document.getElementById('editAssignmentTitleInput').value.trim();
+      const dueDate = document.getElementById('editAssignmentDueInput').value;
+      if (!title || !dueDate) return showAppToast('Enter an assignment title and due date.', 'error');
+      let grade;
+      try { grade = shsCoreAssignmentGrade(true, assignment); }
+      catch (error) { return showAppToast(error.message, 'error'); }
+      const maxResubmissions = selectedAssignmentResubmissionLimit(true);
+      const expectedMaxResubmissions = maxResubmissions === undefined
+        ? assignment.maxResubmissions : maxResubmissions;
+      const expectsGradingItem = Boolean(assignment.gradingItemId || grade);
+      let updated;
+      try {
+        updated = await window.EDUGNAY_API.updateAssignment(activeAssignmentId, {
+          academicTermId: assignment.academicTermId || assignment.academicPeriodId,
+          title, description: document.getElementById('editAssignmentInstructionsInput').value.trim() || null,
+          dueDate, onlineSubmissionEnabled: document.getElementById('editAssignmentOnlineInput').checked,
+          maxResubmissions, grade
+        });
+        if (!updated) throw new Error('The assignment could not be updated.');
+      } catch (error) { return showAppToast(error.message || 'The assignment could not be updated.', 'error'); }
+      let saved = updated;
+      let verified = false;
+      try {
+        const assignments = await window.EDUGNAY_API.getAssignments({
+          sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID,
+          communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || null
+        });
+        const fetched = assignments.find(item => String(item.id) === String(activeAssignmentId));
+        saved = fetched || updated;
+        verified = Boolean(fetched) && saved.maxResubmissions === expectedMaxResubmissions
+          && Boolean(saved.gradingItemId) === expectsGradingItem;
+      } catch { /* The server accepted the save; keep its response for the current view. */ }
+      try {
+        const index = BACKEND_ASSIGNMENTS.findIndex(item => String(item.id) === String(activeAssignmentId));
+        if (index >= 0) BACKEND_ASSIGNMENTS[index] = saved;
+        closeModal('editAssignmentModal');
+        activeAssignmentId = null;
+        renderAssignments();
+        const refreshed = await window.AcademixShsGradebook?.refresh?.();
+        showAppToast(!verified ? 'Assignment saved, but its settings could not be verified. Reload the page to check them.'
+          : refreshed === false ? 'Assignment updated, but Score Recording could not refresh.' : 'Assignment updated.',
+        !verified || refreshed === false ? 'info' : 'success');
+      } catch (error) { showAppToast(error.message || 'Assignment saved, but the page could not refresh.', 'info'); }
+    }
+
+    async function loadElectiveAssignmentReview(assignmentId, withScores = false) {
+      const assignment = window.AcademixElectiveClass?.getAssignment(assignmentId);
+      if (!assignment) throw new Error('The elective assignment is unavailable.');
+      const classId = window.AcademixElectiveClass.getClass()?.electiveClassId;
+      const [roster, submissions] = await Promise.all([
+        window.EDUGNAY_API.getShsElectiveRoster(classId),
+        window.EDUGNAY_API.getAssignmentSubmissions(assignmentId)
+      ]);
+      electiveReviewStudents = roster.students || [];
+      BACKEND_SUBMISSIONS.set(String(assignmentId), submissions);
+      electiveReviewWorkspace = null;
+      if (withScores && assignment.gradingItemId) {
+        try {
+          electiveReviewWorkspace = await window.EDUGNAY_API.getShsGradeWorkspace({
+            electiveClassId: classId, academicTermId: assignment.academicPeriodId
+          });
+        } catch (error) {
+          showAppToast(error.message || 'Scores could not be loaded.', 'error');
+        }
+      }
+      return { assignment, submissions };
+    }
+
+    async function openElectiveAssignmentStatus(assignmentId) {
+      try {
+        await loadElectiveAssignmentReview(assignmentId);
+        openStatusModal(assignmentId);
+      } catch (error) { showAppToast(error.message || 'Submission status could not be loaded.', 'error'); }
+    }
+
+    async function openElectiveAssignmentSubmissions(assignmentId) {
+      try {
+        const { assignment, submissions } = await loadElectiveAssignmentReview(assignmentId, true);
+        const item = getBackendGradingItemForAssignment(assignment);
+        const maxScore = Number(item?.maxScore ?? assignment.maxScore);
+        const editable = Boolean(item && electiveReviewWorkspace?.scope?.policy
+          && electiveReviewWorkspace.term?.status === 'active'
+          && window.AcademixElectiveClass?.canEdit() && !item.usedInPublishedGrades);
+        window.TeacherClassViews.renderAssignmentSubmissions({
+          subtitle: assignment.title,
+          columns: [
+            { key: 'student', label: 'Student', render: submission => window.EDUGNAY_CONFIG.escapeHtml(submission.studentName || 'Student') },
+            { key: 'file', label: 'File', render: submission => window.EDUGNAY_CONFIG.escapeHtml(submission.fileName || '') },
+            { key: 'submitted', label: 'Submitted at', render: submission => window.EDUGNAY_CONFIG.formatDateTime(submission.submittedAt) },
+            { key: 'score', label: 'Score', render: submission => {
+              if (!assignment.gradingItemId) return '<span class="assignment-file-unavailable">Not graded</span>';
+              if (!item) return '<span class="assignment-file-unavailable">Unavailable</span>';
+              const score = (electiveReviewWorkspace?.scores || []).find(row => String(row.studentId) === String(submission.studentId)
+                && String(row.gradingItemId) === String(item.id))?.score ?? '';
+              return `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${maxScore}" value="${window.EDUGNAY_CONFIG.escapeHtml(score)}" data-submission-student-id="${Number(submission.studentId)}" ${editable ? '' : 'disabled'} data-page-change="${window.EDUGNAY_PAGE_EVENTS.register('change', function() { saveAssignmentSubmissionScore(String(Number(assignment.id)), String(Number(submission.studentId)), this) })}"><span>/ ${maxScore}</span></div>`;
+            } },
+            { key: 'actions', label: 'Actions', render: submission => {
+              if (!submission.fileUrl) return '<span class="assignment-file-unavailable">File unavailable</span>';
+              const url = window.EDUGNAY_CONFIG.escapeHtml(window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignment.id, submission.id));
+              return `<div class="assignment-submission-actions"><button class="row-btn view" type="button" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function() { openAssignmentSubmissionPreview(Number(assignment.id), Number(submission.id)) })}"><i data-lucide="eye" aria-hidden="true"></i> View</button><a class="row-btn view" href="${url}"><i data-lucide="download" aria-hidden="true"></i> Download</a></div>`;
+            } }
+          ],
+          rows: submissions.filter(submission => submission.fileName),
+          empty: { title: 'No submissions yet', text: 'Student files will appear here after they submit this assignment online.' }
+        });
+        openModal('assignmentSubmissionsModal');
+        lucide.createIcons();
+      } catch (error) { showAppToast(error.message || 'Submissions could not be loaded.', 'error'); }
+    }
+
+    async function openAssignmentSubmissionsModal(assignmentId) {
       const assignment = getTeacherAssignments().find(item => item.id === String(assignmentId));
       if (!assignment) return;
+      if (USE_SHS_CORE_GRADEBOOK) {
+        try {
+          const workspace = await window.EDUGNAY_API.getShsGradeWorkspace({
+            sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID,
+            communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || '',
+            academicTermId: assignment.academicPeriodId
+          });
+          BACKEND_GRADING_ITEMS = workspace.items || [];
+          BACKEND_STUDENT_SCORES = workspace.scores || [];
+        } catch (error) { return showAppToast(error.message || 'Scores could not be loaded.', 'error'); }
+      }
 
       activeAssignmentId = assignment.id;
       const submissions = (BACKEND_SUBMISSIONS.get(String(assignment.id)) || [])
@@ -4379,8 +4717,12 @@ lucide.createIcons();
           {
             key: 'score', label: 'Score', render: submission => {
               const score = scores.find(record => String(record.studentId) === String(submission.studentId))?.score ?? '';
-              return (assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0
-                ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${Number(assignment.maxScore)}" value="${window.EDUGNAY_CONFIG.escapeHtml(score)}" data-submission-student-id="${Number(submission.studentId)}" ${hasScoreEditingAccess(assignment.academicPeriodId) ? '' : 'disabled'} data-page-change="${window.EDUGNAY_PAGE_EVENTS.register('change', function(event) { saveAssignmentSubmissionScore(String(Number(assignment.id)), String(Number(submission.studentId)), this) })}"><span>/ ${Number(assignment.maxScore)}</span></div>`
+              return (USE_SHS_CORE_GRADEBOOK ? assignment.gradingItemId
+                : assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0
+                ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${Number(assignment.maxScore)}" value="${window.EDUGNAY_CONFIG.escapeHtml(score)}" data-submission-student-id="${Number(submission.studentId)}" ${(USE_SHS_CORE_GRADEBOOK
+                  ? BACKEND_TERMS.some(term => String(term.id) === String(assignment.academicPeriodId) && term.status === 'active')
+                    && !getBackendGradingItemForAssignment(assignment)?.usedInPublishedGrades
+                  : hasScoreEditingAccess(assignment.academicPeriodId)) ? '' : 'disabled'} data-page-change="${window.EDUGNAY_PAGE_EVENTS.register('change', function(event) { saveAssignmentSubmissionScore(String(Number(assignment.id)), String(Number(submission.studentId)), this) })}"><span>/ ${Number(assignment.maxScore)}</span></div>`
                 : '<span class="assignment-file-unavailable">Not graded</span>';
             }
           },
@@ -4436,12 +4778,26 @@ lucide.createIcons();
       const assignmentId = Number(state.assignment.id);
       const student = getGradeStudents().find(item => String(item.id) === String(submission.studentId));
       const studentName = student?.displayName || submission.studentName || 'Student';
-      const scoreRecord = getAssignmentScoreRecords(state.assignment.id)
-        .find(record => String(record.studentId) === String(submission.studentId));
-      const maxScore = Number(state.assignment.maxScore);
-      const gradebookAvailable = isBackendGradeMode();
-      state.scoreAvailable = Boolean((state.assignment.categoryId || state.assignment.subjectGradingComponentId) && maxScore > 0);
-      state.canEditScore = state.scoreAvailable && gradebookAvailable && hasScoreEditingAccess(state.assignment.academicPeriodId);
+      const scoreRecords = isElectiveClassPage() ? electiveReviewWorkspace?.scores || []
+        : getAssignmentScoreRecords(state.assignment.id);
+      const scoreRecord = scoreRecords
+        .find(record => String(record.studentId) === String(submission.studentId)
+          && (!isElectiveClassPage() || String(record.gradingItemId) === String(state.assignment.gradingItemId)));
+      const maxScore = Number(isElectiveClassPage()
+        ? getBackendGradingItemForAssignment(state.assignment)?.maxScore ?? state.assignment.maxScore
+        : state.assignment.maxScore);
+      const gradebookAvailable = isElectiveClassPage()
+        ? Boolean(electiveReviewWorkspace?.scope?.policy) : isBackendGradeMode();
+      state.scoreAvailable = Boolean((USE_SHS_CORE_GRADEBOOK || isElectiveClassPage() ? state.assignment.gradingItemId
+        : state.assignment.categoryId || state.assignment.subjectGradingComponentId) && maxScore > 0);
+      state.canEditScore = state.scoreAvailable && gradebookAvailable
+        && (isElectiveClassPage()
+          ? electiveReviewWorkspace?.term?.status === 'active' && window.AcademixElectiveClass?.canEdit()
+            && !getBackendGradingItemForAssignment(state.assignment)?.usedInPublishedGrades
+          : USE_SHS_CORE_GRADEBOOK
+          ? BACKEND_TERMS.some(term => String(term.id) === String(state.assignment.academicPeriodId) && term.status === 'active')
+            && !getBackendGradingItemForAssignment(state.assignment)?.usedInPublishedGrades
+          : hasScoreEditingAccess(state.assignment.academicPeriodId));
       state.savedScore = scoreRecord?.score == null ? '' : String(scoreRecord.score);
 
       document.getElementById('assignmentSubmissionPreviewStudent').textContent = studentName;
@@ -4497,11 +4853,23 @@ lucide.createIcons();
     }
 
     async function openAssignmentSubmissionPreview(assignmentId, submissionId) {
-      const assignment = getTeacherAssignments().find(item => Number(item.id) === Number(assignmentId));
+      const assignment = isElectiveClassPage() ? window.AcademixElectiveClass?.getAssignment(assignmentId)
+        : getTeacherAssignments().find(item => Number(item.id) === Number(assignmentId));
       const submissions = (BACKEND_SUBMISSIONS.get(String(assignmentId)) || [])
         .filter(item => item.fileName && item.fileUrl);
       const index = submissions.findIndex(item => Number(item.id) === Number(submissionId));
       if (!assignment || index < 0) return;
+      if (USE_SHS_CORE_GRADEBOOK) {
+        try {
+          const workspace = await window.EDUGNAY_API.getShsGradeWorkspace({
+            sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID,
+            communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || '',
+            academicTermId: assignment.academicPeriodId
+          });
+          BACKEND_GRADING_ITEMS = workspace.items || [];
+          BACKEND_STUDENT_SCORES = workspace.scores || [];
+        } catch (error) { return showAppToast(error.message || 'Scores could not be loaded.', 'error'); }
+      }
       assignmentPreviewState = { assignment, submissions, index, savedScore: '', scoreAvailable: false,
         canEditScore: false, saving: false, loading: false, advancing: false };
       const scoreInput = document.getElementById('assignmentSubmissionPreviewScoreInput');
@@ -4513,15 +4881,35 @@ lucide.createIcons();
     async function persistAssignmentSubmissionScore(assignment, studentId, score) {
       const item = getBackendGradingItemForAssignment(assignment);
       if (!item) throw new Error('This assignment is not linked to a score component yet.');
-      const saved = await window.EDUGNAY_API.saveStudentScore({ gradingItemId: item.id, studentId, score });
-      const index = BACKEND_STUDENT_SCORES.findIndex(record =>
+      if ((USE_SHS_CORE_GRADEBOOK || isElectiveClassPage()) && score === null)
+        throw new Error('Enter a score from 0 to the maximum score.');
+      let saved;
+      if (isElectiveClassPage()) {
+        await window.EDUGNAY_API.saveShsScore({
+          electiveClassId: window.AcademixElectiveClass.getClass().electiveClassId,
+          academicTermId: assignment.academicPeriodId, gradingItemId: item.id, studentId, score
+        });
+        saved = { gradingItemId: item.id, studentId, score };
+      } else if (USE_SHS_CORE_GRADEBOOK) {
+        await window.EDUGNAY_API.saveShsScore({
+          sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID,
+          communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || '',
+          academicTermId: assignment.academicPeriodId, gradingItemId: item.id, studentId, score
+        });
+        saved = { gradingItemId: item.id, studentId, score };
+      } else {
+        saved = await window.EDUGNAY_API.saveStudentScore({ gradingItemId: item.id, studentId, score });
+      }
+      const scoreRecords = isElectiveClassPage() ? electiveReviewWorkspace.scores : BACKEND_STUDENT_SCORES;
+      const index = scoreRecords.findIndex(record =>
         String(record.gradingItemId) === String(item.id) && String(record.studentId) === String(studentId)
       );
-      if (index >= 0) BACKEND_STUDENT_SCORES[index] = saved;
-      else BACKEND_STUDENT_SCORES.push(saved);
+      if (index >= 0) scoreRecords[index] = saved;
+      else scoreRecords.push(saved);
       const listInput = document.querySelector(`#assignmentSubmissionsTbody .score-input[data-submission-student-id="${Number(studentId)}"]`);
       if (listInput) listInput.value = saved.score == null ? '' : String(saved.score);
-      renderScoreTable(document.getElementById('academicPeriodSelect').value);
+      if (USE_SHS_CORE_GRADEBOOK || isElectiveClassPage()) await window.AcademixShsGradebook?.refresh?.();
+      else renderScoreTable(document.getElementById('academicPeriodSelect').value);
       return saved;
     }
 
@@ -4535,7 +4923,9 @@ lucide.createIcons();
       }
       const input = document.getElementById('assignmentSubmissionPreviewScoreInput');
       const score = input.value === '' ? null : Number(input.value);
-      const maxScore = Number(state.assignment.maxScore);
+      const maxScore = Number(isElectiveClassPage()
+        ? getBackendGradingItemForAssignment(state.assignment)?.maxScore ?? state.assignment.maxScore
+        : state.assignment.maxScore);
       if (input.validity?.badInput || (score !== null && (!Number.isFinite(score) || score < 0 || score > maxScore))) {
         setAssignmentPreviewFeedback(`Enter a score from 0 to ${maxScore}.`, true);
         return false;
@@ -4551,7 +4941,7 @@ lucide.createIcons();
         setAssignmentPreviewFeedback('Score saved.');
         return true;
       } catch (error) {
-        if ([403, 409].includes(error.status)) {
+        if (!USE_SHS_CORE_GRADEBOOK && !isElectiveClassPage() && [403, 409].includes(error.status)) {
           try { await switchAcademicPeriod(state.assignment.academicPeriodId); } catch (_) { /* Show the save error below. */ }
           state.canEditScore = hasScoreEditingAccess(state.assignment.academicPeriodId);
         }
@@ -4597,47 +4987,59 @@ lucide.createIcons();
     }
 
     async function saveAssignmentSubmissionScore(assignmentId, studentId, input) {
-      if (!isBackendGradeMode()) {
+      if (!isBackendGradeMode() && !isElectiveClassPage()) {
         alert(BACKEND_GRADE_ERROR || 'Scores cannot be recorded right now. Refresh and try again.');
         return;
       }
-      const assignment = getTeacherAssignments().find(item => item.id === String(assignmentId));
-      if (!assignment || !requireScoreEditingAccess(assignment.academicPeriodId)) {
-        openAssignmentSubmissionsModal(assignmentId);
+      const assignment = isElectiveClassPage() ? window.AcademixElectiveClass?.getAssignment(assignmentId)
+        : getTeacherAssignments().find(item => item.id === String(assignmentId));
+      const canEdit = assignment && (isElectiveClassPage()
+        ? Boolean(electiveReviewWorkspace?.scope?.policy && electiveReviewWorkspace.term?.status === 'active'
+          && window.AcademixElectiveClass?.canEdit() && !getBackendGradingItemForAssignment(assignment)?.usedInPublishedGrades)
+        : USE_SHS_CORE_GRADEBOOK
+        ? BACKEND_TERMS.some(term => String(term.id) === String(assignment?.academicPeriodId) && term.status === 'active')
+        : requireScoreEditingAccess(assignment?.academicPeriodId));
+      if (!assignment || !canEdit) {
+        if (isElectiveClassPage()) openElectiveAssignmentSubmissions(assignmentId);
+        else openAssignmentSubmissionsModal(assignmentId);
         return;
       }
       const score = input.value === '' ? null : Number(input.value);
       const maxScore = Number(input.max);
       if (input.validity?.badInput || (score !== null && (!Number.isFinite(score) || score < 0 || score > maxScore))) {
         alert(`Enter a score from 0 to ${maxScore}.`);
-        openAssignmentSubmissionsModal(assignmentId);
+        if (isElectiveClassPage()) openElectiveAssignmentSubmissions(assignmentId);
+        else openAssignmentSubmissionsModal(assignmentId);
         return;
       }
       try {
         await persistAssignmentSubmissionScore(assignment, studentId, score);
       } catch (error) {
-        if ([403, 409].includes(error.status)) await switchAcademicPeriod(assignment.academicPeriodId);
+        if (!USE_SHS_CORE_GRADEBOOK && !isElectiveClassPage() && [403, 409].includes(error.status)) await switchAcademicPeriod(assignment.academicPeriodId);
         alert(error.message);
       }
     }
 
     function openStatusModal(id) {
       activeAssignmentId = String(id);
-      const a = getTeacherAssignments().find(x => x.id === String(id));
+      const a = isElectiveClassPage() ? window.AcademixElectiveClass?.getAssignment(id)
+        : getTeacherAssignments().find(x => x.id === String(id));
       if (!a) return;
 
       const onlineSubmissionEnabled = a.onlineSubmissionEnabled === true;
-      document.getElementById('assignmentStatusModalTitle').textContent = (onlineSubmissionEnabled ? 'Submission Status — ' : 'Update Status — ') + a.title;
+      const readOnly = onlineSubmissionEnabled || isElectiveClassPage()
+        && !window.AcademixElectiveClass?.canEditAssignmentStatus(a);
+      document.getElementById('assignmentStatusModalTitle').textContent = (readOnly ? 'Submission Status — ' : 'Update Status — ') + a.title;
       document.getElementById('assignmentStatusModalSub').textContent = onlineSubmissionEnabled
         ? 'Status updates automatically when a student uploads a file.'
-        : "Online submissions are disabled. Set each student's status manually.";
+        : readOnly ? 'This class is read-only.' : "Online submissions are disabled. Set each student's status manually.";
 
       const tbody = document.getElementById('assignmentStatusTbody');
       const statuses = getTeacherAssignmentStatuses(a.id);
       const gradeStudents = getGradeStudents();
       tbody.innerHTML = gradeStudents.length ? gradeStudents.map((s, index) => {
         const currentStatus = statuses.find(item => String(item.studentId) === String(s.id))?.status || 'pending';
-        const statusReadOnly = onlineSubmissionEnabled;
+        const statusReadOnly = readOnly;
         const statusLabel = currentStatus === 'submitted' ? 'Submitted' : currentStatus === 'not_submitted' ? 'Not submitted' : 'Pending';
         const statusClass = currentStatus === 'submitted' ? 'badge-green' : currentStatus === 'not_submitted' ? 'badge-red' : 'badge-orange';
         return `
@@ -4657,22 +5059,24 @@ lucide.createIcons();
             </div>`}
           </td>
         </tr>`;
-      }).join('') : `<tr class="panel-empty-row"><td colspan="2">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students to update', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
+      }).join('') : `<tr class="panel-empty-row"><td colspan="2">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students to update', text: isElectiveClassPage() ? 'Students enrolled in this class will appear here.' : 'Students assigned to this section will appear here.' })}</td></tr>`;
 
       openModal('assignmentStatusModal');
       lucide.createIcons();
     }
 
     async function setStudentStatus(studentId, status, btn) {
-      const assignment = getTeacherAssignments().find(item => String(item.id) === String(activeAssignmentId));
-      if (!assignment || assignment.onlineSubmissionEnabled === true) return;
+      const assignment = isElectiveClassPage() ? window.AcademixElectiveClass?.getAssignment(activeAssignmentId)
+        : getTeacherAssignments().find(item => String(item.id) === String(activeAssignmentId));
+      if (!assignment || assignment.onlineSubmissionEnabled === true
+        || isElectiveClassPage() && !window.AcademixElectiveClass?.canEditAssignmentStatus(assignment)) return;
 
       const group = btn.closest('.status-btn-group');
       const buttons = Array.from(group.querySelectorAll('.status-btn'));
       buttons.forEach(button => { button.disabled = true; });
 
       try {
-        if (!isBackendGradeMode()) throw new Error(BACKEND_GRADE_ERROR || 'Assignments are not available right now. Refresh and try again.');
+        if (!isBackendGradeMode() && !isElectiveClassPage()) throw new Error(BACKEND_GRADE_ERROR || 'Assignments are not available right now. Refresh and try again.');
         const saved = await window.EDUGNAY_API.updateAssignmentStudentStatus(activeAssignmentId, studentId, status);
         const records = BACKEND_SUBMISSIONS.get(String(activeAssignmentId)) || [];
         const existing = records.find(record => String(record.studentId) === String(studentId));
@@ -4694,7 +5098,8 @@ lucide.createIcons();
 
         buttons.forEach(button => button.classList.remove('selected'));
         btn.classList.add('selected');
-        renderAssignments();
+        if (isElectiveClassPage()) await window.AcademixElectiveClass?.refresh?.('assignments');
+        else renderAssignments();
       } catch (error) {
         window.alert(error.message || 'The student status could not be saved.');
       } finally {
@@ -4791,6 +5196,8 @@ lucide.createIcons();
                 communicationComponentCode: CURRENT_COMMUNICATION_COMPONENT_CODE || '',
                 academicTermId: ACTIVE_ACADEMIC_PERIOD_ID
               });
+              BACKEND_GRADING_ITEMS = workspace.items || [];
+              BACKEND_STUDENT_SCORES = workspace.scores || [];
               BACKEND_PUBLISHED_GRADES = (workspace.published || []).map(grade => ({
                 ...grade,
                 sectionId: String(CURRENT_SECTION_ID),
@@ -4892,67 +5299,71 @@ lucide.createIcons();
         }
       }
 
-      if (isReopenBackendMode()) {
+      if (isReopenBackendMode() && !USE_SHS_CORE_GRADEBOOK) {
         void switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
       }
     });
 
     window.addEventListener('pagehide', stopQrScanner);
 
+function isElectiveClassPage() {
+  return new URLSearchParams(window.location.search).has('classId');
+}
+
 window.EDUGNAY_PAGE_EVENTS.bind({
   change: {
     p085a0ac90abb: function(event) { setQrScannerSoundEnabled(this.checked) },
-    p0fee472ec9e3: function(event) { switchAcademicPeriod(this.value) },
+    p0fee472ec9e3: function(event) { if (!isElectiveClassPage() && !USE_SHS_CORE_GRADEBOOK) switchAcademicPeriod(this.value) },
     p2093cbf80f07: function(event) { updateTransferPublishButton() },
     p4cf0ed79916c: function(event) { document.getElementById('assignGradingFields').hidden = !this.checked },
     p69bfc45b5a39: function(event) { document.getElementById('editAssignmentGradingFields').hidden = !this.checked },
-    pb48ac12764d2: function(event) { loadAttendanceForDate(this.value) },
+    pb48ac12764d2: function(event) { if (!isElectiveClassPage()) loadAttendanceForDate(this.value) },
   },
   click: {
-    p06c9cdd78b61: function(event) { confirmQrAttendance() },
-    p073cca9643bf: function(event) { returnToQrScanning() },
-    p09c3c8eee7bd: function(event) { closeModal('qrAttendanceModal') },
+    p06c9cdd78b61: function(event) { if (!isElectiveClassPage()) confirmQrAttendance() },
+    p073cca9643bf: function(event) { if (!isElectiveClassPage()) returnToQrScanning() },
+    p09c3c8eee7bd: function(event) { if (!isElectiveClassPage()) closeModal('qrAttendanceModal') },
     p19f1fb5aef99: function(event) { closeModal('reopenRequestModal') },
     p1bb23ea957b9: function(event) { closeModal('assignmentSubmissionsModal') },
     p1e59e8793512: function(event) { closeModal('publishModal') },
-    p1f227c72ada4: function(event) { submitSectionMaterialUpload() },
+    p1f227c72ada4: function(event) { if (!isElectiveClassPage()) submitSectionMaterialUpload() },
     p2465bd5943ac: function(event) { closeModal('transferReviewModal') },
     p295e62919760: function(event) { saveAssignmentChanges() },
     p30dd389c6db4: function(event) { switchTab('scores') },
     p3ea63981e1cd: function(event) { switchTab('materials') },
     p44928eae6966: function(event) { closeModal('editAssignmentModal') },
     p461bf01c621c: function(event) { switchCatTab(this,'all') },
-    p495242f87541: function(event) { stopQrScanner() },
+    p495242f87541: function(event) { if (!isElectiveClassPage()) stopQrScanner() },
     p49e266a62e30: function(event) { closeAssignmentSubmissionPreview() },
     p6ee5ce9e437d: function(event) { void previousAssignmentSubmissionPreview() },
     p7aa907733a81: function(event) { void saveAssignmentPreviewScore() },
     p9ca9e80540bc: function(event) { void advanceAssignmentSubmissionPreview() },
-    p5026ce80c219: function(event) { markAll('P') },
-    p5adc771cd24c: function(event) { openPublishGradesModal() },
-    p6875bf9d15fb: function(event) { publishGrades() },
+    p5026ce80c219: function(event) { if (!isElectiveClassPage()) markAll('P') },
+    p5adc771cd24c: function(event) { if (!isElectiveClassPage() && !USE_SHS_CORE_GRADEBOOK) openPublishGradesModal() },
+    p6875bf9d15fb: function(event) { if (!isElectiveClassPage() && !USE_SHS_CORE_GRADEBOOK) publishGrades() },
     p6cd4f4a9a6f6: function(event) { closeModal('addCompModal') },
     p796d301f2a60: function(event) { switchTab('attendance') },
     p7ce03f3255f5: function(event) { closeModal('assignmentStatusModal') },
-    p85a0391f1830: function(event) { startQrScanner() },
+    p85a0391f1830: function(event) { if (!isElectiveClassPage()) startQrScanner() },
     p8b9f1417269b: function(event) { closeModal('addAssignmentModal') },
     p92bd2d4c80dd: function(event) { submitReopenRequest() },
-    p9d3378202da9: function(event) { saveAttendance() },
+    p9d3378202da9: function(event) { if (!isElectiveClassPage()) saveAttendance() },
     p9f94f32c28cc: function(event) { closeModal('teacherDeleteConfirmModal') },
     pa3ddd2d70e8f: function(event) { switchCatTab(this,'PT') },
     pa79a6c1342a2: function(event) { switchCatTab(this,'QA') },
-    pafb199fa3d64: function(event) { exportScoresCsv() },
-    pb31f0f2616b0: function(event) { openQrAttendanceFinalReview() },
-    pb92dfb705e9e: function(event) { openModal('addAssignmentModal') },
+    pafb199fa3d64: function(event) { if (!isElectiveClassPage() && !USE_SHS_CORE_GRADEBOOK) exportScoresCsv() },
+    pb31f0f2616b0: function(event) { if (!isElectiveClassPage()) openQrAttendanceFinalReview() },
+    pb92dfb705e9e: function(event) { if (!isElectiveClassPage()) { openModal('addAssignmentModal'); if (USE_SHS_CORE_GRADEBOOK) void prepareShsCoreAssignmentGrading(); } },
     pc9e3d77f572c: function(event) { switchTab('students') },
     pd2022aa8b27b: function(event) { switchTab('assignments') },
-    pd7ad483cb107: function(event) { openScoreComponentModal() },
+    pd7ad483cb107: function(event) { if (!isElectiveClassPage() && !USE_SHS_CORE_GRADEBOOK) openScoreComponentModal() },
     peb9ac386031c: function(event) { closeTeacherStudentDetailsModal() },
-    ped57566d7f19: function(event) { openMaterialUploadModal() },
+    ped57566d7f19: function(event) { if (!isElectiveClassPage()) openMaterialUploadModal() },
     pf1a8e21cf312: function(event) { retryFailedScoreSaves() },
     pf2302f2e3184: function(event) { switchCatTab(this,'WW') },
     pf3c97efc71fa: function(event) { closeModal('uploadModal') },
-    pf40f6cb8cd12: function(event) { addAssignment() },
-    pfc89cdf73fc4: function(event) { openQrAttendance() },
+    pf40f6cb8cd12: function(event) { if (!isElectiveClassPage()) addAssignment() },
+    pfc89cdf73fc4: function(event) { if (!isElectiveClassPage()) openQrAttendance() },
   },
   input: {
     p1ad23dd139fd: function(event) { filterScoreStudents() },

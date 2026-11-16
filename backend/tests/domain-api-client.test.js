@@ -72,3 +72,33 @@ test('graded-assignment create, update, and reload keep the selected domain', as
   await context.createApiAssignment({ sectionId: 2, subjectId: 3, title: 'Ungraded' });
   assert.equal(requests.at(-1).body.domainCode, null);
 });
+
+test('assignment replacement limit survives create, edit, and reload', async () => {
+  const { context, requests } = client();
+  const created = await context.createApiAssignment({
+    sectionId: 2, subjectId: 3, title: 'Task', onlineSubmissionEnabled: true,
+    maxResubmissions: 1
+  });
+  assert.equal(requests.at(-1).body.maxResubmissions, 1);
+  assert.equal(created.maxResubmissions, 1);
+  const updated = await context.updateApiAssignment(31, { maxResubmissions: 2 });
+  assert.equal(requests.at(-1).body.maxResubmissions, 2);
+  assert.equal(updated.maxResubmissions, 2);
+  await context.updateApiAssignment(31, { title: 'Renamed' });
+  assert.equal(Object.hasOwn(requests.at(-1).body, 'maxResubmissions'), false);
+  assert.equal((await context.getApiAssignments())[0].maxResubmissions, 2);
+  const unlimited = await context.updateApiAssignment(31, { maxResubmissions: null });
+  assert.equal(requests.at(-1).body.maxResubmissions, null);
+  assert.equal(unlimited.maxResubmissions, null);
+});
+
+test('assignment edits leave unchanged due date and score limit alone', async () => {
+  const { context, requests } = client();
+  await context.updateApiAssignment(31, { title: 'Renamed', maxResubmissions: 2 });
+  const body = requests.at(-1).body;
+  assert.equal(Object.hasOwn(body, 'dueAt'), false);
+  assert.equal(Object.hasOwn(body, 'maxScore'), false);
+  const saved = (await context.getApiAssignments())[0];
+  assert.equal(saved.maxScore, 10);
+  assert.equal(saved.maxResubmissions, 2);
+});

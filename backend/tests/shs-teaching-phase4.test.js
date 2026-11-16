@@ -221,13 +221,14 @@ test('withdrawal blocks new elective work but retains the learnerâ€™s earli
   const assignments = read('backend/controllers/assignmentsController.js');
   const attendance = read('backend/controllers/attendanceController.js');
   const studentPage = read('views/student/edugnay-student-assignments.html');
+  const studentAssignments = read('assets/js/student/assignments.js');
 
-  assert.match(assignments, /assertElectiveStudent\(getDatabase\(\), req\.user, assignment\.electiveClassId, \{ write: true \}\)/);
+  assert.match(assignments, /assertElectiveStudent\(connection, req\.user, assignment\.electiveClassId, \{ write: true \}\)/);
   assert.match(assignments, /assignment = await getAssignmentForManagement\(connection, req\.user, assignmentId, true\);[\s\S]*?assertElectiveTeacher\(connection, req\.user, assignment\.electiveClassId, \{ write: true \}\)/);
   assert.match(assignments, /em\.withdrawn_at IS NULL OR assignments\.created_at <= em\.withdrawn_at/);
-  assert.match(assignments, /assignments\.created_at <= em\.withdrawn_at[\s\S]*?\/api\/assignments\/history/);
+  assert.match(studentPage, /getAssignmentHistory\(/);
   assert.match(studentPage, /readOnlyElective[\s\S]*?Enrollment ended/);
-  assert.match(studentPage, /Your earlier submission remains available/);
+  assert.match(studentAssignments, /Enrollment ended[^']*previous submission available/);
   assert.match(attendance, /em\.withdrawn_at IS NULL OR s\.attendance_date <= DATE\(em\.withdrawn_at\)/);
 });
 
@@ -253,7 +254,7 @@ test('migration and controllers keep attendance, assignments, and materials in o
   assert.match(qr, /credential\.studentId\]/);
   assert.match(qr, /student_user_id = \? AND withdrawn_at IS NULL/);
   assert.match(assignments, /Elective assignments cannot be graded in this phase/);
-  assert.match(assignments, /assertElectiveStudent\(getDatabase\(\), req\.user, assignment\.electiveClassId, \{ write: true \}\)/);
+  assert.match(assignments, /assertElectiveStudent\(connection, req\.user, assignment\.electiveClassId, \{ write: true \}\)/);
   assert.match(materials, /authorizeElectiveUpload/);
   assert.match(materials, /assertElectiveTeacher\(connection, req\.user, req\.materialElectiveClassId, \{ write: true \}\)/);
   assert.match(routes, /router\.use\(requireAuth, requireSchoolUser, requireShsTeachingEnabled\)/);
@@ -320,7 +321,8 @@ test('My Classes keeps one shared workspace for sections and SHS classes', () =>
   assert.match(teaching, /scanShsElectiveQrAttendance/);
   assert.match(teaching, /TeacherClassViews\.renderAssignments/);
   assert.match(teaching, /TeacherClassViews\.renderMaterials/);
-  assert.match(teaching, /TeacherClassViews\.renderAssignmentSubmissions/);
+  assert.match(teaching, /TeacherClassViews\.openElectiveAssignmentSubmissions/);
+  assert.match(page, /openElectiveAssignmentSubmissions,/);
   assert.doesNotMatch(teaching, /assignment-card|material-item|attendance-entry-row|qr-attendance-student|qr-attendance-final-row/);
   assert.match(teaching, /edugnay:teacher-materials-changed/);
   assert.match(page, /data-material-action="publish"/);
@@ -330,7 +332,7 @@ test('My Classes keeps one shared workspace for sections and SHS classes', () =>
   assert.match(gradebook, /getShsGradeWorkspace/);
   assert.match(gradebook, /TeacherClassViews\.renderScoreTable/);
   assert.match(gradebook, /TeacherClassViews\.renderScoreCategories/);
-  const gradebookRenderer = gradebook.match(/function renderTable\([\s\S]*?\n  \}\n/)?.[0] || '';
+  const gradebookRenderer = gradebook.match(/function renderTable\([\s\S]*?\r?\n  \}\r?\n/)?.[0] || '';
   assert.match(gradebookRenderer, /TeacherClassViews\.renderScoreTable/);
   assert.doesNotMatch(gradebookRenderer, /thead\.innerHTML|tbody\.innerHTML/);
   assert.match(gradebook, /host\.querySelector\('#academicPeriodSelect'\)/);
@@ -369,6 +371,30 @@ test('SHS Score Recording uses the regular Add Component modal controls', () => 
   assert.doesNotMatch(gradebook, /Add assessment/);
 });
 
+test('SHS score column labels match the regular gradebook while retaining full names', () => {
+  const gradebook = read('assets/js/teacher/shs-gradebook.js');
+  const helpers = gradebook.match(/function categoryCode\([\s\S]*?\r?\n  \}\r?\n\r?\n  function shortCategoryName\([\s\S]*?\r?\n  \}/)?.[0];
+  const renderTable = gradebook.match(/function renderTable\([\s\S]*?\r?\n  \}(?=\r?\n\r?\n  async function saveScore)/)?.[0];
+  assert.ok(helpers && renderTable);
+  let rendered;
+  const context = vm.createContext({
+    window: { TeacherClassViews: { renderScoreTable: value => { rendered = value; } } }
+  });
+  vm.runInContext(`${helpers}\n${renderTable}`, context);
+  const components = [
+    { code: 'written', name: 'Written/Oral Works', weight: 20 },
+    { code: 'performance', name: 'Performance Tasks', weight: 50 },
+    { code: 'examination', name: 'Examinations', weight: 30 }
+  ];
+  context.renderTable({}, { scope: { policy: { components } },
+    items: components.map((component, index) => ({ id: index + 1, componentCode: component.code,
+      title: `Item ${index + 1}`, maxScore: 25 })) }, {}, true, () => {});
+  assert.deepEqual(Array.from(rendered.items, item => item.categoryHeader), ['WW', 'PT', 'Exams']);
+  assert.deepEqual(Array.from(rendered.items, item => item.categoryName),
+    ['Written/Oral Works', 'Performance Tasks', 'Examinations']);
+  assert.ok(rendered.items.every(item => item.canDelete));
+});
+
 test('regular Add Component uses the shared modal without Date Given setup', () => {
   const page = read('views/teacher/edugnay-teacher-sections.html');
   const start = page.indexOf('function openScoreComponentModal() {');
@@ -382,8 +408,8 @@ test('regular Add Component uses the shared modal without Date Given setup', () 
 
 test('SHS Add Component keeps the shared form and saves the selected policy category', async () => {
   const source = read('assets/js/teacher/shs-gradebook.js');
-  const configure = source.match(/function configureAddAssessmentModal\([\s\S]*?\n  \}\n\n  function renderCategoryTabs/)?.[0]
-    .replace(/\n\n  function renderCategoryTabs$/, '');
+  const configure = source.match(/function configureAddAssessmentModal\([\s\S]*?\r?\n  \}\r?\n\r?\n  function renderCategoryTabs/)?.[0]
+    .replace(/\r?\n\r?\n  function renderCategoryTabs$/, '');
   assert.ok(configure);
   const makeCard = code => {
     const card = {
@@ -406,6 +432,7 @@ test('SHS Add Component keeps the shared form and saves the selected policy cate
   const examSelect = { innerHTML: '', value: '', required: false };
   const examGroup = { hidden: true };
   const save = { disabled: false, onclick: null };
+  const saveLabel = { textContent: '' };
   const body = {
     innerHTML: 'shared regular component form',
     querySelector(selector) {
@@ -418,7 +445,9 @@ test('SHS Add Component keeps the shared form and saves the selected policy cate
       })[selector] || null;
     }
   };
-  const modal = { querySelector: selector => selector === '.modal-body' ? body : selector === '#addScoreComponentSubmit' ? save : null };
+  const modal = { querySelector: selector => selector === '.modal-body' ? body
+    : selector === '#addScoreComponentSubmit' ? save
+      : selector === '#addScoreComponentSubmitLabel' ? saveLabel : null };
   const calls = { values: null, closed: false, reloadTerm: null };
   const components = [
     { code: 'written', name: 'Written/Oral Works', weight: 20, examParts: {} },
@@ -470,6 +499,78 @@ test('SHS assignment loading does not hold the grade workspace and the roster he
   assert.doesNotMatch(teaching, /getElementById\('studentGradePeriodName'\)/);
   assert.match(teaching, /periodName: 'Current period'/);
   assert.match(teaching, /columns\[4\]\.periodName = workspace\.term\?\.name/);
+});
+
+test('SHS core and elective publish previews use the shared warning and grade-card layout', async () => {
+  const source = read('assets/js/teacher/shs-gradebook.js');
+  const helpers = source.match(/  function setPublishPreview\([\s\S]*?(?=  async function publish\()/)?.[0];
+  assert.ok(helpers);
+  const nodes = new Map();
+  const node = id => {
+    if (!nodes.has(id)) nodes.set(id, {
+      hidden: true, textContent: '', innerHTML: '', children: [], disabled: false,
+      classList: { add() {}, remove() {} },
+      setAttribute() {},
+      replaceChildren(...children) { this.children = children; }
+    });
+    return nodes.get(id);
+  };
+  const modal = node('publishModal');
+  modal.querySelector = selector => node(selector);
+  const rendered = [];
+  const context = vm.createContext({
+    document: { getElementById: node, createElement: () => ({ textContent: '' }) },
+    window: {
+      TeacherClassViews: { renderGradePreviewRows(_list, rows) { rendered.push(rows); } },
+      openModal() {}, lucide: { createIcons() {} }
+    },
+    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;'),
+    setVisible(element, visible) { element.hidden = !visible; },
+    api: () => ({ previewShsGrades: async () => { throw new Error('Preview unavailable.'); } })
+  });
+  vm.runInContext(helpers, context);
+  for (const kind of ['section', 'elective']) {
+    const data = { term: { id: 5, name: 'Term 1' }, scope: {
+      kind, className: kind === 'section' ? 'Section B' : 'Calculus Class A',
+      policy: { method: 'adjusted_2026', passingGradeThreshold: 75 }
+    }, published: [] };
+    const preview = { preview: { term: { status: 'active' }, students: [
+      { studentName: 'Ana', problem: 'Resolve the missing score for Test A.' },
+      { studentName: 'Ben', problem: 'Resolve the missing score for Test B.' }
+    ] } };
+    context.setPublishPreview(preview, data, {}, true, true, () => {});
+    assert.equal(node('.modal-title').textContent, 'Publish Grades');
+    assert.equal(node('.modal-sub').textContent, 'Review the calculated grades before publishing.');
+    assert.equal(node('publishGradeWarning').hidden, false);
+    assert.deepEqual(node('publishGradeWarningText').children.map(item => item.textContent), [
+      'Ana: Resolve the missing score for Test A.', 'Ben: Resolve the missing score for Test B.'
+    ]);
+    assert.match(node('publishGradeSummary').innerHTML, new RegExp(data.scope.className));
+    assert.deepEqual(Array.from(rendered.at(-1), row => row.value), ['Incomplete', 'Incomplete']);
+    assert.equal(node('publishGradesConfirmButton').disabled, true);
+    assert.match(node('publishGradesConfirmButton').innerHTML, /data-lucide="send".*Publish Grades/);
+
+    preview.preview.students = [
+      { studentName: 'Ana', problem: 'Add a Performance Tasks item first.' },
+      { studentName: 'Ben', problem: 'Add a Performance Tasks item first.' }
+    ];
+    context.setPublishPreview(preview, data, {}, true, true, () => {});
+    assert.deepEqual(node('publishGradeWarningText').children.map(item => item.textContent),
+      ['Add a Performance Tasks item first.']);
+
+    preview.preview.students = [{ studentName: 'Ana', termGrade: 88 }];
+    data.published = [{ id: 1 }];
+    context.setPublishPreview(preview, data, {}, true, true, () => {});
+    assert.equal(node('publishGradeWarning').hidden, true);
+    assert.equal(node('publishGradeWarningText').children.length, 0);
+    assert.equal(rendered.at(-1)[0].value, '88');
+    assert.equal(node('publishGradesConfirmButton').disabled, false);
+    assert.match(node('publishGradeSummary').innerHTML, /Reason for republishing/);
+  }
+  await context.openPublishPreview({ term: { id: 5 }, scope: {}, published: [] }, {}, true, () => {});
+  assert.equal(node('publishGradeFeedback').textContent, 'Preview unavailable.');
+  assert.equal(node('publishGradeFeedback').hidden, false);
+  assert.equal(node('publishGradesConfirmButton').hidden, true);
 });
 
 test('My Classes uses the shared static page without a second Elective Class page', () => {
@@ -530,8 +631,8 @@ test('SHS assignment grading uses the existing assignment controls and transacti
 
 test('SHS Student List shows names before attendance and grades finish', async () => {
   const teaching = read('assets/js/teacher/elective-class.js');
-  const source = teaching.match(/async function loadStudents\(\) \{[\s\S]*?\n  \}\n\n  function localToday/)?.[0]
-    .replace(/\n\n  function localToday$/, '');
+  const source = teaching.match(/async function loadStudents\(\{ preserve = false \} = \{\}\) \{[\s\S]*?\r?\n  \}\r?\n\r?\n  function localToday/)?.[0]
+    .replace(/\r?\n\r?\n  function localToday$/, '');
   assert.ok(source);
   let resolveHistory;
   let resolveGrades;
@@ -637,8 +738,8 @@ test('SHS class header shows the selected grading period and saved-score progres
 
 test('a failed SHS assignment grade link rolls back the assignment', async () => {
   const assignments = read('backend/controllers/assignmentsController.js');
-  const source = assignments.match(/async function createElectiveAssignment\([\s\S]*?\n\}\n\nasync function removeUploadedFile/)?.[0]
-    .replace(/\n\nasync function removeUploadedFile$/, '');
+  const source = assignments.match(/async function createElectiveAssignment\([\s\S]*?\r?\n\}\r?\n\r?\nasync function removeUploadedFile/)?.[0]
+    .replace(/\r?\n\r?\nasync function removeUploadedFile$/, '');
   assert.ok(source);
   const calls = [];
   let insertQuery;
@@ -660,6 +761,7 @@ test('a failed SHS assignment grade link rolls back the assignment', async () =>
     requiredText: value => value,
     optionalText: value => value,
     dateTime: value => value,
+    resubmissionLimit: value => value ?? null,
     ASSIGNMENT_STATUSES: new Set(['published']),
     createLinkedAssignmentItem: async () => { throw new Error('Grading period unavailable'); }
   });
