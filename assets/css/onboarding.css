@@ -1208,12 +1208,29 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 .onboarding-showcase-action-install:hover { background: var(--blue-xpale); }
 
 html[data-theme="dark"] .onboarding-showcase-action-primary {
-  border-color: var(--gray-200);
+  border-color: var(--blue-mid);
+  background: var(--blue-mid);
+  color: var(--white);
 }
 
 html[data-theme="dark"] .onboarding-showcase-action-primary:hover,
 html[data-theme="dark"] .onboarding-showcase-action-primary:focus-visible {
-  border-color: var(--blue);
+  border-color: var(--blue-light);
+  background: var(--blue-light);
+  color: var(--white);
+}
+
+html[data-theme="dark"] .onboarding-showcase-action-install {
+  border-color: var(--gray-300);
+  background: transparent;
+  color: var(--theme-text);
+}
+
+html[data-theme="dark"] .onboarding-showcase-action-install:hover,
+html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
+  border-color: var(--blue-border-hover);
+  background: var(--blue-xpale);
+  color: var(--theme-accent-text);
 }
 
 .onboarding-showcase-action:focus-visible {

@@ -61,6 +61,25 @@ test('onboarding feature previews support mobile swipes and a display-only carou
   assert.match(onboardingCss, /\.onboarding-showcase-preview\s*\{\s*touch-action:\s*pan-y pinch-zoom;/);
 });
 
+test('onboarding showcase actions keep a clear dark-mode primary and secondary hierarchy', () => {
+  const primaryDark = onboardingCss.match(/html\[data-theme="dark"\]\s+\.onboarding-showcase-action-primary\s*\{([^}]*)\}/)?.[1] || '';
+  const primaryDarkInteractive = onboardingCss.match(/html\[data-theme="dark"\]\s+\.onboarding-showcase-action-primary:hover,\s*html\[data-theme="dark"\]\s+\.onboarding-showcase-action-primary:focus-visible\s*\{([^}]*)\}/)?.[1] || '';
+  const installDark = onboardingCss.match(/html\[data-theme="dark"\]\s+\.onboarding-showcase-action-install\s*\{([^}]*)\}/)?.[1] || '';
+  const installDarkInteractive = onboardingCss.match(/html\[data-theme="dark"\]\s+\.onboarding-showcase-action-install:hover,\s*html\[data-theme="dark"\]\s+\.onboarding-showcase-action-install:focus-visible\s*\{([^}]*)\}/)?.[1] || '';
+
+  assert.match(onboarding, /<a class="onboarding-showcase-action onboarding-showcase-action-primary"[^>]*>\s*Register your school/);
+  assert.match(onboarding, /<button class="onboarding-showcase-action onboarding-showcase-action-install"[^>]*>Install Academix/);
+  assert.match(primaryDark, /border-color:\s*var\(--blue-mid\)/);
+  assert.match(primaryDark, /background:\s*var\(--blue-mid\)/);
+  assert.match(primaryDark, /color:\s*var\(--white\)/);
+  assert.match(primaryDarkInteractive, /background:\s*var\(--blue-light\)/);
+  assert.match(installDark, /border-color:\s*var\(--gray-300\)/);
+  assert.match(installDark, /background:\s*transparent/);
+  assert.match(installDark, /color:\s*var\(--theme-text\)/);
+  assert.match(installDarkInteractive, /background:\s*var\(--blue-xpale\)/);
+  assert.match(installDarkInteractive, /color:\s*var\(--theme-accent-text\)/);
+});
+
 test('onboarding feature swipe moves one card horizontally, wraps, and ignores vertical gestures', () => {
   const swipeHelper = onboardingClient.match(/function getOnboardingFeatureSwipeTarget\(currentFeatureId, deltaX, deltaY\) \{[\s\S]*?\n    \}/)?.[0];
   assert.ok(swipeHelper, 'the swipe target helper should exist');

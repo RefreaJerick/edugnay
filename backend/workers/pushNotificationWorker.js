@@ -4,12 +4,99 @@ const { getDatabase } = require('../config/database');
 
 const BATCH_SIZE = 10;
 const MAX_ATTEMPTS = 5;
+const GENERIC_PUSH_TITLE = 'New Academix notification';
+const GENERIC_PUSH_BODY = 'Open AcadeMix to view it.';
+const ANNOUNCEMENT_HEADLINE_MAX_LENGTH = 120;
 let timer;
 let processing = false;
 let missingTableReported = false;
 
 function configured() {
   return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT);
+}
+
+function cleanPushText(value, maximumLength) {
+  if (typeof value !== 'string') return '';
+  const characters = Array.from(value.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim());
+  if (characters.length <= maximumLength) return characters.join('');
+  return `${characters.slice(0, maximumLength - 1).join('').trimEnd()}…`;
+}
+
+function pushCopyFor(notification) {
+  const generic = { title: GENERIC_PUSH_TITLE, body: GENERIC_PUSH_BODY };
+  switch (notification.type) {
+    case 'announcement':
+      return {
+        title: 'New announcement',
+        body: cleanPushText(notification.message, ANNOUNCEMENT_HEADLINE_MAX_LENGTH) || GENERIC_PUSH_BODY
+      };
+    case 'grade':
+      if (notification.title === 'Subject grade published') {
+        return { title: 'Final grade published', body: 'A new final grade is available in AcadeMix.' };
+      }
+      if (notification.title === 'Published grade below passing') {
+        return { title: 'Grade alert', body: 'A grade update is ready to review in AcadeMix.' };
+      }
+      return generic;
+    case 'attendance':
+      return { title: 'Attendance alert', body: 'An attendance alert is ready to review in AcadeMix.' };
+    case 'assignment':
+      return { title: 'Assignment reminder', body: 'An assignment reminder is ready to review in AcadeMix.' };
+    case 'journal':
+      return { title: 'Journal reminder', body: 'A journal reminder is ready to review in AcadeMix.' };
+    case 'report':
+      if (notification.title === 'Weekly report updated') {
+        return { title: 'Weekly report updated', body: 'An updated weekly report is ready to view in AcadeMix.' };
+      }
+      if (notification.title === 'Weekly report available') {
+        return { title: 'Weekly report available', body: 'A weekly report is ready to view in AcadeMix.' };
+      }
+      return generic;
+    case 'school_account': {
+      const schoolAccountCopy = {
+        'School account awaiting review': {
+          title: 'School registration awaiting review',
+          body: 'A school registration is ready for review in AcadeMix.'
+        },
+        'School registration resubmitted': {
+          title: 'School registration resubmitted',
+          body: 'A revised registration is ready for review in AcadeMix.'
+        },
+        'School account approved': {
+          title: 'School account approved', body: 'Your school account is ready in AcadeMix.'
+        },
+        'School account rejected': {
+          title: 'School account rejected', body: 'Open AcadeMix to review the registration decision.'
+        },
+        'School account suspended': {
+          title: 'School account suspended', body: 'Open AcadeMix for details about your school account.'
+        },
+        'School account reactivated': {
+          title: 'School account reactivated', body: 'Your school account is active again.'
+        }
+      };
+      return schoolAccountCopy[notification.title] || generic;
+    }
+    case 'grading_period_reopen':
+      if (['Grade access approved', 'Grade access request rejected',
+        'Grade editing deadline extended', 'Grade editing access revoked'].includes(notification.title)) {
+        return {
+          title: notification.title,
+          body: 'Your grade-editing access changed. Open AcadeMix for class and term details.'
+        };
+      }
+      return generic;
+    case 'student_transfer':
+      if (notification.title === 'New student in your section') {
+        return {
+          title: 'New student in your section',
+          body: 'A student was added to one of your sections. Open AcadeMix to view it.'
+        };
+      }
+      return generic;
+    default:
+      return generic;
+  }
 }
 
 async function processPushQueue(database = getDatabase(), send = webPush.sendNotification) {
@@ -25,7 +112,8 @@ async function processPushQueue(database = getDatabase(), send = webPush.sendNot
       WHERE status = 'pending' AND next_attempt_at <= NOW() ORDER BY id LIMIT ${BATCH_SIZE}`, [claimToken]);
     if (!claim.affectedRows) return false;
     const [jobs] = await database.execute(`SELECT deliveries.id, deliveries.attempts,
-        notices.id AS notificationId, notices.type, notices.title, notices.related_student_user_id AS studentId,
+        notices.id AS notificationId, notices.type, notices.title, notices.message,
+        notices.related_student_user_id AS studentId,
         subscriptions.id AS subscriptionId, subscriptions.user_id AS subscriptionUserId,
         subscriptions.endpoint, subscriptions.p256dh, subscriptions.auth_key AS authKey,
         recipients.id AS recipientId, recipients.role, recipients.school_id AS schoolId,
@@ -52,9 +140,8 @@ async function processPushQueue(database = getDatabase(), send = webPush.sendNot
           WHERE id = ? AND claim_token = ?`, [job.id, claimToken]);
         continue;
       }
-      const title = job.type === 'report' && job.title === 'Weekly report updated'
-        ? 'Weekly report updated' : job.type === 'report' ? 'Weekly report available' : 'New Academix notification';
-      const payload = JSON.stringify({ title, body: 'Open Academix to view it.',
+      const { title, body } = pushCopyFor(job);
+      const payload = JSON.stringify({ title, body,
         notificationId: String(job.notificationId), role: job.role });
       try {
         await send({ endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.authKey } }, payload,

@@ -75,7 +75,7 @@ function queueDatabase(job) {
   } };
 }
 
-test('worker sends only a generic alert while access is still valid', async () => {
+test('worker sends a privacy-safe weekly report alert while access is still valid', async () => {
   const keys = webPush.generateVAPIDKeys();
   const old = { public: process.env.VAPID_PUBLIC_KEY, private: process.env.VAPID_PRIVATE_KEY,
     subject: process.env.VAPID_SUBJECT };
@@ -92,6 +92,7 @@ test('worker sends only a generic alert while access is still valid', async () =
     let sent;
     await processPushQueue(database, async (subscription, payload) => { sent = { subscription, data: JSON.parse(payload) }; });
     assert.equal(sent.data.title, 'Weekly report updated');
+    assert.equal(sent.data.body, 'An updated weekly report is ready to view in AcadeMix.');
     assert.equal(sent.data.notificationId, '19');
     assert.doesNotMatch(JSON.stringify(sent), /student|score|journal|follow-up/i);
     assert.ok(database.calls.some(call => call.sql.includes("status = 'sent'")));
@@ -124,6 +125,85 @@ test('worker sends only a generic alert while access is still valid', async () =
   }
 });
 
+test('worker maps notification types to descriptive, privacy-safe banner copy', async () => {
+  const keys = webPush.generateVAPIDKeys();
+  const old = { public: process.env.VAPID_PUBLIC_KEY, private: process.env.VAPID_PRIVATE_KEY,
+    subject: process.env.VAPID_SUBJECT };
+  process.env.VAPID_PUBLIC_KEY = keys.publicKey;
+  process.env.VAPID_PRIVATE_KEY = keys.privateKey;
+  process.env.VAPID_SUBJECT = 'mailto:qa@example.com';
+  try {
+    const baseJob = { id: 5, attempts: 1, notificationId: 19, type: 'unknown', title: 'Unknown event',
+      message: 'Secret Learner has a score of 42 in Chemistry.', studentId: 111, subscriptionId: 2,
+      subscriptionUserId: 9, endpoint, p256dh: body.keys.p256dh, authKey: body.keys.auth,
+      recipientId: 9, role: 'parent', schoolId: 26, schoolStatus: 'active', activeSessionId: 77,
+      parentLinkActive: 1 };
+    const cases = [
+      [{ type: 'announcement', title: 'New announcement', message: 'Family Day schedule' },
+        'New announcement', 'Family Day schedule'],
+      [{ type: 'grade', title: 'Subject grade published', role: 'student' },
+        'Final grade published', 'A new final grade is available in AcadeMix.'],
+      [{ type: 'grade', title: 'Published grade below passing', role: 'parent' },
+        'Grade alert', 'A grade update is ready to review in AcadeMix.'],
+      [{ type: 'attendance', title: 'Consecutive missed subject meeting dates' },
+        'Attendance alert', 'An attendance alert is ready to review in AcadeMix.'],
+      [{ type: 'assignment', title: 'Assignments not completed' },
+        'Assignment reminder', 'An assignment reminder is ready to review in AcadeMix.'],
+      [{ type: 'journal', title: 'Journal entries not submitted' },
+        'Journal reminder', 'A journal reminder is ready to review in AcadeMix.'],
+      [{ type: 'report', title: 'Weekly report available' },
+        'Weekly report available', 'A weekly report is ready to view in AcadeMix.'],
+      [{ type: 'report', title: 'Weekly report updated' },
+        'Weekly report updated', 'An updated weekly report is ready to view in AcadeMix.'],
+      [{ type: 'school_account', title: 'School account awaiting review' },
+        'School registration awaiting review', 'A school registration is ready for review in AcadeMix.'],
+      [{ type: 'school_account', title: 'School registration resubmitted' },
+        'School registration resubmitted', 'A revised registration is ready for review in AcadeMix.'],
+      [{ type: 'school_account', title: 'School account approved' },
+        'School account approved', 'Your school account is ready in AcadeMix.'],
+      [{ type: 'school_account', title: 'School account rejected' },
+        'School account rejected', 'Open AcadeMix to review the registration decision.'],
+      [{ type: 'school_account', title: 'School account suspended' },
+        'School account suspended', 'Open AcadeMix for details about your school account.'],
+      [{ type: 'school_account', title: 'School account reactivated' },
+        'School account reactivated', 'Your school account is active again.'],
+      [{ type: 'grading_period_reopen', title: 'Grade access approved', role: 'teacher' },
+        'Grade access approved', 'Your grade-editing access changed. Open AcadeMix for class and term details.'],
+      [{ type: 'grading_period_reopen', title: 'Grade access request rejected', role: 'teacher' },
+        'Grade access request rejected', 'Your grade-editing access changed. Open AcadeMix for class and term details.'],
+      [{ type: 'grading_period_reopen', title: 'Grade editing deadline extended', role: 'teacher' },
+        'Grade editing deadline extended', 'Your grade-editing access changed. Open AcadeMix for class and term details.'],
+      [{ type: 'grading_period_reopen', title: 'Grade editing access revoked', role: 'teacher' },
+        'Grade editing access revoked', 'Your grade-editing access changed. Open AcadeMix for class and term details.'],
+      [{ type: 'student_transfer', title: 'New student in your section', role: 'teacher' },
+        'New student in your section', 'A student was added to one of your sections. Open AcadeMix to view it.'],
+      [{ type: 'future_notification', title: 'Future event' },
+        'New Academix notification', 'Open AcadeMix to view it.']
+    ];
+
+    for (const [overrides, expectedTitle, expectedBody] of cases) {
+      let sent;
+      await processPushQueue(queueDatabase({ ...baseJob, ...overrides }), async (_subscription, payload) => {
+        sent = JSON.parse(payload);
+      });
+      assert.equal(sent.title, expectedTitle);
+      assert.equal(sent.body, expectedBody);
+      assert.doesNotMatch(JSON.stringify(sent), /Secret Learner|Chemistry|score of 42/);
+    }
+
+    let longHeadlinePayload;
+    await processPushQueue(queueDatabase({ ...baseJob, type: 'announcement', title: 'New announcement',
+      message: 'A'.repeat(130) }), async (_subscription, payload) => { longHeadlinePayload = JSON.parse(payload); });
+    assert.equal(Array.from(longHeadlinePayload.body).length, 120);
+    assert.equal(longHeadlinePayload.body, `${'A'.repeat(119)}…`);
+  } finally {
+    for (const [name, value] of Object.entries({ VAPID_PUBLIC_KEY: old.public,
+      VAPID_PRIVATE_KEY: old.private, VAPID_SUBJECT: old.subject })) {
+      if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    }
+  }
+});
+
 test('schema queues only new saved notifications and logout removes session-bound devices', () => {
   const migration = pageFs.readFileSync(path.join(root, 'backend/database/migrations/048_web_push_notifications.sql'), 'utf8');
   assert.match(migration, /AFTER INSERT ON notifications/);
@@ -136,7 +216,7 @@ test('schema queues only new saved notifications and logout removes session-boun
   assert.match(auth, /if \(previousToken\) await deleteSession\(previousToken\);\s*const token = await createSession/);
 });
 
-test('service worker shows a safe alert and opens the correct in-scope notification page', async () => {
+test('service worker shows supplied safe copy and opens the correct in-scope notification page', async () => {
   const handlers = {};
   let displayed, opened;
   const scope = 'https://school.example/edugnay/';
@@ -147,14 +227,25 @@ test('service worker shows a safe alert and opens the correct in-scope notificat
   });
   let task;
   handlers.push({ data: { json: () => ({ title: 'Weekly report available', notificationId: '19', role: 'parent',
-    summary: 'Private report text' }) }, waitUntil(value) { task = value; } });
+    body: 'A weekly report is ready to view in AcadeMix.', summary: 'Private report text' }) }, waitUntil(value) { task = value; } });
   await task;
   assert.equal(displayed.title, 'Weekly report available');
+  assert.equal(displayed.options.body, 'A weekly report is ready to view in AcadeMix.');
   assert.doesNotMatch(JSON.stringify(displayed), /Private report text/);
   handlers.notificationclick({ notification: { data: displayed.options.data, close() {} },
     waitUntil(value) { task = value; } });
   await task;
   assert.equal(opened, 'https://school.example/edugnay/views/parent/edugnay-parent-notifications.html?pushNotice=19');
+
+  handlers.push({ data: { json: () => ({ title: 42, body: { text: 'invalid' } }) }, waitUntil(value) { task = value; } });
+  await task;
+  assert.equal(displayed.title, 'New Academix notification');
+  assert.equal(displayed.options.body, 'Open AcadeMix to view it.');
+
+  handlers.push({ data: { json: () => ({ title: 'T'.repeat(100), body: 'B'.repeat(200) }) }, waitUntil(value) { task = value; } });
+  await task;
+  assert.equal(Array.from(displayed.title).length, 80);
+  assert.equal(Array.from(displayed.options.body).length, 160);
 });
 
 test('the login return route accepts only the matching role notification page', () => {
