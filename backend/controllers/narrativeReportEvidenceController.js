@@ -77,11 +77,11 @@ async function updateWeeklySettings(req, res, next) {
 function reportSubmissionStatus(row, throughDate) {
   const recordedInTime = !row.statusUpdatedAt || String(row.statusUpdatedAt).slice(0, 10) <= throughDate;
   const submittedInTime = row.submittedAt && String(row.submittedAt).slice(0, 10) <= throughDate;
-  const uploaded = recordedInTime && submittedInTime && Boolean(row.filePath) && row.savedStatus === 'submitted';
+  const uploaded = recordedInTime && submittedInTime && Boolean(row.filePath) && ['submitted', 'late'].includes(row.savedStatus);
   const manual = Number(row.onlineSubmissionEnabled) !== 1 &&
-    recordedInTime && ['pending', 'submitted', 'not_submitted'].includes(row.savedStatus) ? row.savedStatus : null;
+    recordedInTime && ['pending', 'submitted', 'late', 'not_submitted'].includes(row.savedStatus) ? row.savedStatus : null;
   if (row.submissionId && !recordedInTime) return 'pending';
-  return uploaded ? 'submitted' : manual || (row.dueDate && row.dueDate < throughDate ? 'not_submitted' : 'pending');
+  return uploaded ? row.savedStatus : manual || (row.dueDate && row.dueDate < throughDate ? 'not_submitted' : 'pending');
 }
 
 function dateWithinEnrollment(day, enrollment) {
@@ -298,13 +298,13 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         if (!student || !dateWithinEnrollment(row.dueDate, student)) return;
         const status = reportSubmissionStatus(row, evidenceEndDate);
         student.assignments.total++;
-        if (status === 'submitted') student.assignments.submitted++;
+        if (['submitted', 'late'].includes(status)) student.assignments.submitted++;
         else if (status === 'not_submitted') student.assignments.notSubmitted++;
         else student.assignments.pending++;
         student.assignments.sources.push({
-          assignmentId: String(row.assignmentId), submissionId: status === 'submitted' && row.submissionId != null ? String(row.submissionId) : null,
+          assignmentId: String(row.assignmentId), submissionId: ['submitted', 'late'].includes(status) && row.submissionId != null ? String(row.submissionId) : null,
           subjectId: String(row.subjectId), subjectName: row.subjectName, title: row.title,
-          dueDate: row.dueDate, status, submittedAt: status === 'submitted' ? row.submittedAt || null : null
+          dueDate: row.dueDate, status, submittedAt: ['submitted', 'late'].includes(status) ? row.submittedAt || null : null
         });
       });
 
@@ -343,15 +343,15 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           seenAssignments.add(key);
           const status = reportSubmissionStatus(row, evidenceEndDate);
           student.assignments.total++;
-          if (status === 'submitted') student.assignments.submitted++;
+          if (['submitted', 'late'].includes(status)) student.assignments.submitted++;
           else if (status === 'not_submitted') student.assignments.notSubmitted++;
           else student.assignments.pending++;
           student.assignments.sources.push({
             assignmentId: String(row.assignmentId),
-            submissionId: status === 'submitted' && row.submissionId != null ? String(row.submissionId) : null,
+            submissionId: ['submitted', 'late'].includes(status) && row.submissionId != null ? String(row.submissionId) : null,
             electiveClassId: String(row.electiveClassId), className: row.className,
             subjectName: row.subjectName, title: row.title, dueDate: row.dueDate,
-            status, submittedAt: status === 'submitted' ? row.submittedAt || null : null
+            status, submittedAt: ['submitted', 'late'].includes(status) ? row.submittedAt || null : null
           });
         });
       }

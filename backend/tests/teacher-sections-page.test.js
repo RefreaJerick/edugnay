@@ -910,6 +910,72 @@ test('SHS Core published grade synchronization redraws the shared Student List',
   assert.match(sync, /renderTeacherStudentList\(\)/);
 });
 
+test('manual assignment status choices update pressed state only after a successful save', async () => {
+  const source = extractSourceBetween(sectionsScript,
+    'async function setStudentStatus(', '\n    function renderUnavailableSectionPage(');
+  assert.ok(source);
+  const group = { querySelectorAll: () => buttons };
+  const buttons = ['submitted', 'pending', 'late', 'not_submitted'].map(status => {
+    const classes = new Set(status === 'pending' ? ['selected'] : []);
+    return {
+      disabled: false, pressed: status === 'pending' ? 'true' : 'false',
+      classList: { add: value => classes.add(value), remove: value => classes.delete(value), contains: value => classes.has(value) },
+      setAttribute(name, value) { if (name === 'aria-pressed') this.pressed = value; },
+      closest: () => group
+    };
+  });
+  let fail = false;
+  const alerts = [];
+  const context = vm.createContext({
+    activeAssignmentId: '12', BACKEND_GRADE_ERROR: '', BACKEND_SUBMISSIONS: new Map(),
+    BACKEND_SUBMISSION_ERRORS: new Set(),
+    isElectiveClassPage: () => false, isBackendGradeMode: () => true,
+    getTeacherAssignments: () => [{ id: '12', onlineSubmissionEnabled: false }],
+    renderAssignments() {},
+    window: {
+      alert: message => alerts.push(message),
+      EDUGNAY_API: { async updateAssignmentStudentStatus() {
+        assert.ok(buttons.every(button => button.disabled));
+        if (fail) throw new Error('Save failed');
+        return { status: 'late' };
+      } }
+    }
+  });
+  vm.runInContext(source, context);
+  await context.setStudentStatus('7', 'late', buttons[2]);
+  assert.deepEqual(buttons.map(button => button.pressed), ['false', 'false', 'true', 'false']);
+  assert.ok(buttons.every(button => !button.disabled));
+  fail = true;
+  await context.setStudentStatus('7', 'submitted', buttons[0]);
+  assert.deepEqual(buttons.map(button => button.pressed), ['false', 'false', 'true', 'false']);
+  assert.deepEqual(alerts, ['Save failed']);
+});
+
+test('assignment status modal sizes by mode and keeps labeled choices full width', () => {
+  const openStatus = extractSourceBetween(sectionsScript,
+    'function openStatusModal(id) {', '\n    async function setStudentStatus(');
+  assert.ok(openStatus);
+  assert.match(openStatus, /classList\.toggle\('is-read-only', readOnly\)/);
+  assert.match(openStatus, /classList\.toggle\('is-manual', !readOnly\)/);
+  assert.match(sectionsStyles, /\.assignment-status-modal\.is-read-only\s*\{[^}]*max-width:\s*620px/);
+  assert.match(sectionsStyles, /\.assignment-status-modal\.is-manual\s*\{[^}]*max-width:\s*940px/);
+  assert.match(sectionsStyles, /\.assignment-status-modal\s+\.status-btn\s*\{[^}]*width:\s*100%[^}]*height:\s*auto/);
+  assert.match(sectionsStyles, /\.assignment-status-modal\s+\.status-btn\s*\{[^}]*border-radius:\s*var\(--radius-pill\)/s);
+  assert.match(sectionsStyles, /\.status-btn-group\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)\s+minmax\(122px,\s*1\.2fr\)/s);
+  assert.match(sectionsStyles, /\.assignment-status-modal\s+\.status-btn\.not-submitted\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.match(sectionsStyles, /\.assignment-status-table\s+\.status-btn-group\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(122px,\s*1fr\)\);/s);
+  for (const [icon, label] of [['circle-check', 'Submitted'], ['clock-3', 'Pending'], ['clock-alert', 'Late'], ['x-circle', 'Not submitted']]) {
+    assert.match(openStatus, new RegExp(`data-lucide="${icon}"[\\s\\S]*?<span>${label}</span>`));
+  }
+  assert.match(openStatus, /<span class="badge \$\{statusClass\}"><i data-lucide="\$\{statusIcon\}"/);
+});
+
+test('mobile submission actions stay unfilled and keep clear focus feedback', () => {
+  assert.match(sectionsStyles, /@media \(max-width:\s*700px\)[\s\S]*?body #assignmentSubmissionsModal \.assignment-submission-actions \.row-btn\.view\s*\{[^}]*border-color:\s*transparent[^}]*background:\s*transparent/);
+  assert.match(sectionsStyles, /body #assignmentSubmissionsModal \.assignment-submission-actions \.row-btn\.view:hover:not\(:disabled\)/);
+  assert.match(sectionsStyles, /body #assignmentSubmissionsModal \.assignment-submission-actions \.row-btn\.view:focus-visible/);
+});
+
 test('shared score table keeps calculated grade details accessible', () => {
   assert.match(sectionsSource, /label: weightedScoreOnly \? 'Weighted Grade' : 'Final Grade'/);
   assert.doesNotMatch(sectionsSource, /final-grade-preview-note|Preview until published/);

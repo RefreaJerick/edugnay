@@ -37,13 +37,15 @@ test('student assignment list uses the shared effective status and hides orphan 
     assignment(1, 'Uploaded online work', 1, today),
     assignment(2, 'Online work without file', 1, today),
     assignment(3, 'Teacher-recorded class work', 0, today),
-    assignment(4, 'Overdue online work', 1, yesterday)
+    assignment(4, 'Overdue online work', 1, yesterday),
+    assignment(5, 'Late online work', 1, yesterday)
   ];
   const submissionRows = [
     { assignmentId: 1, savedStatus: 'submitted', filePath: '/private/work.pdf', submittedAt: `${today}T08:00:00` },
     { assignmentId: 2, savedStatus: 'submitted', filePath: null, submittedAt: `${today}T08:00:00` },
     { assignmentId: 3, savedStatus: 'submitted', filePath: null, submittedAt: null },
-    { assignmentId: 4, savedStatus: null, filePath: null, submittedAt: null }
+    { assignmentId: 4, savedStatus: null, filePath: null, submittedAt: null },
+    { assignmentId: 5, savedStatus: 'late', filePath: '/private/late.pdf', submittedAt: `${today}T08:00:00` }
   ];
   const calls = [];
   const previousDatabase = databaseModule.getDatabase;
@@ -68,13 +70,14 @@ test('student assignment list uses the shared effective status and hides orphan 
 
     assert.equal(error, undefined);
     assert.deepEqual(body.assignments.map(item => item.submissionStatus), [
-      'submitted', 'pending', 'submitted', 'not_submitted'
+      'submitted', 'pending', 'submitted', 'not_submitted', 'late'
     ]);
+    assert.equal(body.assignments[4].submittedAt, `${today}T08:00:00`);
     const listQuery = calls.find(call => call.sql.includes('FROM assignments LEFT JOIN sections'));
     assert.match(listQuery.sql, /assignments\.subject_id IS NOT NULL AND subjects\.is_active = TRUE/);
     assert.match(listQuery.sql, /assignments\.status = 'published'/);
     assert.deepEqual(calls.find(call => call.sql.includes('FROM assignment_submissions WHERE school_id')).values,
-      [3, 14, 1, 2, 3, 4]);
+      [3, 14, 1, 2, 3, 4, 5]);
   } finally {
     databaseModule.getDatabase = previousDatabase;
     if (previousSelectionFlag === undefined) delete process.env.SHS_SELECTION_ENABLED;

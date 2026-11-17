@@ -275,10 +275,21 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       lucide.createIcons();
     }
 
+    function isRecentLateAssignment(item, currentDate) {
+      if (item.submissionStatus !== 'late' || !item.statusUpdatedAt) return false;
+      const statusDate = String(item.statusUpdatedAt).slice(0, 10);
+      const age = Date.parse(`${currentDate}T00:00:00Z`) - Date.parse(`${statusDate}T00:00:00Z`);
+      return Number.isFinite(age) && age >= 0 && age < 7 * 24 * 60 * 60 * 1000;
+    }
+
     function getUpcomingAssignments(assignments, currentDate) {
-      return assignments.filter(item => item.dueDate && item.dueDate >= currentDate)
-        .sort((first, second) => first.dueDate.localeCompare(second.dueDate))
-        .slice(0, 3);
+      const recentLate = assignments.filter(item => isRecentLateAssignment(item, currentDate))
+        .sort((first, second) => String(second.statusUpdatedAt).localeCompare(String(first.statusUpdatedAt)));
+      const recentLateIds = new Set(recentLate.map(item => String(item.id)));
+      const upcoming = assignments.filter(item => item.dueDate && item.dueDate >= currentDate
+        && !recentLateIds.has(String(item.id)))
+        .sort((first, second) => first.dueDate.localeCompare(second.dueDate));
+      return [...recentLate, ...upcoming].slice(0, 3);
     }
 
     async function renderUpcomingAssignments() {
@@ -327,8 +338,8 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
 
       if (tasks.length === 0) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'clipboard-check', title: 'No upcoming assignments',
-          text: 'Published assignments due today or later will appear here.'
+          icon: 'clipboard-check', title: 'No assignments to show',
+          text: 'Upcoming work and recent Late submissions will appear here.'
         });
         lastRenderedAssignmentsChild = selectedChild;
         lucide.createIcons();
@@ -340,23 +351,23 @@ const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === 
       ${tasks.map(t => {
         const status = t.submissionStatus;
         const visual = ({
-          submitted: { bg: 'var(--green-pale)', color: '#16a34a', icon: 'check', badge: '<span class="badge badge-green">Submitted</span>' },
-          pending: { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Pending</span>' },
-          not_submitted: { bg: 'var(--red-pale)', color: 'var(--red)', icon: 'x', badge: '<span class="badge badge-red">Not submitted</span>' }
-        })[status] || { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Pending</span>' };
+          submitted: { badge: '<span class="badge badge-green"><i data-lucide="circle-check" aria-hidden="true" style="width:11px;height:11px;"></i> Submitted</span>' },
+          late: { badge: '<span class="badge badge-orange"><i data-lucide="clock-alert" aria-hidden="true" style="width:11px;height:11px;"></i> Late</span>' },
+          pending: { badge: '<span class="badge badge-gray"><i data-lucide="clock-3" aria-hidden="true" style="width:11px;height:11px;"></i> Pending</span>' },
+          not_submitted: { badge: '<span class="badge badge-red"><i data-lucide="x-circle" aria-hidden="true" style="width:11px;height:11px;"></i> Not submitted</span>' }
+        })[status] || { badge: '<span class="badge badge-gray"><i data-lucide="clock-3" aria-hidden="true" style="width:11px;height:11px;"></i> Pending</span>' };
 
-        const dueLabel = new Date(`${t.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const dueLabel = t.dueDate
+          ? new Date(`${t.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : 'No due date';
         const subject = t.communicationComponentName || t.subjectName || 'Subject';
         const subjectLabel = t.electiveClassName ? `${subject} · ${t.electiveClassName}` : subject;
 
         return `
           <div class="assignment-row">
-            <div class="assignment-icon" style="background:${visual.bg};color:${visual.color};">
-              <i data-lucide="${visual.icon}" style="width:15px;height:15px;"></i>
-            </div>
             <div class="assignment-info">
               <div class="assignment-subject">${window.EDUGNAY_CONFIG.escapeHtml(subjectLabel)}</div>
-              <div class="assignment-task">${window.EDUGNAY_CONFIG.escapeHtml(t.title || '')} · Due ${window.EDUGNAY_CONFIG.escapeHtml(dueLabel)}</div>
+              <div class="assignment-task">${window.EDUGNAY_CONFIG.escapeHtml(t.title || '')} · ${window.EDUGNAY_CONFIG.escapeHtml(t.dueDate ? `Due ${dueLabel}` : dueLabel)}</div>
             </div>
             ${visual.badge}
           </div>`;

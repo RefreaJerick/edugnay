@@ -144,6 +144,29 @@ test('parent page displays selected child, periods, status filters, and read-onl
   assert.equal(page.element('assignmentDetailModal').hidden, false);
 });
 
+test('parent online availability follows late, grading period, and elective membership rules', async () => {
+  async function render(item) {
+    const page = createPage({ isBackendAvailable: true,
+      getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', schoolLevelId: '7' }],
+      getAcademicTerms: async () => terms,
+      getParentChildAssignments: async () => ({ studentId: '4', currentDate: '2026-11-17', assignments: [item] })
+    });
+    await page.flush();
+    return page.element('assignmentList').innerHTML;
+  }
+
+  const lateAllowed = { ...assignment(31, 'Late allowed', 'pending'), allowLateSubmissions: true, academicTermStatus: 'active' };
+  const available = await render(lateAllowed);
+  assert.match(available, /assignment-online-status available/);
+
+  const closedTerm = await render({ ...lateAllowed, id: '32', title: 'Closed term', academicTermStatus: 'closed' });
+  assert.match(closedTerm, /assignment-online-status not-available/);
+
+  const endedElective = await render({ ...lateAllowed, id: '33', title: 'Ended elective', scopeType: 'elective',
+    electiveClassId: '51', electiveClassName: 'Academic 11-A', electiveMembershipActive: false });
+  assert.match(endedElective, /assignment-online-status not-available/);
+});
+
 test('parent page hides an SHS assignment that has no saved grading period', async () => {
   const page = createPage({ isBackendAvailable: true,
     getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', schoolLevelId: '7' }],

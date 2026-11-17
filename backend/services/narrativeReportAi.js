@@ -58,7 +58,7 @@ const NON_JOURNAL_INSTRUCTIONS = [
 
 function buildModelEvidence(student, reportWeek, teacherNote, journalApplicable = false, gradesEnabled = true) {
   const confirmedAssignments = student.assignments.sources.filter(source =>
-    ['submitted', 'not_submitted'].includes(source.status));
+    ['submitted', 'late', 'not_submitted'].includes(source.status));
   const candidateReasons = (student.candidateReasons || []).filter(reason =>
     reason && typeof reason === 'object' && (gradesEnabled || !['low_scores', 'grade'].includes(reason.type)));
   const lowScoreReasons = candidateReasons.filter(reason => reason.type === 'low_scores');
@@ -96,7 +96,7 @@ function buildModelEvidence(student, reportWeek, teacherNote, journalApplicable 
     },
     assignments: {
       total: confirmedAssignments.length,
-      submitted: confirmedAssignments.filter(source => source.status === 'submitted').length,
+      submitted: confirmedAssignments.filter(source => ['submitted', 'late'].includes(source.status)).length,
       notSubmitted: confirmedAssignments.filter(source => source.status === 'not_submitted').length,
       details: confirmedAssignments.slice(0, 20).map(source => ({
         subject: source.className ? `${source.subjectName} · ${source.className}` : source.subjectName,
@@ -222,9 +222,9 @@ function validateDraft(value, followUpCandidate, evidence = null, assignmentSour
     throw new Error('The AI draft counted assignments with unknown outcomes.');
   }
   const confirmedSubjects = new Set(assignmentSources.filter(source =>
-    ['submitted', 'not_submitted'].includes(source.status)).map(source => source.subjectName));
+    ['submitted', 'late', 'not_submitted'].includes(source.status)).map(source => source.subjectName));
   for (const source of assignmentSources) {
-    if (['submitted', 'not_submitted'].includes(source.status) || confirmedSubjects.has(source.subjectName)) continue;
+    if (['submitted', 'late', 'not_submitted'].includes(source.status) || confirmedSubjects.has(source.subjectName)) continue;
     const subject = String(source.subjectName || '').toLocaleLowerCase();
     if (!subject) continue;
     const assignmentText = [value.assignments, ...value.parentActions.filter(action =>

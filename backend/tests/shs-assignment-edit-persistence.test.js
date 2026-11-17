@@ -32,8 +32,9 @@ test('SHS core edit saves replacement limit and grading link for a fresh read', 
       stored.description = values[2];
       stored.dueAt = values[3];
       stored.onlineSubmissionEnabled = values[4];
-      stored.maxResubmissions = values[5];
-      stored.status = values[6];
+      stored.allowLateSubmissions = values[5];
+      stored.maxResubmissions = values[6];
+      stored.status = values[7];
       return [{ affectedRows: 1 }];
     }
   };
@@ -46,6 +47,7 @@ test('SHS core edit saves replacement limit and grading link for a fresh read', 
     validateTermAndCategory: async () => {}, requiredText: value => value,
     optionalText: value => value, dateTime: value => value,
     resubmissionLimit: value => value == null ? null : Number(value),
+    allowLateSubmissions: value => value === true,
     ASSIGNMENT_STATUSES: new Set(['published']),
     createLinkedAssignmentItem: async () => { stored.gradingItemId = 18; stored.maxScore = 25; },
     nullableNumber: value => value == null ? null : Number(value),
@@ -95,7 +97,8 @@ test('SHS elective edit saves replacement limit and grading link for a fresh rea
         stored.description = values[2];
         stored.dueAt = values[3];
         stored.onlineSubmissionEnabled = values[4];
-        stored.maxResubmissions = values[5];
+        stored.allowLateSubmissions = values[5];
+        stored.maxResubmissions = values[6];
         return [{ affectedRows: 1 }];
       }
       if (sql.startsWith('SELECT assignment')) return [[{ ...stored }]];
@@ -108,6 +111,7 @@ test('SHS elective edit saves replacement limit and grading link for a fresh rea
     assertAssignmentYearWritable() {}, assertElectiveTeacher: async () => ({ academicYearId: 1, schoolLevelId: 2 }),
     requiredText: value => value, optionalText: value => value, dateTime: value => value,
     resubmissionLimit: value => value == null ? null : Number(value),
+    allowLateSubmissions: value => value === true,
     ASSIGNMENT_STATUSES: new Set(['published']),
     createLinkedAssignmentItem: async () => { stored.gradingItemId = 28; stored.maxScore = 25; },
     nullableNumber: value => value == null ? null : Number(value),

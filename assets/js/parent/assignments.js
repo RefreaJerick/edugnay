@@ -2,12 +2,13 @@
   const element = id => document.getElementById(id);
   const escape = value => window.EDUGNAY_CONFIG.escapeHtml(value ?? '');
   const empty = (icon, title, text) => window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon, title, text });
-  const labels = { pending: 'Pending', submitted: 'Submitted', not_submitted: 'Not submitted' };
-  const icons = { pending: 'clock-3', submitted: 'check-circle-2', not_submitted: 'x-circle' };
+  const labels = { pending: 'Pending', submitted: 'Submitted', late: 'Late', not_submitted: 'Not submitted' };
+  const icons = { pending: 'clock-3', submitted: 'check-circle-2', late: 'clock-alert', not_submitted: 'x-circle' };
   const filters = [{ key: 'all', label: 'All' }, ...Object.keys(labels).map(key => ({ key, label: labels[key] }))];
   let children = [];
   let terms = [];
   let assignments = [];
+  let schoolCurrentDate = '';
   let history = [];
   let selectedChild = '';
   let selectedYear = '';
@@ -163,12 +164,17 @@
     function renderAssignmentRow(item) {
       const status = labels[item.submissionStatus] || labels.pending;
       const statusKey = labels[item.submissionStatus] ? item.submissionStatus : 'pending';
+      const pastDue = item.dueDate && item.dueDate < schoolCurrentDate;
+      const periodClosed = pastDue && item.academicTermStatus && item.academicTermStatus !== 'active';
+      const membershipEnded = isElectiveAssignment(item) && item.electiveMembershipActive === false;
+      const onlineAvailable = item.onlineSubmissionEnabled && (!pastDue || item.allowLateSubmissions)
+        && !periodClosed && !membershipEnded;
       const classContext = isElectiveAssignment(item)
         ? `Elective class${item.electiveClassName ? ` · ${escape(item.electiveClassName)}` : ''} · `
         : '';
       return `<article class="assignment-row">
         <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${classContext}${escape(item.communicationComponentName || item.subjectName)} · Due ${escape(formatDate(item.dueDate))} · ${escape(item.teacherName)}</div></div>
-        <div class="assignment-online-cell" data-label="Online submission"><span class="assignment-online-status ${item.onlineSubmissionEnabled ? 'available' : 'not-available'}">${item.onlineSubmissionEnabled ? 'Available' : 'Not available'}</span></div>
+        <div class="assignment-online-cell" data-label="Online submission"><span class="assignment-online-status ${onlineAvailable ? 'available' : 'not-available'}">${onlineAvailable ? 'Available' : 'Not available'}</span></div>
         <div class="assignment-status-cell" data-label="Status"><span class="assignment-status ${statusKey}"><i data-lucide="${icons[statusKey]}" style="width:12px;height:12px;"></i><span class="assignment-status-label">${status}</span></span></div>
         <div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary parent-assignment-view" type="button" data-assignment-id="${escape(item.id)}" aria-label="View details for ${escape(item.title)}">View details</button></div>
       </article>`;
@@ -195,12 +201,14 @@
     element('assignmentHistoryCount').textContent = String(history.length);
     element('assignmentHistoryList').innerHTML = history.map(item => {
       const status = labels[item.submissionStatus] || labels.pending;
+      const statusKey = labels[item.submissionStatus] ? item.submissionStatus : 'pending';
       return `<article class="assignment-row">
         <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${escape(item.sectionName)} · ${escape(item.academicYearLabel)} · ${escape(item.academicTermName)} · ${escape(item.communicationComponentName || item.subjectName)}</div></div>
-        <div class="assignment-status-cell" data-label="Status"><span class="assignment-status ${escape(item.submissionStatus)}">${escape(status)}</span></div>
+        <div class="assignment-status-cell" data-label="Status"><span class="assignment-status ${statusKey}"><i data-lucide="${icons[statusKey]}" aria-hidden="true" style="width:12px;height:12px;"></i><span class="assignment-status-label">${escape(status)}</span></span></div>
         <div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary parent-assignment-view" type="button" data-history-id="${escape(item.id)}">View details</button></div>
       </article>`;
     }).join('');
+    window.lucide?.createIcons();
   }
 
   function closeDetail() {
@@ -250,6 +258,7 @@
       if (current !== requestId) return;
       if (String(response?.studentId) !== id || !Array.isArray(response.assignments)) throw new Error('Assignment information could not be loaded. Refresh and try again.');
       assignments = response.assignments;
+      schoolCurrentDate = response.currentDate || new Date().toLocaleDateString('en-CA');
       history = Array.isArray(response.history) ? response.history : [];
       selectDefaultPeriod();
     } catch (cause) {

@@ -157,6 +157,11 @@
             <input class="school-toggle-input" type="checkbox" id="assignOnlineSubmissionInput">
             <span class="school-toggle-control" aria-hidden="true"></span>
           </label>
+          <label class="school-toggle-row" id="assignLateSubmissionRow" hidden>
+            <span class="school-toggle-copy"><strong>Allow late submissions</strong><small>Accept uploads after the due date until this assignment closes.</small></span>
+            <input class="school-toggle-input" type="checkbox" id="assignLateSubmissionInput">
+            <span class="school-toggle-control" aria-hidden="true"></span>
+          </label>
           <fieldset class="assignment-resubmission-limit" id="assignResubmissionLimitGroup" hidden>
             <legend class="form-label">Maximum replacements</legend>
             <div class="assignment-resubmission-options">
@@ -247,6 +252,11 @@
             <input class="school-toggle-input" type="checkbox" id="editAssignmentOnlineInput">
             <span class="school-toggle-control" aria-hidden="true"></span>
           </label>
+          <label class="school-toggle-row" id="editAssignmentLateSubmissionRow" hidden>
+            <span class="school-toggle-copy"><strong>Allow late submissions</strong><small>Accept uploads after the due date until this assignment closes.</small></span>
+            <input class="school-toggle-input" type="checkbox" id="editAssignmentLateSubmissionInput">
+            <span class="school-toggle-control" aria-hidden="true"></span>
+          </label>
           <fieldset class="assignment-resubmission-limit" id="editAssignmentResubmissionLimitGroup" hidden>
             <legend class="form-label">Maximum replacements</legend>
             <div class="assignment-resubmission-options">
@@ -297,7 +307,7 @@
   </div>
 
   <div class="modal-backdrop" id="assignmentStatusModal">
-    <div class="modal">
+    <div class="modal assignment-status-modal">
       <div class="modal-head">
         <div class="modal-heading">
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="check-check"></i></div>
@@ -311,8 +321,8 @@
         </button>
       </div>
       <div class="modal-body">
-        <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
-          <table>
+        <div class="table-wrap assignment-status-list">
+          <table class="assignment-status-table">
             <tbody id="assignmentStatusTbody"><!-- JS generated --></tbody>
           </table>
         </div>
@@ -345,7 +355,6 @@
               <tr>
                 <th>Student</th>
                 <th>File</th>
-                <th>Submitted at</th>
                 <th>Score</th>
                 <th>Actions</th>
               </tr>
@@ -355,7 +364,7 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button class="btn btn-save" type="button" data-page-click="p1bb23ea957b9">Close</button>
+        <button class="btn btn-cancel" type="button" data-page-click="p1bb23ea957b9">Close</button>
       </div>
     </div>
   </div>

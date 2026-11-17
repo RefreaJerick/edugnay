@@ -123,6 +123,7 @@ lucide.createIcons();
     const DASHBOARD_ASSIGNMENT_STATUS = {
       pending: { label: 'Pending', icon: 'clock-3' },
       submitted: { label: 'Submitted', icon: 'circle-check' },
+      late: { label: 'Late', icon: 'clock-alert' },
       not_submitted: { label: 'Not submitted', icon: 'x-circle' }
     };
 
@@ -190,12 +191,23 @@ lucide.createIcons();
     async function loadDashboardAssignments() {
       ASSIGNMENTS_LOADING = true;
       try {
+        const fetchedAssignments = await window.EDUGNAY_API.getAssignments();
         const now = new Date();
-        const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-        const assignments = (await window.EDUGNAY_API.getAssignments())
-          .filter(item => item.status === 'published' && item.dueDate && item.dueDate >= today)
-          .sort((first, second) => first.dueDate.localeCompare(second.dueDate))
-          .slice(0, 3);
+        const localToday = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+        const today = fetchedAssignments.find(item => item.schoolCurrentDate)?.schoolCurrentDate || localToday;
+        const recentLate = fetchedAssignments.filter(item => item.status === 'published'
+          && item.submissionStatus === 'late' && item.statusUpdatedAt)
+          .filter(item => {
+            const statusDate = String(item.statusUpdatedAt).slice(0, 10);
+            const age = Date.parse(`${today}T00:00:00Z`) - Date.parse(`${statusDate}T00:00:00Z`);
+            return Number.isFinite(age) && age >= 0 && age < 7 * 24 * 60 * 60 * 1000;
+          })
+          .sort((first, second) => String(second.statusUpdatedAt).localeCompare(String(first.statusUpdatedAt)));
+        const recentLateIds = new Set(recentLate.map(item => String(item.id)));
+        const upcoming = fetchedAssignments.filter(item => item.status === 'published' && item.dueDate && item.dueDate >= today
+          && !recentLateIds.has(String(item.id)))
+          .sort((first, second) => first.dueDate.localeCompare(second.dueDate));
+        const assignments = [...recentLate, ...upcoming].slice(0, 3);
         UPCOMING_ASSIGNMENTS = assignments.map(item => ({
           ...item,
           status: item.submissionStatus || 'pending'

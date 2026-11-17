@@ -12,6 +12,9 @@ const databaseModule = require('../config/database');
 const { uploadDirectory } = require('../config/uploads');
 
 let maxResubmissions = null;
+let dueAt = null;
+let allowLate = false;
+let academicTermStatus = 'active';
 let stored = null;
 let assignmentLock = Promise.resolve();
 
@@ -29,17 +32,19 @@ databaseModule.getDatabase = () => ({
         }
         if (sql.includes('FROM assignments LEFT JOIN sections') && sql.includes("assignments.status = 'published'")) {
           return [[{ id: 4, schoolId: 1, onlineSubmissionEnabled: 1, maxResubmissions,
+            dueAt, allowLateSubmissions: allowLate, academicTermStatus,
             electiveClassId: null, academicYearStatus: 'active' }]];
         }
         if (sql.includes('FROM assignment_submissions') && sql.includes('FOR UPDATE')) {
-          return [stored ? [{ filePath: stored.filePath, resubmissionCount: stored.resubmissionCount }] : []];
+          return [stored ? [{ filePath: stored.filePath, resubmissionCount: stored.resubmissionCount,
+            submissionStatus: stored.submissionStatus }] : []];
         }
         if (sql.startsWith('INSERT INTO assignment_submissions')) {
-          stored = { filePath: values[4], resubmissionCount: 0 };
+          stored = { filePath: values[4], resubmissionCount: 0, submissionStatus: values[6] };
           return [{ insertId: 1 }];
         }
         if (sql.startsWith('UPDATE assignment_submissions')) {
-          stored = { filePath: values[1], resubmissionCount: values[3] };
+          stored = { filePath: values[1], resubmissionCount: values[3], submissionStatus: values[4] };
           return [{ affectedRows: 1 }];
         }
         throw new Error(`Unexpected query: ${sql}`);
@@ -114,4 +119,30 @@ test('two simultaneous replacements cannot both use the last attempt', async () 
   assert.equal(results.filter(result => result.error === null).length, 1);
   assert.equal(results.filter(result => result.error?.status === 409).length, 1);
   assert.equal(stored.resubmissionCount, 1);
+});
+
+test('late uploads require permission and keep the first upload status through replacements', async () => {
+  const today = new Date();
+  dueAt = new Date(today.getTime() - 3 * 86400000).toISOString().slice(0, 10) + ' 23:59:00';
+  maxResubmissions = null;
+  allowLate = false;
+  stored = null;
+  const rejected = await upload();
+  assert.equal(rejected.error?.status, 409);
+  await assert.rejects(fs.stat(rejected.filePath), { code: 'ENOENT' });
+
+  allowLate = true;
+  assert.equal((await upload()).body.submissionStatus, 'late');
+  assert.equal((await upload()).body.submissionStatus, 'late');
+  academicTermStatus = 'closed';
+  assert.equal((await upload()).error?.status, 409);
+  academicTermStatus = 'active';
+
+  dueAt = new Date(today.getTime() + 3 * 86400000).toISOString().slice(0, 10) + ' 23:59:00';
+  stored = null;
+  assert.equal((await upload()).body.submissionStatus, 'submitted');
+  dueAt = new Date(today.getTime() - 3 * 86400000).toISOString().slice(0, 10) + ' 23:59:00';
+  assert.equal((await upload()).body.submissionStatus, 'submitted');
+  dueAt = null;
+  allowLate = false;
 });

@@ -39,7 +39,7 @@ async function checkAssignments(database) {
     const threshold = Number(group[0].threshold);
     if (!Number.isInteger(threshold) || threshold < 1 || group.length < threshold) continue;
     const missed = row => row.onlineSubmissionEnabled
-      ? !(row.savedStatus === 'submitted' && row.filePath)
+      ? !(['submitted', 'late'].includes(row.savedStatus) && row.filePath)
       : row.savedStatus === 'not_submitted';
     if (group.slice(0, threshold).some(row => !missed(row)) || group[threshold] && missed(group[threshold])) continue;
     const row = group[0];

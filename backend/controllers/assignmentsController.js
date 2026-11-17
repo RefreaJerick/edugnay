@@ -16,7 +16,7 @@ const { COMMUNICATION_COMPONENTS } = require('../config/shsCommunication');
 const { resolveValuesDomainCode } = require('../utils/valuesDomainItems');
 
 const ASSIGNMENT_STATUSES = new Set(['draft', 'published', 'closed']);
-const SUBMISSION_STATUSES = new Set(['pending', 'submitted', 'not_submitted']);
+const SUBMISSION_STATUSES = new Set(['pending', 'submitted', 'late', 'not_submitted']);
 const execFileAsync = promisify(execFile);
 const OFFICE_FILE_EXTENSIONS = new Set(['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']);
 const MAX_PREVIEW_SIZE_BYTES = 30 * 1024 * 1024;
@@ -107,6 +107,12 @@ function getSchoolCurrentDate() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+function allowLateSubmissions(value, onlineEnabled, dueAt) {
+  const allowed = value === true;
+  if (allowed && (!onlineEnabled || !dueAt)) throw createError('Late submissions require online submissions and a due date.');
+  return allowed;
+}
+
 function formatAssignment(row) {
   const legacyCommunication = row.subjectCode === 'shs-core-communication'
     && row.shsCurriculumCode === 'strengthened_2026' && row.gradeCode === 'grade-11'
@@ -114,6 +120,7 @@ function formatAssignment(row) {
   return {
     id: row.id, schoolId: row.schoolId, sectionId: row.sectionId, sectionName: row.sectionName,
     subjectId: row.subjectId, subjectName: row.subjectName, academicTermId: row.academicTermId,
+    academicTermStatus: row.academicTermStatus || null,
     communicationComponentCode: row.communicationComponentCode || null,
     communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
     legacyCommunication,
@@ -133,6 +140,7 @@ function formatAssignment(row) {
     teacherName: row.teacherName, title: row.title, description: row.description,
     dueAt: row.dueAt, maxScore: row.maxScore === null ? null : Number(row.maxScore),
     onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
+    allowLateSubmissions: Boolean(row.allowLateSubmissions),
     maxResubmissions: row.maxResubmissions == null ? null : Number(row.maxResubmissions),
     status: row.status, createdAt: row.createdAt, updatedAt: row.updatedAt
   };
@@ -152,6 +160,7 @@ function assignmentSelect() {
     assignments.teacher_user_id AS teacherUserId,
     assignments.title, assignments.description, assignments.due_at AS dueAt, assignments.max_score AS maxScore,
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
+    assignments.allow_late_submissions AS allowLateSubmissions,
     assignments.max_resubmissions AS maxResubmissions,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
     sections.name AS sectionName, school_grade_levels.display_name AS sectionGrade,
@@ -161,6 +170,7 @@ function assignmentSelect() {
     academic_years.status AS sectionYearStatus, elective_year.status AS electiveYearStatus,
     COALESCE(academic_years.status, elective_year.status) AS academicYearStatus,
     COALESCE(subjects.name, elective_offering.subject_name) AS subjectName, academic_terms.name AS academicTermName,
+    academic_terms.status AS academicTermStatus,
     subjects.subject_code AS subjectCode,
     grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName,
     subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName,
@@ -224,6 +234,7 @@ function assignmentDetailsChanged(current, next) {
     || comparableDateTime(current.dueAt) !== comparableDateTime(next.dueAt)
     || nullableNumber(current.maxScore) !== nullableNumber(next.maxScore)
     || Number(current.onlineSubmissionEnabled) !== Number(next.onlineSubmissionEnabled)
+    || Number(current.allowLateSubmissions) !== Number(next.allowLateSubmissions)
     || nullableNumber(current.maxResubmissions) !== nullableNumber(next.maxResubmissions)
     || ['academicTermId', 'gradingCategoryId', 'subjectGradingComponentId', 'subjectGradingExamPartId']
       .some(field => String(current[field] || '') !== String(next[field] || ''));
@@ -402,7 +413,8 @@ async function listAssignments(req, res, next) {
       const placeholders = assignmentIds.map(() => '?').join(', ');
       const [submissionRows] = await database.execute(
         `SELECT assignment_id AS assignmentId, submission_status AS savedStatus,
-          file_path AS filePath, DATE_FORMAT(submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+          file_path AS filePath, DATE_FORMAT(submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt,
+          DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') AS statusUpdatedAt
          FROM assignment_submissions WHERE school_id = ? AND student_user_id = ?
            AND assignment_id IN (${placeholders})`,
         [req.user.schoolId, req.user.id, ...assignmentIds]
@@ -433,7 +445,8 @@ async function listAssignments(req, res, next) {
         return { ...item, submissionStatus, schoolCurrentDate: currentDate,
           studentScore: item.onlineSubmissionEnabled && item.gradingItemId
             ? scoresByItem.get(String(item.gradingItemId)) ?? null : null,
-          submittedAt: submissionStatus === 'submitted' ? submission.submittedAt || null : null };
+          submittedAt: ['submitted', 'late'].includes(submissionStatus) ? submission.submittedAt || null : null,
+          statusUpdatedAt: submission.statusUpdatedAt || null };
       });
     }
     if (req.user.role === 'student' && process.env.SHS_SELECTION_ENABLED === 'true') {
@@ -460,9 +473,9 @@ async function listAssignments(req, res, next) {
 }
 
 function parentSubmissionStatus(row, currentDate) {
-  const uploaded = Boolean(row.hasUploadedFile || row.filePath) && row.savedStatus === 'submitted';
+  const uploaded = Boolean(row.hasUploadedFile || row.filePath) && ['submitted', 'late'].includes(row.savedStatus);
   const manual = !row.onlineSubmissionEnabled && SUBMISSION_STATUSES.has(row.savedStatus) ? row.savedStatus : null;
-  return uploaded ? 'submitted' : manual || (row.dueDate && row.dueDate < currentDate ? 'not_submitted' : 'pending');
+  return uploaded ? row.savedStatus : manual || (row.dueDate && row.dueDate < currentDate ? 'not_submitted' : 'pending');
 }
 
 async function getPreviousSectionWork(database, schoolId, studentId, currentDate, includeFileName = false) {
@@ -561,12 +574,16 @@ async function getParentChildAssignments(req, res, next) {
         assignments.title, assignments.description,
         DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
         assignments.online_submission_enabled AS onlineSubmissionEnabled,
+        assignments.allow_late_submissions AS allowLateSubmissions,
+        academic_terms.status AS academicTermStatus,
         subjects.name AS subjectName, teachers.display_name AS teacherName,
         assignment_submissions.submission_status AS savedStatus,
         assignment_submissions.file_path IS NOT NULL AS hasUploadedFile,
-        DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+        DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt,
+        DATE_FORMAT(assignment_submissions.updated_at, '%Y-%m-%dT%H:%i:%s') AS statusUpdatedAt
       FROM assignments
       INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
+      LEFT JOIN academic_terms ON academic_terms.id = assignments.academic_term_id AND academic_terms.school_id = assignments.school_id
       INNER JOIN section_students ON section_students.section_id = assignments.section_id
         AND section_students.school_id = assignments.school_id
         AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL
@@ -589,11 +606,17 @@ async function getParentChildAssignments(req, res, next) {
       [electiveRows] = await database.execute(
         `SELECT a.id, a.shs_elective_class_id AS electiveClassId, a.academic_term_id AS academicTermId,
           a.title, a.description, DATE_FORMAT(a.due_at, '%Y-%m-%d') AS dueDate,
-          a.online_submission_enabled AS onlineSubmissionEnabled, ec.class_name AS electiveClassName,
+          a.online_submission_enabled AS onlineSubmissionEnabled, a.allow_late_submissions AS allowLateSubmissions,
+          term.status AS academicTermStatus,
+          EXISTS (SELECT 1 FROM shs_elective_class_students active_em WHERE active_em.school_id = a.school_id
+            AND active_em.elective_class_id = ec.id AND active_em.student_user_id = ?
+            AND active_em.withdrawn_at IS NULL) AS electiveMembershipActive,
+          ec.class_name AS electiveClassName,
           o.subject_name AS subjectName,
           t.display_name AS teacherName, sub.submission_status AS savedStatus,
           sub.file_path AS filePath, sub.file_path IS NOT NULL AS hasUploadedFile,
-          DATE_FORMAT(sub.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+          DATE_FORMAT(sub.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt,
+          DATE_FORMAT(sub.updated_at, '%Y-%m-%dT%H:%i:%s') AS statusUpdatedAt
          FROM assignments a
          JOIN shs_elective_classes ec ON ec.id = a.shs_elective_class_id AND ec.school_id = a.school_id
          JOIN shs_offerings o ON o.id = ec.offering_id AND o.school_id = ec.school_id
@@ -611,7 +634,7 @@ async function getParentChildAssignments(req, res, next) {
              AND em.elective_class_id = ec.id AND em.student_user_id = ?
              AND (em.withdrawn_at IS NULL OR a.created_at <= em.withdrawn_at))
          ORDER BY a.due_at IS NULL, a.due_at, a.created_at DESC`,
-        [studentId, req.user.schoolId, studentId]);
+        [studentId, studentId, req.user.schoolId, studentId]);
     }
     const history = await getPreviousSectionWork(database, req.user.schoolId, studentId, currentDate);
     const sectionAssignments = rows.map(row => ({
@@ -622,17 +645,24 @@ async function getParentChildAssignments(req, res, next) {
       communicationComponentName: COMMUNICATION_COMPONENTS[row.communicationComponentCode] || null,
       teacherName: row.teacherName,
       onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
+      allowLateSubmissions: Boolean(row.allowLateSubmissions),
+      academicTermStatus: row.academicTermStatus || null,
       submissionStatus: parentSubmissionStatus(row, currentDate),
-      submittedAt: row.savedStatus === 'submitted' && row.hasUploadedFile ? row.submittedAt : null
+      submittedAt: ['submitted', 'late'].includes(row.savedStatus) && row.hasUploadedFile ? row.submittedAt : null,
+      statusUpdatedAt: row.statusUpdatedAt || null
     }));
     res.json({ studentId: String(studentId), currentDate, history, assignments: [...sectionAssignments, ...electiveRows.map(row => ({
       id: String(row.id), sectionId: null, electiveClassId: String(row.electiveClassId), scopeType: 'elective',
       subjectId: null, academicTermId: row.academicTermId == null ? null : String(row.academicTermId),
       title: row.title, description: row.description, dueDate: row.dueDate, subjectName: row.subjectName,
       electiveClassName: row.electiveClassName,
+      academicTermStatus: row.academicTermStatus || null,
+      electiveMembershipActive: Boolean(row.electiveMembershipActive),
       teacherName: row.teacherName, onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
+      allowLateSubmissions: Boolean(row.allowLateSubmissions),
       submissionStatus: parentSubmissionStatus(row, currentDate),
-      submittedAt: row.savedStatus === 'submitted' && row.hasUploadedFile ? row.submittedAt : null
+      submittedAt: ['submitted', 'late'].includes(row.savedStatus) && row.hasUploadedFile ? row.submittedAt : null,
+      statusUpdatedAt: row.statusUpdatedAt || null
     }))] });
   } catch (error) { next(error); }
 }
@@ -716,7 +746,7 @@ async function getParentAssignmentActivity(req, res, next) {
     const assignments = rows.map(row => {
       const onlineSubmissionEnabled = Boolean(row.onlineSubmissionEnabled);
       const savedStatus = row.savedStatus;
-      const hasUploadedFile = Boolean(row.filePath) && savedStatus === 'submitted';
+      const hasUploadedFile = Boolean(row.filePath) && ['submitted', 'late'].includes(savedStatus);
       const submissionStatus = parentSubmissionStatus(row, currentDate);
 
       return {
@@ -738,7 +768,7 @@ async function getParentAssignmentActivity(req, res, next) {
       assignments.push({ id: String(row.assignmentId), electiveClassId: String(row.electiveClassId), scopeType: 'elective',
         subjectId: null, subjectName: row.subjectName, title: row.title, dueDate: row.dueDate,
         onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled), submissionStatus,
-        submittedAt: row.savedStatus === 'submitted' && row.filePath ? row.submittedAt : null });
+        submittedAt: ['submitted', 'late'].includes(row.savedStatus) && row.filePath ? row.submittedAt : null });
     }
     res.json({ studentId: String(studentId), date, assignments });
   } catch (error) { next(error); }
@@ -847,16 +877,17 @@ async function createAssignment(req, res, next) {
       const description = optionalText(req.body.description, 10000, 'Assignment description');
       const dueAt = dateTime(req.body.dueAt, 'Due date');
       const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
+      const allowLate = allowLateSubmissions(req.body.allowLateSubmissions, onlineSubmissionEnabled, dueAt);
       const maxResubmissions = resubmissionLimit(req.body.maxResubmissions);
       const status = req.body.status === undefined ? 'published' : String(req.body.status);
       if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
       const [result] = await connection.execute(
         `INSERT INTO assignments (school_id, section_id, subject_id, communication_component_code, academic_term_id,
-          teacher_user_id, title, description, due_at, max_score, online_submission_enabled, max_resubmissions, status, published_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?,
+          teacher_user_id, title, description, due_at, max_score, online_submission_enabled, allow_late_submissions, max_resubmissions, status, published_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?,
            CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
         [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, req.user.id,
-          title, description, dueAt, onlineSubmissionEnabled, maxResubmissions, status, status]
+          title, description, dueAt, onlineSubmissionEnabled, allowLate ? 1 : 0, maxResubmissions, status, status]
       );
       if (req.body.grade) await createLinkedAssignmentItem(connection, req,
         { sectionId, subjectId, communicationComponentCode }, result.insertId,
@@ -887,18 +918,19 @@ async function createAssignment(req, res, next) {
       ? await resolveValuesDomainCode(connection, section.schoolId, sectionId, subjectId, subjectGradingComponentId, req.body.domainCode)
       : null;
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
+    const allowLate = allowLateSubmissions(req.body.allowLateSubmissions, onlineSubmissionEnabled, dueAt);
     const maxResubmissions = resubmissionLimit(req.body.maxResubmissions);
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const [result] = await connection.execute(
       `INSERT INTO assignments (school_id, section_id, subject_id, communication_component_code, academic_term_id,
         grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title,
-        description, due_at, max_score, online_submission_enabled, max_resubmissions, status, published_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        description, due_at, max_score, online_submission_enabled, allow_late_submissions, max_resubmissions, status, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
       [section.schoolId, sectionId, subjectId, communicationComponentCode, academicTermId, gradingCategoryId,
         subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, description, dueAt, maxScore,
-        onlineSubmissionEnabled, maxResubmissions, status, status]);
+        onlineSubmissionEnabled, allowLate ? 1 : 0, maxResubmissions, status, status]);
     if (isGraded) {
       const [item] = await connection.execute(
         `INSERT INTO grading_items (school_id, section_id, subject_id, communication_component_code, academic_term_id,
@@ -951,6 +983,9 @@ async function updateAssignment(req, res, next) {
       const dueAt = req.body.dueAt === undefined ? current.dueAt : dateTime(req.body.dueAt, 'Due date');
       const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
         ? Boolean(current.onlineSubmissionEnabled) : req.body.onlineSubmissionEnabled === true;
+      const allowLate = allowLateSubmissions(req.body.allowLateSubmissions === undefined
+        ? Boolean(current.allowLateSubmissions) && onlineSubmissionEnabled : req.body.allowLateSubmissions,
+        onlineSubmissionEnabled, dueAt);
       const maxResubmissions = req.body.maxResubmissions === undefined
         ? current.maxResubmissions : resubmissionLimit(req.body.maxResubmissions);
       const status = req.body.status === undefined ? current.status : String(req.body.status);
@@ -960,15 +995,16 @@ async function updateAssignment(req, res, next) {
         || String(current.description || '') !== String(description || '')
         || comparableDateTime(current.dueAt) !== comparableDateTime(dueAt)
         || Number(current.onlineSubmissionEnabled) !== Number(onlineSubmissionEnabled)
+        || Number(current.allowLateSubmissions) !== Number(allowLate)
         || nullableNumber(current.maxResubmissions) !== nullableNumber(maxResubmissions);
       if (req.body.grade && current.gradingItemId) throw createError('This assignment already has a score component.', 409);
       if (req.body.grade === false && current.gradingItemId) throw createError('A linked score component cannot be removed here.', 409);
       await connection.execute(
         `UPDATE assignments SET published_at = CASE
            WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
-         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, max_resubmissions = ?, status = ?
+         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, allow_late_submissions = ?, max_resubmissions = ?, status = ?
          WHERE id = ? AND school_id = ? AND shs_elective_class_id = ?`,
-        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, maxResubmissions, status, assignmentId, req.user.schoolId, current.electiveClassId]);
+        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, allowLate ? 1 : 0, maxResubmissions, status, assignmentId, req.user.schoolId, current.electiveClassId]);
       if (req.body.grade) await createLinkedAssignmentItem(connection, req, current.electiveClassId, assignmentId,
         { ...req.body.grade, title });
       const [updatedRows] = await connection.execute(
@@ -1012,6 +1048,9 @@ async function updateAssignment(req, res, next) {
       const dueAt = req.body.dueAt === undefined ? current.dueAt : dateTime(req.body.dueAt, 'Due date');
       const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
         ? Boolean(current.onlineSubmissionEnabled) : req.body.onlineSubmissionEnabled === true;
+      const allowLate = allowLateSubmissions(req.body.allowLateSubmissions === undefined
+        ? Boolean(current.allowLateSubmissions) && onlineSubmissionEnabled : req.body.allowLateSubmissions,
+        onlineSubmissionEnabled, dueAt);
       const maxResubmissions = req.body.maxResubmissions === undefined
         ? current.maxResubmissions : resubmissionLimit(req.body.maxResubmissions);
       const status = req.body.status === undefined ? current.status : String(req.body.status);
@@ -1019,9 +1058,9 @@ async function updateAssignment(req, res, next) {
       await connection.execute(
         `UPDATE assignments SET published_at = CASE
            WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
-         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, max_resubmissions = ?, status = ?
+         title = ?, description = ?, due_at = ?, online_submission_enabled = ?, allow_late_submissions = ?, max_resubmissions = ?, status = ?
          WHERE id = ? AND school_id = ? AND section_id = ? AND subject_id = ?`,
-        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, maxResubmissions,
+        [status, title, description, dueAt, onlineSubmissionEnabled ? 1 : 0, allowLate ? 1 : 0, maxResubmissions,
           status, assignmentId, req.user.schoolId, current.sectionId, current.subjectId]
       );
       if (req.body.grade) await createLinkedAssignmentItem(connection, req,
@@ -1067,6 +1106,9 @@ async function updateAssignment(req, res, next) {
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
       ? Number(current.onlineSubmissionEnabled) === 1
       : req.body.onlineSubmissionEnabled === true;
+    const allowLate = allowLateSubmissions(req.body.allowLateSubmissions === undefined
+      ? Boolean(current.allowLateSubmissions) && onlineSubmissionEnabled : req.body.allowLateSubmissions,
+      onlineSubmissionEnabled, dueAt);
     const maxResubmissions = req.body.maxResubmissions === undefined
       ? current.maxResubmissions : resubmissionLimit(req.body.maxResubmissions);
     const status = req.body.status === undefined ? current.status : String(req.body.status);
@@ -1074,6 +1116,7 @@ async function updateAssignment(req, res, next) {
     const statusChanged = current.status !== status;
     const detailsChanged = assignmentDetailsChanged(current, {
       title, description, dueAt, maxScore, onlineSubmissionEnabled: onlineSubmissionEnabled ? 1 : 0,
+      allowLateSubmissions: allowLate ? 1 : 0,
       maxResubmissions,
       academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId
     });
@@ -1098,10 +1141,10 @@ async function updateAssignment(req, res, next) {
       `UPDATE assignments SET published_at = CASE
          WHEN status <> 'published' AND ? = 'published' THEN CURRENT_TIMESTAMP ELSE published_at END,
        academic_term_id=?, grading_category_id=?, subject_grading_component_id=?, subject_grading_exam_part_id=?,
-       title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, max_resubmissions=?, status=?
+       title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, allow_late_submissions=?, max_resubmissions=?, status=?
        WHERE id=? AND school_id=?`,
       [status, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, title,
-        description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, maxResubmissions, status, assignmentId, req.user.schoolId]);
+        description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, allowLate ? 1 : 0, maxResubmissions, status, assignmentId, req.user.schoolId]);
     if (current.gradingItemId) await connection.execute(
       'UPDATE grading_items SET title = ?, max_score = ?, domain_code = ? WHERE id = ? AND school_id = ?',
       [title, maxScore, domainCode, current.gradingItemId, req.user.schoolId]
@@ -1333,16 +1376,17 @@ async function createElectiveAssignment(req, res, next) {
     const description = optionalText(req.body.description, 10000, 'Assignment description');
     const dueAt = dateTime(req.body.dueAt, 'Due date');
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true || req.body.onlineSubmissionEnabled === 'true' ? 1 : 0;
+    const allowLate = allowLateSubmissions(req.body.allowLateSubmissions, onlineSubmissionEnabled, dueAt);
     const maxResubmissions = resubmissionLimit(req.body.maxResubmissions);
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const [result] = await connection.execute(
       `INSERT INTO assignments (school_id, shs_elective_class_id, academic_term_id, teacher_user_id, title, description,
-        due_at, max_score, online_submission_enabled, max_resubmissions, status, published_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?,
+        due_at, max_score, online_submission_enabled, allow_late_submissions, max_resubmissions, status, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?,
         CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END)`,
       [electiveClass.schoolId, electiveClass.id, activeTerms[0].id, req.user.id, title, description, dueAt,
-        onlineSubmissionEnabled, maxResubmissions, status, status]);
+        onlineSubmissionEnabled, allowLate ? 1 : 0, maxResubmissions, status, status]);
     if (req.body.grade) await createLinkedAssignmentItem(connection, req, electiveClass.id, result.insertId,
       { ...req.body.grade, title });
     const [rows] = await connection.execute(
@@ -1416,13 +1460,20 @@ async function submitAssignment(req, res, next) {
       await assertElectiveStudent(connection, req.user, assignment.electiveClassId, { write: true });
     }
     if (!assignment.onlineSubmissionEnabled) throw createError('Online submissions are not enabled for this assignment.', 409);
+    const pastDue = Boolean(assignment.dueAt) && comparableDateTime(assignment.dueAt).slice(0, 10) < getSchoolCurrentDate();
+    if (pastDue && !assignment.allowLateSubmissions) throw createError('The assignment deadline has passed.', 409);
+    if (pastDue && assignment.academicTermStatus && assignment.academicTermStatus !== 'active') {
+      throw createError('This grading period no longer accepts submissions.', 409);
+    }
     const filePath = req.file.filename;
     const [existing] = await connection.execute(
-      'SELECT file_path AS filePath, resubmission_count AS resubmissionCount FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ? FOR UPDATE',
+      'SELECT file_path AS filePath, resubmission_count AS resubmissionCount, submission_status AS submissionStatus FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ? FOR UPDATE',
       [req.user.schoolId, assignmentId, req.user.id]
     );
     const previous = existing[0];
     const isReplacement = Boolean(previous?.filePath);
+    const submissionStatus = isReplacement && ['submitted', 'late'].includes(previous.submissionStatus)
+      ? previous.submissionStatus : pastDue ? 'late' : 'submitted';
     const resubmissionCount = Number(previous?.resubmissionCount || 0) + (isReplacement ? 1 : 0);
     if (isReplacement && assignment.maxResubmissions != null && resubmissionCount > Number(assignment.maxResubmissions)) {
       throw createError('The maximum number of file replacements has been reached.', 409);
@@ -1430,23 +1481,23 @@ async function submitAssignment(req, res, next) {
     if (previous) {
       await connection.execute(
         `UPDATE assignment_submissions SET file_name = ?, file_path = ?, file_size_bytes = ?,
-          resubmission_count = ?, submission_status = 'submitted', submitted_at = NOW()
+          resubmission_count = ?, submission_status = ?, submitted_at = NOW()
          WHERE school_id = ? AND assignment_id = ? AND student_user_id = ?`,
-        [req.file.originalname.slice(0, 255), filePath, req.file.size, resubmissionCount,
+        [req.file.originalname.slice(0, 255), filePath, req.file.size, resubmissionCount, submissionStatus,
           req.user.schoolId, assignmentId, req.user.id]
       );
     } else {
       await connection.execute(
         `INSERT INTO assignment_submissions (school_id, assignment_id, student_user_id,
           file_name, file_path, file_size_bytes, resubmission_count, submission_status, submitted_at)
-         VALUES (?, ?, ?, ?, ?, ?, 0, 'submitted', NOW())`,
-        [req.user.schoolId, assignmentId, req.user.id, req.file.originalname.slice(0, 255), filePath, req.file.size]
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, NOW())`,
+        [req.user.schoolId, assignmentId, req.user.id, req.file.originalname.slice(0, 255), filePath, req.file.size, submissionStatus]
       );
     }
     await connection.commit();
     transactionStarted = false;
     if (existing[0]?.filePath !== filePath) await removeStoredSubmission(existing[0]?.filePath);
-    res.status(201).json({ assignmentId, studentId: req.user.id, fileName: req.file.originalname, fileSizeBytes: req.file.size, submissionStatus: 'submitted', resubmissionCount });
+    res.status(201).json({ assignmentId, studentId: req.user.id, fileName: req.file.originalname, fileSizeBytes: req.file.size, submissionStatus, resubmissionCount });
   } catch (error) {
     if (transactionStarted) await connection.rollback();
     await removeUploadedFile(req.file);

@@ -21,6 +21,12 @@ test('generation list uses two columns with scrollbar space and one mobile colum
   assert.match(styles, /#gen-modal \.gen-included li svg\s*\{[^}]*color:\s*var\(--theme-accent-text\);/);
 });
 
+test('completed generation replaces the empty learner list and zero-count action with a close state', () => {
+  assert.match(styles, /#gen-modal\.is-complete \.gen-note-panel,[\s\S]*?#gen-modal\.is-complete #start-generation\s*\{\s*display:\s*none;/);
+  assert.match(styles, /#gen-modal\.is-complete #gen-message:not\(\[hidden\]\)/);
+  assert.match(page, /id="gen-cancel"[^>]*>Cancel<\/button>/);
+});
+
 function harness({ count = 7, failedIds = [], requestError, refreshError, gate } = {}) {
   const students = Array.from({ length: count }, (_, i) => ({ id: String(i + 1), displayName: `Learner ${i + 1}` }));
   let remaining = students;
@@ -28,9 +34,9 @@ function harness({ count = 7, failedIds = [], requestError, refreshError, gate }
   const requests = [], ranges = [], toasts = [], messages = {};
   const notes = students.map(student => ({ dataset: { studentId: student.id }, value: 'QA note', disabled: false }));
   let focused = null;
-  const elements = Object.fromEntries(['gen-progress', 'gen-progress-detail', 'start-generation-label', 'start-generation', 'gen-draft-count', 'gen-count', 'gen-close', 'gen-students']
+  const elements = Object.fromEntries(['gen-progress', 'gen-progress-detail', 'start-generation-label', 'start-generation', 'gen-draft-count', 'gen-count', 'gen-close', 'gen-cancel', 'gen-students']
     .map(id => [id, {
-      id, hidden: true, disabled: false, attributes: {},
+      id, hidden: true, disabled: false, attributes: {}, textContent: id === 'gen-cancel' ? 'Cancel' : '',
       setAttribute(key, value) { this.attributes[key] = value; },
       focus() { focused = id; }
     }]));
@@ -39,7 +45,12 @@ function harness({ count = 7, failedIds = [], requestError, refreshError, gate }
     focus() { focused = 'dialog'; }
   };
   elements['gen-modal'] = {
-    classList: { values: new Set(), toggle(name, value) { value ? this.values.add(name) : this.values.delete(name); } },
+    classList: {
+      values: new Set(),
+      add(name) { this.values.add(name); },
+      remove(name) { this.values.delete(name); },
+      toggle(name, value) { value ? this.values.add(name) : this.values.delete(name); }
+    },
     querySelector: () => dialog
   };
   elements['gen-students'].querySelectorAll = selector => selector === '.gen-student-note-row' ? [] : notes;
@@ -95,9 +106,12 @@ test('generation shows real batch ranges, locks controls, and prevents duplicate
   assert.equal(h.elements['start-generation'].disabled, true);
   assert.equal(h.elements['gen-close'].disabled, false);
   assert.equal(h.elements['gen-modal'].classList.values.has('is-generating'), false);
+  assert.equal(h.elements['gen-modal'].classList.values.has('is-complete'), true);
+  assert.equal(h.elements['gen-cancel'].textContent, 'Close');
+  assert.equal(h.messages['gen-message'].text, '7 drafts generated. Review them in the weekly reports list.');
   assert.equal(h.dialog.attributes['aria-labelledby'], 'gen-title');
   assert.equal(h.dialog.attributes['aria-busy'], 'false');
-  assert.equal(h.focused, 'gen-close');
+  assert.equal(h.focused, 'gen-cancel');
   assert.ok(h.notes.every(note => !note.disabled));
   assert.equal(h.toasts.length, 1);
   assert.equal(h.requests[0].notesByStudent['1'], 'QA note');
@@ -107,7 +121,7 @@ test('generation uses singular progress copy for one learner and restores focus 
   const h = harness({ count: 1 });
   await h.generate();
   assert.deepEqual(h.ranges, ['Processing learner 1 of 1.']);
-  assert.equal(h.focused, 'gen-close');
+  assert.equal(h.focused, 'gen-cancel');
   assert.equal(h.elements['gen-progress'].hidden, true);
 });
 
@@ -163,8 +177,14 @@ test('learner note rows start closed, allow one open row, and keep text when clo
     }
     allDescendants() { return this.children.flatMap(child => [child, ...child.allDescendants()]); }
   }
-  const elements = Object.fromEntries(['gen-subtitle', 'gen-count', 'gen-draft-count', 'gen-students', 'gen-journal-source']
+  const elements = Object.fromEntries(['gen-subtitle', 'gen-count', 'gen-draft-count', 'gen-students', 'gen-journal-source', 'gen-cancel']
     .map(id => [id, new Element()]));
+  elements['gen-modal'] = { classList: {
+    values: new Set(['is-complete']),
+    add(name) { this.values.add(name); },
+    remove(name) { this.values.delete(name); }
+  } };
+  elements['gen-cancel'].textContent = 'Close';
   const students = [{ id: '1', displayName: 'Alyssa Lim', avatarUrl: '/api/users/1/avatar?v=2' }, { id: '2', displayName: 'Ethan Lim' }];
   const avatarCalls = [];
   const state = { busy: false, generationEnabled: true, evidence: {
@@ -182,6 +202,8 @@ test('learner note rows start closed, allow one open row, and keep text when clo
     setGenerationLoading() {}, setMessage() {}, openModal() {}
   });
   showGeneration();
+  assert.equal(elements['gen-modal'].classList.values.has('is-complete'), false);
+  assert.equal(elements['gen-cancel'].textContent, 'Cancel');
   const [first, second] = elements['gen-students'].children;
   const firstEditor = first.querySelector('.gen-student-note-editor:not([hidden])') || first.children[1];
   const secondEditor = second.children[1];

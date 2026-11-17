@@ -11,6 +11,8 @@ const previewStart = source.indexOf('    function assignmentPreviewHasUnsavedSco
 const previewEnd = source.indexOf('    function openStatusModal(id) {', previewStart);
 const submissionsStart = source.indexOf('    async function openElectiveAssignmentSubmissions(');
 const submissionsEnd = source.indexOf('    function assignmentPreviewHasUnsavedScore()', submissionsStart);
+const submissionHelpersStart = source.indexOf('    function assignmentSubmissionSubtitle(');
+const submissionHelpersEnd = source.indexOf('    function renderSharedScoreCategories(', submissionHelpersStart);
 const coreEditStart = source.indexOf('    function canEditShsCoreAssignmentScore(');
 const coreEditEnd = source.indexOf('    function getGradeStudents()', coreEditStart);
 const escapeStart = source.indexOf("    document.addEventListener('keydown', event => {");
@@ -18,6 +20,7 @@ const escapeEnd = source.indexOf('    function renderAssignments() {', escapeSta
 assert.ok(modalStart >= 0 && modalEnd > modalStart && previewStart >= 0 && previewEnd > previewStart
   && escapeStart >= 0 && escapeEnd > escapeStart && submissionsStart >= 0 && submissionsEnd > submissionsStart
   && coreEditStart >= 0 && coreEditEnd > coreEditStart);
+assert.ok(submissionHelpersStart >= 0 && submissionHelpersEnd > submissionHelpersStart);
 
 function element() {
   const classes = new Set();
@@ -52,10 +55,10 @@ function harness({ canEdit = true, preview, save, refresh, mode = 'k10', termSta
   elements.academicPeriodSelect.value = 'term-1';
   const listInputs = new Map([[1, element()], [2, element()]]);
   const submissions = [
-    { id: 101, studentId: 1, studentName: 'First Student', fileName: 'first.pdf', fileUrl: '/first' },
-    { id: 102, studentId: 2, studentName: 'Second Student', fileName: 'second.pdf', fileUrl: '/second' }
+    { id: 101, studentId: 1, studentName: 'First Student', fileName: 'first.pdf', fileUrl: '/first', status: 'late', submittedAt: '2026-11-17T10:24:00' },
+    { id: 102, studentId: 2, studentName: 'Second Student', fileName: 'second.pdf', fileUrl: '/second', status: 'submitted', submittedAt: '2026-11-16T10:24:00' }
   ];
-  const assignment = { id: '11', categoryId: 3, gradingItemId: 99, maxScore: 20, academicPeriodId: 'term-1' };
+  const assignment = { id: '11', title: 'Test Assignment', categoryId: 3, gradingItemId: 99, maxScore: 20, academicPeriodId: 'term-1' };
   const records = [];
   const workspace = { items: [{ id: 99, usedInPublishedGrades: true }], scores: records,
     term: { id: 'term-1', status: termStatus },
@@ -139,12 +142,34 @@ for (const mode of ['core', 'elective']) {
       const h = harness({ mode, termStatus });
       let rendered;
       h.context.window.TeacherClassViews = { renderAssignmentSubmissions: value => { rendered = value; } };
+      vm.runInContext(source.slice(submissionHelpersStart, submissionHelpersEnd), h.context);
       vm.runInContext(source.slice(submissionsStart, submissionsEnd), h.context);
       await vm.runInContext(mode === 'core'
         ? 'openAssignmentSubmissionsModal(11)' : 'openElectiveAssignmentSubmissions(11)', h.context);
       const score = rendered.columns.find(column => column.key === 'score').render(rendered.rows[0]);
       assert.equal(score.includes('disabled'), termStatus !== 'active');
     }
+  });
+}
+
+for (const mode of ['core', 'elective']) {
+  test(`${mode} submissions place Late and time below the student and omit the file icon`, async () => {
+    const h = harness({ mode });
+    let rendered;
+    h.context.window.TeacherClassViews = { renderAssignmentSubmissions: value => { rendered = value; } };
+    vm.runInContext(source.slice(submissionHelpersStart, submissionHelpersEnd), h.context);
+    vm.runInContext(source.slice(submissionsStart, submissionsEnd), h.context);
+    await vm.runInContext(mode === 'core'
+      ? 'openAssignmentSubmissionsModal(11)' : 'openElectiveAssignmentSubmissions(11)', h.context);
+    assert.deepEqual(Array.from(rendered.columns, column => column.key), ['student', 'file', 'score', 'actions']);
+    assert.equal(rendered.subtitle, 'Test Assignment · 20 points · 2 submissions');
+    const student = rendered.columns[0].render(rendered.rows[0]);
+    assert.match(student, /First Student/);
+    assert.match(student, /Late/);
+    assert.match(student, /2026-11-17T10:24:00/);
+    const file = rendered.columns[1].render(rendered.rows[0]);
+    assert.match(file, /first\.pdf/);
+    assert.doesNotMatch(file, /data-lucide|<svg|<i\b/);
   });
 }
 
@@ -155,6 +180,7 @@ test('core assignment scoring matches the SHS gradebook read-only rules', async 
     const h = harness({ mode: 'core', ...options });
     let rendered;
     h.context.window.TeacherClassViews = { renderAssignmentSubmissions: value => { rendered = value; } };
+    vm.runInContext(source.slice(submissionHelpersStart, submissionHelpersEnd), h.context);
     vm.runInContext(source.slice(submissionsStart, submissionsEnd), h.context);
     await vm.runInContext('openAssignmentSubmissionsModal(11)', h.context);
     const score = rendered.columns.find(column => column.key === 'score').render(rendered.rows[0]);

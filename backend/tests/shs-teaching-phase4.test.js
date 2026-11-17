@@ -816,6 +816,7 @@ test('a failed SHS assignment grade link rolls back the assignment', async () =>
     optionalText: value => value,
     dateTime: value => value,
     resubmissionLimit: value => value ?? null,
+    allowLateSubmissions: value => value === true,
     ASSIGNMENT_STATUSES: new Set(['published']),
     createLinkedAssignmentItem: async () => { throw new Error('Grading period unavailable'); }
   });

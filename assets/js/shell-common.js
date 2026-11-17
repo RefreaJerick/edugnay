@@ -790,6 +790,8 @@ function normalizeApiAssignment(record) {
     onlineSubmissionEnabled: record.onlineSubmissionEnabled === undefined
       ? true
       : Boolean(record.onlineSubmissionEnabled),
+    allowLateSubmissions: Boolean(record.allowLateSubmissions),
+    academicTermStatus: record.academicTermStatus || null,
     maxResubmissions: record.maxResubmissions == null ? null : Number(record.maxResubmissions),
     maxScore: record.maxScore === null || record.maxScore === undefined ? null : Number(record.maxScore)
   };
@@ -989,6 +991,7 @@ async function createApiAssignment(values = {}) {
       maxScore: values.maxScore ?? null,
       status: values.status || 'published',
       onlineSubmissionEnabled: values.onlineSubmissionEnabled === true,
+      allowLateSubmissions: values.allowLateSubmissions === true,
       maxResubmissions: values.maxResubmissions ?? null,
       grade: values.grade || null
     })
@@ -1012,6 +1015,7 @@ async function updateApiAssignment(assignmentId, values = {}) {
       maxScore: values.maxScore === undefined ? undefined : values.maxScore,
       status: values.status,
       onlineSubmissionEnabled: values.onlineSubmissionEnabled,
+      allowLateSubmissions: values.allowLateSubmissions,
       maxResubmissions: values.maxResubmissions,
       grade: values.grade || null
     })
@@ -1025,7 +1029,7 @@ async function updateApiAssignmentStudentStatus(assignmentId, studentId, status)
   if (!Number.isSafeInteger(assignment) || assignment < 1 || !Number.isSafeInteger(student) || student < 1) {
     throw new Error('The assignment or student ID is invalid.');
   }
-  if (!['pending', 'submitted', 'not_submitted'].includes(status)) throw new Error('The submission status is invalid.');
+  if (!['pending', 'submitted', 'late', 'not_submitted'].includes(status)) throw new Error('The submission status is invalid.');
 
   const response = await requestApi(`/assignments/${assignment}/students/${student}/status`, {
     method: 'PATCH',

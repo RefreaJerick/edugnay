@@ -110,6 +110,7 @@ test('SHS core assignment creation rolls back if its score component cannot be l
     validateTermAndCategory: async () => {}, requiredText: value => value,
     optionalText: value => value, dateTime: value => value,
     resubmissionLimit: value => value ?? null,
+    allowLateSubmissions: value => value === true,
     ASSIGNMENT_STATUSES: new Set(['published']),
     createLinkedAssignmentItem: async () => { events.push('link'); throw new Error('Grading rule unavailable'); },
     getAssignmentForManagement: async () => { throw new Error('Must not read after failed link'); }

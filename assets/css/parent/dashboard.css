@@ -422,16 +422,6 @@
   border-bottom: none;
 }
 
-.assignment-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .assignment-info {
   flex: 1;
   min-width: 0;

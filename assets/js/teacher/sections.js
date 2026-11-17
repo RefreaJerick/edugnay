@@ -1553,9 +1553,30 @@ lucide.createIcons();
       }
       body.innerHTML = rows.map(row => `<tr>${columns.map(column => {
         const value = typeof column.render === 'function' ? column.render(row) : row[column.key];
-        return `<td>${value == null ? '' : typeof column.render === 'function' ? value : window.EDUGNAY_CONFIG.escapeHtml(value)}</td>`;
+        return `<td data-submission-field="${window.EDUGNAY_CONFIG.escapeHtml(column.key || '')}">${value == null ? '' : typeof column.render === 'function' ? value : window.EDUGNAY_CONFIG.escapeHtml(value)}</td>`;
       }).join('')}</tr>`).join('');
       window.lucide?.createIcons?.();
+    }
+
+    function assignmentSubmissionSubtitle(assignment, count, maxScore) {
+      const points = Number(maxScore) > 0 ? ` · ${Number(maxScore)} points` : '';
+      return `${assignment.title || 'Assignment'}${points} · ${count} ${count === 1 ? 'submission' : 'submissions'}`;
+    }
+
+    function renderAssignmentSubmissionStudent(submission, studentName, student) {
+      const escape = window.EDUGNAY_CONFIG.escapeHtml;
+      const name = studentName || 'Student';
+      const avatar = window.EDUGNAY_AVATAR?.html?.({ ...(student || {}), displayName: name },
+        { className: 'student-av', role: 'student', size: 'sm' }) || '';
+      const late = submission.status === 'late';
+      const submittedAt = submission.submittedAt
+        ? window.EDUGNAY_CONFIG.formatDateTime(submission.submittedAt) : 'Time unavailable';
+      return `<div class="assignment-submission-student">${avatar}<div class="assignment-submission-student-copy"><strong>${escape(name)}</strong><div class="assignment-submission-meta"><span class="${late ? 'is-late' : 'is-submitted'}">${late ? 'Late' : 'Submitted'}</span><span> · ${escape(submittedAt)}</span></div></div></div>`;
+    }
+
+    function renderAssignmentSubmissionFile(submission) {
+      const name = window.EDUGNAY_CONFIG.escapeHtml(submission.fileName || 'File unavailable');
+      return `<span class="assignment-submission-filename" title="${name}" aria-label="${name}">${name}</span>`;
     }
 
     function renderSharedScoreCategories(tabs, categories = [], onChange = () => { }) {
@@ -4025,7 +4046,7 @@ lucide.createIcons();
       const items = assignments.map(a => {
         const submissionUnavailable = BACKEND_SUBMISSIONS_LOADING || BACKEND_SUBMISSION_ERRORS.has(String(a.id));
         const submitted = getTeacherAssignmentStatuses(a.id)
-          .filter(record => record.status === 'submitted').length;
+          .filter(record => ['submitted', 'late'].includes(record.status)).length;
         const dueLabel = a.dueDate
           ? new Date(a.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           : 'No due date';
@@ -4219,7 +4240,13 @@ lucide.createIcons();
     function updateAssignmentResubmissionLimitVisibility(edit = false) {
       const toggleId = edit ? 'editAssignmentOnlineInput' : 'assignOnlineSubmissionInput';
       const groupId = edit ? 'editAssignmentResubmissionLimitGroup' : 'assignResubmissionLimitGroup';
-      document.getElementById(groupId).hidden = !document.getElementById(toggleId).checked;
+      const online = document.getElementById(toggleId).checked;
+      document.getElementById(groupId).hidden = !online;
+      const prefix = edit ? 'editAssignment' : 'assign';
+      const late = document.getElementById(`${prefix}LateSubmissionInput`);
+      document.getElementById(`${prefix}LateSubmissionRow`).hidden = !online;
+      late.disabled = !online || !document.getElementById(edit ? 'editAssignmentDueInput' : 'assignDueInput').value;
+      if (late.disabled) late.checked = false;
     }
 
     function setAssignmentResubmissionLimit(edit, value) {
@@ -4303,6 +4330,8 @@ lucide.createIcons();
 
     document.getElementById('assignOnlineSubmissionInput').addEventListener('change', () => updateAssignmentResubmissionLimitVisibility());
     document.getElementById('editAssignmentOnlineInput').addEventListener('change', () => updateAssignmentResubmissionLimitVisibility(true));
+    document.getElementById('assignDueInput').addEventListener('change', () => updateAssignmentResubmissionLimitVisibility());
+    document.getElementById('editAssignmentDueInput').addEventListener('change', () => updateAssignmentResubmissionLimitVisibility(true));
     document.getElementById('editAssignmentResubmissionLimitGroup').addEventListener('change', () => {
       document.getElementById('editAssignmentLegacyResubmissionLimit').hidden = true;
     });
@@ -4365,6 +4394,7 @@ lucide.createIcons();
             description: instructions || null,
             dueDate: due,
             onlineSubmissionEnabled,
+            allowLateSubmissions: document.getElementById('assignLateSubmissionInput')?.checked === true,
             maxResubmissions,
             maxScore: includeInScoreRecording ? maxScore : null
           });
@@ -4411,6 +4441,7 @@ lucide.createIcons();
           academicTermId: termId, title,
           description: document.getElementById('assignInstructionsInput').value.trim() || null,
           dueDate, onlineSubmissionEnabled: document.getElementById('assignOnlineSubmissionInput').checked,
+          allowLateSubmissions: document.getElementById('assignLateSubmissionInput')?.checked === true,
           maxResubmissions: selectedAssignmentResubmissionLimit(), grade
         });
         if (!assignment) throw new Error('The assignment could not be created.');
@@ -4429,6 +4460,7 @@ lucide.createIcons();
       document.getElementById('assignInstructionsInput').value = '';
       document.getElementById('assignDueInput').value = '';
       document.getElementById('assignOnlineSubmissionInput').checked = false;
+      document.getElementById('assignLateSubmissionInput').checked = false;
       setAssignmentResubmissionLimit(false, null);
       updateAssignmentResubmissionLimitVisibility();
       document.getElementById('assignGradingInput').checked = false;
@@ -4454,6 +4486,7 @@ lucide.createIcons();
         document.getElementById('editAssignmentSubjectInput').value = assignment.communicationComponentName || assignment.subjectName || 'Class assignment';
         document.getElementById('editAssignmentDueInput').value = assignment.dueDate || String(assignment.dueAt || '').slice(0, 10);
         document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
+        document.getElementById('editAssignmentLateSubmissionInput').checked = assignment.allowLateSubmissions === true;
         setAssignmentResubmissionLimit(true, assignment.maxResubmissions);
         updateAssignmentResubmissionLimitVisibility(true);
         openModal('editAssignmentModal');
@@ -4471,6 +4504,7 @@ lucide.createIcons();
       document.getElementById('editAssignmentSubjectInput').value = assignment.communicationComponentName || assignment.subjectName || CURRENT_SUBJECT;
       document.getElementById('editAssignmentDueInput').value = assignment.dueDate || '';
       document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
+      document.getElementById('editAssignmentLateSubmissionInput').checked = assignment.allowLateSubmissions === true;
       setAssignmentResubmissionLimit(true, assignment.maxResubmissions);
       updateAssignmentResubmissionLimitVisibility(true);
       const includeInScoreRecording = USE_SHS_CORE_GRADEBOOK
@@ -4520,7 +4554,8 @@ lucide.createIcons();
         saveButton.disabled = true;
         try {
           const updated = await window.EDUGNAY_API.updateAssignment(activeAssignmentId, {
-            title, description: instructions || null, dueAt, onlineSubmissionEnabled, maxResubmissions, grade
+            title, description: instructions || null, dueAt, onlineSubmissionEnabled,
+            allowLateSubmissions: document.getElementById('editAssignmentLateSubmissionInput')?.checked === true, maxResubmissions, grade
           });
           if (!updated) throw new Error('The assignment could not be updated.');
           closeModal('editAssignmentModal');
@@ -4596,6 +4631,7 @@ lucide.createIcons();
             description: instructions || null,
             dueDate,
             onlineSubmissionEnabled,
+            allowLateSubmissions: document.getElementById('editAssignmentLateSubmissionInput')?.checked === true,
             maxResubmissions,
             maxScore: includeInScoreRecording ? maxScore : null
           });
@@ -4660,6 +4696,7 @@ lucide.createIcons();
           academicTermId: assignment.academicTermId || assignment.academicPeriodId,
           title, description: document.getElementById('editAssignmentInstructionsInput').value.trim() || null,
           dueDate, onlineSubmissionEnabled: document.getElementById('editAssignmentOnlineInput').checked,
+          allowLateSubmissions: document.getElementById('editAssignmentLateSubmissionInput')?.checked === true,
           maxResubmissions, grade
         });
         if (!updated) throw new Error('The assignment could not be updated.');
@@ -4724,15 +4761,15 @@ lucide.createIcons();
         const { assignment, submissions } = await loadElectiveAssignmentReview(assignmentId, true);
         const item = getBackendGradingItemForAssignment(assignment);
         const maxScore = Number(item?.maxScore ?? assignment.maxScore);
+        const uploaded = submissions.filter(submission => submission.fileName);
         const editable = Boolean(item && electiveReviewWorkspace?.scope?.policy
           && electiveReviewWorkspace.term?.status === 'active'
           && window.AcademixElectiveClass?.canEdit());
         window.TeacherClassViews.renderAssignmentSubmissions({
-          subtitle: assignment.title,
+          subtitle: assignmentSubmissionSubtitle(assignment, uploaded.length, assignment.gradingItemId ? maxScore : null),
           columns: [
-            { key: 'student', label: 'Student', render: submission => window.EDUGNAY_CONFIG.escapeHtml(submission.studentName || 'Student') },
-            { key: 'file', label: 'File', render: submission => window.EDUGNAY_CONFIG.escapeHtml(submission.fileName || '') },
-            { key: 'submitted', label: 'Submitted at', render: submission => window.EDUGNAY_CONFIG.formatDateTime(submission.submittedAt) },
+            { key: 'student', label: 'Student', render: submission => renderAssignmentSubmissionStudent(submission, submission.studentName) },
+            { key: 'file', label: 'File', render: renderAssignmentSubmissionFile },
             { key: 'score', label: 'Score', render: submission => {
               if (!assignment.gradingItemId) return '<span class="assignment-file-unavailable">Not graded</span>';
               if (!item) return '<span class="assignment-file-unavailable">Unavailable</span>';
@@ -4746,7 +4783,7 @@ lucide.createIcons();
               return `<div class="assignment-submission-actions"><button class="row-btn view" type="button" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function() { openAssignmentSubmissionPreview(Number(assignment.id), Number(submission.id)) })}"><i data-lucide="eye" aria-hidden="true"></i> View</button><a class="row-btn view" href="${url}"><i data-lucide="download" aria-hidden="true"></i> Download</a></div>`;
             } }
           ],
-          rows: submissions.filter(submission => submission.fileName),
+          rows: uploaded,
           empty: { title: 'No submissions yet', text: 'Student files will appear here after they submit this assignment online.' }
         });
         openModal('assignmentSubmissionsModal');
@@ -4778,16 +4815,17 @@ lucide.createIcons();
         .filter(submission => submission.fileName);
       const scores = getAssignmentScoreRecords(assignment.id);
       window.TeacherClassViews.renderAssignmentSubmissions({
-        subtitle: assignment.title,
+        subtitle: assignmentSubmissionSubtitle(assignment, submissions.length,
+          (USE_SHS_CORE_GRADEBOOK ? assignment.gradingItemId : assignment.categoryId || assignment.subjectGradingComponentId)
+            ? assignment.maxScore : null),
         columns: [
           {
             key: 'student', label: 'Student', render: submission => {
               const student = getGradeStudents().find(item => String(item.id) === String(submission.studentId));
-              return window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student');
+              return renderAssignmentSubmissionStudent(submission, student?.displayName || 'Unknown student', student);
             }
           },
-          { key: 'file', label: 'File', render: submission => window.EDUGNAY_CONFIG.escapeHtml(submission.fileName) },
-          { key: 'submitted', label: 'Submitted at', render: submission => window.EDUGNAY_CONFIG.formatDateTime(submission.submittedAt) },
+          { key: 'file', label: 'File', render: renderAssignmentSubmissionFile },
           {
             key: 'score', label: 'Score', render: submission => {
               const score = scores.find(record => String(record.studentId) === String(submission.studentId))?.score ?? '';
@@ -5126,6 +5164,9 @@ lucide.createIcons();
       const onlineSubmissionEnabled = a.onlineSubmissionEnabled === true;
       const readOnly = onlineSubmissionEnabled || isElectiveClassPage()
         && !window.AcademixElectiveClass?.canEditAssignmentStatus(a);
+      const statusModal = document.getElementById('assignmentStatusModal').querySelector('.assignment-status-modal');
+      statusModal.classList.toggle('is-read-only', readOnly);
+      statusModal.classList.toggle('is-manual', !readOnly);
       document.getElementById('assignmentStatusModalTitle').textContent = (readOnly ? 'Submission Status — ' : 'Update Status — ') + a.title;
       document.getElementById('assignmentStatusModalSub').textContent = onlineSubmissionEnabled
         ? 'Status updates automatically when a student uploads a file.'
@@ -5137,22 +5178,18 @@ lucide.createIcons();
       tbody.innerHTML = gradeStudents.length ? gradeStudents.map((s, index) => {
         const currentStatus = statuses.find(item => String(item.studentId) === String(s.id))?.status || 'pending';
         const statusReadOnly = readOnly;
-        const statusLabel = currentStatus === 'submitted' ? 'Submitted' : currentStatus === 'not_submitted' ? 'Not submitted' : 'Pending';
-        const statusClass = currentStatus === 'submitted' ? 'badge-green' : currentStatus === 'not_submitted' ? 'badge-red' : 'badge-orange';
+        const statusLabel = currentStatus === 'submitted' ? 'Submitted' : currentStatus === 'late' ? 'Late' : currentStatus === 'not_submitted' ? 'Not submitted' : 'Pending';
+        const statusClass = currentStatus === 'submitted' ? 'badge-green' : currentStatus === 'late' ? 'badge-orange' : currentStatus === 'not_submitted' ? 'badge-red' : 'badge-gray';
+        const statusIcon = currentStatus === 'submitted' ? 'circle-check' : currentStatus === 'late' ? 'clock-alert' : currentStatus === 'not_submitted' ? 'x-circle' : 'clock-3';
         return `
         <tr>
-          <td><div class="student-cell">${window.EDUGNAY_AVATAR.html(s, { className: 'student-av', role: 'student', size: 'sm' })}<div class="student-name">${s.displayName}</div></div></td>
-          <td class="center" style="width:150px;">
-            ${statusReadOnly ? `<span class="badge ${statusClass}">${statusLabel}</span>` : `<div class="status-btn-group">
-              <button class="status-btn submitted ${currentStatus === 'submitted' ? 'selected' : ''}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { setStudentStatus(String(s.id), 'submitted', this) })}" title="Submitted" aria-label="Submitted">
-                <i data-lucide="check" style="width:14px;height:14px;"></i>
-              </button>
-              <button class="status-btn pending ${currentStatus === 'pending' ? 'selected' : ''}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { setStudentStatus(String(s.id), 'pending', this) })}" title="Pending" aria-label="Pending">
-                <i data-lucide="clock" style="width:14px;height:14px;"></i>
-              </button>
-              <button class="status-btn not-submitted ${currentStatus === 'not_submitted' ? 'selected' : ''}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { setStudentStatus(String(s.id), 'not_submitted', this) })}" title="Not submitted" aria-label="Not submitted">
-                <i data-lucide="x" style="width:14px;height:14px;"></i>
-              </button>
+          <td><div class="student-cell">${window.EDUGNAY_AVATAR.html(s, { className: 'student-av', role: 'student', size: 'sm' })}<div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(s.displayName)}</div></div></td>
+          <td class="assignment-status-choice-cell">
+            ${statusReadOnly ? `<span class="badge ${statusClass}"><i data-lucide="${statusIcon}" aria-hidden="true"></i>${statusLabel}</span>` : `<div class="status-btn-group" role="group" aria-label="Submission status for ${window.EDUGNAY_CONFIG.escapeHtml(s.displayName)}">
+              <button type="button" class="status-btn submitted ${currentStatus === 'submitted' ? 'selected' : ''}" aria-pressed="${currentStatus === 'submitted'}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { setStudentStatus(String(s.id), 'submitted', this) })}"><i data-lucide="circle-check" aria-hidden="true"></i><span>Submitted</span></button>
+              <button type="button" class="status-btn pending ${currentStatus === 'pending' ? 'selected' : ''}" aria-pressed="${currentStatus === 'pending'}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { setStudentStatus(String(s.id), 'pending', this) })}"><i data-lucide="clock-3" aria-hidden="true"></i><span>Pending</span></button>
+              <button type="button" class="status-btn late ${currentStatus === 'late' ? 'selected' : ''}" aria-pressed="${currentStatus === 'late'}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { setStudentStatus(String(s.id), 'late', this) })}"><i data-lucide="clock-alert" aria-hidden="true"></i><span>Late</span></button>
+              <button type="button" class="status-btn not-submitted ${currentStatus === 'not_submitted' ? 'selected' : ''}" aria-pressed="${currentStatus === 'not_submitted'}" data-page-click="${window.EDUGNAY_PAGE_EVENTS.register('click', function(event) { setStudentStatus(String(s.id), 'not_submitted', this) })}"><i data-lucide="x-circle" aria-hidden="true"></i><span>Not submitted</span></button>
             </div>`}
           </td>
         </tr>`;
@@ -5193,8 +5230,9 @@ lucide.createIcons();
         BACKEND_SUBMISSIONS.set(String(activeAssignmentId), records);
         BACKEND_SUBMISSION_ERRORS.delete(String(activeAssignmentId));
 
-        buttons.forEach(button => button.classList.remove('selected'));
+        buttons.forEach(button => { button.classList.remove('selected'); button.setAttribute('aria-pressed', 'false'); });
         btn.classList.add('selected');
+        btn.setAttribute('aria-pressed', 'true');
         if (isElectiveClassPage()) await window.AcademixElectiveClass?.refresh?.('assignments');
         else renderAssignments();
       } catch (error) {

@@ -664,7 +664,7 @@
           if (result.status !== 'fulfilled') { unavailableCounts++; return [String(assignments[index].id), null]; }
           return [String(assignments[index].id), {
             submitted: students.filter(student => result.value.some(record => String(record.studentId) === String(student.id)
-              && record.status === 'submitted')).length,
+              && ['submitted', 'late'].includes(record.status))).length,
             total: students.length
           }];
         }));
@@ -730,6 +730,7 @@
       await window.EDUGNAY_API.createShsElectiveAssignment(electiveClass.electiveClassId, {
         title, description, dueAt: dueDate + 'T23:59:00',
         onlineSubmissionEnabled: document.getElementById('assignOnlineSubmissionInput').checked,
+        allowLateSubmissions: document.getElementById('assignLateSubmissionInput').checked,
         maxResubmissions,
         status: 'published', grade
       });

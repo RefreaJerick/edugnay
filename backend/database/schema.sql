@@ -865,6 +865,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   published_at DATETIME NULL,
   max_score DECIMAL(8,2) NULL,
   online_submission_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  allow_late_submissions TINYINT(1) NOT NULL DEFAULT 0,
   max_resubmissions INT UNSIGNED NULL,
   status VARCHAR(30) NOT NULL DEFAULT 'published',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

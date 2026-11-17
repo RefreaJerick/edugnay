@@ -26,6 +26,9 @@ test('teacher replacement choices use even gaps and appear only with online subm
     .split("    document.getElementById('assignOnlineSubmissionInput').addEventListener")[0];
   const elements = Object.fromEntries([
     'assignOnlineSubmissionInput', 'editAssignmentOnlineInput',
+    'assignLateSubmissionInput', 'editAssignmentLateSubmissionInput',
+    'assignLateSubmissionRow', 'editAssignmentLateSubmissionRow',
+    'assignDueInput', 'editAssignmentDueInput',
     'assignResubmissionLimitGroup', 'editAssignmentResubmissionLimitGroup',
     'editAssignmentLegacyResubmissionLimit'
   ].map(id => [id, { checked: false, hidden: true, textContent: '' }]));
@@ -83,6 +86,7 @@ test('student replacement action becomes view-only when the limit is reached', (
   const assignment = {
     id: '4', title: 'Homework', subject: 'Math', teacher: 'Teacher',
     dueDate: '2026-11-15', status: 'submitted', onlineSubmissionEnabled: true,
+    allowLateSubmissions: true,
     maxResubmissions: 1
   };
   const exhausted = context.renderAssignmentRow(assignment);
@@ -90,4 +94,7 @@ test('student replacement action becomes view-only when the limit is reached', (
   assert.doesNotMatch(exhausted, /Replace file/);
   const available = context.renderAssignmentRow({ ...assignment, maxResubmissions: 2 });
   assert.match(available, /Replace file/);
+  const closed = context.renderAssignmentRow({ ...assignment, allowLateSubmissions: false, maxResubmissions: 2 });
+  assert.match(closed, /View submission/);
+  assert.doesNotMatch(closed, /Replace file/);
 });

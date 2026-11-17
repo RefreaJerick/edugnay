@@ -387,8 +387,8 @@ html[data-theme="dark"] {
 .flag-tag.flag-grades,
 .term-reminder.warning,
 .term-status.upcoming,
-.assignment-status.pending,
-.assignment-preview-status.pending {
+.assignment-status.late,
+.assignment-preview-status.late {
   --pill-border: var(--orange-border);
   --pill-background: var(--orange-pale);
   --pill-color: var(--theme-warning-strong);
@@ -452,6 +452,8 @@ html[data-theme="dark"] {
 .trend-neu,
 .account-review-feature-status.disabled,
 .assignment-online-status.not-available,
+.assignment-status.pending,
+.assignment-preview-status.pending,
 .settings-lock-badge,
 .school-type-chip,
 .act-tag,

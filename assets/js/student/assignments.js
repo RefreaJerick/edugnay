@@ -147,9 +147,9 @@ lucide.createIcons();
           const submission = STUDENT_SUBMISSIONS.find(function (record) {
             return String(record.assignmentId) === String(assignment.id);
           });
-          const submitted = submission?.status === 'submitted' && submission.fileName;
+          const submitted = ['submitted', 'late'].includes(submission?.status) && submission.fileName;
           const pastDue = assignment.dueDate && assignment.dueDate < today;
-          return { ...assignment, status: assignment.submissionStatus || (submitted ? 'submitted' : pastDue ? 'not_submitted' : 'pending') };
+          return { ...assignment, status: assignment.submissionStatus || (submitted ? submission.status : pastDue ? 'not_submitted' : 'pending') };
         });
         setAssignmentPeriods(terms, sections);
         backendAssignmentsError = '';
@@ -172,12 +172,14 @@ lucide.createIcons();
       { key: 'all', label: 'All' },
       { key: 'pending', label: 'Pending' },
       { key: 'submitted', label: 'Submitted' },
+      { key: 'late', label: 'Late' },
       { key: 'not_submitted', label: 'Not submitted' }
     ];
 
     const STATUS_META = {
       pending: { label: 'Pending', icon: 'clock-3' },
       submitted: { label: 'Submitted', icon: 'check-circle-2' },
+      late: { label: 'Late', icon: 'clock-alert' },
       not_submitted: { label: 'Not submitted', icon: 'x-circle' }
     };
 
@@ -256,8 +258,11 @@ lucide.createIcons();
 
       function renderAssignmentRow(item) {
         const status = STATUS_META[item.status];
-        const onlineLabel = item.onlineSubmissionEnabled ? 'Available' : 'Not available';
-        const onlineClass = item.onlineSubmissionEnabled ? 'available' : 'not-available';
+        const pastDue = item.dueDate && item.dueDate < (item.schoolCurrentDate || new Date().toLocaleDateString('en-CA'));
+        const onlineAvailable = item.onlineSubmissionEnabled && (!pastDue || item.allowLateSubmissions)
+          && (!pastDue || !item.academicTermStatus || item.academicTermStatus === 'active');
+        const onlineLabel = onlineAvailable ? 'Available' : 'Not available';
+        const onlineClass = onlineAvailable ? 'available' : 'not-available';
         const ownSubmission = ownSubmissionFor(item.id);
         const hasOnlineSubmission = Boolean(ownSubmission?.fileName);
         const limitReached = replacementLimitReached(item, ownSubmission);
@@ -265,12 +270,16 @@ lucide.createIcons();
         const submissionAction = readOnlyElective
           ? hasOnlineSubmission ? '<button class="top-btn secondary assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">View submission</button>'
             : '<span class="assignment-action-muted">Enrollment ended</span>'
-          : item.onlineSubmissionEnabled
+          : onlineAvailable
           ? limitReached
             ? '<button class="top-btn secondary assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">View submission</button>'
             : '<button class="top-btn assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">' +
                 '<i data-lucide="file-up" style="width:13px;height:13px;"></i> ' + (hasOnlineSubmission ? 'Replace file' : 'Submit work') + '</button>'
-          : '<span class="assignment-action-muted">Submit in class</span>';
+          : item.onlineSubmissionEnabled
+            ? hasOnlineSubmission
+              ? '<button class="top-btn secondary assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">View submission</button>'
+              : '<span class="assignment-action-muted">Deadline passed</span>'
+            : '<span class="assignment-action-muted">Submit in class</span>';
         const assignmentScope = [
           isElectiveAssignment(item) ? 'Elective class' + (item.className ? ' · ' + item.className : '') : '',
           item.communicationComponentName || ''
@@ -308,9 +317,10 @@ lucide.createIcons();
         const status = STATUS_META[item.submissionStatus] || STATUS_META.pending;
         return '<article class="assignment-row"><div class="assignment-row-content"><h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
           '<div class="assignment-row-meta">' + escapeHtml(item.sectionName) + ' · ' + escapeHtml(item.academicYearLabel) + ' · ' + escapeHtml(item.academicTermName) + ' · ' + escapeHtml(item.communicationComponentName || item.subjectName) + '</div></div>' +
-          '<div class="assignment-status-cell" data-label="Status"><span class="assignment-status ' + escapeHtml(item.submissionStatus) + '">' + escapeHtml(status.label) + '</span></div>' +
+          '<div class="assignment-status-cell" data-label="Status"><span class="assignment-status ' + escapeHtml(item.submissionStatus) + '"><i data-lucide="' + status.icon + '" aria-hidden="true" style="width:12px;height:12px;"></i><span class="assignment-status-label">' + escapeHtml(status.label) + '</span></span></div>' +
           '<div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary" type="button" data-history-id="' + escapeHtml(item.id) + '">View details</button></div></article>';
       }).join('');
+      window.lucide?.createIcons();
     }
 
     function showAssignmentScore(item) {
@@ -331,7 +341,7 @@ lucide.createIcons();
       if (!due || !today) return;
       const days = (Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000;
       const label = days === 0 ? 'Today' : days === 1 ? 'Tomorrow'
-        : days < 0 && item.submissionStatus !== 'submitted' && item.status !== 'submitted' ? 'Overdue' : '';
+        : days < 0 && !['submitted', 'late'].includes(item.submissionStatus) && !['submitted', 'late'].includes(item.status) ? 'Overdue' : '';
       if (!label) return;
       badge.textContent = label;
       badge.classList.toggle('is-overdue', label === 'Overdue');
@@ -450,7 +460,11 @@ lucide.createIcons();
 
       const submissionForm = document.getElementById('assignmentSubmissionForm');
       const submitButton = document.getElementById('assignmentSubmissionSubmit');
-      const canSubmitOnline = assignment.onlineSubmissionEnabled === true && !readOnlyElective && !limitReached;
+      const today = assignment.schoolCurrentDate || new Date().toLocaleDateString('en-CA');
+      const pastDue = assignment.dueDate && assignment.dueDate < today;
+      const canSubmitOnline = assignment.onlineSubmissionEnabled === true && (!pastDue || assignment.allowLateSubmissions)
+        && (!pastDue || !assignment.academicTermStatus || assignment.academicTermStatus === 'active')
+        && !readOnlyElective && !limitReached;
       submissionForm.hidden = !canSubmitOnline;
       submitButton.hidden = !canSubmitOnline;
       document.getElementById('assignmentSubmissionCancel').textContent = canSubmitOnline ? 'Cancel' : 'Close';
@@ -460,6 +474,7 @@ lucide.createIcons();
       onlineNotice.textContent = readOnlyElective
         ? hasOnlineSubmission ? 'Enrollment ended · previous submission available' : 'Enrollment ended'
         : limitReached ? 'Replacement limit reached'
+        : pastDue && !assignment.allowLateSubmissions ? 'Submission deadline passed'
         : canSubmitOnline
         ? 'Online submission available'
         : 'Submit in class';

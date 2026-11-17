@@ -16,7 +16,7 @@ function sourceBetween(start, end) {
 }
 
 const weekDaysSource = sourceBetween('function dashboardWeekDays(today) {', '\n\n    const today = new Date();');
-const upcomingSource = sourceBetween('function getUpcomingAssignments(assignments, currentDate) {', '\n    function renderWeekCalendar() {');
+const upcomingSource = sourceBetween('function isRecentLateAssignment(item, currentDate) {', '\n    function renderWeekCalendar() {');
 
 function classList() {
   const values = new Set();
@@ -116,10 +116,13 @@ test('Attendance opens first and the date strip is hidden only on the Assignment
   await new Promise(resolve => setImmediate(resolve));
 });
 
-test('upcoming list includes due-today work, sorts by due date, and limits results to three', async () => {
+test('recent Late work appears before upcoming assignments and respects the three item limit', async () => {
   const flow = createAssignmentFlow(async id => ({ studentId: id, currentDate: '2026-11-08', assignments: [
     { title: 'Fourth', subjectName: 'Science', dueDate: '2026-11-11', submissionStatus: 'pending' },
-    { title: 'Late', subjectName: 'Math', dueDate: '2026-11-07', submissionStatus: 'not_submitted' },
+    { id: 'late-manual', title: 'Manual Late', subjectName: 'Math', dueDate: null, submissionStatus: 'late', statusUpdatedAt: '2026-11-08T11:00:00' },
+    { id: 'late-upload', title: 'Late upload', subjectName: 'Math', dueDate: '2026-11-07', submissionStatus: 'late', statusUpdatedAt: '2026-11-07T11:00:00' },
+    { id: 'old-late', title: 'Old Late', subjectName: 'Math', dueDate: '2026-11-01', submissionStatus: 'late', statusUpdatedAt: '2026-10-31T11:00:00' },
+    { title: 'Not submitted', subjectName: 'Math', dueDate: '2026-11-07', submissionStatus: 'not_submitted' },
     { title: 'Elective', subjectName: 'Creative Writing', electiveClassName: 'Class A', dueDate: '2026-11-10', submissionStatus: 'pending' },
     { title: 'Today', subjectName: 'Communication', communicationComponentName: 'Effective Communication', dueDate: '2026-11-08', submissionStatus: 'pending' },
     { title: 'Undated', subjectName: 'English', dueDate: null, submissionStatus: 'pending' },
@@ -128,14 +131,19 @@ test('upcoming list includes due-today work, sorts by due date, and limits resul
   flow.flow.activate();
   await flow.flow.load();
   const content = flow.container.innerHTML;
-  assert.ok(content.indexOf('Today') < content.indexOf('Tomorrow'));
-  assert.ok(content.indexOf('Tomorrow') < content.indexOf('Elective'));
+  assert.ok(content.indexOf('Manual Late') < content.indexOf('Late upload'));
+  assert.ok(content.indexOf('Late upload') < content.indexOf('Today'));
   assert.match(content, /Effective Communication/);
-  assert.match(content, /Creative Writing · Class A/);
   assert.match(content, /Pending/);
-  assert.match(content, /Submitted/);
-  assert.doesNotMatch(content, /Late|Undated|Fourth/);
+  assert.match(content, /Late/);
+  assert.doesNotMatch(content, /class="assignment-icon"/);
+  assert.match(content, /class="badge badge-orange"><i data-lucide="clock-alert"/);
+  assert.doesNotMatch(content, /Old Late|Not submitted|Tomorrow|Undated|Fourth|Creative Writing/);
   assert.equal((content.match(/class="assignment-row"/g) || []).length, 3);
+});
+
+test('parent dashboard assignment rows have no leading icon treatment', () => {
+  assert.doesNotMatch(css, /\.assignment-icon\s*\{/);
 });
 
 test('returning to Assignments keeps the current child result visible while refreshing', async () => {
@@ -172,7 +180,7 @@ test('returning to Assignments keeps the current child result visible while refr
   assert.doesNotMatch(flow.container.innerHTML, /Updated task/);
   otherChild.resolve({ studentId: '2', currentDate: '2026-11-08', assignments: [] });
   await childRequest;
-  assert.match(flow.container.innerHTML, /No upcoming assignments/);
+  assert.match(flow.container.innerHTML, /No assignments to show/);
 });
 
 test('a previous child response cannot replace the selected child assignments', async () => {
@@ -207,7 +215,7 @@ test('failed and empty upcoming requests show useful states and allow retry', as
   assert.match(flow.container.innerHTML, /Try again/);
   fail = false;
   await flow.retry.listeners.click();
-  assert.match(flow.container.innerHTML, /No upcoming assignments/);
+  assert.match(flow.container.innerHTML, /No assignments to show/);
   flow.flow.selectChild(null);
   await flow.flow.load();
   assert.match(flow.container.innerHTML, /No assignment data/);

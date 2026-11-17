@@ -335,6 +335,8 @@
   function showGeneration() {
     const candidates = generationCandidates();
     if (state.busy || !state.generationEnabled || !candidates.length) return;
+    $('gen-modal').classList.remove('is-complete');
+    $('gen-cancel').textContent = 'Cancel';
     $('gen-journal-source').hidden = state.evidence.section.journalApplicable !== true;
     $('gen-subtitle').textContent = `${state.evidence.section.gradeLevel} · ${state.evidence.section.name} · ${formatDate(state.evidence.reportWeek.startDate)}–${formatDate(state.evidence.reportWeek.endDate)}`;
     $('gen-count').textContent = `${candidates.length} learner${candidates.length === 1 ? '' : 's'}`;
@@ -477,15 +479,25 @@
         if (!remaining.has(row.dataset.studentId)) row.remove();
       });
       $('gen-count').textContent = `${remaining.size} learner${remaining.size === 1 ? '' : 's'}`;
-      if (!remaining.size) $('gen-students').textContent = 'All selected learners now have drafts.';
-      setMessage('gen-message', `${generated} draft${generated === 1 ? '' : 's'} generated.${failed.length ? ` ${failed.length} could not be generated: ${failed.join('; ')}` : ' Review each draft before confirmation.'}`, Boolean(failed.length));
+      if (!remaining.size) {
+        $('gen-modal').classList.add('is-complete');
+        $('gen-cancel').textContent = 'Close';
+      }
+      const resultMessage = failed.length
+        ? `${generated} draft${generated === 1 ? '' : 's'} generated. ${failed.length} could not be generated: ${failed.join('; ')}`
+        : !remaining.size
+          ? generated ? `${generated} draft${generated === 1 ? '' : 's'} generated. Review them in the weekly reports list.`
+            : 'All selected learners now have drafts.'
+          : `${generated} draft${generated === 1 ? '' : 's'} generated. Review each draft before confirmation.`;
+      setMessage('gen-message', resultMessage, Boolean(failed.length));
       if (generated) showAppToast(`${generated} draft${generated === 1 ? '' : 's'} generated.${failed.length ? ' Some learners could not be generated.' : ''}`);
     } catch (error) {
       setMessage('gen-message', error.message || 'Report generation could not be completed.', true);
     } finally {
       state.busy = false;
       setGenerationLoading(false);
-      const focusTarget = $('start-generation').disabled ? $('gen-close') : $('start-generation');
+      const focusTarget = generationCandidates().length === 0 ? $('gen-cancel')
+        : $('start-generation').disabled ? $('gen-close') : $('start-generation');
       focusTarget.focus();
     }
   }
@@ -605,7 +617,7 @@
     const assignments = student.assignments;
     const confirmedAssignments = (assignments.sources || []).filter(source =>
       ['submitted', 'not_submitted'].includes(source.status));
-    const submittedCount = confirmedAssignments.filter(source => source.status === 'submitted').length;
+    const submittedCount = confirmedAssignments.filter(source => ['submitted', 'late'].includes(source.status)).length;
     const journalApplicable = state.evidence.section.journalApplicable === true;
     const attendanceDetails = [
       attendance.late && `${attendance.late} late`,

@@ -231,7 +231,8 @@ test('parent assignment activity returns safe per-child submission states', asyn
     { assignmentId: 1, subjectId: 4, subjectName: 'English', title: 'Uploaded work', dueDate: today, onlineSubmissionEnabled: 1, savedStatus: 'submitted', filePath: 'private/path.pdf', submittedAt: `${today}T08:00:00` },
     { assignmentId: 2, subjectId: 4, subjectName: 'English', title: 'Online work', dueDate: today, onlineSubmissionEnabled: 1, savedStatus: null, filePath: null, submittedAt: null },
     { assignmentId: 3, subjectId: 7, subjectName: 'Science', title: 'Manual status', dueDate: today, onlineSubmissionEnabled: 0, savedStatus: 'submitted', filePath: null, submittedAt: null },
-    { assignmentId: 4, subjectId: 7, subjectName: 'Science', title: 'Overdue work', dueDate: yesterday, onlineSubmissionEnabled: 0, savedStatus: null, filePath: null, submittedAt: null }
+    { assignmentId: 4, subjectId: 7, subjectName: 'Science', title: 'Overdue work', dueDate: yesterday, onlineSubmissionEnabled: 0, savedStatus: null, filePath: null, submittedAt: null },
+    { assignmentId: 5, subjectId: 4, subjectName: 'English', title: 'Late uploaded work', dueDate: today, onlineSubmissionEnabled: 1, savedStatus: 'late', filePath: 'private/late.pdf', submittedAt: `${today}T09:00:00` }
   ];
   activityQueryCount = 0;
   activityQuery = null;
@@ -239,7 +240,8 @@ test('parent assignment activity returns safe per-child submission states', asyn
   const result = await callActivity('42', today);
 
   assert.equal(result.error, null);
-  assert.deepEqual(result.body.assignments.map(item => item.submissionStatus), ['submitted', 'pending', 'submitted', 'not_submitted']);
+  assert.deepEqual(result.body.assignments.map(item => item.submissionStatus), ['submitted', 'pending', 'submitted', 'not_submitted', 'late']);
+  assert.equal(result.body.assignments[4].submittedAt, `${today}T09:00:00`);
   assert.equal(Object.hasOwn(result.body.assignments[0], 'filePath'), false);
   assert.equal(activityQueryCount, 1);
   assert.match(activityQuery.sql, /DATE\(assignments\.published_at\) <= \?/);
@@ -306,10 +308,10 @@ test('migration backfills existing published assignments from their creation tim
   assert.match(migration, /SET published_at = created_at\s+WHERE status = 'published'/);
 });
 
-test('parent dashboard empty state describes upcoming assignments', () => {
+test('parent dashboard empty state describes upcoming and recent Late assignments', () => {
   const dashboard = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/dashboard.js'), 'utf8');
-  assert.match(dashboard, /title: 'No upcoming assignments'/);
-  assert.match(dashboard, /text: 'Published assignments due today or later will appear here\.'/);
+  assert.match(dashboard, /title: 'No assignments to show'/);
+  assert.match(dashboard, /text: 'Upcoming work and recent Late submissions will appear here\.'/);
 });
 
 test('parent cannot request assignment activity for an unlinked child', async () => {
@@ -334,6 +336,17 @@ test('teacher can save an offline assignment status for an enrolled student', as
   assert.equal(result.error, null);
   assert.equal(result.body.submissionStatus, 'submitted');
   assert.equal(savedStatus, 'submitted');
+});
+
+test('teacher can mark an offline assignment late', async () => {
+  assignmentOnline = false;
+  enrolledStudent = true;
+  existingFilePath = null;
+  savedStatus = null;
+  const result = await callStatus('late');
+  assert.equal(result.error, null);
+  assert.equal(result.body.submissionStatus, 'late');
+  assert.equal(savedStatus, 'late');
 });
 
 test('teacher cannot manually overwrite an online file submission status', async () => {

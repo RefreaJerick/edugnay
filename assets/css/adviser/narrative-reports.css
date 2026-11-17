@@ -2311,6 +2311,23 @@
 #gen-modal .gen-modal-foot .review-modal-foot-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 #gen-modal .gen-modal-foot .top-btn { width: auto; min-height: 38px; justify-content: center; }
 #gen-modal .gen-start-button { width: auto; min-height: 38px; margin: 0; padding: 8px 16px; }
+#gen-modal.is-complete .gen-note-panel,
+#gen-modal.is-complete .gen-draft-count,
+#gen-modal.is-complete #start-generation { display: none; }
+#gen-modal.is-complete .gen-modal-foot { justify-content: flex-end; }
+#gen-modal.is-complete #gen-message:not([hidden]) {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius-sm);
+  background: var(--green-pale);
+  color: var(--theme-success-text);
+}
+#gen-modal.is-complete #gen-message.is-error {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+  color: var(--red);
+}
 #gen-modal.is-generating .gen-included,
 #gen-modal.is-generating .gen-modal-foot { display: none; }
 #gen-modal.is-generating .review-body { overflow-y: auto; }
@@ -2327,4 +2344,9 @@
   #gen-modal .gen-modal-foot .review-modal-foot-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); width: 100%; }
   #gen-modal .gen-modal-foot .top-btn { width: 100%; }
   #gen-modal .gen-student-note-editor { margin-left: 0; }
+}
+
+@media (max-width: 520px) {
+  #gen-modal.is-complete .gen-modal-foot .review-modal-foot-actions { grid-template-columns: minmax(0, 1fr); }
+  #gen-modal.is-complete .gen-modal-foot .top-btn { width: 100%; }
 }
