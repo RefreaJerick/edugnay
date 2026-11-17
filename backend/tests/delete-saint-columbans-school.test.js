@@ -14,6 +14,7 @@ const {
   parseArgs,
   resolveManagedFile,
   restoreFiles,
+  scopeColumnDefinition,
   stageFiles,
   verifyRdsTarget
 } = require('../scripts/deleteSaintColumbansSchool');
@@ -66,6 +67,12 @@ test('scope discovery keeps global school-form templates outside the delete grap
     { parentTable: 'school_form_exports', childTable: 'school_form_export_issues' }
   ]);
   assert.deepEqual(reachable, ['school_form_export_issues', 'school_form_exports', 'schools', 'users']);
+});
+
+test('temporary scope table string keys use MariaDB column option order', () => {
+  assert.equal(scopeColumnDefinition('form_code', {
+    columnType: 'varchar(30)', characterSet: 'utf8mb4', collation: 'utf8mb4_unicode_ci'
+  }), '`form_code` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL');
 });
 
 test('managed file paths stay inside the configured private storage folders', () => {

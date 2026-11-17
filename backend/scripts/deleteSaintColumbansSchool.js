@@ -279,6 +279,17 @@ function matchingColumns(leftAlias, leftColumns, rightAlias, rightColumns) {
   ).join(' AND ');
 }
 
+function scopeColumnDefinition(column, detail) {
+  assert(detail && /^[A-Za-z0-9_(), ]+$/.test(detail.columnType), `Unsupported primary-key type for ${column}.`);
+  const characterSet = detail.characterSet || '';
+  const collation = detail.collation || '';
+  assert(!characterSet || /^[A-Za-z0-9_]+$/.test(characterSet), `Unsupported character set for ${column}.`);
+  assert(!collation || /^[A-Za-z0-9_]+$/.test(collation), `Unsupported collation for ${column}.`);
+  const charsetOption = characterSet ? ` CHARACTER SET ${characterSet}` : '';
+  const collationOption = collation ? ` COLLATE ${collation}` : '';
+  return `${quoteIdentifier(column)} ${detail.columnType}${charsetOption}${collationOption} NOT NULL`;
+}
+
 function getParentScopeJoin(parent, scopeNames, alias = 'p', schoolId) {
   const tempName = scopeNames.get(parent.name);
   if (tempName) {
@@ -316,13 +327,7 @@ async function createScopeTables(connection, tables, reachable) {
     if (!table.primaryKey.length) continue;
     const tempName = `__scdel_${index}`;
     const columns = table.primaryKey.map(quoteIdentifier).join(', ');
-    const definitions = table.primaryKey.map(column => {
-      const detail = table.columnDefinitions.get(column);
-      assert(detail && /^[A-Za-z0-9_(), ]+$/.test(detail.columnType), `Unsupported primary-key type in ${name}.${column}.`);
-      const characterSet = detail.characterSet ? ` CHARACTER SET ${quoteIdentifier(detail.characterSet)}` : '';
-      const collation = detail.collation ? ` COLLATE ${quoteIdentifier(detail.collation)}` : '';
-      return `${quoteIdentifier(column)} ${detail.columnType} NOT NULL${characterSet}${collation}`;
-    });
+    const definitions = table.primaryKey.map(column => scopeColumnDefinition(column, table.columnDefinitions.get(column)));
     await connection.query(`CREATE TEMPORARY TABLE ${quoteIdentifier(tempName)} (${definitions.join(', ')}, PRIMARY KEY (${columns})) ENGINE=InnoDB`);
     scopeNames.set(name, tempName);
   }
@@ -874,6 +879,7 @@ module.exports = {
   parseArgs,
   resolveManagedFile,
   run,
+  scopeColumnDefinition,
   stageFiles,
   verifyRdsTarget
 };
