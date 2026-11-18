@@ -10,7 +10,10 @@ let database;
 databaseModule.getDatabase = () => database;
 const { getSchoolContext } = require('../controllers/schoolContextController');
 const calendar = require('../controllers/calendarNoticesController');
+const notifications = require('../controllers/notificationsController');
 const shell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8')
+  .replace(/\r\n/g, '\n');
+const teacherShell = pageFs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8')
   .replace(/\r\n/g, '\n');
 
 function response() {
@@ -101,11 +104,42 @@ test('calendar listing uses the signed-in school and preserves local date', asyn
     assert.match(sql, /WHERE school_id = \?/);
     assert.match(sql, /DATE_FORMAT\(holiday_date, '%Y-%m-%d'\)/);
     assert.deepEqual(params, [7]);
-    return [[{ id: 4, date: '2026-10-14', title: 'No classes', detail: '', type: 'holiday', appliesTo: 'all' }]];
+    return [[{ id: 4, date: '2026-10-14', title: 'No classes', detail: '', type: 'holiday', appliesTo: 'all',
+      eventKey: 'calendar_notice:4' }]];
   } };
   const res = response();
   await calendar.listCalendarNotices({ user: { schoolId: 7 } }, res, error => { throw error; });
   assert.equal(res.data.notices[0].date, '2026-10-14');
+});
+
+test('notification listing returns event keys for calendar duplicate suppression', async () => {
+  database = { async execute(sql, params) {
+    assert.match(sql, /event_key AS eventKey/);
+    assert.deepEqual(params, [9, 'parent', 7, 7, 9, 50]);
+    return [[{ id: 21, type: 'calendar_notice', title: 'No classes', message: 'Date: 2026-10-14',
+      eventKey: 'calendar_notice:4', readAt: null }]];
+  } };
+  const res = response();
+  await notifications.listNotifications({ user: { id: 9, role: 'parent', schoolId: 7 }, query: {} },
+    res, error => { throw error; });
+  assert.equal(res.data.notifications[0].eventKey, 'calendar_notice:4');
+});
+
+test('calendar notice notifications use the calendar style and retain their event key', () => {
+  const pageMap = shell.match(/const API_NOTIFICATION_PAGE_BY_TYPE = \{[\s\S]*?\n\};/)[0];
+  const normalizerStart = shell.indexOf('function normalizeApiNotification(record) {');
+  const normalizerEnd = shell.indexOf('\nasync function getApiNotifications', normalizerStart);
+  const normalizer = shell.slice(normalizerStart, normalizerEnd);
+  const context = vm.createContext({
+    window: { location: { origin: 'https://school.example' } }, URL,
+    record: { id: 21, type: 'calendar_notice', title: 'No classes', message: 'Date: 2026-10-14',
+      eventKey: 'calendar_notice:4' }
+  });
+  const notification = vm.runInContext(`${pageMap}\n${normalizer}\nnormalizeApiNotification(record)`, context);
+  assert.equal(notification.type, 'Calendar');
+  assert.equal(notification.icon, 'calendar-off');
+  assert.equal(notification.eventKey, 'calendar_notice:4');
+  assert.deepEqual(JSON.parse(JSON.stringify(notification.link)), { page: 'notifications' });
 });
 
 test('communication waits for calendar notices before building same-day notifications', async () => {
@@ -132,7 +166,7 @@ test('communication waits for calendar notices before building same-day notifica
 });
 
 test('calendar notification uses the local school date, not a UTC date string', () => {
-  const source = shell.match(/function getTodayCalendarNotifications\(\) \{[\s\S]*?\n\}\n\nasync function loadApiCommunication/)[0]
+  const source = shell.match(/function getTodayCalendarNotifications\([^)]*\) \{[\s\S]*?\n\}\n\nasync function loadApiCommunication/)[0]
     .replace(/\n\nasync function loadApiCommunication$/, '');
   const context = {
     Date: class { getFullYear() { return 2026; } getMonth() { return 9; } getDate() { return 14; } },
@@ -150,6 +184,35 @@ test('calendar notification uses the local school date, not a UTC date string', 
   assert.equal(notices.length, 1);
   assert.equal(notices[0].title, 'No classes');
   assert.equal(notices[0].createdAt, '2026-10-14T00:00:00');
+  assert.equal(getToday([{ eventKey: 'calendar_notice:1' }]).length, 0);
+});
+
+test('teacher refresh passes saved notifications to the calendar duplicate check', async () => {
+  const source = teacherShell.match(/async function refreshTeacherNotifications\(\) \{[\s\S]*?\n\}\n\nwindow\.EDUGNAY_REFRESH_NOTIFICATIONS/)[0]
+    .replace(/\n\nwindow\.EDUGNAY_REFRESH_NOTIFICATIONS$/, '');
+  const saved = [{ id: '21', eventKey: 'calendar_notice:1' }];
+  const context = {
+    BACKEND_COMMUNICATION: true,
+    NOTIFICATIONS: [],
+    window: {
+      EDUGNAY_API: {
+        getNotifications: async () => saved,
+        getTodayCalendarNotifications(items) {
+          assert.equal(items, saved);
+          return [];
+        }
+      },
+      EDUGNAY_COMMUNICATION: { backend: true },
+      dispatchEvent() {}
+    },
+    renderTopbarNotifs() {},
+    Event: class {}
+  };
+  const refresh = vm.runInNewContext(`${source}\nrefreshTeacherNotifications`, context);
+  await refresh();
+  assert.equal(context.NOTIFICATIONS.length, 1);
+  assert.equal(context.NOTIFICATIONS[0], saved[0]);
+  assert.equal(context.window.EDUGNAY_COMMUNICATION.notifications, context.NOTIFICATIONS);
 });
 
 test('calendar create rejects impossible dates without writing', async () => {
@@ -202,13 +265,74 @@ test('calendar create and delete commit school-scoped changes', async () => {
   assert.equal(created.code, 201);
   assert.equal(created.data.notice.date, '2026-10-14');
   assert.deepEqual(queries[0][1], [7, '2026-10-14', 'No classes', 'Local event']);
+  const notificationInsert = queries.find(([sql]) => sql.includes('INSERT INTO notifications'));
+  assert.ok(notificationInsert);
+  assert.match(notificationInsert[0], /users\.school_id = \?/);
+  assert.match(notificationInsert[0], /users\.account_status = 'active'/);
+  assert.match(notificationInsert[0], /users\.id <> \?/);
+  assert.deepEqual(notificationInsert[1], ['No classes', 'Date: 2026-10-14', 53, 7, 3]);
   const removed = response();
   await calendar.deleteCalendarNotice({ user: { id: 3, schoolId: 7 }, params: { noticeId: '53' } },
     removed, error => { throw error; });
   assert.equal(removed.code, 204);
-  assert.deepEqual(queries[2][1], [53, 7]);
-  assert.match(queries[4][0], /INSERT INTO audit_logs/);
+  assert.deepEqual(queries.find(([sql]) => sql.includes('DELETE FROM holidays'))[1], [53, 7]);
+  const notificationDelete = queries.find(([sql]) => sql.includes('DELETE notifications FROM notifications'));
+  assert.ok(notificationDelete);
+  assert.match(notificationDelete[0], /notifications\.type = 'calendar_notice'/);
+  assert.match(notificationDelete[0], /users\.school_id = \?/);
+  assert.deepEqual(notificationDelete[1], ['calendar_notice:53', 7]);
+  assert.equal(queries.filter(([sql]) => sql.includes('INSERT INTO audit_logs')).length, 2);
   assert.equal(commits, 2);
+});
+
+test('calendar deletion rolls back if alert cleanup fails', async () => {
+  let rollbacks = 0;
+  let commits = 0;
+  const connection = {
+    async beginTransaction() {},
+    async commit() { commits += 1; },
+    async rollback() { rollbacks += 1; },
+    async execute(sql) {
+      if (sql.includes('SELECT title') && sql.includes('FROM holidays')) {
+        return [[{ title: 'No classes', date: '2026-10-14' }]];
+      }
+      if (sql.includes('DELETE FROM holidays')) return [{ affectedRows: 1 }];
+      if (sql.includes('DELETE notifications FROM notifications')) throw new Error('alert cleanup failed');
+      return [{}];
+    },
+    release() {}
+  };
+  database = { getConnection: async () => connection };
+  let failure;
+  await calendar.deleteCalendarNotice({ user: { id: 3, schoolId: 7 }, params: { noticeId: '53' } },
+    response(), error => { failure = error; });
+  assert.match(failure.message, /alert cleanup failed/);
+  assert.equal(rollbacks, 1);
+  assert.equal(commits, 0);
+});
+
+test('calendar notice and its notifications roll back together when notification creation fails', async () => {
+  let rollbacks = 0;
+  let commits = 0;
+  const connection = {
+    async beginTransaction() {},
+    async commit() { commits += 1; },
+    async rollback() { rollbacks += 1; },
+    async execute(sql) {
+      if (sql.includes('INSERT INTO notifications')) throw new Error('notification insert failed');
+      if (sql.includes('INSERT INTO holidays')) return [{ insertId: 54 }];
+      return [{}];
+    },
+    release() {}
+  };
+  database = { getConnection: async () => connection };
+  const res = response();
+  let failure;
+  await calendar.createCalendarNotice({ user: { id: 3, schoolId: 7 },
+    body: { date: '2026-10-14', title: 'No classes' } }, res, error => { failure = error; });
+  assert.match(failure.message, /notification insert failed/);
+  assert.equal(rollbacks, 1);
+  assert.equal(commits, 0);
 });
 
 test('school portal sidebars begin without a tenant name and load the shared shell update', () => {

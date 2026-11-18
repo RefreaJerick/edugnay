@@ -22,7 +22,8 @@ function limit(value) {
 async function listNotifications(req, res, next) {
   try {
     const [rows] = await getDatabase().execute(
-      `SELECT id, type, title, message, target_path AS targetPath, read_at AS readAt, created_at AS createdAt
+      `SELECT id, type, title, message, target_path AS targetPath, event_key AS eventKey,
+        read_at AS readAt, created_at AS createdAt
       FROM notifications WHERE user_id = ? AND (
         related_student_user_id IS NULL OR (? = 'parent' AND EXISTS (
           SELECT 1 FROM student_parent_links AS links

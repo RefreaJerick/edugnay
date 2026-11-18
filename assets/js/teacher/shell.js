@@ -234,9 +234,10 @@ document.addEventListener('edugnay:calendar-notices-updated', () => {
 async function refreshTeacherNotifications() {
   if (!BACKEND_COMMUNICATION || !window.EDUGNAY_API?.getNotifications) return;
   try {
+    const savedNotifications = await window.EDUGNAY_API.getNotifications();
     NOTIFICATIONS = [
-      ...window.EDUGNAY_API.getTodayCalendarNotifications(),
-      ...await window.EDUGNAY_API.getNotifications()
+      ...window.EDUGNAY_API.getTodayCalendarNotifications(savedNotifications),
+      ...savedNotifications
     ];
     if (window.EDUGNAY_COMMUNICATION?.backend) {
       window.EDUGNAY_COMMUNICATION.notifications = NOTIFICATIONS;

@@ -7,6 +7,8 @@ const MAX_ATTEMPTS = 5;
 const GENERIC_PUSH_TITLE = 'New Academix notification';
 const GENERIC_PUSH_BODY = 'Open AcadeMix to view it.';
 const ANNOUNCEMENT_HEADLINE_MAX_LENGTH = 120;
+const CALENDAR_PUSH_MONTHS = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.',
+  'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
 let timer;
 let processing = false;
 let missingTableReported = false;
@@ -22,6 +24,15 @@ function cleanPushText(value, maximumLength) {
   return `${characters.slice(0, maximumLength - 1).join('').trimEnd()}…`;
 }
 
+function calendarPushDate(message) {
+  const text = String(message || '');
+  const match = /^Date: (\d{4}-\d{2}-\d{2})$/.exec(text);
+  if (!match) return text;
+  const date = new Date(`${match[1]}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== match[1]) return text;
+  return `${CALENDAR_PUSH_MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+}
+
 function pushCopyFor(notification) {
   const generic = { title: GENERIC_PUSH_TITLE, body: GENERIC_PUSH_BODY };
   switch (notification.type) {
@@ -30,6 +41,15 @@ function pushCopyFor(notification) {
         title: 'New announcement',
         body: cleanPushText(notification.message, ANNOUNCEMENT_HEADLINE_MAX_LENGTH) || GENERIC_PUSH_BODY
       };
+    case 'calendar_notice': {
+      const date = calendarPushDate(notification.message);
+      return {
+        title: 'School calendar notice',
+        body: cleanPushText(date ? `${date}: ${notification.title}` : notification.title,
+          ANNOUNCEMENT_HEADLINE_MAX_LENGTH)
+          || GENERIC_PUSH_BODY
+      };
+    }
     case 'grade':
       if (notification.title === 'Subject grade published') {
         return { title: 'Final grade published', body: 'A new final grade is available in AcadeMix.' };

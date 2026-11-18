@@ -1845,6 +1845,7 @@ async function regenerateApiStudentQr(studentId) {
 
 const API_NOTIFICATION_PAGE_BY_TYPE = {
   announcement: 'announcements',
+  calendar_notice: 'notifications',
   assignment: 'assignments',
   grade: 'grades',
   attendance: 'attendance',
@@ -2032,6 +2033,7 @@ function normalizeApiNotification(record) {
   const visual = {
     school_account: { icon: 'building-2', tone: 'blue', label: 'School account' },
     announcement: { icon: 'megaphone', tone: 'gold', label: 'Announcement' },
+    calendar_notice: { icon: 'calendar-off', tone: 'gold', label: 'Calendar' },
     assignment: { icon: 'clipboard-list', tone: 'blue', label: 'Assignment' },
     grade: { icon: 'clipboard-pen', tone: 'orange', label: 'Grades' },
     attendance: { icon: 'user-check', tone: 'red', label: 'Attendance' },
@@ -2050,6 +2052,7 @@ function normalizeApiNotification(record) {
     read: Boolean(record.isRead),
     title: String(record.title || ''),
     message: String(record.message || ''),
+    eventKey: String(record.eventKey || ''),
     link,
     createdAt: record.createdAt
   };
@@ -2120,10 +2123,12 @@ function isSyntheticNotificationRead(id) {
   return readSyntheticNotificationIds.has(String(id));
 }
 
-function getTodayCalendarNotifications() {
+function getTodayCalendarNotifications(persistedNotifications = []) {
   const today = new Date();
   const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  return (window.EDUGNAY_CALENDAR_NOTICES || []).filter(notice => notice.date === localDate)
+  const persistedEventKeys = new Set(persistedNotifications.map(notification => notification.eventKey));
+  return (window.EDUGNAY_CALENDAR_NOTICES || []).filter(notice => notice.date === localDate
+    && !persistedEventKeys.has(`calendar_notice:${notice.id}`))
     .map(notice => ({
       id: `calendar-${notice.id}`, schoolId: window.EDUGNAY_API_SCHOOL_CONTEXT?.id,
       icon: 'calendar-off', tone: 'gold', type: 'Calendar', read: isSyntheticNotificationRead(`calendar-${notice.id}`),
@@ -2141,7 +2146,7 @@ async function loadApiCommunication(role) {
     ? Promise.resolve()
     : schoolReady.then(() => window.EDUGNAY_CALENDAR_READY);
   const notifications = Promise.all([schoolReady, calendarReady]).then(() => getApiNotifications()).then(items =>
-    role === 'platform_admin' ? items : [...getTodayCalendarNotifications(), ...items]
+    role === 'platform_admin' ? items : [...getTodayCalendarNotifications(items), ...items]
   );
   const tasks = schoolReady.then(() => getApiTasks());
   const announcements = role === 'platform_admin'

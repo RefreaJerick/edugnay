@@ -41,6 +41,13 @@ async function createCalendarNotice(req, res, next) {
        VALUES (?, ?, ?, ?, 'holiday', 'all')`,
       [req.user.schoolId, date, title, detail || null]
     );
+    await connection.execute(
+      `INSERT INTO notifications (user_id, type, title, message, event_key)
+       SELECT users.id, 'calendar_notice', ?, ?, CONCAT('calendar_notice:', ?)
+       FROM users
+       WHERE users.school_id = ? AND users.account_status = 'active' AND users.id <> ?`,
+      [title, `Date: ${date}`, result.insertId, req.user.schoolId, req.user.id]
+    );
     await writeAuditLog(connection, req, 'calendar_notice_created', 'holiday', result.insertId,
       { summary: title, noticeTitle: title, noticeDate: date }, req.user.schoolId);
     await connection.commit();
@@ -76,6 +83,13 @@ async function deleteCalendarNotice(req, res, next) {
       await connection.rollback();
       return res.status(404).json({ message: 'Calendar notice not found.' });
     }
+    await connection.execute(
+      `DELETE notifications FROM notifications
+       INNER JOIN users ON users.id = notifications.user_id
+       WHERE notifications.type = 'calendar_notice' AND notifications.event_key = ?
+         AND users.school_id = ?`,
+      [`calendar_notice:${id}`, req.user.schoolId]
+    );
     await writeAuditLog(connection, req, 'calendar_notice_deleted', 'holiday', id,
       { noticeTitle: notices[0].title, noticeDate: notices[0].date, summary: notices[0].title }, req.user.schoolId);
     await connection.commit();
