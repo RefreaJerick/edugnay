@@ -43,9 +43,10 @@ function pushCopyFor(notification) {
       };
     case 'calendar_notice': {
       const date = calendarPushDate(notification.message);
+      const detail = cleanPushText(notification.calendarNoticeDetail, ANNOUNCEMENT_HEADLINE_MAX_LENGTH);
       return {
-        title: 'School calendar notice',
-        body: cleanPushText(date ? `${date}: ${notification.title}` : notification.title,
+        title: cleanPushText(notification.title, 80) || 'School calendar notice',
+        body: cleanPushText(date ? `${date}${detail ? `: ${detail}` : ''}` : detail || notification.message,
           ANNOUNCEMENT_HEADLINE_MAX_LENGTH)
           || GENERIC_PUSH_BODY
       };
@@ -133,6 +134,7 @@ async function processPushQueue(database = getDatabase(), send = webPush.sendNot
     if (!claim.affectedRows) return false;
     const [jobs] = await database.execute(`SELECT deliveries.id, deliveries.attempts,
         notices.id AS notificationId, notices.type, notices.title, notices.message,
+        calendar_notices.detail AS calendarNoticeDetail,
         notices.related_student_user_id AS studentId,
         subscriptions.id AS subscriptionId, subscriptions.user_id AS subscriptionUserId,
         subscriptions.endpoint, subscriptions.p256dh, subscriptions.auth_key AS authKey,
@@ -148,6 +150,9 @@ async function processPushQueue(database = getDatabase(), send = webPush.sendNot
       INNER JOIN push_subscriptions AS subscriptions ON subscriptions.id = deliveries.subscription_id
       LEFT JOIN users AS recipients ON recipients.id = notices.user_id AND recipients.account_status = 'active'
       LEFT JOIN schools ON schools.id = recipients.school_id
+      LEFT JOIN holidays AS calendar_notices ON notices.type = 'calendar_notice'
+        AND calendar_notices.id = CAST(SUBSTRING_INDEX(notices.event_key, ':', -1) AS UNSIGNED)
+        AND calendar_notices.school_id = recipients.school_id
       LEFT JOIN user_sessions AS sessions ON sessions.id = subscriptions.session_id
         AND sessions.user_id = recipients.id AND sessions.expires_at > NOW()
       WHERE deliveries.claim_token = ? ORDER BY deliveries.id`, [claimToken]);

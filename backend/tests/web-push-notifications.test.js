@@ -141,16 +141,24 @@ test('worker maps notification types to descriptive, privacy-safe banner copy', 
     const cases = [
       [{ type: 'announcement', title: 'New announcement', message: 'Family Day schedule' },
         'New announcement', 'Family Day schedule'],
-      [{ type: 'calendar_notice', title: 'No classes', message: 'Date: 2026-12-25' },
-        'School calendar notice', 'Dec. 25, 2026: No classes'],
-      [{ type: 'calendar_notice', title: 'First day', message: 'Date: 2026-01-01' },
-        'School calendar notice', 'Jan. 1, 2026: First day'],
-      [{ type: 'calendar_notice', title: 'Last day of February', message: 'Date: 2026-02-28' },
-        'School calendar notice', 'Feb. 28, 2026: Last day of February'],
-      [{ type: 'calendar_notice', title: 'First day of March', message: 'Date: 2026-03-01' },
-        'School calendar notice', 'Mar. 1, 2026: First day of March'],
-      [{ type: 'calendar_notice', title: 'Invalid date', message: 'Date: 2026-02-30' },
-        'School calendar notice', 'Date: 2026-02-30: Invalid date'],
+      [{ type: 'calendar_notice', title: 'No classes', message: 'Date: 2026-12-25',
+        calendarNoticeDetail: 'Classes are cancelled today.' },
+        'No classes', 'Dec. 25, 2026: Classes are cancelled today.'],
+      [{ type: 'calendar_notice', title: 'First day', message: 'Date: 2026-01-01',
+        calendarNoticeDetail: 'Welcome back.' },
+        'First day', 'Jan. 1, 2026: Welcome back.'],
+      [{ type: 'calendar_notice', title: 'Last day of February', message: 'Date: 2026-02-28',
+        calendarNoticeDetail: 'Term ends.' },
+        'Last day of February', 'Feb. 28, 2026: Term ends.'],
+      [{ type: 'calendar_notice', title: 'First day of March', message: 'Date: 2026-03-01',
+        calendarNoticeDetail: 'Classes resume.' },
+        'First day of March', 'Mar. 1, 2026: Classes resume.'],
+      [{ type: 'calendar_notice', title: 'Consultation', message: 'Date: 2026-01-01',
+        calendarNoticeDetail: '' },
+        'Consultation', 'Jan. 1, 2026'],
+      [{ type: 'calendar_notice', title: 'Invalid date', message: 'Date: 2026-02-30',
+        calendarNoticeDetail: 'See the school calendar.' },
+        'Invalid date', 'Date: 2026-02-30: See the school calendar.'],
       [{ type: 'grade', title: 'Subject grade published', role: 'student' },
         'Final grade published', 'A new final grade is available in AcadeMix.'],
       [{ type: 'grade', title: 'Published grade below passing', role: 'parent' },
@@ -193,12 +201,18 @@ test('worker maps notification types to descriptive, privacy-safe banner copy', 
 
     for (const [overrides, expectedTitle, expectedBody] of cases) {
       let sent;
-      await processPushQueue(queueDatabase({ ...baseJob, ...overrides }), async (_subscription, payload) => {
+      const database = queueDatabase({ ...baseJob, ...overrides });
+      await processPushQueue(database, async (_subscription, payload) => {
         sent = JSON.parse(payload);
       });
       assert.equal(sent.title, expectedTitle);
       assert.equal(sent.body, expectedBody);
       assert.doesNotMatch(JSON.stringify(sent), /Secret Learner|Chemistry|score of 42/);
+      if (overrides.type === 'calendar_notice') {
+        const select = database.calls.find(call => call.sql.includes('SELECT deliveries.id'))?.sql || '';
+        assert.match(select, /calendar_notices\.detail AS calendarNoticeDetail/);
+        assert.match(select, /calendar_notices\.school_id = recipients\.school_id/);
+      }
     }
 
     let longHeadlinePayload;
