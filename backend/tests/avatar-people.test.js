@@ -48,6 +48,72 @@ test('new person avatars hydrate with their own photo and size', () => {
   assert.equal(rendered[0].options.size, 'sm');
 });
 
+test('teacher journal review uses each student photo and student fallback through navigation and review refresh', async () => {
+  const source = read('assets/js/teacher/journals.js').replace(/\r\n/g, '\n');
+  const renderStart = source.indexOf('function populateModal(s) {');
+  const renderEnd = source.indexOf('\n}\n\n/*', renderStart) + 2;
+  const navigateStart = source.indexOf('function navigateEntry(dir) {');
+  const navigateEnd = source.indexOf('\n}\n\n/*', navigateStart) + 2;
+  const reviewStart = source.indexOf('async function markReviewed() {');
+  const reviewEnd = source.indexOf('\n}\n\n/*', reviewStart) + 2;
+  assert.ok(renderStart >= 0 && renderEnd > renderStart);
+  assert.ok(navigateStart >= 0 && navigateEnd > navigateStart);
+  assert.ok(reviewStart >= 0 && reviewEnd > reviewStart);
+
+  const photoStudent = { id: '101', displayName: 'Alyssa Lim', initials: 'AL', avatarUrl: '/api/users/101/avatar?v=3' };
+  const fallbackStudent = { id: '102', displayName: 'Ethan Lim', initials: 'EL', avatarUrl: null };
+  const entries = [
+    { studentId: '101', submitted: true, reviewed: false, score: 12, maxScore: 50, entryId: 'entry-101', entryText: 'Entry A' },
+    { studentId: '102', submitted: true, reviewed: false, score: 14, maxScore: 50, entryId: 'entry-102', entryText: 'Entry B' }
+  ];
+  const elements = Object.fromEntries([
+    'modal-avatar', 'modal-student-name', 'modal-meta', 'modal-prompt', 'modal-score-input',
+    'markReviewedBtn', 'journal-ai-panel', 'journal-ai-assess', 'modal-status-note', 'journal-mobile-status-note',
+    'modal-nav-label', 'prevBtn', 'nextBtn'
+  ].map(id => [id, {}]));
+  elements['modal-entry-body'] = { classList: { add() {}, remove() {} } };
+  elements['modal-score-input'].style = {};
+  elements['modal-score-input'].value = '';
+  elements['journal-ai-panel'].hidden = false;
+  const avatarCalls = [];
+  let context;
+  context = vm.createContext({
+    SECTIONS: { section: { label: 'Grade 7 · St. John', prompt: { promptText: 'Weekly prompt' }, students: entries } },
+    STUDENT_BY_ID: { '101': photoStudent, '102': fallbackStudent },
+    currentSection: 'section', activeStudentIds: ['101', '102'], activeStudentIndex: 0,
+    journalAiRubric: { enabled: false }, assessmentRequestId: 0,
+    window: { EDUGNAY_AVATAR: { render(element, person, options) { avatarCalls.push({ element, person, options }); } }, EDUGNAY_API: { async reviewJournalEntry() {} } },
+    document: { getElementById: id => elements[id], querySelector: selector => selector === '.score-max-label' ? { textContent: '' } : null },
+    renderAssessment() {}, loadTeacherJournals: async () => {}, showAppToast() {},
+    lucide: { createIcons() {} }, parseFloat
+  });
+
+  const populateModal = vm.runInContext(`${source.slice(renderStart, renderEnd)}; populateModal`, context);
+  const navigateEntry = vm.runInContext(`${source.slice(navigateStart, navigateEnd)}; navigateEntry`, context);
+  const markReviewed = vm.runInContext(`${source.slice(reviewStart, reviewEnd)}; markReviewed`, context);
+  populateModal(entries[0]);
+  assert.match(elements['journal-mobile-status-note'].innerHTML, /Not yet reviewed/);
+  navigateEntry(1);
+  await markReviewed();
+  assert.equal(elements['journal-mobile-status-note'].innerHTML, elements['modal-status-note'].innerHTML);
+  entries[1].reviewed = true;
+  populateModal(entries[1]);
+  assert.match(elements['journal-mobile-status-note'].className, /is-reviewed/);
+  assert.match(elements['journal-mobile-status-note'].innerHTML, /Reviewed/);
+
+  assert.equal(avatarCalls.length, 4);
+  assert.equal(avatarCalls[0].person.avatarUrl, '/api/users/101/avatar?v=3');
+  assert.equal(avatarCalls[0].person.initials, 'AL');
+  assert.equal(avatarCalls[1].person.avatarUrl, null);
+  assert.equal(avatarCalls[1].person.initials, 'EL');
+  assert.equal(avatarCalls[2].person.avatarUrl, null);
+  for (const call of avatarCalls) {
+    assert.equal(call.options.role, 'student');
+    assert.equal(call.options.size, 'lg');
+    assert.equal(call.element, elements['modal-avatar']);
+  }
+});
+
 test('profile avatars stay circular and request private photos with the signed-in session', () => {
   const profileCss = read('assets/css/profile-common.css');
   const profileRule = profileCss.match(/\.profile-avatar-wrap \.profile-avatar\.person-avatar\s*\{([^}]+)\}/)?.[1] || '';

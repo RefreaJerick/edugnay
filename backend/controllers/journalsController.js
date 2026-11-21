@@ -690,6 +690,8 @@ async function deleteJournalPrompt(req, res, next) {
 }
 
 module.exports = {
+  getConfiguredJournalSubject,
+  teacherCanManageSection,
   createJournalPrompt,
   deleteJournalPrompt,
   listJournalEntries,

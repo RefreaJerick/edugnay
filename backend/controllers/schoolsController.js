@@ -181,6 +181,7 @@ async function getFeatures(database, schoolId) {
   const [[features]] = await database.execute(
     `SELECT grades_enabled AS gradesEnabled, narrative_reports_enabled AS narrativeReportsEnabled,
       ai_evidence_approved_at AS aiEvidenceApprovedAt,
+      journal_ai_approved_at AS journalAiApprovedAt,
       journals_enabled AS journalsEnabled,
       sf_templates_enabled AS sfTemplatesEnabled FROM school_portal_features WHERE school_id = ?`, [schoolId]
   );
@@ -188,6 +189,7 @@ async function getFeatures(database, schoolId) {
     ...Object.fromEntries(FEATURE_FIELDS.map(field => [field, Boolean(features?.[field])])),
     aiEvidenceApproved: Boolean(features?.aiEvidenceApprovedAt),
     aiEvidenceApprovedAt: features?.aiEvidenceApprovedAt || null,
+    journalAiApproved: Boolean(features?.journalAiApprovedAt),
     attendanceEnabled: true
   };
 }
@@ -1172,10 +1174,13 @@ async function updatePortalFeatures(req, res, next) {
   try {
     const body = req.body || {};
     const unknown = Object.keys(body).find(field => !FEATURE_FIELDS.includes(field) &&
-      !['journalSubjectId', 'weekStartDay', 'weekEndDay', 'aiEvidenceApproved'].includes(field));
+      !['journalSubjectId', 'weekStartDay', 'weekEndDay', 'aiEvidenceApproved', 'journalAiApproved'].includes(field));
     if (unknown || !Object.keys(body).length) throw createError('Provide valid portal feature settings.');
     if (Object.hasOwn(body, 'aiEvidenceApproved') && typeof body.aiEvidenceApproved !== 'boolean') {
       throw createError('AI evidence approval must be enabled or disabled.');
+    }
+    if (Object.hasOwn(body, 'journalAiApproved') && typeof body.journalAiApproved !== 'boolean') {
+      throw createError('Journal AI approval must be enabled or disabled.');
     }
     const hasWeekStart = Object.hasOwn(body, 'weekStartDay');
     const hasWeekEnd = Object.hasOwn(body, 'weekEndDay');
@@ -1228,6 +1233,17 @@ async function updatePortalFeatures(req, res, next) {
         'school_portal_features', schoolId, { summary: 'AI report evidence sharing' });
       current.aiEvidenceApproved = body.aiEvidenceApproved;
       current.aiEvidenceApprovedAt = body.aiEvidenceApproved ? new Date() : null;
+    }
+    if (Object.hasOwn(body, 'journalAiApproved') && body.journalAiApproved !== current.journalAiApproved) {
+      await connection.execute(
+        `UPDATE school_portal_features SET journal_ai_approved_at = ?,
+          journal_ai_approved_by_user_id = ? WHERE school_id = ?`,
+        [body.journalAiApproved ? new Date() : null, body.journalAiApproved ? Number(req.user.id) : null, schoolId]
+      );
+      await writeAuditLog(connection, req,
+        body.journalAiApproved ? 'journal_ai_approved' : 'journal_ai_approval_revoked',
+        'school_portal_features', schoolId, { summary: 'Journal AI assessment' });
+      current.journalAiApproved = body.journalAiApproved;
     }
     await connection.execute(`UPDATE school_settings SET journal_subject_id = ?,
       narrative_report_week_start_day = ?, narrative_report_week_end_day = ? WHERE school_id = ?`,

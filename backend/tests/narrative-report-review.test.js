@@ -400,6 +400,15 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(styles, /@media \(min-width: 521px\)\s*\{[\s\S]*?\.reports-overview \.stat-card\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*min-height:\s*112px;[^}]*padding:\s*12px 14px;/s);
   assert.match(styles, /\.reports-overview \.stat-card-num\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1;/s);
   assert.match(styles, /\.reports-overview \.stat-card-icon\s*\{[^}]*position:\s*absolute;[^}]*top:\s*12px;[^}]*right:\s*14px;/s);
+  assert.match(page, /<div class="summary-strip" id="report-summary-strip"[^>]*>[\s\S]*?<div class="stat-card-copy"><div class="stat-card-label">Reports in selected week<\/div><div class="stat-card-sub">Selected reporting period<\/div><\/div>/);
+  assert.match(styles, /#report-summary-strip \.stat-card-copy\s*\{\s*display:\s*contents;\s*\}/);
+  assert.match(styles, /@media \(min-width: 638px\) and \(max-width: 1100px\)\s*\{[\s\S]*?#report-summary-strip \.stat-card\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto;[^}]*column-gap:\s*18px;[^}]*min-height:\s*0;[^}]*padding:\s*14px 16px;/s);
+  assert.match(styles, /#report-summary-strip \.stat-card-num\s*\{\s*grid-column:\s*1;\s*grid-row:\s*1;\s*margin:\s*0;\s*\}/);
+  assert.match(styles, /#report-summary-strip \.stat-card-copy\s*\{\s*display:\s*block;\s*grid-column:\s*2;\s*grid-row:\s*1;\s*min-width:\s*0;\s*\}/);
+  assert.match(styles, /#report-summary-strip \.stat-card-top\s*\{\s*grid-column:\s*3;\s*grid-row:\s*1;\s*margin:\s*0;\s*\}/);
+  assert.match(styles, /@media \(min-width: 521px\) and \(max-width: 637px\)\s*\{[\s\S]*?#report-summary-strip \.stat-card\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*min-height:\s*84px;[^}]*padding:\s*10px;/s);
+  assert.match(styles, /#report-summary-strip \.stat-card-num\s*\{\s*align-self:\s*flex-start;/);
+  assert.match(styles, /#report-summary-strip \.stat-card-sub\s*\{\s*display:\s*none !important;\s*\}/);
   assert.match(styles, /@media \(max-width: 520px\)\s*\{[\s\S]*?\.summary-strip \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
   assert.match(styles, /@media \(max-width: 1232px\)[\s\S]*?\.summary-strip \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
   for (const id of ['count-total', 'count-drafts', 'count-confirmed', 'count-follow-up']) {
@@ -664,8 +673,15 @@ test('teacher Narrative Reports mobile controls fit their available width', () =
   assert.doesNotMatch(mobileStyles, /#review-modal \.review-modal-foot-actions > #confirm-review,[\s\S]*?#review-modal \.review-modal-foot-actions > #save-review\s*\{[^}]*min-height:/);
   assert.match(sharedButtonStyles, /body :is\([\s\S]*?\.top-btn,[\s\S]*?min-height:\s*var\(--button-height\);[\s\S]*?border-radius:\s*var\(--button-radius\);/);
   assert.match(sharedButtonStyles, /@media \(max-width: 560px\)[\s\S]*?body :is\([\s\S]*?\.top-btn,[\s\S]*?min-height:\s*36px;[\s\S]*?font-size:\s*12px;/);
-  assert.match(mobileStyles, /#review-modal \.delete-draft-trigger\s*\{[^}]*order:\s*2;[^}]*width:\s*100%;[^}]*min-height:\s*48px;[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*color:\s*var\(--red\);/s);
+  assert.match(mobileStyles, /#review-modal \.delete-draft-trigger\s*\{[^}]*order:\s*2;[^}]*width:\s*100%;[^}]*justify-content:\s*center;[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*color:\s*var\(--red\);/s);
+  assert.doesNotMatch(mobileStyles, /#review-modal \.delete-draft-trigger\s*\{[^}]*min-height\s*:/s);
+  assert.doesNotMatch(mobileStyles, /#review-modal \.delete-draft-trigger\s*\{[^}]*padding\s*:/s);
   assert.doesNotMatch(mobileStyles, /#review-modal \.delete-draft-trigger::before/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot:has\(> \.delete-draft-trigger:not\(\[hidden\]\)\)\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot:has\(> \.delete-draft-trigger:not\(\[hidden\]\)\) \.review-modal-foot-actions\s*\{\s*display:\s*contents;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot:has\(> \.delete-draft-trigger:not\(\[hidden\]\)\) #confirm-review,[\s\S]*?#review-modal \.review-modal-foot:has\(> \.delete-draft-trigger:not\(\[hidden\]\)\) #release-report\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*grid-row:\s*1;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot:has\(> \.delete-draft-trigger:not\(\[hidden\]\)\) #save-review\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*2;/);
+  assert.match(mobileStyles, /#review-modal \.review-modal-foot:has\(> \.delete-draft-trigger:not\(\[hidden\]\)\) > \.delete-draft-trigger\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*2;/);
   assert.match(styles, /\.top-btn:focus-visible\s*\{\s*outline:\s*3px solid var\(--blue-mid\);/);
 });
 
@@ -678,7 +694,7 @@ test('report pipeline keeps its desktop stages and exposes the grouped mobile fl
   const bannerMarkup = page.slice(bannerStart, bannerEnd);
   const livePipelineStyles = styles.slice(styles.indexOf('/* Screenshot-aligned live adviser report dashboard and dialogs. */'));
   const mobileStyles = styles.slice(styles.lastIndexOf('/* Narrative Reports mobile control layout */'));
-  const pipelineStyles = styles.slice(styles.indexOf('/* Mobile pipeline disclosure.'));
+  const pipelineStyles = styles.slice(styles.indexOf('/* Responsive pipeline disclosure.'));
 
   assert.match(page, /class="pipeline-banner"[^>]*aria-labelledby="pipeline-title"/);
   assert.doesNotMatch(bannerMarkup, /class="pipeline-icon"|data-lucide="workflow"/);
@@ -706,7 +722,10 @@ test('report pipeline keeps its desktop stages and exposes the grouped mobile fl
   assert.match(livePipelineStyles, /\.pipeline-head \.badge\.is-enabled\s*\{[^}]*color:\s*var\(--theme-success-deep\);/s);
   assert.match(styles, /\.pipeline-data-group,\s*\.pipeline-data-sources\s*\{\s*display:\s*contents;\s*\}/);
   assert.match(pipelineStyles, /\.pipeline-flow\[hidden\]\s*\{\s*display:\s*none !important;\s*\}/);
-  assert.match(pipelineStyles, /@media \(max-width: 760px\)[\s\S]*?\.pipeline-banner:has\(\.pipeline-flow\[hidden\]\) \.pipeline-head\s*\{\s*margin-bottom:\s*0;\s*\}/);
+  assert.match(pipelineStyles, /@media \(max-width: 1100px\)[\s\S]*?\.pipeline-banner:has\(\.pipeline-flow\[hidden\]\) #generation-state\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(pipelineStyles, /@media \(max-width: 1100px\)[\s\S]*?\.pipeline-banner:has\(\.pipeline-flow\[hidden\]\) \.pipeline-head\s*\{\s*margin-bottom:\s*0;\s*\}/);
+  assert.match(pipelineStyles, /@media \(max-width: 1100px\)[\s\S]*?\.pipeline-head\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 40px;[^}]*align-items:\s*center;/s);
+  assert.match(pipelineStyles, /@media \(max-width: 1100px\)[\s\S]*?\.pipeline-title-wrap\s*\{\s*grid-column:\s*1;\s*min-width:\s*0;\s*\}[\s\S]*?\.pipeline-toggle\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1;\s*justify-self:\s*end;/);
   assert.match(pipelineStyles, /\.pipeline-flow::before\s*\{\s*display:\s*none;\s*\}/);
   assert.match(pipelineStyles, /\.pipeline-data-group::after,\s*\.pipeline-flow > \.flow-step\.ai::after\s*\{[^}]*left:\s*15\.5px;[^}]*width:\s*3px;[^}]*background-image:\s*radial-gradient\(circle, rgba\(255, 255, 255, \.36\) 1\.3px, transparent 1\.5px\);[^}]*background-size:\s*3px 8px;[^}]*background-repeat:\s*repeat-y;/s);
   assert.match(pipelineStyles, /\.pipeline-data-group::after\s*\{\s*top:\s*34px;\s*bottom:\s*-22px;\s*\}/);
@@ -715,17 +734,17 @@ test('report pipeline keeps its desktop stages and exposes the grouped mobile fl
   assert.match(pipelineStyles, /#pipeline-toggle\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
   assert.match(pipelineStyles, /#pipeline-toggle:focus-visible\s*\{\s*outline:\s*2px solid rgba\(255, 255, 255, \.82\);\s*outline-offset:\s*2px;\s*box-shadow:\s*none;\s*\}/);
   assert.match(pipelineStyles, /\.pipeline-data-sources\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s);
-  assert.match(pipelineStyles, /\.pipeline-data-group \.flow-step\s*\{[^}]*grid-template-columns:\s*22px minmax\(0, 1fr\);[^}]*border:\s*1px solid var\(--pipeline-card-border\);[^}]*background:\s*var\(--pipeline-card-surface\);/s);
+  assert.match(pipelineStyles, /\.pipeline-data-group \.flow-step\s*\{[^}]*grid-template-columns:\s*22px minmax\(0, 1fr\);[^}]*gap:\s*2px 8px;[^}]*border:\s*1px solid var\(--pipeline-card-border\);[^}]*background:\s*var\(--pipeline-card-surface\);/s);
   assert.match(pipelineStyles, /\.pipeline-data-group \.flow-step-icon\s*\{[^}]*width:\s*22px;[^}]*height:\s*22px;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*color:\s*var\(--school-accent-on-dark, #8bbcff\);/s);
   assert.match(pipelineStyles, /\.pipeline-data-group \.flow-step-icon svg\s*\{\s*width:\s*20px;\s*height:\s*20px;\s*\}/);
   assert.match(pipelineStyles, /\.pipeline-data-group \.flow-step-label\s*\{\s*color:\s*var\(--pipeline-strong-text\);/);
   assert.match(pipelineStyles, /\.pipeline-data-group \.flow-step-sub\s*\{\s*color:\s*var\(--pipeline-muted-text\);/);
   assert.match(pipelineStyles, /\.pipeline-data-number\s*\{[^}]*background:\s*var\(--pipeline-accent-surface\);[^}]*color:\s*var\(--pipeline-accent-text\);/s);
-  assert.match(pipelineStyles, /@media \(max-width: 380px\)\s*\{\s*\.pipeline-data-sources\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/);
+  assert.match(pipelineStyles, /@media \(max-width: 485px\)\s*\{\s*\.pipeline-data-sources\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/);
   assert.match(styles, /\.pipeline-toggle\[aria-expanded="true"\] svg\s*\{\s*transform:\s*rotate\(180deg\);\s*\}/);
 });
 
-test('pipeline disclosure collapses on mobile and restores the expanded desktop flow', () => {
+test('pipeline disclosure collapses through tablet width and restores the expanded wide-screen flow', () => {
   const start = teacherScript.indexOf('  function initPipelineDisclosure() {');
   const end = teacherScript.indexOf('\n  document.addEventListener(\'DOMContentLoaded\'', start);
   assert.ok(start >= 0 && end > start);
@@ -740,7 +759,7 @@ test('pipeline disclosure collapses on mobile and restores the expanded desktop 
   };
   const flow = { hidden: false };
   let onViewportChange;
-  const mobileQuery = {
+  const collapseQuery = {
     matches: true,
     addEventListener(type, handler) { onViewportChange = handler; },
     addListener(type, handler) { onViewportChange = handler; }
@@ -749,7 +768,7 @@ test('pipeline disclosure collapses on mobile and restores the expanded desktop 
     `${teacherScript.slice(start, end)}\ninitPipelineDisclosure`,
     {
       $: id => id === 'pipeline-toggle' ? toggle : id === 'pipeline-flow' ? flow : null,
-      window: { matchMedia(query) { assert.equal(query, '(max-width: 760px)'); return mobileQuery; } }
+      window: { matchMedia(query) { assert.equal(query, '(max-width: 1100px)'); return collapseQuery; } }
     }
   );
 
@@ -766,14 +785,14 @@ test('pipeline disclosure collapses on mobile and restores the expanded desktop 
   handlers.get('click')();
   assert.equal(flow.hidden, true);
 
-  mobileQuery.matches = false;
+  collapseQuery.matches = false;
   onViewportChange();
   assert.equal(flow.hidden, false);
   assert.equal(toggle.hidden, true);
   assert.equal(attributes.get('aria-expanded'), 'true');
   assert.equal(attributes.get('aria-label'), 'Hide report preparation steps');
 
-  mobileQuery.matches = true;
+  collapseQuery.matches = true;
   onViewportChange();
   assert.equal(flow.hidden, true);
   assert.equal(toggle.hidden, false);
@@ -1118,6 +1137,12 @@ test('shared student avatar uses initials without a photo and after a photo load
   assert.equal(initialsOnly.children[0].textContent, 'LL');
   assert.equal(initialsOnly.classes.has('person-avatar--compact'), true);
   assert.equal(initialsOnly.dataset.avatarTone, 'green');
+
+  const roleOptionFallback = createAvatarElement();
+  renderAvatar(roleOptionFallback, { id: 43, name: 'Miguel Navarro', initials: 'MN' }, { role: 'student', size: 'lg' });
+  assert.equal(roleOptionFallback.children[0].textContent, 'MN');
+  assert.equal(roleOptionFallback.dataset.avatarTone, 'green');
+  assert.equal(roleOptionFallback.classes.has('person-avatar--lg'), true);
 
   const photoAvatar = createAvatarElement();
   renderAvatar(photoAvatar, {

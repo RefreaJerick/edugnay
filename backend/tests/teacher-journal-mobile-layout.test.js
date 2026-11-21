@@ -131,3 +131,8 @@ test('teacher journal rows use individual student cards only at the mobile break
   assert.match(mobileRules, /#journal-tbody\s*>\s*tr:not\(\.panel-empty-row\):hover \.journal-review-chevron[\s\S]*?transform:\s*translateX\(2px\)/);
   assert.match(mobileRules, /\.table-wrap\s*>\s*table\s*>\s*thead\s*\{[^}]*clip-path:\s*inset\(50%\)/s);
 });
+
+test('teacher journal hides the assigned section count at 540px and below', () => {
+  assert.match(journalCss, /\.journal-subject-sections\s*\{\s*display:\s*flex;/);
+  assert.match(journalCss, /@media \(max-width: 540px\)\s*\{\s*\.journal-subject-sections\s*\{\s*display:\s*none;\s*\}\s*\}/);
+});

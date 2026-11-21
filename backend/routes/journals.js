@@ -1,5 +1,6 @@
 const express = require('express');
 const controller = require('../controllers/journalsController');
+const assessment = require('../controllers/journalAssessmentController');
 const { requireAuth } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/authorize');
 
@@ -15,5 +16,9 @@ router.delete('/journal-prompts/:promptId', requireAuth, requireRoles('school_ad
 router.get('/journal-entries', requireAuth, requireRoles('teacher', 'student'), controller.listJournalEntries);
 router.post('/journal-entries', requireAuth, requireRoles('student'), controller.submitJournalEntry);
 router.post('/journal-entries/:entryId/review', requireAuth, requireRoles('teacher'), controller.reviewJournalEntry);
+router.get('/journal-ai/rubric', requireAuth, requireRoles('teacher'), assessment.getRubric);
+router.put('/journal-ai/rubric', requireAuth, requireRoles('teacher'), assessment.saveRubric);
+router.get('/journal-entries/:entryId/assessment', requireAuth, requireRoles('teacher'), assessment.getAssessment);
+router.post('/journal-entries/:entryId/assessment', requireAuth, requireRoles('teacher'), assessment.assessEntry);
 
 module.exports = router;

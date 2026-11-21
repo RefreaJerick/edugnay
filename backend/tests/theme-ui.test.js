@@ -430,6 +430,7 @@ test('summary cards share the responsive value and icon arrangement', () => {
   const adminArchive = read('views/admin/edugnay-admin-archive.html');
   const adminUsers = read('views/admin/edugnay-admin-users.html');
   const teacherJournals = read('views/teacher/edugnay-teacher-journals.html');
+  const teacherJournalsCss = read('assets/css/teacher/journals.css');
   const studentAttendance = read('views/student/edugnay-student-attendance.html');
   const parentAttendance = read('views/parent/edugnay-parent-attendance.html');
   const adminDashboard = read('views/admin/edugnay-admin-dashboard.html');
@@ -442,6 +443,12 @@ test('summary cards share the responsive value and icon arrangement', () => {
   assert.match(shared, /\.summary-card-layout > \.stat-card \.stat-card-num,[\s\S]*?grid-column: 1;/);
   assert.match(shared, /\.summary-card-layout > \.stat-card \.stat-card-top,[\s\S]*?grid-column: 2;/);
   assert.match(shared, /\.summary-card-layout > \.rs-card \.rs-info\s*\{\s*display: contents;/);
+  assert.match(shared, /@media \(max-width: 520px\)[\s\S]*?\.stat-card\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;[\s\S]*?\.stat-card-sub\s*\{\s*display:\s*none !important;/);
+  assert.match(teacherJournalsCss, /@media \(min-width: 638px\) and \(max-width: 1100px\)[\s\S]*?#journal-summary-strip \.stat-card\s*\{[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto;/s);
+  assert.match(teacherJournalsCss, /@media \(max-width: 637px\)[\s\S]*?#journal-summary-strip \.stat-card-copy\s*\{\s*display:\s*contents;\s*\}[\s\S]*?#journal-summary-strip \.stat-card-label\s*\{\s*margin-top:\s*auto;\s*\}/);
+  assert.match(teacherJournalsCss, /@media \(min-width: 521px\) and \(max-width: 637px\)[\s\S]*?#journal-summary-strip \.stat-card\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*min-height:\s*84px;[^}]*padding:\s*10px;/s);
+  assert.match(teacherJournalsCss, /#journal-summary-strip \.stat-card-num\s*\{\s*align-self:\s*flex-start;/);
+  assert.match(teacherJournalsCss, /#journal-summary-strip \.stat-card-sub\s*\{\s*display:\s*none !important;\s*\}/);
 
   for (const [page, id] of [
     [adminManagement, 'sections-summary-cards'],

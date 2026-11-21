@@ -1040,24 +1040,24 @@
     const flow = $('pipeline-flow');
     if (!toggle || !flow) return;
 
-    const mobileQuery = window.matchMedia('(max-width: 760px)');
+    const collapseQuery = window.matchMedia('(max-width: 1100px)');
     const setExpanded = expanded => {
       flow.hidden = !expanded;
       toggle.setAttribute('aria-expanded', String(expanded));
       toggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'Show'} report preparation steps`);
     };
     const syncViewport = () => {
-      const isMobile = mobileQuery.matches;
-      toggle.hidden = !isMobile;
-      setExpanded(!isMobile);
+      const shouldCollapse = collapseQuery.matches;
+      toggle.hidden = !shouldCollapse;
+      setExpanded(!shouldCollapse);
     };
 
     toggle.addEventListener('click', () => {
-      if (!mobileQuery.matches) return;
+      if (!collapseQuery.matches) return;
       setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
     });
-    if (typeof mobileQuery.addEventListener === 'function') mobileQuery.addEventListener('change', syncViewport);
-    else mobileQuery.addListener(syncViewport);
+    if (typeof collapseQuery.addEventListener === 'function') collapseQuery.addEventListener('change', syncViewport);
+    else collapseQuery.addListener(syncViewport);
     syncViewport();
   }
 

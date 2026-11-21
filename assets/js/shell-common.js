@@ -974,6 +974,22 @@ async function reviewApiJournalEntry(entryId, score) {
   return normalizeApiJournalEntry(response?.entry);
 }
 
+async function getApiJournalAiRubric() {
+  return requestApi('/journal-ai/rubric');
+}
+
+async function saveApiJournalAiRubric(criteria) {
+  return requestApi('/journal-ai/rubric', { method: 'PUT', body: JSON.stringify({ criteria }) });
+}
+
+async function getApiJournalAssessment(entryId) {
+  return requestApi(`/journal-entries/${Number(entryId)}/assessment`);
+}
+
+async function assessApiJournalEntry(entryId) {
+  return requestApi(`/journal-entries/${Number(entryId)}/assessment`, { method: 'POST' });
+}
+
 async function createApiAssignment(values = {}) {
   const dueAt = values.dueAt || values.dueDate;
   const response = await requestApi('/assignments', {
@@ -2347,6 +2363,10 @@ window.EDUGNAY_API = {
   getJournalEntries: getApiJournalEntries,
   submitJournalEntry: submitApiJournalEntry,
   reviewJournalEntry: reviewApiJournalEntry,
+  getJournalAiRubric: getApiJournalAiRubric,
+  saveJournalAiRubric: saveApiJournalAiRubric,
+  getJournalAssessment: getApiJournalAssessment,
+  assessJournalEntry: assessApiJournalEntry,
   createAssignment: createApiAssignment,
   updateAssignment: updateApiAssignment,
   updateAssignmentStudentStatus: updateApiAssignmentStudentStatus,
@@ -2476,10 +2496,11 @@ function renderAvatar(element, person = {}, options = {}) {
   const tones = ['navy', 'blue', 'gold', 'green', 'purple', 'orange', 'teal'];
   const roleTone = { platform_admin: 'blue', school_admin: 'blue', teacher: 'gold',
     student: 'green', parent: 'purple', school_guard: 'blue' };
+  const role = options.role || person.role;
   const identity = String(person.id || person.name || person.initials || '');
   const hash = [...identity].reduce((value, character) => value + character.charCodeAt(0), 0);
   const tone = tones.includes(options.color) ? options.color
-    : roleTone[person.role] || tones[hash % tones.length];
+    : roleTone[role] || tones[hash % tones.length];
   const name = String(person.name || '').trim();
   const initials = String(person.initials || name.split(/\s+/).map(part => part[0]).slice(0, 2).join('') || '--').trim().toUpperCase();
   const size = sizes.includes(options.size) ? options.size : 'md';

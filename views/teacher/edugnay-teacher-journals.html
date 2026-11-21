@@ -39,7 +39,7 @@
           <div class="modal-sub" id="modal-meta"></div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <div class="journal-modal-nav-row">
         <div class="modal-nav">
           <button class="modal-nav-btn" id="prevBtn" data-page-click="pf80ff387525d" title="Previous student">
             <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
@@ -49,44 +49,50 @@
             <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
           </button>
         </div>
-        <button class="modal-close" data-page-click="pd8045c9dbc14">
-          <i data-lucide="x" style="width:14px;height:14px;"></i>
-        </button>
+        <div class="journal-mobile-review-status" id="journal-mobile-status-note"></div>
       </div>
+      <button class="modal-close" data-page-click="pd8045c9dbc14" aria-label="Close journal review">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
     </div>
 
-    <div class="modal-body">
-
-      <!-- Prompt -->
-      <div class="modal-section">
-        <div class="prompt-card">
-          <div class="prompt-label">This Week's Prompt</div>
-          <div class="prompt-text" id="modal-prompt">"Describe a challenge you faced this week in class and how you handled it."</div>
+    <div class="modal-body journal-review-grid">
+      <div class="journal-review-entry">
+        <div class="modal-section">
+          <div class="prompt-card">
+            <div class="prompt-label">This Week's Prompt</div>
+            <div class="prompt-text" id="modal-prompt">"Describe a challenge you faced this week in class and how you handled it."</div>
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-label"><i data-lucide="notebook-pen" style="width:11px;height:11px;"></i> Student Entry</div>
+          <div class="entry-body" id="modal-entry-body"></div>
         </div>
       </div>
 
-      <!-- Entry -->
-      <div class="modal-section">
-        <div class="modal-section-label">
-          <i data-lucide="notebook-pen" style="width:11px;height:11px;"></i> Student Entry
+      <div class="journal-review-side">
+        <div class="modal-section journal-ai-panel" id="journal-ai-panel" hidden>
+          <div class="modal-section-label"><i data-lucide="sparkles"></i> AI score suggestion</div>
+          <p class="journal-ai-help">A suggestion for teacher review. Your saved score is final.</p>
+          <div id="journal-ai-result" aria-live="polite"></div>
+          <div class="journal-ai-actions">
+            <button class="btn btn-cancel" type="button" id="journal-ai-assess">Assess with AI</button>
+            <button class="btn btn-cancel" type="button" id="journal-ai-use" hidden>Use suggested score</button>
+          </div>
         </div>
-        <div class="entry-body" id="modal-entry-body"></div>
-      </div>
-
-      <!-- Score -->
-      <div class="modal-section">
-        <div class="score-section">
-          <div class="score-input-wrap">
-            <label class="modal-section-label" for="modal-score-input"><i data-lucide="star" style="width:11px;height:11px;"></i> Score</label>
-            <div class="score-input-row">
-              <input class="score-num-input" type="number" id="modal-score-input" min="0" placeholder="—"/>
-              <span class="score-divider">/</span>
-              <span class="score-max-label">—</span>
+        <div class="modal-section journal-review-score">
+          <div class="score-section">
+            <div class="score-input-wrap">
+              <label class="modal-section-label" for="modal-score-input"><i data-lucide="star" style="width:11px;height:11px;"></i> Score</label>
+              <div class="score-input-row">
+                <input class="score-num-input" type="number" id="modal-score-input" min="0" placeholder="—"/>
+                <span class="score-divider">/</span>
+                <span class="score-max-label">—</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
     </div>
 
     <div class="modal-foot">
@@ -124,6 +130,20 @@
     </div>
 
     <div class="settings-drawer-body">
+
+      <div class="settings-block journal-rubric-block" id="journal-rubric-block" hidden>
+        <div class="settings-block-label"><i data-lucide="sparkles"></i> AI scoring rubric</div>
+        <div class="settings-block-hint">Used across your weekly journal prompts. Set each criterion and its points once.</div>
+        <div class="journal-rubric-header">
+          <span>Criterion</span>
+          <span>Points</span>
+        </div>
+        <div id="journal-rubric-rows"></div>
+        <div class="journal-rubric-actions">
+          <button class="btn btn-cancel" type="button" id="journal-rubric-add">Add criterion</button>
+          <button class="btn btn-save" type="button" id="journal-rubric-save">Save rubric</button>
+        </div>
+      </div>
 
       <div class="settings-block">
         <div class="settings-block-label">
@@ -392,6 +412,20 @@
       <div class="page-overview-copy">
         <div class="page-overview-kicker">Overview</div>
         <h1 class="page-overview-title" id="page-overview-title">Student Journals</h1>
+      </div>
+    </section>
+
+    <section class="journal-subject-card" id="journal-subject-card" aria-label="Current journal subject" hidden>
+      <div class="journal-subject-main">
+        <span class="journal-subject-icon" aria-hidden="true"><i data-lucide="book-open"></i></span>
+        <div class="journal-subject-copy">
+          <span class="journal-subject-label">Subject</span>
+          <strong id="journal-subject-name"></strong>
+        </div>
+      </div>
+      <div class="journal-subject-sections">
+        <span>Assigned sections</span>
+        <strong id="journal-subject-section-count"></strong>
       </div>
     </section>
 

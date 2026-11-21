@@ -2322,6 +2322,7 @@ const SCHOOL_ACCENT_PALETTES = [
       const narrativeReportsEnabled = Boolean(features.narrativeReportsEnabled);
       const aiEvidenceApproved = Boolean(features.aiEvidenceApproved);
       const journalsEnabled = Boolean(features.journalsEnabled);
+      const journalAiApproved = Boolean(features.journalAiApproved);
       const sfTemplatesEnabled = Boolean(features.sfTemplatesEnabled);
       const noEligibleJournalSubjects = !eligibleJournalSubjects.length;
       const journalSubjectHelp = noEligibleJournalSubjects
@@ -2364,6 +2365,11 @@ const SCHOOL_ACCENT_PALETTES = [
                   <label class="school-toggle-row">
                     <span class="school-toggle-copy"><strong>Enable Journals</strong><small>Allow JHS students to submit reflections and teachers assigned to the selected subject to review them.</small></span>
                     <input class="school-toggle-input" type="checkbox" name="journalsEnabled" ${journalsEnabled ? 'checked' : ''} ${noEligibleJournalSubjects && !journalsEnabled ? 'disabled' : ''}>
+                    <span class="school-toggle-control" aria-hidden="true"></span>
+                  </label>
+                  <label class="school-toggle-row">
+                    <span class="school-toggle-copy"><strong>Allow AI journal assessment</strong><small>Approve sending student journal entries and teacher rubrics to OpenAI when a teacher requests a score suggestion. Teachers choose the final score. Turning this off stops new requests.</small></span>
+                    <input class="school-toggle-input" type="checkbox" name="journalAiApproved" ${journalAiApproved ? 'checked' : ''}>
                     <span class="school-toggle-control" aria-hidden="true"></span>
                   </label>
                 </div>
@@ -3258,6 +3264,7 @@ const SCHOOL_ACCENT_PALETTES = [
             narrativeReportsEnabled: Boolean(form.elements.narrativeReportsEnabled?.checked),
             aiEvidenceApproved: Boolean(form.elements.aiEvidenceApproved?.checked),
             journalsEnabled: Boolean(form.elements.journalsEnabled?.checked),
+            journalAiApproved: Boolean(form.elements.journalAiApproved?.checked),
             journalSubjectId: journalSubjectId ? Number(journalSubjectId) : null,
             sfTemplatesEnabled: Boolean(form.elements.sfTemplatesEnabled?.checked),
             weekStartDay: Number(form.elements.weekStartDay.value),

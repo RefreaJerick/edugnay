@@ -15,6 +15,167 @@ let journalHistoryEntries = [];
 let journalTeacherId = '';
 let pendingJournalDeleteId = '';
 const JOURNAL_SETTINGS = { day: 'Friday', deadline: '23:59', minWords: 50, allowLate: false };
+let journalAiRubric = null;
+let activeAssessment = null;
+let assessmentRequestId = 0;
+
+function addRubricRow(criterion = { name: '', points: 5 }) {
+  const rows = document.getElementById('journal-rubric-rows');
+  const row = document.createElement('div');
+  row.className = 'journal-rubric-row';
+  row.innerHTML = '<input class="settings-input journal-rubric-name" aria-label="Criterion name" maxlength="80" placeholder="Criterion name"><input class="settings-input journal-rubric-points" aria-label="Maximum points" type="number" min="1" max="25"><button class="journal-rubric-remove" type="button" aria-label="Remove criterion">×</button>';
+  row.querySelector('.journal-rubric-name').value = criterion.name;
+  row.querySelector('.journal-rubric-points').value = criterion.points;
+  row.querySelector('.journal-rubric-remove').addEventListener('click', () => row.remove());
+  rows.appendChild(row);
+}
+
+function renderRubricRows() {
+  document.getElementById('journal-rubric-rows').replaceChildren();
+  (journalAiRubric?.criteria || []).forEach(addRubricRow);
+}
+
+async function loadJournalAiRubric() {
+  try {
+    journalAiRubric = await window.EDUGNAY_API.getJournalAiRubric();
+    document.getElementById('journal-rubric-block').hidden = !journalAiRubric.enabled;
+    renderRubricRows();
+  } catch {
+    journalAiRubric = null;
+    document.getElementById('journal-rubric-block').hidden = true;
+  }
+}
+
+async function saveJournalAiRubric() {
+  const rows = [...document.querySelectorAll('#journal-rubric-rows .journal-rubric-row')];
+  const criteria = rows.map(row => ({
+    name: row.querySelector('.journal-rubric-name').value.trim(),
+    points: Number(row.querySelector('.journal-rubric-points').value)
+  }));
+  const button = document.getElementById('journal-rubric-save');
+  button.disabled = true;
+  try {
+    const result = await window.EDUGNAY_API.saveJournalAiRubric(criteria);
+    journalAiRubric.criteria = result.criteria;
+    renderRubricRows();
+    showAppToast('AI scoring rubric saved.', 'success');
+  } catch (error) { showAppToast(error.message || 'Unable to save the rubric.', 'error'); }
+  finally { button.disabled = false; }
+}
+
+function renderAssessment(assessment) {
+  activeAssessment = assessment;
+  const result = document.getElementById('journal-ai-result');
+  const useButton = document.getElementById('journal-ai-use');
+  result.replaceChildren();
+  useButton.hidden = !assessment;
+  if (!assessment) {
+    result.textContent = 'No AI assessment yet.';
+    return;
+  }
+  const total = document.createElement('div');
+  total.className = 'journal-ai-total';
+  total.setAttribute('aria-label', `Suggested score: ${assessment.suggestedScore} out of ${assessment.maxScore}`);
+  const suggested = document.createElement('strong');
+  suggested.className = 'journal-ai-value';
+  suggested.textContent = assessment.suggestedScore;
+  const maximum = document.createElement('span');
+  maximum.className = 'journal-ai-max';
+  maximum.textContent = `/ ${assessment.maxScore}`;
+  total.append(suggested, maximum);
+  result.appendChild(total);
+  assessment.criteria.forEach((criterion, index) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'journal-ai-criterion-wrap';
+    const line = document.createElement('div');
+    line.className = 'journal-ai-criterion';
+    const name = document.createElement('span');
+    const score = document.createElement('strong');
+    name.textContent = criterion.name;
+    score.textContent = `${assessment.scores[index]} / ${criterion.points}`;
+    line.append(name, score);
+    const progress = document.createElement('div');
+    progress.className = 'journal-ai-progress';
+    progress.setAttribute('role', 'progressbar');
+    progress.setAttribute('aria-label', criterion.name);
+    progress.setAttribute('aria-valuemin', '0');
+    progress.setAttribute('aria-valuemax', String(criterion.points));
+    progress.setAttribute('aria-valuenow', String(assessment.scores[index]));
+    const fill = document.createElement('span');
+    fill.className = 'journal-ai-progress-fill';
+    fill.style.width = `${assessment.scores[index] / criterion.points * 100}%`;
+    progress.appendChild(fill);
+    wrap.append(line, progress);
+    result.appendChild(wrap);
+  });
+  const feedback = document.createElement('p');
+  feedback.className = 'journal-ai-feedback';
+  feedback.textContent = assessment.feedback;
+  result.appendChild(feedback);
+}
+
+function renderAssessmentProgress(requestId) {
+  activeAssessment = null;
+  document.getElementById('journal-ai-use').hidden = true;
+  const loading = document.createElement('div');
+  loading.className = 'journal-ai-assessing';
+  const label = document.createElement('span');
+  label.textContent = 'Assessing journal…';
+  const track = document.createElement('div');
+  track.className = 'journal-ai-assessing-track';
+  track.setAttribute('role', 'progressbar');
+  track.setAttribute('aria-label', 'Assessing journal');
+  const fill = document.createElement('span');
+  fill.className = 'journal-ai-assessing-fill';
+  track.appendChild(fill);
+  loading.append(label, track);
+  document.getElementById('journal-ai-result').replaceChildren(loading);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (requestId === assessmentRequestId && fill.isConnected && !fill.classList.contains('is-complete')) {
+        fill.style.width = '90%';
+      }
+    });
+  });
+  return { fill, label, track };
+}
+
+async function loadJournalAssessment(entryId) {
+  const requestId = ++assessmentRequestId;
+  renderAssessment(null);
+  const result = document.getElementById('journal-ai-result');
+  result.textContent = 'Loading assessment…';
+  try {
+    const response = await window.EDUGNAY_API.getJournalAssessment(entryId);
+    if (requestId === assessmentRequestId) renderAssessment(response.assessment);
+  } catch (error) {
+    if (requestId === assessmentRequestId) result.textContent = error.message || 'Assessment unavailable.';
+  }
+}
+
+async function assessActiveJournal() {
+  const studentId = activeStudentIds[activeStudentIndex];
+  const entryId = SECTIONS[currentSection]?.students.find(student => student.studentId === studentId)?.entryId;
+  if (!entryId) return;
+  const button = document.getElementById('journal-ai-assess');
+  const requestId = ++assessmentRequestId;
+  button.disabled = true;
+  const progress = renderAssessmentProgress(requestId);
+  try {
+    const response = await window.EDUGNAY_API.assessJournalEntry(entryId);
+    if (requestId === assessmentRequestId) {
+      progress.label.textContent = 'Assessment complete';
+      progress.track.setAttribute('aria-label', 'Assessment complete');
+      progress.track.setAttribute('aria-valuenow', '100');
+      progress.fill.classList.add('is-complete');
+      progress.fill.style.width = '100%';
+      await new Promise(resolve => setTimeout(resolve, 650));
+      if (requestId === assessmentRequestId) renderAssessment(response.assessment);
+    }
+  } catch (error) {
+    if (requestId === assessmentRequestId) document.getElementById('journal-ai-result').textContent = error.message || 'AI assessment failed.';
+  } finally { if (requestId === assessmentRequestId) button.disabled = false; }
+}
 
 function localDate(value) {
   const date = value ? new Date(value) : new Date();
@@ -179,7 +340,7 @@ function buildJournalSummaryCards() {
 function renderJournalSummary() {
   const strip = document.getElementById('journal-summary-strip');
   if (!strip) return;
-  strip.innerHTML = buildJournalSummaryCards().map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${card.records.length}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+  strip.innerHTML = buildJournalSummaryCards().map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${card.records.length}</div><div class="stat-card-copy"><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div></div>`).join('');
   lucide.createIcons();
 }
 
@@ -422,7 +583,7 @@ function populateModal(s) {
   const student = STUDENT_BY_ID[s.studentId];
   if (!student) return;
 
-  window.EDUGNAY_AVATAR.render(document.getElementById('modal-avatar'), student, { size: 'lg' });
+  window.EDUGNAY_AVATAR.render(document.getElementById('modal-avatar'), student, { role: 'student', size: 'lg' });
   document.getElementById('modal-student-name').textContent = student.displayName;
   document.getElementById('modal-meta').textContent = `${sec.label} · ${s.week || 'Journal'} · ${s.dateRange || ''}`;
   document.getElementById('modal-prompt').textContent = s.promptText || sec.prompt?.promptText || 'Journal prompt unavailable';
@@ -443,6 +604,12 @@ function populateModal(s) {
   scoreInput.disabled = !s.submitted;
   document.getElementById('markReviewedBtn').disabled = !s.submitted;
   document.querySelector('.score-max-label').textContent = maxScore;
+  const aiPanel = document.getElementById('journal-ai-panel');
+  aiPanel.hidden = !journalAiRubric?.enabled || !s.submitted;
+  ++assessmentRequestId;
+  document.getElementById('journal-ai-assess').disabled = false;
+  if (!aiPanel.hidden) loadJournalAssessment(s.entryId);
+  else renderAssessment(null);
 
 
   const statusNote = document.getElementById('modal-status-note');
@@ -453,6 +620,9 @@ function populateModal(s) {
   } else {
     statusNote.innerHTML = `<i data-lucide="clock" style="width:12px;height:12px;"></i> Not yet reviewed`;
   }
+  const mobileStatus = document.getElementById('journal-mobile-status-note');
+  mobileStatus.innerHTML = statusNote.innerHTML;
+  mobileStatus.className = `journal-mobile-review-status${s.reviewed ? ' is-reviewed' : s.submitted ? ' is-pending' : ' is-missing'}`;
 
   const allIds = activeStudentIds;
   const idx = activeStudentIndex;
@@ -688,6 +858,9 @@ async function loadTeacherJournals() {
     }));
 
     SECTIONS = Object.fromEntries(sectionRecords);
+    document.getElementById('journal-subject-name').textContent = subjects[0].name;
+    document.getElementById('journal-subject-section-count').textContent = String(sectionRecords.length);
+    document.getElementById('journal-subject-card').hidden = false;
     Object.values(SECTIONS).forEach(section => selectSectionPrompt(section, section.prompts[0]?.id || ''));
     currentSection = SECTIONS[previousSection] ? previousSection : sectionRecords[0]?.[0] || '';
     const activeSection = SECTIONS[currentSection];
@@ -705,6 +878,7 @@ async function loadTeacherJournals() {
     lucide.createIcons();
   } catch (error) {
     SECTIONS = {};
+    document.getElementById('journal-subject-card').hidden = true;
     renderJournalPromptBanner(null);
     tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Journal sections unavailable', text: error.message || 'Please refresh and try again.' });
     noPrompt.innerHTML = '';
@@ -720,6 +894,15 @@ async function loadTeacherJournals() {
 /* ══════ INIT ══════ */
 document.addEventListener('DOMContentLoaded', async () => {
   await loadTeacherJournals();
+  await loadJournalAiRubric();
+  document.getElementById('journal-rubric-add').addEventListener('click', () => {
+    if (document.querySelectorAll('#journal-rubric-rows .journal-rubric-row').length < 6) addRubricRow();
+  });
+  document.getElementById('journal-rubric-save').addEventListener('click', saveJournalAiRubric);
+  document.getElementById('journal-ai-assess').addEventListener('click', assessActiveJournal);
+  document.getElementById('journal-ai-use').addEventListener('click', () => {
+    if (activeAssessment) document.getElementById('modal-score-input').value = activeAssessment.suggestedScore;
+  });
   window.EDUGNAY_PAGE_LOADING.ready();
 });
 

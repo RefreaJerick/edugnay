@@ -7,6 +7,9 @@ lucide.createIcons();
     let minimumWords = 50;
     let pendingDraft = null;
     let journalRefreshPending = false;
+    let journalLoadRequestId = 0;
+    let journalHasRendered = false;
+    let journalSubmitPending = false;
 
     function formatJournalDate(value) {
       const date = new Date(value);
@@ -149,22 +152,34 @@ lucide.createIcons();
         label.classList.add('ok');
       }
 
-      submitBtn.disabled = count < minimumWords;
+      submitBtn.disabled = journalSubmitPending || count < minimumWords;
     }
 
     async function submitEntry() {
       const textarea = document.getElementById('entry-textarea');
       const submitBtn = document.getElementById('submit-btn');
-      if (!currentPrompt || !textarea || !submitBtn || wordCount(textarea.value) < minimumWords) return;
+      if (journalSubmitPending || !currentPrompt || !textarea || !submitBtn || wordCount(textarea.value) < minimumWords) return;
+      journalSubmitPending = true;
       submitBtn.disabled = true;
+      let submittedEntry;
       try {
-        await window.EDUGNAY_API.submitJournalEntry({ promptId: currentPrompt.id, entryText: textarea.value.trim() });
-        showAppToast('Journal entry submitted!', 'success');
-        await loadStudentJournals();
+        submittedEntry = await window.EDUGNAY_API.submitJournalEntry({ promptId: currentPrompt.id, entryText: textarea.value.trim() });
       } catch (error) {
+        journalSubmitPending = false;
         showAppToast(error.message || 'Unable to submit this journal entry.', 'error');
-        submitBtn.disabled = false;
+        updateWordCount();
+        return;
       }
+      journalSubmitPending = false;
+      ++journalLoadRequestId;
+      if (submittedEntry) {
+        currentEntry = submittedEntry;
+        pendingDraft = null;
+        renderCurrentWeekPanel();
+        journalHasRendered = true;
+      }
+      showAppToast('Journal entry submitted!', 'success');
+      await loadStudentJournals();
     }
 
     function renderHistory() {
@@ -220,60 +235,49 @@ lucide.createIcons();
       const list = document.getElementById('history-list');
       const draftInput = document.getElementById('entry-textarea');
       if (draftInput?.value.trim()) pendingDraft = { promptId: currentPrompt?.id, text: draftInput.value };
-      panel.innerHTML = '';
-      list.innerHTML = '';
+      const requestId = ++journalLoadRequestId;
+      const showUnavailable = message => {
+        currentPrompt = null;
+        currentEntry = null;
+        pastEntries = [];
+        panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: message });
+        list.innerHTML = '';
+        journalHasRendered = true;
+      };
       try {
         const [user, portal] = await Promise.all([
           window.EDUGNAY_API.getCurrentUser(),
           window.EDUGNAY_API.getPortalFeatures()
         ]);
-        if (user?.role !== 'student') throw new Error('Only student accounts can view journal entries.');
+        if (requestId !== journalLoadRequestId) return;
+        if (user?.role !== 'student') {
+          showUnavailable('Only student accounts can view journal entries.');
+          return;
+        }
         if (!portal.features.journalsEnabled || !portal.journalSubjectEligible) {
-          currentPrompt = null;
-          currentEntry = null;
-          pastEntries = [];
-          panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: 'Journals are available only to eligible Junior High School students taking the journal subject.' });
+          showUnavailable('Journals are available only to eligible Junior High School students taking the journal subject.');
           return;
         }
-        const showUnavailable = message => {
-          currentPrompt = null;
-          currentEntry = null;
-          pastEntries = [];
-          panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: message });
-        };
-        let subjects;
-        try {
-          subjects = await window.EDUGNAY_API.getJournalSubjects();
-        } catch (error) {
-          showUnavailable(error.message || 'Current Journals are unavailable.');
-          return;
-        }
+        const subjects = await window.EDUGNAY_API.getJournalSubjects();
+        if (requestId !== journalLoadRequestId) return;
         if (!subjects.length) {
           showUnavailable('Weekly journals are not available right now. Ask your teacher for details.');
           return;
         }
 
-        let prompts, entries, history;
-        try {
-          [prompts, entries, history] = await Promise.all([
-            window.EDUGNAY_API.getJournalPrompts(),
-            window.EDUGNAY_API.getJournalEntries(),
-            window.EDUGNAY_API.getJournalHistory()
-          ]);
-        } catch (error) {
-          showUnavailable(error.message || 'Current Journals are unavailable.');
-          return;
-        }
+        const [prompts, entries, history] = await Promise.all([
+          window.EDUGNAY_API.getJournalPrompts(),
+          window.EDUGNAY_API.getJournalEntries(),
+          window.EDUGNAY_API.getJournalHistory()
+        ]);
+        if (requestId !== journalLoadRequestId) return;
 
-        currentPrompt = prompts[0] || null;
-        currentEntry = currentPrompt
-          ? entries.find(entry => entry.promptId === currentPrompt.id) || null
+        const nextPrompt = prompts[0] || null;
+        const nextEntry = nextPrompt
+          ? entries.find(entry => entry.promptId === nextPrompt.id) || null
           : null;
-        minimumWords = Number(currentPrompt?.minWords) || 50;
-        journalWindowOpen = currentPrompt?.submissionState === 'open' || currentPrompt?.submissionState === 'late';
-
-        const historicalEntries = history.entries.filter(entry => entry.id !== currentEntry?.id);
-        pastEntries = historicalEntries.map(entry => {
+        const historicalEntries = history.entries.filter(entry => entry.id !== nextEntry?.id);
+        const nextPastEntries = historicalEntries.map(entry => {
           const prompt = history.prompts.find(item => item.id === entry.promptId);
           const weekDate = prompt?.weekStartDate || entry.submittedAt;
           const week = `${entry.journalSubjectName} · ${prompt
@@ -287,6 +291,11 @@ lucide.createIcons();
             excerpt: entry.entryText.length > 96 ? `${entry.entryText.slice(0, 96)}…` : entry.entryText
           };
         });
+        currentPrompt = nextPrompt;
+        currentEntry = nextEntry;
+        minimumWords = Number(currentPrompt?.minWords) || 50;
+        journalWindowOpen = currentPrompt?.submissionState === 'open' || currentPrompt?.submissionState === 'late';
+        pastEntries = nextPastEntries;
         renderCurrentWeekPanel();
         if (journalWindowOpen && pendingDraft?.promptId === currentPrompt.id) {
           const textarea = document.getElementById('entry-textarea');
@@ -297,11 +306,22 @@ lucide.createIcons();
         }
         if (currentEntry) pendingDraft = null;
         renderHistory();
+        journalHasRendered = true;
       } catch (error) {
+        if (requestId !== journalLoadRequestId) return;
+        if (error.status === 401 || error.status === 403) {
+          showUnavailable(error.message || 'Journals are unavailable.');
+          return;
+        }
+        if (journalHasRendered) {
+          showAppToast(error.message || 'Unable to refresh your journal. Please try again.', 'error');
+          return;
+        }
         panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Unable to load journal', text: error.message || 'Please refresh and try again.' });
         panel.insertAdjacentHTML('beforeend', renderUnsentDraft());
         list.innerHTML = '';
         lucide.createIcons();
+        journalHasRendered = true;
       }
     }
 

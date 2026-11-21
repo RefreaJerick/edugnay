@@ -78,11 +78,20 @@ const connection = {
       state.featureValues.aiEvidenceApprovedByUserId = values[1];
       return [{ affectedRows: 1 }];
     }
+    if (sql.startsWith('UPDATE school_portal_features SET journal_ai_approved_at')) {
+      state.featureValues.journalAiApprovedAt = values[0];
+      state.featureValues.journalAiApprovedByUserId = values[1];
+      return [{ affectedRows: 1 }];
+    }
     if (sql.startsWith('UPDATE school_portal_features SET')) {
       state.featureValues = {
         ...(state.featureValues?.aiEvidenceApprovedAt !== undefined ? {
           aiEvidenceApprovedAt: state.featureValues.aiEvidenceApprovedAt,
           aiEvidenceApprovedByUserId: state.featureValues.aiEvidenceApprovedByUserId
+        } : {}),
+        ...(state.featureValues?.journalAiApprovedAt !== undefined ? {
+          journalAiApprovedAt: state.featureValues.journalAiApprovedAt,
+          journalAiApprovedByUserId: state.featureValues.journalAiApprovedByUserId
         } : {}),
         gradesEnabled: values[0],
         narrativeReportsEnabled: values[1],
@@ -147,6 +156,19 @@ test('school admin approval records an actor and revocation disables future AI e
   assert.equal(revoked.body.features.aiEvidenceApproved, false);
   assert.equal(state.featureValues.aiEvidenceApprovedAt, null);
   assert.ok(calls.some(call => call.sql?.includes('INSERT INTO audit_logs') && call.values[2] === 'ai_report_evidence_approval_revoked'));
+});
+
+test('journal AI approval is separate from narrative AI approval', async () => {
+  const approved = await save({ journalAiApproved: true });
+  assert.ifError(approved.error);
+  assert.equal(approved.body.features.journalAiApproved, true);
+  assert.equal(approved.body.features.aiEvidenceApproved, false);
+  assert.equal(state.featureValues.journalAiApprovedByUserId, 3);
+  const savedValues = { ...state.featureValues };
+  const revoked = await save({ journalAiApproved: false }, undefined, { featureValues: savedValues });
+  assert.ifError(revoked.error);
+  assert.equal(revoked.body.features.journalAiApproved, false);
+  assert.equal(state.featureValues.journalAiApprovedAt, null);
 });
 
 test('turning Reports off and on retains the recorded AI approval', async () => {
