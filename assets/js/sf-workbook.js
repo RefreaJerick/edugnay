@@ -285,7 +285,7 @@
       learnerStartRow: 10,
       learnerEndRow: 58,
       maxLearners: 49,
-      mergeCount: 270,
+      mergeCount: 274,
       anchors: {
         A1: 'School Form 1',
         B8: 'LRN',

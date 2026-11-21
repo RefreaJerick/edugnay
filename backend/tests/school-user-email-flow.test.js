@@ -55,7 +55,7 @@ function reset() {
 }
 
 test('all roles share the same normalized name and suffix rule', () => {
-  const names = [['school_admin', 'adm'], ['teacher', 'fac'], ['student', 'stud'], ['parent', 'par']];
+  const names = [['school_admin', 'adm'], ['teacher', 'fac'], ['student', 'stud'], ['parent', 'par'], ['school_guard', 'guard']];
   for (const [role, suffix] of names) {
     assert.equal(schoolEmailBase('José', 'Dela Cruz', role), `j.delacruz.${suffix}`);
   }

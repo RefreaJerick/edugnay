@@ -212,7 +212,8 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
         journalsEnabled: 1, weekStartDay: 1, weekEndDay: 6
       }]];
       if (sql.includes('FROM section_students')) return [[
-        { studentId: 101, displayName: 'Ari Student', initials: 'AS', avatarFilename: '11111111-1111-4111-8111-111111111111.webp', avatarVersion: 7, enrolledDate: addDays(weekStart, -30), withdrawnDate: null },
+        { studentId: 101, displayName: 'Ari Student', initials: 'AS', avatarFilename: '11111111-1111-4111-8111-111111111111.webp', avatarVersion: 7, enrolledDate: addDays(weekStart, -30), withdrawnDate: weekStart },
+        { studentId: 101, displayName: 'Ari Student', initials: 'AS', avatarFilename: '11111111-1111-4111-8111-111111111111.webp', avatarVersion: 7, enrolledDate: weekStart, withdrawnDate: null },
         { studentId: 102, displayName: 'Bea Student', initials: 'BS', avatarFilename: null, avatarVersion: null, enrolledDate: addDays(weekStart, -30), withdrawnDate: null }
       ]];
       if (sql.includes('LEFT JOIN attendance_records AS records')) return [[
@@ -258,6 +259,7 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
   }, database);
 
   assert.equal(result.error, undefined);
+  assert.equal(result.body.students.length, 2, 'multiple enrollment periods produce one learner card');
   assert.deepEqual(result.body.reportWeek, { startDate: weekStart, endDate: weekEnd, dataThroughDate: dataThrough });
   const ari = result.body.students.find(student => student.id === '101');
   const bea = result.body.students.find(student => student.id === '102');
@@ -289,6 +291,7 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
   const rosterQuery = calls.find(call => call.sql.includes('FROM section_students'));
   assert.match(rosterQuery.sql, /students\.avatar_filename AS avatarFilename/);
   assert.match(rosterQuery.sql, /students\.avatar_version AS avatarVersion/);
+  assert.ok(calls.some(call => /SELECT DISTINCT assignments\.id AS assignmentId/.test(call.sql)));
   assert.ok(calls.every(call => call.values.includes(4)), 'every evidence query is scoped to the adviser school');
   assert.equal(result.headers['Cache-Control'], 'no-store');
 });

@@ -11,6 +11,19 @@ function createError(message, status) {
   return error;
 }
 
+async function revokeParentSelfCredential(connection, user) {
+  if (user.role !== 'parent') return;
+  await connection.execute(
+    `UPDATE fetcher_credentials AS credentials
+     INNER JOIN fetchers ON fetchers.id = credentials.fetcher_id
+       AND fetchers.school_id = credentials.school_id
+     SET credentials.revoked_at = UTC_TIMESTAMP()
+     WHERE fetchers.school_id = ? AND fetchers.parent_user_id = ?
+       AND fetchers.is_parent_self = TRUE AND credentials.revoked_at IS NULL`,
+    [user.schoolId, user.id]
+  );
+}
+
 async function canViewAvatar(database, viewer, owner) {
   if (Number(viewer.id) === Number(owner.id)) return true;
   if (!viewer.schoolId || Number(viewer.schoolId) !== Number(owner.schoolId)) return false;
@@ -18,7 +31,9 @@ async function canViewAvatar(database, viewer, owner) {
 
   let sql;
   let values;
-  if (viewer.role === 'teacher' && owner.role === 'student') {
+  if (viewer.role === 'school_guard' && owner.role === 'student') {
+    return true;
+  } else if (viewer.role === 'teacher' && owner.role === 'student') {
     sql = `SELECT 1 FROM section_students AS members
       INNER JOIN sections ON sections.id = members.section_id AND sections.school_id = members.school_id AND sections.status = 'active'
       INNER JOIN academic_years AS years ON years.id = sections.academic_year_id AND years.school_id = sections.school_id AND years.status = 'active'
@@ -108,6 +123,7 @@ async function uploadMyAvatar(req, res, next) {
       'UPDATE users SET avatar_filename = ?, avatar_version = avatar_version + 1 WHERE id = ?',
       [newFilename, req.user.id]
     );
+    await revokeParentSelfCredential(connection, req.user);
     const [[user]] = await connection.execute(
       'SELECT id, avatar_filename AS avatarFilename, avatar_version AS avatarVersion FROM users WHERE id = ?',
       [req.user.id]
@@ -141,6 +157,7 @@ async function removeMyAvatar(req, res, next) {
         'UPDATE users SET avatar_filename = NULL, avatar_version = avatar_version + 1 WHERE id = ?',
         [req.user.id]
       );
+      await revokeParentSelfCredential(connection, req.user);
     }
     await connection.commit();
     committed = true;

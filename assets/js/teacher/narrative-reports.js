@@ -335,7 +335,10 @@
   function showGeneration() {
     const candidates = generationCandidates();
     if (state.busy || !state.generationEnabled || !candidates.length) return;
-    $('gen-modal').classList.remove('is-complete');
+    state.generationRetryIds = null;
+    setGenerationListLayout(candidates.length);
+    $('gen-modal').classList.remove('is-result', 'is-success', 'is-failure', 'is-mixed');
+    $('gen-result').hidden = true;
     $('gen-cancel').textContent = 'Cancel';
     $('gen-journal-source').hidden = state.evidence.section.journalApplicable !== true;
     $('gen-subtitle').textContent = `${state.evidence.section.gradeLevel} · ${state.evidence.section.name} · ${formatDate(state.evidence.reportWeek.startDate)}–${formatDate(state.evidence.reportWeek.endDate)}`;
@@ -424,16 +427,27 @@
     openModal('gen-modal');
   }
 
+  function modalGenerationCandidates() {
+    const candidates = generationCandidates();
+    return state.generationRetryIds
+      ? candidates.filter(student => state.generationRetryIds.has(String(student.id))) : candidates;
+  }
+
+  function setGenerationListLayout(count) {
+    if (count < 4) $('gen-modal').classList.add('is-compact-list');
+    else $('gen-modal').classList.remove('is-compact-list');
+  }
+
   function setGenerationLoading(loading) {
     const modal = $('gen-modal');
     const dialog = modal.querySelector('[role="dialog"]');
     modal.classList.toggle('is-generating', loading);
     $('gen-progress').hidden = !loading;
     if (!loading) $('gen-progress-detail').textContent = '';
-    const count = generationCandidates().length;
+    const count = modalGenerationCandidates().length;
     $('start-generation-label').textContent = loading ? 'Generating...' : `Generate ${count} draft${count === 1 ? '' : 's'}`;
     $('gen-draft-count').textContent = `${count} draft${count === 1 ? '' : 's'} will be created`;
-    $('start-generation').disabled = loading || !state.generationEnabled || !generationCandidates().length;
+    $('start-generation').disabled = loading || !state.generationEnabled || !count;
     $('start-generation').setAttribute('aria-busy', String(loading));
     $('gen-close').disabled = loading;
     $('gen-students').querySelectorAll('textarea').forEach(note => { note.disabled = loading; });
@@ -442,9 +456,78 @@
     if (loading) dialog.focus();
   }
 
+  function showGenerationResult({ generated, failed, refreshed }) {
+    const modal = $('gen-modal');
+    const kind = generated && failed.length ? 'mixed' : generated ? 'success' : 'failure';
+    modal.classList.add('is-result', `is-${kind}`);
+    const heading = kind === 'success' ? 'Reports generated'
+      : kind === 'mixed' ? 'Some reports generated' : 'No reports generated';
+    $('gen-result-title').textContent = heading;
+    $('gen-result-icon').innerHTML = kind === 'success'
+      ? '<i data-lucide="check" aria-hidden="true"></i>'
+      // exclamation-mark was added after the locally bundled Lucide version.
+      : '<svg class="lucide lucide-exclamation-mark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4m0 16h.01"></path></svg>';
+    const failedCount = failed.filter(item => item.studentId).length;
+    const summary = [];
+    if (generated) summary.push(`${generated} draft${generated === 1 ? '' : 's'} generated.`);
+    if (failedCount) summary.push(`${failedCount} learner${failedCount === 1 ? '' : 's'} could not be processed.`);
+    if (generated && !failed.length) summary.push(`Review ${generated === 1 ? 'it' : 'them'} in the weekly reports list.`);
+    if (!refreshed) summary.push('The list could not be refreshed.');
+    if (!summary.length) summary.push('No reports were generated.');
+    $('gen-result-summary').textContent = summary.join(' ');
+    const list = $('gen-result-failures');
+    list.replaceChildren();
+    failed.forEach(item => {
+      const row = document.createElement('li');
+      const avatar = document.createElement('span');
+      avatar.className = 'gen-result-avatar';
+      avatar.textContent = studentInitials({ displayName: item.name });
+      avatar.setAttribute('aria-hidden', 'true');
+      const copy = document.createElement('span');
+      const name = document.createElement('strong');
+      name.textContent = item.name;
+      const reason = document.createElement('span');
+      reason.textContent = item.message;
+      copy.append(name, reason);
+      row.append(avatar, copy);
+      list.append(row);
+    });
+    list.hidden = !failed.length;
+    $('gen-view-reports').hidden = !generated || !refreshed;
+    $('gen-result-close').hidden = Boolean(generated && refreshed);
+    $('gen-back-to-form').hidden = !refreshed || !failed.some(item => item.retryable);
+    $('gen-result').hidden = false;
+    window.lucide?.createIcons?.();
+    modal.querySelector('[role="dialog"]').setAttribute('aria-labelledby', 'gen-result-title');
+    const firstAction = [$('gen-view-reports'), $('gen-back-to-form'), $('gen-result-close')].find(button => !button.hidden);
+    firstAction.focus();
+  }
+
+  function backToGenerationForm() {
+    state.generationRetryIds = new Set(state.generationFailures.filter(item => item.retryable).map(item => String(item.studentId)));
+    $('gen-students').querySelectorAll('.gen-student-note-row').forEach(row => {
+      if (!state.generationRetryIds.has(row.dataset.studentId)) row.remove();
+    });
+    const count = modalGenerationCandidates().length;
+    setGenerationListLayout(count);
+    $('gen-count').textContent = `${count} learner${count === 1 ? '' : 's'}`;
+    setGenerationLoading(false);
+    $('gen-modal').classList.remove('is-result', 'is-success', 'is-failure', 'is-mixed');
+    $('gen-result').hidden = true;
+    $('gen-modal').querySelector('[role="dialog"]').setAttribute('aria-labelledby', 'gen-title');
+    $('start-generation').focus();
+  }
+
+  function viewGeneratedReports() {
+    closeModal('gen-modal');
+    const heading = $('weekly-reports-title');
+    heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    heading.focus({ preventScroll: true });
+  }
+
   async function generate() {
     if (state.busy || !state.generationEnabled) return;
-    const candidates = generationCandidates();
+    const candidates = modalGenerationCandidates();
     if (!candidates.length) return;
     const notes = Object.fromEntries([...$('gen-students').querySelectorAll('textarea')].map(node => [node.dataset.studentId, node.value]));
     state.busy = true;
@@ -452,6 +535,7 @@
     setMessage('gen-message', '');
     let generated = 0;
     const failed = [];
+    let refreshed = false;
     try {
       for (let index = 0; index < candidates.length; index += 5) {
         const batch = candidates.slice(index, index + 5);
@@ -467,38 +551,38 @@
             })
           });
           generated += result.progress.generated;
-          result.results.filter(item => item.status !== 'generated').forEach(item => failed.push(`${batch.find(student => student.id === item.studentId)?.displayName || 'Learner'}: ${item.message || item.reason || item.status}`));
+          result.results.filter(item => item.status !== 'generated').forEach(item => failed.push({
+            studentId: String(item.studentId),
+            name: batch.find(student => String(student.id) === String(item.studentId))?.displayName || 'Learner',
+            message: item.message || item.reason || item.status,
+            retryable: !['another_section', 'draft_exists', 'already_confirmed', 'released_correction_manual_only', 'not_editable'].includes(item.reason)
+          }));
         } catch (error) {
-          batch.forEach(student => failed.push(`${student.displayName}: ${error.message || 'Generation failed'}`));
-          if (error.status === 503) break;
+          batch.forEach(student => failed.push({ studentId: String(student.id), name: student.displayName, message: error.message || 'Generation failed', retryable: true }));
+          if (error.status === 503) {
+            candidates.slice(index + batch.length).forEach(student => failed.push({ studentId: String(student.id), name: student.displayName,
+              message: 'Not attempted because generation is unavailable.', retryable: true }));
+            break;
+          }
         }
       }
       await loadWeek();
-      const remaining = new Set(generationCandidates().map(student => String(student.id)));
-      $('gen-students').querySelectorAll('.gen-student-note-row').forEach(row => {
-        if (!remaining.has(row.dataset.studentId)) row.remove();
-      });
-      $('gen-count').textContent = `${remaining.size} learner${remaining.size === 1 ? '' : 's'}`;
-      if (!remaining.size) {
-        $('gen-modal').classList.add('is-complete');
-        $('gen-cancel').textContent = 'Close';
+      refreshed = Boolean(state.evidence);
+      const remaining = new Set(refreshed ? generationCandidates().map(student => String(student.id)) : []);
+      if (refreshed) {
+        $('gen-students').querySelectorAll('.gen-student-note-row').forEach(row => {
+          if (!remaining.has(row.dataset.studentId)) row.remove();
+        });
+        $('gen-count').textContent = `${remaining.size} learner${remaining.size === 1 ? '' : 's'}`;
       }
-      const resultMessage = failed.length
-        ? `${generated} draft${generated === 1 ? '' : 's'} generated. ${failed.length} could not be generated: ${failed.join('; ')}`
-        : !remaining.size
-          ? generated ? `${generated} draft${generated === 1 ? '' : 's'} generated. Review them in the weekly reports list.`
-            : 'All selected learners now have drafts.'
-          : `${generated} draft${generated === 1 ? '' : 's'} generated. Review each draft before confirmation.`;
-      setMessage('gen-message', resultMessage, Boolean(failed.length));
       if (generated) showAppToast(`${generated} draft${generated === 1 ? '' : 's'} generated.${failed.length ? ' Some learners could not be generated.' : ''}`);
     } catch (error) {
-      setMessage('gen-message', error.message || 'Report generation could not be completed.', true);
+      failed.push({ name: 'Report list', message: error.message || 'Report generation could not be completed.', retryable: false });
     } finally {
       state.busy = false;
+      state.generationFailures = failed;
       setGenerationLoading(false);
-      const focusTarget = generationCandidates().length === 0 ? $('gen-cancel')
-        : $('start-generation').disabled ? $('gen-close') : $('start-generation');
-      focusTarget.focus();
+      showGenerationResult({ generated, failed, refreshed });
     }
   }
 
@@ -985,6 +1069,8 @@
     $('report-status').addEventListener('change', renderCards);
     $('open-generation').addEventListener('click', showGeneration);
     $('start-generation').addEventListener('click', generate);
+    $('gen-view-reports').addEventListener('click', viewGeneratedReports);
+    $('gen-back-to-form').addEventListener('click', backToGenerationForm);
     $('reports-grid').addEventListener('click', event => {
       const button = event.target.closest('[data-review-id]');
       if (button) showReview(button.dataset.reviewId);

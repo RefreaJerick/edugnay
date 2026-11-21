@@ -86,9 +86,17 @@ function sourceReferences(student, journalApplicable = false, gradesEnabled = tr
 
 async function existingReport(database, schoolId, studentId, key, lock = false) {
   const [rows] = await database.execute(
-    `SELECT id, section_id AS sectionId, teacher_note AS teacherNote, report_status AS status,
-      released_at AS releasedAt, pending_correction AS pendingCorrection
-    FROM narrative_reports WHERE school_id = ? AND student_user_id = ? AND report_period_key = ?
+    `SELECT narrative_reports.id, narrative_reports.section_id AS sectionId,
+      narrative_reports.teacher_note AS teacherNote, narrative_reports.report_status AS status,
+      narrative_reports.released_at AS releasedAt, narrative_reports.pending_correction AS pendingCorrection,
+      existing_sections.name AS sectionName, existing_grades.display_name AS gradeLevel
+    FROM narrative_reports
+    LEFT JOIN sections AS existing_sections ON existing_sections.id = narrative_reports.section_id
+      AND existing_sections.school_id = narrative_reports.school_id
+    LEFT JOIN school_grade_levels AS existing_grades ON existing_grades.id = existing_sections.grade_level_id
+      AND existing_grades.school_id = existing_sections.school_id
+    WHERE narrative_reports.school_id = ? AND narrative_reports.student_user_id = ?
+      AND narrative_reports.report_period_key = ?
     LIMIT 1${lock ? ' FOR UPDATE' : ''}`,
     [schoolId, studentId, key]
   );
@@ -103,6 +111,15 @@ function skipReason(existing, sectionId, regenerate) {
   if (existing.status === 'confirmed') return 'already_confirmed';
   if (existing.status !== 'draft') return 'not_editable';
   return regenerate ? null : 'draft_exists';
+}
+
+function skippedReport(reason, existing = null) {
+  return { status: 'skipped', reason,
+    ...(reason === 'another_section' ? {
+      message: existing?.sectionName && existing?.gradeLevel
+        ? `This learner already has a report for this week in ${existing.gradeLevel} · ${existing.sectionName}.`
+        : 'This learner already has a report for this week in another section.'
+    } : {}) };
 }
 
 async function saveDraft({ database, req, student, evidence, draft, teacherNote, regenerate }) {
@@ -122,7 +139,7 @@ async function saveDraft({ database, req, student, evidence, draft, teacherNote,
     if (reason) {
       await connection.rollback();
       transactionStarted = false;
-      return { status: 'skipped', reason };
+      return skippedReport(reason, existing);
     }
     let reportId;
     if (existing) {
@@ -198,7 +215,7 @@ async function processWeeklyGeneration(req, {
       const key = periodKey(evidence.reportWeek.startDate);
       const existing = await existingReport(database, Number(req.user.schoolId), Number(student.id), key);
       const reason = skipReason(existing, sectionId, selection.regenerate);
-      if (reason) outcome = { status: 'skipped', reason };
+      if (reason) outcome = skippedReport(reason, existing);
       else {
         if (evidence.section.gradesEnabled !== false &&
           (student.lowScoreReasons || []).reduce((count, flag) => count + flag.scores.length, 0) > 20) {
@@ -212,9 +229,19 @@ async function processWeeklyGeneration(req, {
         outcome = await saveDraft({ database, req, student, evidence, draft, teacherNote, regenerate: selection.regenerate });
       }
     } catch (error) {
+      if (![422, 429, 503].includes(error.status) && error.category !== 'invalid_output') {
+        console.error('Weekly narrative draft failed', {
+          schoolId: Number(req.user.schoolId), sectionId, studentId: Number(student.id),
+          category: error.category || null, code: error.code || null, error
+        });
+      }
       outcome = { status: 'error', message: [422, 429, 503].includes(error.status)
         ? error.message : error.category === 'invalid_output'
           ? 'The report could not meet the required format after two attempts. Try again later.'
+          : error.category === 'provider' || error.name === 'TimeoutError' || error.name === 'AbortError'
+            ? 'The AI service could not generate this report right now. Try again later.'
+            : error.category === 'refusal'
+              ? 'The AI service declined to generate this report. Review the learner note and try again.'
           : 'Draft generation failed for this learner.' };
     }
     results.push({ studentId: student.id, ...outcome, processed: results.length + 1, total: selection.students.length });

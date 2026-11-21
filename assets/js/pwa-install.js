@@ -87,7 +87,9 @@
       button.className = 'tb-dropdown-item';
       button.setAttribute('data-install-app', '');
       button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/></svg><span>Install Academix</span>';
-      dropdown.insertBefore(button, dropdown.querySelector('.tb-dropdown-divider'));
+      const before = dropdown.querySelector('.tb-dropdown-divider')
+        || dropdown.querySelector('.tb-dropdown-item.danger');
+      dropdown.insertBefore(button, before);
     }
     const installButtons = [...document.querySelectorAll('[data-install-app]')];
     installButtons.forEach(button => button.addEventListener('click', handleInstall));

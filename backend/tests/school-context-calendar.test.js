@@ -142,6 +142,23 @@ test('calendar notice notifications use the calendar style and retain their even
   assert.deepEqual(JSON.parse(JSON.stringify(notification.link)), { page: 'notifications' });
 });
 
+test('pickup notifications route parents to Fetchers and use the pickup style', () => {
+  const pageMap = shell.match(/const API_NOTIFICATION_PAGE_BY_TYPE = \{[\s\S]*?\n\};/)[0];
+  const normalizerStart = shell.indexOf('function normalizeApiNotification(record) {');
+  const normalizerEnd = shell.indexOf('\nasync function getApiNotifications', normalizerStart);
+  const normalizer = shell.slice(normalizerStart, normalizerEnd);
+  const context = vm.createContext({
+    window: { location: { origin: 'https://school.example' } }, URL,
+    record: { id: 22, type: 'pickup', title: 'Student picked up',
+      message: 'A student was picked up by an approved fetcher.', eventKey: 'pickup:31' }
+  });
+  const notification = vm.runInContext(`${pageMap}\n${normalizer}\nnormalizeApiNotification(record)`, context);
+  assert.equal(notification.type, 'Pickup');
+  assert.equal(notification.icon, 'users-round');
+  assert.equal(notification.tone, 'green');
+  assert.deepEqual(JSON.parse(JSON.stringify(notification.link)), { page: 'fetchers' });
+});
+
 test('communication waits for calendar notices before building same-day notifications', async () => {
   const source = shell.match(/async function loadApiCommunication\(role\) \{[\s\S]*?\n\}\n\nasync function getApiPlatformSchools/)[0]
     .replace(/\n\nasync function getApiPlatformSchools$/, '');

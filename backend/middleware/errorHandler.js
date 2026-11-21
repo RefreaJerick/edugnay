@@ -5,7 +5,7 @@ function errorHandler(error, req, res, next) {
 
   const status = String(error.code || '').startsWith('LIMIT_') ? 400 : Number(error.status) || 500;
   const message = error.code === 'LIMIT_FILE_SIZE'
-    ? (req.originalUrl?.startsWith('/api/users/me/avatar')
+    ? (req.originalUrl?.startsWith('/api/users/me/avatar') || req.originalUrl?.startsWith('/api/fetchers')
       ? AVATAR_ERROR
       : req.originalUrl?.startsWith('/api/schools/register') || req.originalUrl?.startsWith('/api/school/logo')
       ? 'School logos must be 2 MB or smaller.'

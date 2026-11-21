@@ -15,6 +15,7 @@ const roles = [
   { role: 'teacher', folder: 'teacher', userId: '8', schoolId: '2', name: 'Maya Santos', initials: 'MS' },
   { role: 'school_admin', folder: 'admin', userId: '9', schoolId: '2', name: 'Admin Santos', initials: 'AS' },
   { role: 'parent', folder: 'parent', userId: '10', schoolId: '2', name: 'Parent Santos', initials: 'PS' },
+  { role: 'school_guard', folder: 'guard', userId: '12', schoolId: '2', name: 'Guard Santos', initials: 'GS' },
   { role: 'platform_admin', folder: 'platform', userId: '11', schoolId: '', name: 'Platform Admin', initials: 'PA' }
 ];
 
@@ -208,7 +209,7 @@ test('all portal roles restore the verified profile chip before account refresh'
     assert.equal(harness.name.textContent, account.name, account.role);
     assert.equal(harness.role.textContent, ({
       platform_admin: 'Platform Administrator', school_admin: 'Administrator',
-      teacher: 'Faculty', student: 'Student', parent: 'Parent'
+      teacher: 'Faculty', student: 'Student', parent: 'Parent', school_guard: 'School Guard'
     })[account.role], account.role);
     assert.equal(harness.avatar.textContent, account.initials, account.role);
     assert.equal(harness.avatar.person.avatarUrl, `/api/users/${account.userId}/avatar?v=1`, account.role);
@@ -231,6 +232,61 @@ test('all portal roles restore the verified profile chip before account refresh'
     assert.equal(harness.avatar.textContent, 'UP', account.role);
     assert.equal(JSON.parse(harness.storage.get(key)).userId, String(Number(account.userId) + 100), account.role);
   }
+});
+
+test('guard profile menu includes profile, toast sounds, install, and sign out', () => {
+  const guardHtml = pageFs.readFileSync(path.join(root, 'views/guard/edugnay-guard-dashboard.html'), 'utf8');
+  const profileHtml = pageFs.readFileSync(path.join(root, 'views/guard/edugnay-guard-profile.html'), 'utf8');
+  assert.match(guardHtml, /id="tbProfileTrigger"/);
+  assert.match(guardHtml, /id="tbProfileDropdown"/);
+  assert.match(guardHtml, /pwa-install\.js/);
+  assert.match(guardHtml, /href="edugnay-guard-profile\.html"/);
+  assert.match(guardHtml, /data-page-click="s75e650dae902"/);
+  assert.match(profileHtml, /href="edugnay-guard-dashboard\.html"/);
+  assert.match(profileHtml, /href="edugnay-guard-profile\.html" class="nav-item active" aria-current="page"/);
+  assert.match(profileHtml, /id="guardProfileForm"/);
+  assert.match(profileHtml, /id="avatarFileInput"/);
+  assert.match(profileHtml, /id="guardPasswordModal"/);
+  assert.match(profileHtml, /assets\/js\/guard\/profile\.js/);
+
+  const start = source.indexOf('function initToastSoundToggle() {');
+  const end = source.indexOf('\nfunction toggleProfileDropdown', start);
+  assert.ok(start >= 0 && end > start);
+  const initToastSoundToggle = source.slice(start, end);
+
+  function insertedToastToggle(role) {
+    let created = 0;
+    let inserted = 0;
+    const dropdown = {
+      querySelector(selector) {
+        if (selector === '.tb-dropdown-item.danger') return {};
+        return null;
+      },
+      insertBefore() { inserted += 1; }
+    };
+    const context = vm.createContext({
+      getPortalRoleFromPath: () => role,
+      getProfileControls: () => ({ dropdown }),
+      document: {
+        createElement() {
+          created += 1;
+          return {
+            addEventListener() {},
+            setAttribute() {},
+            querySelector() { return { textContent: '' }; }
+          };
+        }
+      },
+      window: { AudioContext: function AudioContext() {} },
+      toastSoundsEnabled: false,
+      playToastSound() {}
+    });
+    vm.runInContext(`${initToastSoundToggle}\ninitToastSoundToggle()`, context);
+    return { created, inserted };
+  }
+
+  assert.deepEqual(insertedToastToggle('school_guard'), { created: 1, inserted: 1 });
+  assert.deepEqual(insertedToastToggle('school_admin'), { created: 1, inserted: 1 });
 });
 
 test('an incomplete account response gives a clear sign-in message', async () => {
@@ -354,7 +410,7 @@ test('temporary account-load failures preserve an already restored chip', async 
 });
 
 test('every signed-in portal header restores its chip before main content', () => {
-  const portalDirs = ['student', 'teacher', 'admin', 'parent', 'platform'];
+  const portalDirs = ['student', 'teacher', 'admin', 'parent', 'platform', 'guard'];
   let checked = 0;
   for (const role of portalDirs) {
     const directory = path.join(root, 'views', role);
@@ -374,7 +430,7 @@ test('every signed-in portal header restores its chip before main content', () =
       checked += 1;
     }
   }
-  assert.equal(checked, 46);
+  assert.equal(checked, 50);
 
   const styles = pageFs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
   assert.match(styles, /html\.profile-chip-page \.tb-profile-trigger \{ width: 215px; \}/);

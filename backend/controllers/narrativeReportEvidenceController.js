@@ -85,6 +85,7 @@ function reportSubmissionStatus(row, throughDate) {
 }
 
 function dateWithinEnrollment(day, enrollment) {
+  if (enrollment.enrollmentPeriods) return enrollment.enrollmentPeriods.some(period => dateWithinEnrollment(day, period));
   return day >= enrollment.enrolledDate && (!enrollment.withdrawnDate || day <= enrollment.withdrawnDate);
 }
 
@@ -161,15 +162,21 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
       ORDER BY students.last_name, students.first_name, students.id`,
       [schoolId, sectionId, evidenceEndDate, evidenceStartDate]
     );
-    const students = rosterRows.map(row => ({
-      id: String(row.studentId), displayName: row.displayName, initials: row.initials || '',
-      ...avatarFields({ id: row.studentId, avatarFilename: row.avatarFilename, avatarVersion: row.avatarVersion }),
-      enrolledDate: row.enrolledDate, withdrawnDate: row.withdrawnDate,
-      attendance: emptyAttendance(), assignments: { total: 0, submitted: 0, notSubmitted: 0, pending: 0, sources: [] },
-      journal: { subjectName: null, entries: [], sources: [] },
-      followUpCandidate: false, candidateReasons: [], academicRecords: [],
-      academicScores: [], academicScoresOmitted: 0, lowScoreReasons: []
-    }));
+    const roster = new Map();
+    rosterRows.forEach(row => {
+      const id = String(row.studentId);
+      if (!roster.has(id)) roster.set(id, {
+        id, displayName: row.displayName, initials: row.initials || '',
+        ...avatarFields({ id: row.studentId, avatarFilename: row.avatarFilename, avatarVersion: row.avatarVersion }),
+        enrollmentPeriods: [],
+        attendance: emptyAttendance(), assignments: { total: 0, submitted: 0, notSubmitted: 0, pending: 0, sources: [] },
+        journal: { subjectName: null, entries: [], sources: [] },
+        followUpCandidate: false, candidateReasons: [], academicRecords: [],
+        academicScores: [], academicScoresOmitted: 0, lowScoreReasons: []
+      });
+      roster.get(id).enrollmentPeriods.push({ enrolledDate: row.enrolledDate, withdrawnDate: row.withdrawnDate });
+    });
+    const students = [...roster.values()];
     const byStudent = new Map(students.map(student => [student.id, student]));
 
     if (students.length) {
@@ -267,7 +274,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
       }
 
       const [assignmentRows] = await database.execute(
-        `SELECT assignments.id AS assignmentId, assignments.title,
+        `SELECT DISTINCT assignments.id AS assignmentId, assignments.title,
           assignments.subject_id AS subjectId, subjects.name AS subjectName,
           assignments.online_submission_enabled AS onlineSubmissionEnabled,
           DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
@@ -290,7 +297,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         WHERE assignments.school_id = ? AND assignments.section_id = ? AND assignments.status = 'published'
           AND assignments.due_at IS NOT NULL
           AND DATE(assignments.due_at) BETWEEN ? AND ?
-        ORDER BY assignments.due_at, subjects.name, assignments.title, section_students.student_user_id`,
+        ORDER BY dueDate, subjectName, assignments.title, studentId`,
         [schoolId, sectionId, evidenceStartDate, evidenceEndDate]
       );
       assignmentRows.forEach(row => {
@@ -603,7 +610,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         gradesEnabled: Number(section.gradesEnabled) === 1
       },
       reportWeek: { ...period, dataThroughDate: evidenceEndDate },
-      students: students.map(({ enrolledDate, withdrawnDate, ...student }) => student)
+      students: students.map(({ enrollmentPeriods, ...student }) => student)
     };
 }
 

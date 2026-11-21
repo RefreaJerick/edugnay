@@ -943,8 +943,6 @@ body.sf-validation-modal-open {
 
 .sf-workbook-cell.editable {
   background: var(--blue-xpale);
-  outline: 1px solid var(--blue-pale);
-  outline-offset: -1px;
 }
 
 .sf-workbook-cell.edited {

@@ -1,4 +1,4 @@
-const ROLE_SUFFIX = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'par' };
+const ROLE_SUFFIX = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'par', school_guard: 'guard' };
 
 function schoolEmailBase(firstName, lastName, role) {
   const clean = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')

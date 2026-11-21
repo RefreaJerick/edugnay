@@ -17,10 +17,13 @@ let rollbacks;
 
 function updateRow(sql, values) {
   const row = pending || saved;
+  const profilePrefix = sql.startsWith('UPDATE parent_profiles')
+    ? 'parent'
+    : sql.startsWith('UPDATE school_guard_profiles') ? 'schoolGuard' : 'student';
   const columns = {
     birth_place: 'studentBirthPlace', birth_place_region: 'studentBirthPlaceRegion',
     birth_country: 'studentBirthCountry', house_street: 'studentHouseStreet',
-    contact_number: sql.startsWith('UPDATE parent_profiles') ? 'parentContactNumber' : 'studentContactNumber',
+    contact_number: `${profilePrefix}ContactNumber`,
     middle_name: 'studentMiddleName'
   };
   sql.match(/SET (.+) WHERE user_id/)[1].split(', ').forEach((assignment, index) => {
@@ -33,7 +36,8 @@ function updateRow(sql, values) {
 const connection = {
   async beginTransaction() { pending = { ...saved }; },
   async execute(sql, values) {
-    if (sql.startsWith('UPDATE student_profiles') || sql.startsWith('UPDATE parent_profiles')) return updateRow(sql, values);
+    if (sql.startsWith('UPDATE student_profiles') || sql.startsWith('UPDATE parent_profiles')
+      || sql.startsWith('UPDATE school_guard_profiles')) return updateRow(sql, values);
     if (sql.startsWith('SELECT')) return [[pending || saved]];
     if (sql.startsWith('UPDATE users')) return [{ affectedRows: 1 }];
     throw new Error(`Unexpected query: ${sql}`);
@@ -122,4 +126,17 @@ test('parent profile edits can clear optional text', async () => {
   const result = await call(updateMyProfile, { contactNumber: null }, 'parent');
   assert.equal(result.error, null);
   assert.equal(result.body.user.profile.contactNumber, null);
+});
+
+test('school guard profile can update its optional contact number', async () => {
+  reset();
+  saved.role = 'school_guard';
+  saved.schoolGuardEmployeeNumber = 'GUARD-001';
+  saved.schoolGuardContactNumber = '09171234567';
+  const result = await call(updateMyProfile, { contactNumber: '09170000000' }, 'school_guard');
+  assert.equal(result.error, null);
+  assert.equal(result.status, 200);
+  assert.equal(saved.schoolGuardContactNumber, '09170000000');
+  assert.equal(result.body.user.profile.employeeNumber, 'GUARD-001');
+  assert.equal(result.body.user.profile.contactNumber, '09170000000');
 });

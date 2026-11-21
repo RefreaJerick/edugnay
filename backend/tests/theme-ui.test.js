@@ -335,7 +335,7 @@ test('every page has one static toggle and pre-paint theme loading', () => {
     if (!fs.statSync(dir).isDirectory()) continue;
     for (const name of fs.readdirSync(dir)) if (name.endsWith('.html')) pages.push(`views/${role}/${name}`);
   }
-  assert.equal(pages.length, 50);
+  assert.equal(pages.length, 54);
   for (const page of pages) {
     const html = read(page);
     assert.equal((html.match(/data-theme-control/g) || []).length, 1, page);
@@ -347,7 +347,7 @@ test('every page has one static toggle and pre-paint theme loading', () => {
     assert.doesNotMatch(html, /tb-theme-menu|data-theme-menu|tb-theme-choice|academix-theme-menu|data-lucide="palette"/, page);
     assert.ok(html.indexOf('assets/js/theme.js') < html.indexOf('assets/css/styles.css'), page);
     assert.ok(html.indexOf('assets/css/theme.css') > html.indexOf('assets/css/styles.css'), page);
-    if (!page.includes('onboarding') && page !== 'index.html') {
+    if (!page.includes('onboarding') && !page.includes('/guard/') && page !== 'index.html') {
       assert.ok(html.indexOf('data-theme-control') < html.indexOf('class="tb-profile"'), page);
     }
   }

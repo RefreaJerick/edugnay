@@ -61,6 +61,9 @@ function pushCopyFor(notification) {
       return generic;
     case 'attendance':
       return { title: 'Attendance alert', body: 'An attendance alert is ready to review in AcadeMix.' };
+    case 'pickup':
+      return { title: 'Student pickup confirmed',
+        body: cleanPushText(notification.message, 500) || GENERIC_PUSH_BODY };
     case 'assignment':
       return { title: 'Assignment reminder', body: 'An assignment reminder is ready to review in AcadeMix.' };
     case 'journal':
@@ -166,7 +169,7 @@ async function processPushQueue(database = getDatabase(), send = webPush.sendNot
         continue;
       }
       const { title, body } = pushCopyFor(job);
-      const payload = JSON.stringify({ title, body,
+      const payload = JSON.stringify({ title, body, type: job.type,
         notificationId: String(job.notificationId), role: job.role });
       try {
         await send({ endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.authKey } }, payload,

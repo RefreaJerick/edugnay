@@ -12,11 +12,12 @@
       teacher: { label: 'Faculty', badgeClass: 'badge-gold', icon: 'book-open' },
       student: { label: 'Student', badgeClass: 'badge-gray', icon: 'graduation-cap' },
       parent: { label: 'Parent', badgeClass: 'badge-purple', icon: 'heart-handshake' },
+      school_guard: { label: 'School Guard', badgeClass: 'badge-blue', icon: 'scan-line' },
     };
 
     // Modal option values map to the canonical account-role values.
-    const ROLE_OPT_TO_TABLE = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
-    const TABLE_TO_ROLE_OPT = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'parents' };
+    const ROLE_OPT_TO_TABLE = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent', guard: 'school_guard' };
+    const TABLE_TO_ROLE_OPT = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'parents', school_guard: 'guard' };
 
     let USERS = [];
     let backendUserSections = [];
@@ -228,7 +229,7 @@
       updateStudentFilters();
       renderSectionFilterOptions();
       const tbody = document.getElementById('tableBody');
-      const showGradeLinkColumn = !['school_admin', 'teacher'].includes(activeRole);
+      const showGradeLinkColumn = !['school_admin', 'teacher'].includes(activeRole) && activeRole !== 'school_guard';
       if ((usersLoading || usersLoadError) && !USERS.length) {
         const columns = showGradeLinkColumn ? 6 : 5;
         if (usersLoading) {
@@ -395,11 +396,12 @@
     }
 
     function updateRoleSummary() {
-      const counts = { all: USERS.length, school_admin: 0, teacher: 0, student: 0, parent: 0 };
+      const counts = { all: USERS.length, school_admin: 0, teacher: 0, student: 0, parent: 0, school_guard: 0 };
       USERS.forEach(u => counts[u.role] !== undefined && counts[u.role]++);
       document.querySelector('.rs-card.all .rs-num').textContent = counts.all;
       document.querySelector('.rs-card.admin .rs-num').textContent = counts.school_admin;
       document.querySelector('.rs-card.fac .rs-num').textContent = counts.teacher;
+      document.querySelector('.rs-card.guard .rs-num').textContent = counts.school_guard;
       document.querySelector('.rs-card.stud .rs-num').textContent = counts.student;
       document.querySelector('.rs-card.par .rs-num').textContent = counts.parent;
     }
@@ -421,7 +423,7 @@
         role
       };
 
-      if (role === 'school_admin' || role === 'teacher') {
+      if (role === 'school_admin' || role === 'teacher' || role === 'school_guard') {
         data.employeeNo = accountFieldValue('accountEmployeeNo').toUpperCase();
       }
       if (role === 'student') data.lrn = accountFieldValue('accountLRN');
@@ -441,7 +443,7 @@
         return 'Please provide a valid personal email.';
       }
 
-      const isStaff = data.role === 'school_admin' || data.role === 'teacher';
+      const isStaff = ['school_admin', 'teacher', 'school_guard'].includes(data.role);
       if (isStaff && !data.employeeNo) return 'Please provide the employee number.';
       if (data.role === 'student' && !data.lrn) return 'Please provide the student LRN.';
       if (data.role === 'student' && !/^\d{12}$/.test(data.lrn)) {
@@ -455,7 +457,7 @@
       }
       if (isStaff && USERS.some(user => (
         user.id !== data.userId
-        && (user.role === 'school_admin' || user.role === 'teacher')
+        && ['school_admin', 'teacher', 'school_guard'].includes(user.role)
         && String(user.employeeNo || '').trim().toLowerCase() === data.employeeNo.toLowerCase()
       ))) {
         return 'That employee number is already assigned to another staff account.';
@@ -797,7 +799,7 @@
         ['Profile setup', setupStatus]
       ];
       const roleDetails = [];
-      if (['school_admin', 'teacher'].includes(user.role)) {
+      if (['school_admin', 'teacher', 'school_guard'].includes(user.role)) {
         roleDetails.push(['Employee number', user.employeeNo]);
       }
       if (user.role === 'student') {
@@ -1354,7 +1356,7 @@
       const role = document.getElementById('accountRole').value;
       const isStudent = role === 'stud';
       const isNewStudent = isStudent && !document.getElementById('accountUserId').value;
-      const isStaff = role === 'adm' || role === 'fac';
+      const isStaff = role === 'adm' || role === 'fac' || role === 'guard';
       const isParent = role === 'parents';
       const groups = [
         ['employeeNumberGroup', isStaff],
@@ -1393,7 +1395,8 @@
         sectionInput.value = '';
       }
       employeeInput.required = isStaff;
-      employeeInput.placeholder = role === 'adm' ? 'e.g. ADM-2016-0001' : 'e.g. FAC-2019-0042';
+      employeeInput.placeholder = role === 'adm' ? 'e.g. ADM-2016-0001'
+        : role === 'guard' ? 'e.g. GUARD-2019-0042' : 'e.g. FAC-2019-0042';
 
       if (!isStudent) lrnInput.value = '';
       if (!isStaff) employeeInput.value = '';
@@ -1922,6 +1925,7 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p0dd757d752a2: function(event) { closeImportModal() },
     p115773407b4a: function(event) { selectAccountRole('adm') },
     p1bbab4a8f5a6: function(event) { selectAccountRole('fac') },
+    guardAccountRole: function(event) { selectAccountRole('guard') },
     p23152e5bd3c2: function(event) { filterRole('all', this) },
     p2a658a3d13f0: function(event) { selectImportRole('parents') },
     p34d158fe1c75: function(event) { filterRole('parent', this) },
@@ -1935,6 +1939,7 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p69093c9bb0ec: function(event) { closeUserDetailsModal() },
     p7e20af338333: function(event) { filterRole('school_admin', this) },
     p8464a51dd52d: function(event) { filterRole('teacher', this) },
+    guardRoleFilter: function(event) { filterRole('school_guard', this) },
     p9ef7ef2de577: function(event) { selectAccountRole('stud') },
     paed3cedf9d8d: function(event) { closeRegenerateAttendanceQrModal() },
     pb8db97c425be: function(event) { closeDeleteModal() },

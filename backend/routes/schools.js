@@ -8,7 +8,7 @@ const { getSchoolContext } = require('../controllers/schoolContextController');
 const calendarNoticesController = require('../controllers/calendarNoticesController');
 const attendanceSettingsController = require('../controllers/attendanceSettingsController');
 const { requireAuth } = require('../middleware/auth');
-const { requirePlatformAdmin, requireSchoolAdmin, requireSchoolUser } = require('../middleware/authorize');
+const { requirePlatformAdmin, requireSchoolAdmin, requireSchoolContextAccess, requireSchoolUser } = require('../middleware/authorize');
 const { schoolLogoUpload } = require('../config/schoolLogos');
 
 const router = express.Router();
@@ -42,7 +42,7 @@ router.post('/platform/schools/:schoolId/reactivate', requireAuth, requirePlatfo
   controller.changeSchoolAccess(req, res, next);
 });
 router.get('/school/settings', requireAuth, requireSchoolAdmin, controller.getSchoolSettings);
-router.get('/school/context', requireAuth, requireSchoolUser, getSchoolContext);
+router.get('/school/context', requireAuth, requireSchoolContextAccess, getSchoolContext);
 router.get('/school/calendar-notices', requireAuth, requireSchoolUser, calendarNoticesController.listCalendarNotices);
 router.post('/school/calendar-notices', requireAuth, requireSchoolAdmin, calendarNoticesController.createCalendarNotice);
 router.delete('/school/calendar-notices/:noticeId', requireAuth, requireSchoolAdmin, calendarNoticesController.deleteCalendarNotice);

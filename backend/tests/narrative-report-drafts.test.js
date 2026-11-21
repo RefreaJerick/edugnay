@@ -364,7 +364,7 @@ function fakeDatabase({ existing = {}, locked = {}, failSourceInsert = false } =
   let nextId = 100;
   const execute = async (sql, values = []) => {
     calls.push({ sql, values });
-    if (sql.includes('FROM narrative_reports WHERE school_id = ? AND student_user_id = ?')) {
+    if (sql.includes('FROM narrative_reports') && sql.includes('student_user_id = ?')) {
       const table = sql.includes('FOR UPDATE') ? locked : existing;
       return [[table[values[1]]].filter(Boolean)];
     }
@@ -1118,6 +1118,54 @@ test('existing drafts and confirmed reports are skipped unless draft regeneratio
   assert.ok(regeneratedDb.calls.some(call => call.sql?.startsWith('DELETE FROM report_recommendations')));
   assert.ok(regeneratedDb.calls.some(call => call.sql?.startsWith('DELETE FROM report_data_sources')));
   assert.equal(regeneratedDb.calls.some(call => call.sql?.startsWith('INSERT INTO narrative_reports')), false);
+});
+
+test('reports in another section are preserved without an AI call', async () => {
+  for (const previous of [
+    { id: 77, sectionId: 21, sectionName: 'St. Peter', gradeLevel: 'Grade 7', status: 'draft', releasedAt: null },
+    { id: 77, sectionId: 21, sectionName: 'St. Peter', gradeLevel: 'Grade 7', status: 'confirmed', releasedAt: null },
+    { id: 77, sectionId: 21, sectionName: 'St. Peter', gradeLevel: 'Grade 7', status: 'confirmed', releasedAt: '2026-10-23T08:00:00' }
+  ]) {
+    const database = fakeDatabase({ existing: { 4: previous } });
+    let modelCalls = 0;
+    const result = await processWeeklyGeneration(request({ studentIds: [4] }), {
+      database, evidenceBuilder: async () => weeklyEvidence(),
+      ai: async () => { modelCalls++; return draft; }
+    });
+    assert.equal(result.results[0].status, 'skipped');
+    assert.equal(result.results[0].reason, 'another_section');
+    assert.equal(result.results[0].message, 'This learner already has a report for this week in Grade 7 · St. Peter.');
+    assert.equal(modelCalls, 0);
+    assert.equal(database.calls.some(call => call === 'BEGIN'), false);
+    assert.equal(database.calls.some(call => call.sql?.startsWith('UPDATE narrative_reports SET')), false);
+  }
+});
+
+test('another-section conflict keeps its generic message when section details are unavailable', async () => {
+  const result = await processWeeklyGeneration(request({ studentIds: [4] }), {
+    database: fakeDatabase({ existing: { 4: { id: 77, sectionId: 21, status: 'draft' } } }),
+    evidenceBuilder: async () => weeklyEvidence(), ai: async () => draft
+  });
+  assert.equal(result.results[0].message, 'This learner already has a report for this week in another section.');
+});
+
+test('a report created in another section during AI generation is not overwritten', async () => {
+  const previous = { id: 77, sectionId: 21, sectionName: 'St. Peter', gradeLevel: 'Grade 7', status: 'draft', releasedAt: null };
+  const database = fakeDatabase({ locked: { 4: previous } });
+  let modelCalls = 0;
+  const result = await processWeeklyGeneration(request({ studentIds: [4] }), {
+    database, evidenceBuilder: async () => weeklyEvidence(),
+    ai: async () => { modelCalls++; return draft; }
+  });
+  assert.equal(modelCalls, 1);
+  assert.equal(result.results[0].status, 'skipped');
+  assert.equal(result.results[0].reason, 'another_section');
+  assert.equal(result.results[0].message, 'This learner already has a report for this week in Grade 7 · St. Peter.');
+  assert.ok(database.calls.includes('ROLLBACK'));
+  assert.equal(database.calls.some(call => call === 'COMMIT'), false);
+  assert.equal(database.calls.some(call => call.sql?.startsWith('UPDATE narrative_reports SET') ||
+    call.sql?.startsWith('INSERT INTO narrative_reports') ||
+    call.sql?.startsWith('DELETE FROM report_')), false);
 });
 
 test('a report confirmed during generation is never overwritten', async () => {

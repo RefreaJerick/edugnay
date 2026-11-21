@@ -2292,6 +2292,8 @@
 #gen-modal .gen-note-visibility svg { width: 12px; height: 12px; }
 #gen-modal .gen-note-count { color: var(--gray-500); font-weight: 500; }
 #gen-modal .gen-student-notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start; min-height: 0; max-height: none; padding-right: 14px; overflow-y: auto; }
+#gen-modal.is-compact-list .gen-modal { width: min(600px, calc(100vw - 20px)); max-width: 600px; }
+#gen-modal.is-compact-list .gen-student-notes { grid-template-columns: minmax(0, 1fr); }
 #gen-modal .gen-student-note-row { padding: 12px 0; border-bottom: 1px solid var(--gray-200); }
 #gen-modal .gen-student-note-row:nth-child(even) { border-left: 0; }
 #gen-modal .gen-student-note-head { gap: 9px; margin: 0; }
@@ -2311,26 +2313,36 @@
 #gen-modal .gen-modal-foot .review-modal-foot-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 #gen-modal .gen-modal-foot .top-btn { width: auto; min-height: 38px; justify-content: center; }
 #gen-modal .gen-start-button { width: auto; min-height: 38px; margin: 0; padding: 8px 16px; }
-#gen-modal.is-complete .gen-note-panel,
-#gen-modal.is-complete .gen-draft-count,
-#gen-modal.is-complete #start-generation { display: none; }
-#gen-modal.is-complete .gen-modal-foot { justify-content: flex-end; }
-#gen-modal.is-complete #gen-message:not([hidden]) {
-  margin: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--green-border);
-  border-radius: var(--radius-sm);
-  background: var(--green-pale);
-  color: var(--theme-success-text);
-}
-#gen-modal.is-complete #gen-message.is-error {
-  border-color: var(--red-border);
-  background: var(--red-pale);
-  color: var(--red);
-}
 #gen-modal.is-generating .gen-included,
 #gen-modal.is-generating .gen-modal-foot { display: none; }
+#gen-modal.is-generating .gen-modal { width: min(600px, calc(100vw - 20px)); max-width: 600px; }
 #gen-modal.is-generating .review-body { overflow-y: auto; }
+#gen-modal.is-result .gen-modal { width: min(600px, calc(100vw - 20px)); max-width: 600px; }
+#gen-modal.is-result .review-modal-head,
+#gen-modal.is-result .gen-included,
+#gen-modal.is-result .gen-note-panel,
+#gen-modal.is-result #gen-message,
+#gen-modal.is-result .gen-modal-foot { display: none; }
+#gen-modal.is-result .review-body { overflow-y: auto; padding: 32px 28px; }
+#gen-modal .gen-result-view[hidden] { display: none; }
+#gen-modal .gen-result-view { display: flex; flex-direction: column; align-items: center; text-align: center; }
+#gen-modal .gen-result-mark { position: relative; display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 16px; border: 2px solid var(--blue-pale); border-radius: 50%; }
+#gen-modal .gen-result-mark img { width: 52px; height: 52px; }
+#gen-modal #gen-result-icon { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--green-dark); color: var(--white); line-height: 0; }
+#gen-modal #gen-result-icon svg { width: 15px; height: 15px; stroke-width: 2.5; }
+#gen-modal.is-failure #gen-result-icon,
+#gen-modal.is-mixed #gen-result-icon { background: var(--red); }
+#gen-modal #gen-result-title { margin: 0; color: var(--gray-800); font-size: 18px; }
+#gen-modal #gen-result-summary { margin: 7px 0 0; color: var(--gray-500); font-size: 12px; line-height: 1.5; }
+#gen-modal .gen-result-failures { align-self: stretch; max-height: min(300px, 40vh); margin: 18px 0 0; padding: 0; overflow-y: auto; list-style: none; text-align: left; }
+#gen-modal .gen-result-failures[hidden] { display: none; }
+#gen-modal .gen-result-failures li { display: flex; align-items: center; gap: 9px; margin-top: 7px; padding: 10px 12px; border: 1px solid var(--red-border); border-radius: var(--radius-sm); background: var(--red-pale); }
+#gen-modal .gen-result-avatar { display: grid; flex: 0 0 28px; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--green-dark); color: var(--white); font-size: 10px; font-weight: 700; }
+#gen-modal .gen-result-failures li > span:last-child { display: grid; gap: 2px; min-width: 0; color: var(--red); font-size: 11px; overflow-wrap: anywhere; }
+#gen-modal .gen-result-failures strong { color: var(--gray-800); }
+#gen-modal .gen-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 22px; }
+#gen-modal .gen-result-actions .top-btn { width: auto; min-height: 38px; }
+#gen-modal .gen-result-actions .top-btn[hidden] { display: none; }
 
 @media (max-width: 760px) {
   #gen-modal .gen-modal { width: min(100%, calc(100vw - 20px)); }
@@ -2347,6 +2359,5 @@
 }
 
 @media (max-width: 520px) {
-  #gen-modal.is-complete .gen-modal-foot .review-modal-foot-actions { grid-template-columns: minmax(0, 1fr); }
-  #gen-modal.is-complete .gen-modal-foot .top-btn { width: 100%; }
+  #gen-modal.is-result .review-body { padding: 28px 18px; }
 }

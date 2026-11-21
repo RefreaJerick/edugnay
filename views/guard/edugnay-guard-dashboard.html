@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | AcadeMix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="manifest" href="../../manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap">
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=6" />
+  <link rel="stylesheet" href="../../assets/css/admin/dashboard.css" />
+  <link rel="stylesheet" href="../../assets/css/fetchers.css?v=33" />
+  <link rel="stylesheet" href="../../assets/css/guard/dashboard.css?v=7" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css?v=3" />
+  <link rel="stylesheet" href="../../assets/css/academic-range-picker.css" />
+  <link rel="stylesheet" href="../../assets/css/theme.css" />
+  <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
+  <script src="../../assets/vendor/zxing/zxing-browser.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
+  <script src="../../assets/js/shell-common.js?v=14"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script>
+  <script src="../../assets/js/pwa-install.js" defer></script>
+</head>
+<body data-page-title="Dashboard" data-page-loading="Loading dashboard...">
+  <div class="shell">
+    <div class="sidebar-overlay" aria-hidden="true" data-page-click="sc48f42f1ec91"></div>
+    <aside class="sidebar" aria-label="Guard navigation">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo-icon.png" alt="" /></div>
+        <div class="brand-text">
+          <div class="brand-name">Acade<span>Mix</span></div>
+          <div class="brand-sub"></div>
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-guard-dashboard.html" class="nav-item active" aria-current="page">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" aria-hidden="true"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-guard-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round" aria-hidden="true"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" aria-label="Open navigation" aria-expanded="false"
+          data-page-click="sab86664ca3f5">
+          <i data-lucide="menu" aria-hidden="true"></i>
+        </button>
+        <div class="topbar-context" aria-label="Dashboard page">
+          <div class="topbar-context-copy">
+            <strong class="page-title" data-page-title-target>Dashboard</strong>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-theme" data-theme-control>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger
+            aria-label="Switch to dark mode" title="Switch to dark mode">
+            <i data-lucide="moon" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" aria-expanded="false"
+            aria-label="Open profile menu" data-page-click="se9930608e765">
+            <div class="tb-avatar" aria-hidden="true"></div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name" data-current-user-name>Loading account...</div>
+              <div class="tb-profile-role">School Guard</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;" aria-hidden="true"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-guard-profile.html">
+              <i data-lucide="user-round" style="width:15px;height:15px;" aria-hidden="true"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
+              <i data-lucide="log-out" style="width:15px;height:15px;" aria-hidden="true"></i>
+              Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+    <script src="../../assets/js/portal-header-init.js"></script>
+
+    <main class="main">
+      <div class="dashboard-grid guard-dashboard-grid">
+        <div class="dash-col-left">
+          <section class="grading-banner" aria-label="Welcome and school year">
+            <div class="grading-welcome">
+              <div class="grading-welcome-name" id="guardWelcome">Loading account...</div>
+              <div class="grading-welcome-date" data-current-date></div>
+            </div>
+            <div class="grading-period-card" id="guardSchoolYearCard" role="group" aria-label="School year">
+              <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;" aria-hidden="true"></i></div>
+              <div class="grading-period-value">S.Y. <span id="guardSchoolYear">—</span></div>
+            </div>
+          </section>
+
+          <section class="stat-grid summary-card-layout guard-stats" aria-label="Today's pickup totals">
+            <article class="stat-card blue">
+              <div class="stat-card-top">
+                <div class="stat-card-icon"><i data-lucide="user-check" style="width:20px;height:20px;" aria-hidden="true"></i></div>
+              </div>
+              <div class="stat-card-num" id="guardPickedCount">--</div>
+              <div class="stat-card-label">Picked up today</div>
+              <div class="stat-card-sub">Confirmed handovers</div>
+            </article>
+            <article class="stat-card green">
+              <div class="stat-card-top">
+                <div class="stat-card-icon"><i data-lucide="users-round" style="width:20px;height:20px;" aria-hidden="true"></i></div>
+              </div>
+              <div class="stat-card-num" id="guardAwaitingCount">--</div>
+              <div class="stat-card-label">Awaiting pickup</div>
+              <div class="stat-card-sub">Eligible students remaining</div>
+            </article>
+          </section>
+
+          <section class="panel guard-panel" aria-labelledby="guardPanelTitle">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title" id="guardPanelTitle">Verify Fetcher ID</h2>
+                <p class="panel-sub">Scan the QR code or type the manual code, then check the person and student before confirming handover.</p>
+              </div>
+            </div>
+            <div class="guard-panel-content guard-scanner dashboard-grid">
+              <div class="dash-col-left">
+                <div class="panel">
+                  <div class="panel-empty-state" id="guardCameraPlaceholder">
+                    <div class="panel-empty-state-icon"><i data-lucide="scan-line" aria-hidden="true"></i></div>
+                    <p class="panel-empty-state-title">Camera is off</p>
+                    <p class="panel-empty-state-text">Start the camera, then hold the Fetcher ID QR code in view.</p>
+                  </div>
+                  <video id="guardScannerVideo" autoplay playsinline muted hidden></video>
+                </div>
+                <button type="button" class="top-btn primary" id="guardStartScan">
+                  <i data-lucide="scan-line" aria-hidden="true"></i> Start camera
+                </button>
+                <button type="button" class="top-btn secondary" id="guardStopScan" hidden>Stop camera</button>
+              </div>
+              <div class="dash-col-right">
+                <form id="guardCodeForm" class="guard-code-form">
+                  <div>
+                    <label class="form-label" for="guardCodeInput">Manual code</label>
+                    <p class="panel-sub">Can’t scan? Type the code printed on the ID.</p>
+                  </div>
+                  <div class="guard-actions school-field">
+                    <input class="form-input guard-code-input" id="guardCodeInput" autocomplete="off" maxlength="40"
+                      placeholder="Enter the code on the ID" required>
+                    <button type="submit" class="top-btn primary">Verify</button>
+                  </div>
+                </form>
+                <div>
+                  <h3 class="guard-field-label">Before you confirm</h3>
+                  <div role="list" aria-label="Steps before confirming handover">
+                    <div class="guard-actions" role="listitem">
+                      <span class="panel-sub">1. Scan the QR code or enter the code.</span>
+                    </div>
+                    <div class="guard-actions" role="listitem">
+                      <span class="panel-sub">2. Check that the person matches the ID.</span>
+                    </div>
+                    <div class="guard-actions" role="listitem">
+                      <span class="panel-sub">3. Confirm the student, then hand them over.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <p class="guard-error" id="guardError" role="alert" hidden></p>
+        </div>
+
+        <div class="dash-col-right">
+          <section class="panel panel-week" id="weekPanel" aria-labelledby="guardWeekTitle">
+            <div class="panel-head">
+              <div class="week-title-wrap">
+                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;" aria-hidden="true"></i></div>
+                <div><div class="panel-title" id="guardWeekTitle">This Week</div></div>
+              </div>
+              <span id="weekRangeLabel" class="week-range-label" aria-label="Current week"></span>
+            </div>
+            <div class="week-calendar-grid" id="weekCalendarGrid" aria-label="Days this week"></div>
+          </section>
+
+          <section class="panel guard-panel pickup-history-section" aria-labelledby="guardPickupHistoryTitle">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title" id="guardPickupHistoryTitle">School pickup history</h2>
+                <p class="panel-sub">See completed handovers recorded by any guard.</p>
+              </div>
+              <span class="badge badge-gray pickup-history-count" id="guardPickupCount">0 handovers</span>
+            </div>
+            <div class="pickup-history-filters guard-history-filters">
+              <div class="school-field academic-range-group" data-academic-range><label>Date range</label><div class="academic-range-native-pair">
+                <label>From<input id="guardPickupFrom" type="date"></label><label>To<input id="guardPickupTo" type="date"></label>
+              </div></div>
+              <button type="button" class="top-btn secondary pickup-history-today" id="guardPickupToday">Today</button>
+            </div>
+            <div class="guard-panel-content">
+              <div class="pickup-history-list guard-history-list" id="guardPickupHistory"></div>
+              <button type="button" class="top-btn secondary" id="guardPickupMore" hidden>Load more</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="modal-backdrop dashboard-modal-backdrop" id="guardVerified" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="guardVerifiedTitle" aria-describedby="guardVerifiedSub">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <span class="modal-heading-icon" aria-hidden="true"><i data-lucide="contact"></i></span>
+          <div class="modal-heading-copy">
+            <h2 class="modal-title" id="guardVerifiedTitle">Verified fetcher</h2>
+            <div class="modal-sub" id="guardVerifiedSub">Compare the person with this photo. Confirm only after the student is physically handed over.</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="guardVerifiedClose" aria-label="Close verified fetcher"><i data-lucide="x" aria-hidden="true"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="guard-verified-top">
+          <img id="guardFetcherPhoto" alt="Verified fetcher photo">
+          <div>
+            <strong id="guardFetcherName"></strong>
+            <span id="guardFetcherRelationship"></span>
+          </div>
+        </div>
+        <div id="guardStudents" class="guard-students"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="top-btn secondary" id="guardClearVerification">Close verification</button>
+      </div>
+    </section>
+  </div>
+  <script src="../../assets/js/fetcher-confirm.js?v=2"></script>
+  <script src="../../assets/js/pickup-history.js?v=4"></script>
+  <script src="../../assets/js/academic-range-picker.js?v=2"></script>
+  <script src="../../assets/js/guard/dashboard.js?v=9"></script>
+</body>
+</html>

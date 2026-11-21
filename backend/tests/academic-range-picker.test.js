@@ -137,6 +137,15 @@ test('range choice stages both endpoints and rejects reversed or out-of-year dat
   assert.equal(earlierStart.end, '');
 });
 
+test('pickup history can select one day while academic terms keep a later end date', () => {
+  const history = nextSelection({ start: '', end: '', step: 'start', yearStart: '', yearEnd: '', allowSameDay: true }, '2026-11-20');
+  const sameDay = nextSelection(history, '2026-11-20');
+  assert.equal(sameDay.end, '2026-11-20');
+  assert.equal(canApply(sameDay), true);
+  assert.equal(canApply({ ...sameDay, allowSameDay: false }), false);
+  assert.match(nextSelection(history, '2026-11-19').error, /on or after/);
+});
+
 test('existing academic-term rules reject overlaps and permit gaps', () => {
   const start = sharedSource.indexOf('function isValidDateValue(value) {');
   const end = sharedSource.indexOf('function getAcademicPeriodReminder(', start);

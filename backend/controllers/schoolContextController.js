@@ -31,6 +31,26 @@ async function getSchoolContext(req, res, next) {
     );
     if (!school) return res.status(404).json({ message: 'School not found.' });
 
+    if (req.user.role === 'school_guard') {
+      return res.json({ school: {
+        id: school.id,
+        name: school.name,
+        shortName: school.shortName,
+        schoolType: school.schoolType,
+        logoUrl: getSchoolLogoUrl(school),
+        schoolYear: school.schoolYear,
+        accentPalette: school.accentPalette || 'default-blue',
+        gradesPageEnabled: false,
+        narrativeReportsEnabled: false,
+        journalsEnabled: false,
+        sfTemplatesEnabled: false,
+        attendanceEnabled: false,
+        schoolLevels: [],
+        activeDivision: null,
+        divisions: {}
+      } });
+    }
+
     const [levels] = await database.execute(
       `SELECT id, level_code AS levelCode, display_name AS displayName,
         grading_period_type AS gradingPeriodType, is_enabled AS isEnabled

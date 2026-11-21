@@ -109,7 +109,7 @@
       <div class="academic-range-days" role="group" aria-label="Calendar dates"></div>
       <div class="academic-range-selection"><span>Selected dates</span><strong data-range-selection></strong></div>
       <p class="academic-range-error" data-range-error role="status" hidden></p>
-      <div class="academic-range-actions"><span class="academic-range-day-count" data-range-day-count aria-live="polite" hidden></span><button type="button" class="academic-range-cancel" data-range-action="cancel">Cancel</button><button type="button" class="academic-range-apply" data-range-action="apply">Apply</button></div>`;
+      <div class="academic-range-actions"><span class="academic-range-day-count" data-range-day-count aria-live="polite" hidden></span><button type="button" class="academic-range-cancel" data-range-action="clear" hidden>Clear</button><button type="button" class="academic-range-cancel" data-range-action="cancel">Cancel</button><button type="button" class="academic-range-apply" data-range-action="apply">Apply</button></div>`;
     document.body.appendChild(popup);
     popup.addEventListener('click', onPopupClick);
     popup.addEventListener('input', onPopupInput);
@@ -136,7 +136,7 @@
   }
 
   function canApply(range) {
-    return validDate(range.start) && validDate(range.end) && range.end > range.start
+    return validDate(range.start) && validDate(range.end) && (range.allowSameDay ? range.end >= range.start : range.end > range.start)
       && withinSchoolYear(range.start, range.yearStart, range.yearEnd)
       && withinSchoolYear(range.end, range.yearStart, range.yearEnd);
   }
@@ -148,8 +148,8 @@
       next.start = value;
       next.end = '';
       next.step = 'end';
-    } else if (value <= range.start) {
-      next.error = 'Choose an end date after the start date.';
+    } else if (value < range.start || (!range.allowSameDay && value === range.start)) {
+      next.error = range.allowSameDay ? 'Choose an end date on or after the start date.' : 'Choose an end date after the start date.';
     } else {
       next.end = value;
     }
@@ -263,6 +263,16 @@
     const action = event.target.closest('[data-range-action]')?.dataset.rangeAction;
     if (action === 'cancel') close();
     if (action === 'apply') apply();
+    if (action === 'clear' && openRange?.allowClear) {
+      const range = openRange;
+      for (const input of [range.startInput, range.endInput]) {
+        if (!input.value) continue;
+        input.value = '';
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      updateFields(range);
+      close();
+    }
   }
 
   function onPopupChange(event) {
@@ -360,14 +370,16 @@
     document.dispatchEvent(new CustomEvent('academix:calendar-open', { detail: { source: 'range' } }));
     const start = validDate(range.startInput.value) ? range.startInput.value : '';
     const end = validDate(range.endInput.value) ? range.endInput.value : '';
-    const yearStart = document.querySelector(config.yearStartSelector)?.value || '';
-    const yearEnd = document.querySelector(config.yearEndSelector)?.value || '';
+    const yearStart = config.yearStartSelector ? document.querySelector(config.yearStartSelector)?.value || '' : '';
+    const yearEnd = config.yearEndSelector ? document.querySelector(config.yearEndSelector)?.value || '' : '';
     let active = start || end || (validDate(yearStart) ? yearStart : today());
     if (validDate(yearStart) && active < yearStart) active = yearStart;
     if (validDate(yearEnd) && active > yearEnd) active = yearEnd;
     openRange = { ...range, trigger, start, end, yearStart, yearEnd,
       step: 'start', active,
       year: Number(active.slice(0, 4)), month: Number(active.slice(5, 7)) - 1, error: '' };
+    popup.querySelector('[data-range-action="clear"]').hidden = !range.allowClear;
+    popup.setAttribute('aria-label', `Choose ${range.name.toLowerCase()} dates`);
     popup.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
     render(true);
@@ -385,6 +397,8 @@
     button.addEventListener('click', () => open(range, button, config));
     range.startInput.addEventListener('change', () => updateFields(range));
     range.endInput.addEventListener('change', () => updateFields(range));
+    range.startInput.addEventListener('input', () => updateFields(range));
+    range.endInput.addEventListener('input', () => updateFields(range));
     return button;
   }
 
@@ -397,8 +411,8 @@
       const group = row.querySelector('[data-academic-range]');
       const fallback = group?.querySelector('.academic-range-native-pair');
       if (!startInput || !endInput || !fallback || startInput.dataset.academicRangeEnhanced) return;
-      const name = row.querySelector(config.nameSelector)?.value || 'Grading period';
-      const range = { startInput, endInput, name, group };
+      const name = config.name || (config.nameSelector ? row.querySelector(config.nameSelector)?.value : '') || 'Grading period';
+      const range = { startInput, endInput, name, group, allowSameDay: Boolean(config.allowSameDay), allowClear: Boolean(config.allowClear) };
       range.button = makeButton(range, config);
       updateFields(range);
       startInput.required = false;

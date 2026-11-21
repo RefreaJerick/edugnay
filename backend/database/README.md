@@ -1,9 +1,9 @@
 # Academix database setup
 
-`schema.sql` defines the final database structure through migration 066.
+`schema.sql` defines the final database structure through migration 076.
 Migrations 067-069 add built-in school-form records, which are included in
 `reference-data.sql`. Together, these files cover a fresh installation through
-migration 069. `schema.sql` is for an empty database, not for upgrading an
+migration 076. `schema.sql` is for an empty database, not for upgrading an
 existing one. It creates and selects the `academix` database, so check the
 target server before importing.
 

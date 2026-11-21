@@ -23,7 +23,7 @@ test('install assets reach each portal page without adding offline data caching'
     assert.match(read(file), /pwa-install\.js/);
   }
   assert.match(read('views/onboarding/edugnay-school-onboarding.html'), /data-install-app/);
-  for (const role of ['admin', 'platform', 'teacher', 'student', 'parent']) {
+  for (const role of ['admin', 'platform', 'teacher', 'student', 'parent', 'guard']) {
     for (const name of fs.readdirSync(path.join(root, 'views', role)).filter(name => name.endsWith('.html'))) {
       const html = read(`views/${role}/${name}`);
       assert.match(html, /manifest\.webmanifest/, name);
@@ -57,9 +57,16 @@ function loadInstallPage({ standalone = false, apple = false, portal = true } = 
     };
   }
   const onboardingButton = createButton();
+  const signOut = createButton();
+  const dropdownItems = [signOut];
   const dropdown = portal ? {
-    querySelector() { return {}; },
-    insertBefore(button) { controls.push(button); }
+    querySelector(selector) { return selector === '.tb-dropdown-divider' ? null
+      : selector === '.tb-dropdown-item.danger' ? signOut : null; },
+    insertBefore(button, before) {
+      const index = before ? dropdownItems.indexOf(before) : dropdownItems.length;
+      dropdownItems.splice(index < 0 ? dropdownItems.length : index, 0, button);
+      controls.push(button);
+    }
   } : null;
   let dialog;
   const document = {
@@ -106,7 +113,7 @@ function loadInstallPage({ standalone = false, apple = false, portal = true } = 
   };
   vm.runInNewContext(read('assets/js/pwa-install.js'), { document, window, navigator, URL });
   documentEvents.DOMContentLoaded();
-  return { windowEvents, controls: portal ? controls : [onboardingButton], registrations,
+  return { windowEvents, controls: portal ? controls : [onboardingButton], dropdownItems, signOut, registrations,
     get dialog() { return dialog; } };
 }
 
@@ -114,6 +121,8 @@ test('the install control opens the browser prompt and remains visible after ins
   const page = loadInstallPage();
   const button = page.controls[0];
   assert.equal(button.hidden, false);
+  assert.equal(page.dropdownItems[0], button);
+  assert.equal(page.dropdownItems[1], page.signOut);
   let prevented = false;
   let prompted = false;
   page.windowEvents.beforeinstallprompt({

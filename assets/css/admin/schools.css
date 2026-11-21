@@ -102,26 +102,6 @@
   align-items: flex-start;
 }
 
-.school-tabs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  margin: 0;
-  padding: 14px var(--panel-head-px) 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.school-tabs::-webkit-scrollbar {
-  display: none;
-}
-
 .school-settings-card > .scroll-fade-wrap > .scroll-fade-button {
   top: calc(50% + 7px);
   right: var(--panel-head-px);
@@ -186,38 +166,6 @@
   border-bottom-color: var(--white);
   background: var(--blue-xpale);
   color: var(--theme-accent-text);
-}
-
-.school-tab {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 9px 15px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--gray-500);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
-}
-
-.school-tab:hover {
-  border-color: var(--gray-200);
-  background: var(--gray-50);
-  color: var(--gray-700);
-}
-
-.school-tab.active {
-  border-color: var(--blue-pale);
-  background: var(--blue-xpale);
-  color: var(--theme-accent-text);
-  box-shadow: none;
 }
 
 .school-settings-body {
@@ -717,50 +665,9 @@
   grid-column: 1 / -1;
 }
 
-.school-field {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-}
-
-.school-field label {
-  display: block;
-  color: var(--gray-600);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .75px;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.school-field input,
-.school-field select,
-.school-field textarea {
-  width: 100%;
-  min-height: 42px;
-  padding: 10px 12px;
-  border: 1.5px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  background: var(--gray-50);
-  color: var(--gray-800);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 13px;
-  outline: none;
-  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
-}
-
 .school-field textarea {
   min-height: 76px;
   resize: vertical;
-}
-
-.school-field input:focus,
-.school-field select:focus,
-.school-field textarea:focus {
-  outline: none;
-  border-color: var(--theme-accent-text);
-  background: var(--theme-surface);
-  box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
 .school-field small {
@@ -1441,11 +1348,6 @@
 
   .school-settings-head {
     display: block;
-  }
-
-  .school-tabs {
-    margin: 0;
-    padding: 14px 16px 0;
   }
 
   .school-form-footer {

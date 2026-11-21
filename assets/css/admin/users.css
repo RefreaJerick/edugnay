@@ -32,6 +32,10 @@
   background: var(--blue-mid);
 }
 
+.rs-card.guard::before {
+    background: var(--blue-mid);
+}
+
 .rs-card.stud::before {
   background: var(--green);
 }
@@ -76,6 +80,11 @@
 .rs-card.fac .rs-icon {
   background: var(--gold-pale);
   color: var(--gold);
+}
+
+.rs-card.guard .rs-icon {
+    background: var(--blue-xpale);
+    color: var(--blue-mid);
 }
 
 .rs-card.stud .rs-icon {
@@ -1121,7 +1130,7 @@ button.role-opt {
 
 /* Refined role summary cards */
 .role-summary {
-  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  grid-template-columns: repeat(6, minmax(140px, 1fr));
   gap: 12px;
 }
 .rs-card {

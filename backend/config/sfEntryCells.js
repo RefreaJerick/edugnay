@@ -149,14 +149,17 @@ function getFormEntryType(formCode, address, cell, version = '') {
   const parts = addressParts(normalized);
   const dateFormat = String(cell?.numFmt || '').toLowerCase();
   if (formCode === 'SF1') {
-    if (/^B(?:1\d|[2-5]\d)$/.test(normalized)) return 'text';
-    if (/^J(?:1\d|[2-5]\d)$/.test(normalized)) return 'text';
     if (/^H(?:1\d|[2-5]\d)$/.test(normalized)) return 'date';
     if (/^I(?:1\d|[2-5]\d)$/.test(normalized) || /^[TU]6[1-4]$/.test(normalized)) return 'number';
+    if (/^[B-Z](?:1\d|[2-5]\d)$/.test(normalized) || /^AA(?:1\d|[2-5]\d)$/.test(normalized)) return 'text';
+  }
+  if (formCode === 'SF9' && parts && parts.row >= 32 && parts.row <= 41
+    && parts.column === columnNumber('B')) {
+    return 'text';
   }
   if (formCode === 'SF10') {
     if (normalized === 'M8' || SF10.blocks.some(block => normalized === `U${block.header}`)) return 'text';
-    if (normalized === 'AH8') return 'date';
+    if (normalized === 'AH8' || normalized === 'T17') return 'date';
     if (parts && SF10.blocks.some(block => parts.row === block.average && parts.column === columnNumber('AJ')
       || parts.row >= block.grades && parts.row < block.grades + 10
       && [columnNumber('U'), columnNumber('Y'), columnNumber('AC'), columnNumber('AG'), columnNumber('AJ')].includes(parts.column))) return 'number';

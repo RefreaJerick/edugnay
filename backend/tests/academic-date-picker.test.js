@@ -20,6 +20,16 @@ const instrumented = source.replace(/\}\)\(\);\s*$/, `window.__academicDatePicke
 vm.runInNewContext(instrumented, context);
 const picker = context.window.__academicDatePickerTest;
 
+test('guard pickup history uses the shared range picker controls and dashboard styles', () => {
+  const html = pageFs.readFileSync(path.join(root, 'views/guard/edugnay-guard-dashboard.html'), 'utf8');
+  assert.match(html, /assets\/js\/academic-date-picker\.js/);
+  assert.match(html, /assets\/css\/academic-range-picker\.css/);
+  assert.match(html, /assets\/css\/admin\/dashboard\.css/);
+  assert.match(html, /id="guardPickupFrom" type="date"/);
+  assert.match(html, /id="guardPickupTo" type="date"/);
+  assert.match(html, /id="guardPickupToday"[^>]*>Today<\/button>/);
+});
+
 function fakeState(type, value, draft) {
   const events = [];
   const attributes = {};

@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS users (
   UNIQUE KEY uq_users_school_id (school_id, id),
   CONSTRAINT chk_users_role_school CHECK (
     (role = 'platform_admin' AND school_id IS NULL)
-    OR (role IN ('school_admin', 'teacher', 'student', 'parent') AND school_id IS NOT NULL)
+    OR (role IN ('school_admin', 'teacher', 'student', 'parent', 'school_guard') AND school_id IS NOT NULL)
   ),
   CONSTRAINT fk_users_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
@@ -283,6 +283,15 @@ CREATE TABLE IF NOT EXISTS teacher_profiles (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS school_guard_profiles (
+  user_id BIGINT UNSIGNED PRIMARY KEY,
+  employee_number VARCHAR(60) NOT NULL,
+  contact_number VARCHAR(30) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_school_guard_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS student_profiles (
   user_id BIGINT UNSIGNED PRIMARY KEY,
   lrn VARCHAR(12) NOT NULL UNIQUE,
@@ -343,6 +352,76 @@ CREATE TABLE IF NOT EXISTS student_parent_links (
     FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE CASCADE,
   CONSTRAINT fk_student_parent_links_tenant_parent
     FOREIGN KEY (school_id, parent_user_id) REFERENCES users(school_id, id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS fetchers (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  parent_user_id BIGINT UNSIGNED NOT NULL,
+  is_parent_self BOOLEAN NOT NULL DEFAULT FALSE,
+  full_name VARCHAR(220) NOT NULL,
+  relationship VARCHAR(60) NOT NULL,
+  contact_number VARCHAR(30) NOT NULL,
+  photo_filename VARCHAR(64) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_fetchers_school_id (school_id, id),
+  KEY idx_fetchers_parent (school_id, parent_user_id),
+  CONSTRAINT fk_fetchers_parent FOREIGN KEY (school_id, parent_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS fetcher_authorizations (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  fetcher_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  reviewed_by_user_id BIGINT UNSIGNED NULL,
+  reviewed_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_fetcher_authorization_child (fetcher_id, student_user_id),
+  UNIQUE KEY uq_fetcher_authorizations_school_id (school_id, id),
+  KEY idx_fetcher_authorizations_student (school_id, student_user_id, status),
+  CONSTRAINT chk_fetcher_authorization_status CHECK (status IN ('pending', 'approved', 'rejected', 'revoked')),
+  CONSTRAINT fk_fetcher_authorizations_fetcher FOREIGN KEY (school_id, fetcher_id) REFERENCES fetchers(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_fetcher_authorizations_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_fetcher_authorizations_reviewer FOREIGN KEY (school_id, reviewed_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS fetcher_credentials (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  fetcher_id BIGINT UNSIGNED NOT NULL,
+  qr_token_hash CHAR(64) NOT NULL UNIQUE,
+  qr_token_ciphertext TEXT NOT NULL,
+  manual_code_hash CHAR(64) NOT NULL UNIQUE,
+  manual_code_ciphertext TEXT NOT NULL,
+  issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked_at DATETIME NULL,
+  UNIQUE KEY uq_fetcher_credentials_fetcher (fetcher_id),
+  CONSTRAINT fk_fetcher_credentials_fetcher FOREIGN KEY (school_id, fetcher_id) REFERENCES fetchers(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS pickup_records (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  student_name_at_pickup VARCHAR(220) NOT NULL,
+  fetcher_id BIGINT UNSIGNED NOT NULL,
+  fetcher_name_at_pickup VARCHAR(220) NOT NULL,
+  fetcher_relationship_at_pickup VARCHAR(60) NOT NULL,
+  guard_user_id BIGINT UNSIGNED NOT NULL,
+  guard_name_at_pickup VARCHAR(220) NOT NULL,
+  school_date DATE NOT NULL,
+  picked_up_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_pickup_records_school_day (school_id, student_user_id, school_date),
+  KEY idx_pickup_records_school_history (school_id, id),
+  KEY idx_pickup_records_school_date (school_id, school_date, id),
+  KEY idx_pickup_records_recent (school_id, picked_up_at),
+  CONSTRAINT fk_pickup_records_student FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_pickup_records_fetcher FOREIGN KEY (school_id, fetcher_id) REFERENCES fetchers(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_pickup_records_guard FOREIGN KEY (school_id, guard_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- =========================================================

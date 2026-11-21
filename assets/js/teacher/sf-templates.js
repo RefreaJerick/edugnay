@@ -698,8 +698,8 @@ function setGeneratedForm(form) {
   form.selectedPage = 0;
   form.renderedPageIndex = 0;
   form.pageEdits = Array.from({ length: form.pages?.length || 1 }, () => []);
-  form.pageBaseCellTexts = form.pageBaseCellTexts || Array.from({ length: form.pages?.length || 1 }, () => ({}));
-  form.pageBaseCellTexts[0] ||= form.baseCellTexts || Object.fromEntries(
+  form.pageBaseCellTexts ||= [];
+  form.pageBaseCellTexts[0] ??= form.baseCellTexts || Object.fromEntries(
     form.preview.rows.flatMap(row => row.cells.filter(cell => cell.editable).map(cell => [cell.address, cell.text]))
   );
   form.baseCellTexts = form.pageBaseCellTexts[0];

@@ -6,7 +6,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
-const pages = ['admin', 'teacher', 'student', 'parent', 'platform'];
+const pages = ['admin', 'teacher', 'student', 'parent', 'platform', 'guard'];
 
 test('all profile pages use the shared saved-photo controls', () => {
   for (const role of pages) {

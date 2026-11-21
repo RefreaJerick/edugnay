@@ -121,6 +121,7 @@ window.EDUGNAY_PAGE_EVENTS.bind({
     p03efa4593cf8: function(event) { setActivityTypeFilter(this,'announcements') },
     p143a43a651c6: function(event) { setActivityTypeFilter(this,'school_forms') },
     p25a9dd8af81b: function(event) { setActivityTypeFilter(this,'accounts') },
+    fetcherActivityFilter: function(event) { setActivityTypeFilter(this,'fetchers') },
     p299f0da88c9a: function(event) { setActivityTypeFilter(this,'class_management') },
     p2c5fe8261daf: function(event) { setActivityTypeFilter(this,'archives') },
     pa23b85884a5b: function(event) { setActivityTypeFilter(this,'learning_materials') },

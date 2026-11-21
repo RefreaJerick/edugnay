@@ -184,6 +184,30 @@
   background: var(--red-pale);
 }
 
+.fetcher-confirm-modal .modal-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 22px;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--radius-sm);
+  background: var(--blue-xpale);
+}
+
+.fetcher-confirm-modal .modal-context.confirm-remove-context {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+}
+
+.fetcher-confirm-modal .ctx-icon,
+.fetcher-confirm-modal .ctx-label { color: var(--theme-accent-text); }
+.fetcher-confirm-modal .confirm-remove-context :is(.ctx-icon, .ctx-label) { color: var(--red); }
+.fetcher-confirm-modal .ctx-icon { flex-shrink: 0; }
+.fetcher-confirm-modal .ctx-icon svg { width: 18px; height: 18px; }
+.fetcher-confirm-modal .ctx-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.fetcher-confirm-modal .ctx-val { margin-top: 1px; color: var(--gray-800); font-size: 13px; font-weight: 700; }
+
 .confirm-remove-context :is(.ctx-icon, .ctx-label, .ctx-icon svg) {
   color: var(--red);
 }
@@ -970,7 +994,7 @@ body :is(
   .btn-submit,
   .btn-close-modal,
   .journal-cta
-) {
+):not([hidden]) {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;

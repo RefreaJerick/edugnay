@@ -26,7 +26,7 @@ test('school routes allow school roles and reject platform administrators', () =
   for (const role of ['school_admin', 'teacher', 'student', 'parent']) {
     assert.equal(runSchoolUserGuard(role).allowed, true, `${role} should pass`);
   }
-  for (const role of ['platform_admin', null]) {
+  for (const role of ['platform_admin', 'school_guard', null]) {
     const result = runSchoolUserGuard(role, null);
     assert.equal(result.allowed, false);
     assert.equal(result.status, 403);

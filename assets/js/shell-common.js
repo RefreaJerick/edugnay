@@ -54,14 +54,16 @@ const EDUGNAY_PROFILE_ROLE_LABELS = {
   school_admin: 'Administrator',
   teacher: 'Faculty',
   student: 'Student',
-  parent: 'Parent'
+  parent: 'Parent',
+  school_guard: 'School Guard'
 };
 
 function getPortalRoleFromPath() {
-  const match = location.pathname.match(/\/views\/(student|teacher|admin|parent|platform)\//i);
+  const match = location.pathname.match(/\/views\/(student|teacher|admin|parent|platform|guard)\//i);
   if (!match) return null;
   const folder = match[1].toLowerCase();
-  return folder === 'admin' ? 'school_admin' : folder === 'platform' ? 'platform_admin' : folder;
+  return folder === 'admin' ? 'school_admin' : folder === 'platform' ? 'platform_admin'
+    : folder === 'guard' ? 'school_guard' : folder;
 }
 
 function clearProfileDisplaySnapshot() {
@@ -129,7 +131,7 @@ if (cachedProfileDisplaySnapshot && portalRoleForCurrentPage
 }
 
 function isSchoolPortalRole(role) {
-  return role === 'school_admin' || role === 'teacher' || role === 'student' || role === 'parent';
+  return role === 'school_admin' || role === 'teacher' || role === 'student' || role === 'parent' || role === 'school_guard';
 }
 
 function readSchoolBrandSnapshot() {
@@ -1849,6 +1851,7 @@ const API_NOTIFICATION_PAGE_BY_TYPE = {
   assignment: 'assignments',
   grade: 'grades',
   attendance: 'attendance',
+  pickup: 'fetchers',
   report: 'reports',
   journal: 'journal',
   task: 'dashboard',
@@ -2037,6 +2040,7 @@ function normalizeApiNotification(record) {
     assignment: { icon: 'clipboard-list', tone: 'blue', label: 'Assignment' },
     grade: { icon: 'clipboard-pen', tone: 'orange', label: 'Grades' },
     attendance: { icon: 'user-check', tone: 'red', label: 'Attendance' },
+    pickup: { icon: 'users-round', tone: 'green', label: 'Pickup' },
     report: { icon: 'file-text', tone: 'orange', label: 'Report' },
     journal: { icon: 'notebook-pen', tone: 'purple', label: 'Journal' },
     task: { icon: 'list-checks', tone: 'blue', label: 'Task' },
@@ -2427,17 +2431,20 @@ window.EDUGNAY_API = {
 };
 
 window.EDUGNAY_CALENDAR_READY = Promise.resolve();
+const isGuardPortalPage = /^\/views\/guard\//.test(window.location.pathname);
 window.EDUGNAY_SCHOOL_READY = EDUGNAY_API_BASE_URL
-  && /^\/views\/(admin|teacher|student|parent)\//.test(window.location.pathname)
+  && /^\/views\/(admin|teacher|student|parent|guard)\//.test(window.location.pathname)
   ? getApiSchoolContext().then(school => {
-    window.EDUGNAY_CALENDAR_READY = loadApiCalendarNotices().catch(error => {
-      const message = `${error?.message || 'Calendar notices could not be loaded.'} Reload to retry.`;
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => showAppToast(message, 'error'), { once: true });
-      } else {
-        showAppToast(message, 'error');
-      }
-    });
+    if (!isGuardPortalPage) {
+      window.EDUGNAY_CALENDAR_READY = loadApiCalendarNotices().catch(error => {
+        const message = `${error?.message || 'Calendar notices could not be loaded.'} Reload to retry.`;
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => showAppToast(message, 'error'), { once: true });
+        } else {
+          showAppToast(message, 'error');
+        }
+      });
+    }
     return school;
   }).catch(error => {
     const message = error?.message || 'School data could not be loaded.';
@@ -2468,7 +2475,7 @@ function renderAvatar(element, person = {}, options = {}) {
   const sizes = ['sm', 'compact', 'md', 'lg', 'profile'];
   const tones = ['navy', 'blue', 'gold', 'green', 'purple', 'orange', 'teal'];
   const roleTone = { platform_admin: 'blue', school_admin: 'blue', teacher: 'gold',
-    student: 'green', parent: 'purple' };
+    student: 'green', parent: 'purple', school_guard: 'blue' };
   const identity = String(person.id || person.name || person.initials || '');
   const hash = [...identity].reduce((value, character) => value + character.charCodeAt(0), 0);
   const tone = tones.includes(options.color) ? options.color
@@ -2925,7 +2932,8 @@ function applyCurrentDateToGradingBanners() {
       SCHOOL_ADMIN: 'school_admin',
       TEACHER: 'teacher',
       STUDENT: 'student',
-      PARENT: 'parent'
+      PARENT: 'parent',
+      SCHOOL_GUARD: 'school_guard'
     },
     statuses: {
       ACTIVE: 'active',
@@ -3801,7 +3809,8 @@ function applyCurrentDateToGradingBanners() {
     fac: RECORD_VALUES.roles.TEACHER,
     stud: RECORD_VALUES.roles.STUDENT,
     par: RECORD_VALUES.roles.PARENT,
-    parents: RECORD_VALUES.roles.PARENT
+    parents: RECORD_VALUES.roles.PARENT,
+    guard: RECORD_VALUES.roles.SCHOOL_GUARD
   };
 
   function generateSchoolEmail(values = {}) {
@@ -3810,7 +3819,8 @@ function applyCurrentDateToGradingBanners() {
       [RECORD_VALUES.roles.SCHOOL_ADMIN]: 'adm',
       [RECORD_VALUES.roles.TEACHER]: 'fac',
       [RECORD_VALUES.roles.STUDENT]: 'stud',
-      [RECORD_VALUES.roles.PARENT]: 'par'
+      [RECORD_VALUES.roles.PARENT]: 'par',
+      [RECORD_VALUES.roles.SCHOOL_GUARD]: 'guard'
     }[role];
     const firstName = String(values.firstName || '')
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')

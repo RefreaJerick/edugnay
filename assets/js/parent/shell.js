@@ -239,6 +239,8 @@ function navigate(page) {
     window.location.href = './edugnay-parent-reports.html';
   } else if (page === 'attendance') {
     window.location.href = './edugnay-parent-attendance.html';
+  } else if (page === 'fetchers') {
+    window.location.href = './edugnay-parent-fetchers.html';
   } else if (page === 'announcements') {
     window.location.href = './edugnay-parent-announcements.html';
   } else if (page === 'profile') {

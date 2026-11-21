@@ -10,7 +10,7 @@ const { findStudentAccountSection, hasStudentSectionCapacity, isValidStudentAcco
 const { generateTemporaryPassword } = require('../utils/temporaryPassword');
 
 const ACCOUNT_STATUSES = new Set(['active', 'inactive', 'pending']);
-const MANAGED_ROLES = new Set(['school_admin', 'teacher', 'student', 'parent']);
+const MANAGED_ROLES = new Set(['school_admin', 'teacher', 'student', 'parent', 'school_guard']);
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -68,6 +68,8 @@ function userSelect() {
     school_admin_profiles.contact_number AS schoolAdminContactNumber,
     teacher_profiles.employee_number AS teacherEmployeeNumber,
     teacher_profiles.contact_number AS teacherContactNumber,
+    school_guard_profiles.employee_number AS schoolGuardEmployeeNumber,
+    school_guard_profiles.contact_number AS schoolGuardContactNumber,
     student_profiles.lrn,
     student_profiles.middle_name AS studentMiddleName,
     student_profiles.has_no_middle_name AS studentHasNoMiddleName,
@@ -99,6 +101,7 @@ function userSelect() {
   FROM users
   LEFT JOIN school_admin_profiles ON school_admin_profiles.user_id = users.id
   LEFT JOIN teacher_profiles ON teacher_profiles.user_id = users.id
+  LEFT JOIN school_guard_profiles ON school_guard_profiles.user_id = users.id
   LEFT JOIN student_profiles ON student_profiles.user_id = users.id
   LEFT JOIN parent_profiles ON parent_profiles.user_id = users.id`;
 }
@@ -133,6 +136,13 @@ function formatUser(row) {
     user.profile = {
       employeeNumber: row.teacherEmployeeNumber,
       contactNumber: row.teacherContactNumber
+    };
+  }
+
+  if (row.role === 'school_guard') {
+    user.profile = {
+      employeeNumber: row.schoolGuardEmployeeNumber,
+      contactNumber: row.schoolGuardContactNumber
     };
   }
 
@@ -284,6 +294,8 @@ function getProfileChanges(role, body) {
   const fields = role === 'school_admin'
     ? { contactNumber: ['contact_number', 30] }
     : role === 'teacher'
+    ? { contactNumber: ['contact_number', 30] }
+    : role === 'school_guard'
     ? { contactNumber: ['contact_number', 30] }
     : role === 'student'
       ? {
@@ -526,6 +538,8 @@ async function updateMyProfile(req, res, next) {
       ? 'school_admin_profiles'
       : req.user.role === 'teacher'
         ? 'teacher_profiles'
+        : req.user.role === 'school_guard'
+          ? 'school_guard_profiles'
         : req.user.role === 'student'
           ? 'student_profiles'
           : 'parent_profiles';
@@ -584,10 +598,10 @@ async function createUser(req, res, next) {
     if (temporaryPassword.length < 12 || temporaryPassword.length > 128) {
       throw createError('Temporary password must contain 12 to 128 characters.');
     }
-    const employeeNo = ['school_admin', 'teacher'].includes(role)
+    const employeeNo = ['school_admin', 'teacher', 'school_guard'].includes(role)
       ? normalizeText(body.employeeNo, 60)?.toUpperCase()
       : null;
-    if (['school_admin', 'teacher'].includes(role) && !employeeNo) {
+    if (['school_admin', 'teacher', 'school_guard'].includes(role) && !employeeNo) {
       throw createError('Employee number is required for staff accounts.');
     }
     const lrn = role === 'student' ? normalizeLrn(body.lrn) : null;
@@ -622,10 +636,11 @@ async function createUser(req, res, next) {
          FROM users
          LEFT JOIN teacher_profiles ON teacher_profiles.user_id = users.id
          LEFT JOIN school_admin_profiles ON school_admin_profiles.user_id = users.id
+         LEFT JOIN school_guard_profiles ON school_guard_profiles.user_id = users.id
          WHERE users.school_id = ?
-           AND (teacher_profiles.employee_number = ? OR school_admin_profiles.employee_number = ?)
+           AND (teacher_profiles.employee_number = ? OR school_admin_profiles.employee_number = ? OR school_guard_profiles.employee_number = ?)
          LIMIT 1`,
-        [schoolId, employeeNo, employeeNo]
+        [schoolId, employeeNo, employeeNo, employeeNo]
       );
       if (staffMatches.length) throw createError('That employee number is already assigned in this school.', 409);
     }
@@ -661,6 +676,7 @@ async function createUser(req, res, next) {
     }
     else if (role === 'parent') await connection.execute('INSERT INTO parent_profiles (user_id) VALUES (?)', [userId]);
     else if (role === 'teacher') await connection.execute('INSERT INTO teacher_profiles (user_id, employee_number) VALUES (?, ?)', [userId, employeeNo]);
+    else if (role === 'school_guard') await connection.execute('INSERT INTO school_guard_profiles (user_id, employee_number) VALUES (?, ?)', [userId, employeeNo]);
     else await connection.execute('INSERT INTO school_admin_profiles (user_id, employee_number) VALUES (?, ?)', [userId, employeeNo]);
 
     if (role === 'parent' && body.parentLinks !== undefined) {
@@ -719,7 +735,7 @@ async function updateUser(req, res, next) {
       personalEmail: Object.hasOwn(body, 'personalEmail') ? normalizeEmail(body.personalEmail, 'Personal email') : user.personalEmail,
       accountStatus: Object.hasOwn(body, 'accountStatus') ? String(body.accountStatus) : user.accountStatus
     };
-    if (Object.hasOwn(body, 'employeeNo') && !['school_admin', 'teacher'].includes(user.role)) {
+    if (Object.hasOwn(body, 'employeeNo') && !['school_admin', 'teacher', 'school_guard'].includes(user.role)) {
       throw createError('Employee number is only available for staff accounts.');
     }
     if (Object.hasOwn(body, 'lrn') && user.role !== 'student') {
@@ -731,7 +747,7 @@ async function updateUser(req, res, next) {
     if (body.parentLinks !== undefined && (!Array.isArray(body.parentLinks) || body.parentLinks.length > 100)) {
       throw createError('Parent links must be an array of up to 100 students.');
     }
-    const employeeNo = ['school_admin', 'teacher'].includes(user.role)
+    const employeeNo = ['school_admin', 'teacher', 'school_guard'].includes(user.role)
       ? (Object.hasOwn(body, 'employeeNo') ? normalizeText(body.employeeNo, 60)?.toUpperCase() : null)
       : null;
     const lrn = user.role === 'student'
@@ -753,10 +769,11 @@ async function updateUser(req, res, next) {
          FROM users
          LEFT JOIN teacher_profiles ON teacher_profiles.user_id = users.id
          LEFT JOIN school_admin_profiles ON school_admin_profiles.user_id = users.id
+         LEFT JOIN school_guard_profiles ON school_guard_profiles.user_id = users.id
          WHERE users.school_id = ? AND users.id <> ?
-           AND (teacher_profiles.employee_number = ? OR school_admin_profiles.employee_number = ?)
+           AND (teacher_profiles.employee_number = ? OR school_admin_profiles.employee_number = ? OR school_guard_profiles.employee_number = ?)
          LIMIT 1`,
-        [user.schoolId, userId, employeeNo, employeeNo]
+        [user.schoolId, userId, employeeNo, employeeNo, employeeNo]
       );
       if (staffMatches.length) throw createError('That employee number is already assigned in this school.', 409);
     }
@@ -783,7 +800,8 @@ async function updateUser(req, res, next) {
       [values.firstName, values.lastName, values.personalEmail, values.accountStatus, displayName, initials, userId]
     );
     if (employeeNo !== null) {
-      const table = user.role === 'teacher' ? 'teacher_profiles' : 'school_admin_profiles';
+      const table = user.role === 'teacher' ? 'teacher_profiles'
+        : user.role === 'school_guard' ? 'school_guard_profiles' : 'school_admin_profiles';
       await connection.execute(`UPDATE ${table} SET employee_number = ? WHERE user_id = ?`, [employeeNo, userId]);
     }
     if (lrn !== null) {
@@ -797,8 +815,48 @@ async function updateUser(req, res, next) {
           [user.schoolId, Number(link.studentId), userId, link.relationship.trim().toLowerCase()]
         );
       }
+      await connection.execute(
+        `UPDATE fetcher_authorizations AS authorizations
+         INNER JOIN fetchers ON fetchers.id = authorizations.fetcher_id
+           AND fetchers.school_id = authorizations.school_id
+         SET authorizations.status = 'revoked', authorizations.reviewed_by_user_id = NULL,
+           authorizations.reviewed_at = NULL
+         WHERE fetchers.school_id = ? AND fetchers.parent_user_id = ?
+           AND authorizations.status <> 'revoked'
+           AND NOT EXISTS (
+             SELECT 1 FROM student_parent_links AS links
+             WHERE links.school_id = authorizations.school_id
+               AND links.parent_user_id = fetchers.parent_user_id
+               AND links.student_user_id = authorizations.student_user_id
+           )`,
+        [user.schoolId, userId]
+      );
+      await connection.execute(
+        `UPDATE fetcher_credentials AS credentials
+         INNER JOIN fetchers ON fetchers.id = credentials.fetcher_id
+           AND fetchers.school_id = credentials.school_id
+         SET credentials.revoked_at = UTC_TIMESTAMP()
+         WHERE fetchers.school_id = ? AND fetchers.parent_user_id = ?
+           AND credentials.revoked_at IS NULL
+           AND (fetchers.is_parent_self = TRUE OR NOT EXISTS (
+             SELECT 1 FROM fetcher_authorizations AS authorizations
+             WHERE authorizations.school_id = fetchers.school_id
+               AND authorizations.fetcher_id = fetchers.id AND authorizations.status = 'approved'))`,
+        [user.schoolId, userId]
+      );
     }
     const accountStatusChanged = values.accountStatus !== user.accountStatus;
+    if (user.role === 'parent' && accountStatusChanged && values.accountStatus === 'inactive') {
+      await connection.execute(
+        `UPDATE fetcher_credentials AS credentials
+         INNER JOIN fetchers ON fetchers.id = credentials.fetcher_id
+           AND fetchers.school_id = credentials.school_id
+         SET credentials.revoked_at = UTC_TIMESTAMP()
+         WHERE fetchers.school_id = ? AND fetchers.parent_user_id = ?
+           AND credentials.revoked_at IS NULL`,
+        [user.schoolId, userId]
+      );
+    }
     const actionType = accountStatusChanged && values.accountStatus === 'active'
       ? 'user_activated'
       : accountStatusChanged && values.accountStatus === 'inactive'

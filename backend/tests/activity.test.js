@@ -17,6 +17,36 @@ databaseModule.getDatabase = () => ({
 
 const activity = require('../controllers/activityController');
 
+test('fetcher and pickup activity describes each action and older student references', async () => {
+  const cases = [
+    ['fetcher_requested', { summary: 'Rico Santos', studentIds: [21, 22] }, 'requested pickup authorization', 'Rico Santos for 2 students'],
+    ['fetcher_updated', { summary: 'Rico Santos' }, 'updated fetcher details', 'Rico Santos'],
+    ['fetcher_approved', { summary: 'Rico Santos', studentId: 21 }, 'approved pickup authorization', 'Rico Santos for Juan Santos'],
+    ['fetcher_rejected', { summary: 'Rico Santos', studentId: 21 }, 'rejected pickup authorization', 'Rico Santos for Juan Santos'],
+    ['fetcher_revoked', { summary: 'Rico Santos', studentId: 21 }, 'revoked pickup authorization', 'Rico Santos for Juan Santos'],
+    ['fetcher_id_issued', { summary: 'Rico Santos' }, 'issued a fetcher ID', 'Rico Santos'],
+    ['fetcher_id_reissued', { summary: 'Rico Santos' }, 'reissued a fetcher ID', 'Rico Santos'],
+    ['student_picked_up', { studentName: 'Juan Santos', fetcherName: 'Rico Santos' },
+      'confirmed a student pickup', 'Juan Santos picked up by Rico Santos']
+  ];
+  for (const [actionType, details, title, detail] of cases) {
+    const record = activity.formatActivity({ id: 1, schoolId: 3, actionType, details,
+      activityStudentName: 'Juan Santos', actor: 'Rob Ramirez' });
+    assert.equal(record.title, title);
+    assert.equal(record.detail, detail);
+    assert.equal(record.type, 'Fetchers and pickup');
+  }
+
+  queries.length = 0;
+  rows = [];
+  const result = await call(activity.listSchoolActivity, { user: { schoolId: 3 },
+    query: { category: 'fetchers', search: 'Juan' } });
+  assert.equal(result.error, null);
+  assert.match(queries[0].sql, /activity_students\.school_id = audit_logs\.school_id/);
+  assert.match(queries[0].sql, /activity_students\.display_name LIKE \?/);
+  assert.ok(queries[0].values.includes('%Juan%'));
+});
+
 test('audit writes use the session actor and school with parameterized, safe details', async () => {
   let saved;
   const connection = {

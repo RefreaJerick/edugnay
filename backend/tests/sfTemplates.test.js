@@ -10,6 +10,8 @@ const JSZip = require('jszip');
 process.env.SF_EXPORT_DIRECTORY = path.join(os.tmpdir(), 'academix-sf-template-tests');
 const databaseModule = require('../config/database');
 const { createCombinedExportWorkbook, createExportWorkbook, getEditableCells, getExportFilePath } = require('../config/sfExports');
+const { getFormEntryType } = require('../config/sfEntryCells');
+const { SF9_GRADE11_ACADEMIC, SF9_GRADE11_TECHPRO, SF9_GRADE12_ACADEMIC, SF9_GRADE12_TECHPRO } = require('../config/sf9');
 
 function xmlAttribute(tag, name) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -362,6 +364,109 @@ test('generated preview actions stay hidden unless a generated preview is render
   const hiddenOverride = styles.indexOf('.sf-preview-actions[hidden] {\n  display: none;');
   assert.notEqual(mobileGrid, -1, 'mobile action buttons should stack without clipping');
   assert.ok(hiddenOverride > mobileGrid, 'hidden override must follow responsive display rules');
+});
+
+test('form preview keeps only real edits marked across zoom and form pages', async () => {
+  const root = path.resolve(__dirname, '..', '..');
+  const styles = await fs.promises.readFile(path.join(root, 'assets/css/teacher/sf-templates.css'), 'utf8');
+  const script = await fs.promises.readFile(path.join(root, 'assets/js/teacher/sf-templates.js'), 'utf8');
+  const rule = selector => styles.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] || '';
+  const editableRule = rule('.sf-workbook-cell.editable');
+  const editedRule = rule('.sf-workbook-cell.edited');
+  const focusedRule = rule('.sf-workbook-cell[contenteditable="true"]:focus');
+  assert.match(editableRule, /background:/);
+  assert.doesNotMatch(editableRule, /\b(?:outline|border|box-shadow)\s*:/);
+  assert.match(editedRule, /box-shadow:\s*inset/);
+  assert.match(focusedRule, /outline:/);
+
+  const editSource = script.slice(script.indexOf('function preservePreviewEdits'),
+    script.indexOf('function generatedValidationIssues'));
+  const setupSource = script.slice(script.indexOf('function setGeneratedForm'),
+    script.indexOf('function invalidateGeneratedPreview'));
+  const sfState = { preview: null, generated: null, zoomMode: 'custom', zoom: 0.75, editing: true };
+  let domCells = [];
+  let renders = 0;
+  const { setGeneratedForm, changePreviewZoom } = vm.runInNewContext(
+    `${editSource}\n${setupSource}; ({ setGeneratedForm, changePreviewZoom })`, {
+    sfState,
+    document: { getElementById: () => ({ querySelectorAll: () => domCells }) },
+    renderWorkbook: (container, currentPreview) => {
+      assert.equal(currentPreview, sfState.preview);
+      renders += 1;
+    }
+  });
+  const preview = (first, second) => ({ rows: [{ cells: [
+    { address: 'G11', text: first, editable: true, edited: false },
+    { address: 'H11', text: second, editable: true, edited: false }
+  ] }] });
+  const showForm = form => {
+    sfState.generated = form;
+    sfState.preview = form.preview;
+    domCells = form.preview.rows[0].cells.map(cell => ({ dataset: { cellAddress: cell.address }, textContent: cell.text }));
+  };
+
+  for (const formCode of ['SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9', 'SF10']) {
+    const form = { formCode, pages: [[]], preview: preview('Starting value', ''),
+      baseCellTexts: { G11: 'Starting value', H11: '' }, exportId: 42 };
+    if (formCode === 'SF10') form.pageBaseCellTexts = [form.baseCellTexts, { G11: 'Back value', H11: '' }];
+    setGeneratedForm(form);
+    showForm(form);
+    for (const action of ['fit', '75', '100']) {
+      changePreviewZoom(action);
+      assert.equal(form.edits.length, 0, `${formCode} ${action} should not create edits`);
+      assert.equal(form.preview.rows[0].cells.some(cell => cell.edited), false, `${formCode} ${action} edit markers`);
+      assert.equal(form.exportId, 42, `${formCode} ${action} should retain its export`);
+    }
+    domCells[0].textContent = 'Changed value';
+    changePreviewZoom('75');
+    assert.equal(form.edits.length, 1, `${formCode} should have one edit`);
+    assert.equal(form.edits[0].cellAddress, 'G11');
+    assert.equal(form.preview.rows[0].cells[0].edited, true);
+    assert.equal(form.preview.rows[0].cells[1].edited, false);
+    domCells[0].textContent = 'Starting value';
+    changePreviewZoom('100');
+    assert.equal(form.edits.length, 0, `${formCode} restored value should clear the edit`);
+    assert.equal(form.preview.rows[0].cells[0].edited, false);
+
+    if (formCode === 'SF10') {
+      form.renderedPageIndex = 1;
+      form.preview = preview('Back value', '');
+      showForm(form);
+      changePreviewZoom('fit');
+      assert.equal(form.edits.length, 0, 'SF10 back page should stay unedited');
+      assert.equal(form.pageBaseCellTexts[1].G11, 'Back value');
+    }
+  }
+
+  const first = { formCode: 'SF1', pages: [[]], preview: preview('First form', ''),
+    baseCellTexts: { G11: 'First form', H11: '' } };
+  const second = { formCode: 'SF2', pages: [[], []], preview: preview('Second form', ''),
+    baseCellTexts: { G11: 'Second form', H11: '' } };
+  [first, second].forEach(setGeneratedForm);
+  showForm(first);
+  domCells[0].textContent = 'Changed first form';
+  changePreviewZoom('75');
+  showForm(second);
+  changePreviewZoom('fit');
+  assert.equal(first.edits.length, 1, 'switching forms should retain the first form edit');
+  assert.equal(second.edits.length, 0, 'switching forms should not mark the second form');
+  second.pageBaseCellTexts[1] = { G11: 'Second page', H11: '' };
+  second.renderedPageIndex = 1;
+  second.preview = preview('Second page', '');
+  showForm(second);
+  changePreviewZoom('100');
+  assert.equal(second.edits.length, 0, 'later pages should use their own starting values');
+  showForm(first);
+  changePreviewZoom('fit');
+  assert.equal(first.edits.length, 1, 'the real first form edit should remain marked');
+
+  const withoutBaseline = { formCode: 'SF3', pages: [[]], preview: preview('From preview', '') };
+  setGeneratedForm(withoutBaseline);
+  showForm(withoutBaseline);
+  changePreviewZoom('75');
+  assert.equal(withoutBaseline.edits.length, 0, 'preview text should supply missing starting values');
+  assert.equal(withoutBaseline.baseCellTexts.G11, 'From preview');
+  assert.ok(renders >= 39);
 });
 
 test('template library search covers template fields and works with both filters', async () => {
@@ -1455,6 +1560,10 @@ test('SF1, SF2, SF3, SF5, and SF8 entry-cell schemas exclude labels and type fie
   }
 
   assert.equal(schemas.get('SF1').get('H10'), 'date');
+  for (const address of ['L10', 'M10', 'N10', 'L13', 'M13', 'N13', 'L16', 'M16', 'N16', 'L19', 'M19', 'N19']) {
+    assert.equal(schemas.get('SF1').get(address), 'text', `${address} should be editable text`);
+  }
+  assert.equal(schemas.get('SF1').has('K48'), false, 'the birth place merge must not expose K48 as a separate field');
   assert.equal(schemas.get('SF1').get('B10'), 'text');
   assert.equal(schemas.get('SF2').get('D11'), 'dateText');
   assert.equal(schemas.get('SF2').get('D13'), 'text');
@@ -1480,6 +1589,129 @@ test('SF1, SF2, SF3, SF5, and SF8 entry-cell schemas exclude labels and type fie
   assert.equal(schemas.get('SF8').has('A12'), false);
   assert.equal(schemas.get('SF8').has('A9'), false);
   assert.equal(schemas.get('SF8').has('D12'), false);
+});
+
+test('SF1 combined template copies preserve corrected formats and birth place merges', async () => {
+  const templateDirectory = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
+  const fileNames = fs.readdirSync(templateDirectory)
+    .filter(fileName => fileName === 'sf1.xlsx' || /^sf1-sf[2358](?:-sf[2358])*\.xlsx$/.test(fileName));
+  assert.equal(fileNames.length, 16);
+
+  for (const fileName of fileNames) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(path.join(templateDirectory, fileName));
+    const worksheet = workbook.getWorksheet('School Form 1 (SF1)');
+    assert.ok(worksheet, `${fileName} should include SF1`);
+    for (let row = 10; row <= 58; row += 1) {
+      assert.equal(worksheet.getCell(`H${row}`).numFmt, 'mm/dd/yyyy', `${fileName} H${row}`);
+    }
+    for (const row of [10, 13, 16, 19]) {
+      for (const column of ['L', 'M', 'N']) {
+        assert.equal(worksheet.getCell(`${column}${row}`).numFmt, '@', `${fileName} ${column}${row}`);
+      }
+    }
+    for (let row = 48; row <= 51; row += 1) {
+      assert.ok(worksheet.model.merges.includes(`J${row}:K${row}`), `${fileName} J${row}:K${row}`);
+    }
+  }
+
+  const sf9 = new ExcelJS.Workbook();
+  await sf9.xlsx.readFile(path.join(templateDirectory, 'sf9.xlsx'));
+  const sf9Worksheet = sf9.getWorksheet('SF9 - GRADE 4-10');
+  const sf9Cells = await getEditableCells({ formCode: 'SF9', filePath: '/assets/templates/school-forms/sf9.xlsx',
+    sheetName: 'SF9 - GRADE 4-10' });
+  const sf9Types = new Map(sf9Cells.map(cell => [cell.cellAddress, cell.type]));
+  for (let row = 33; row <= 41; row += 1) {
+    assert.equal(sf9Worksheet.getCell(`B${row}`).numFmt, '@', `sf9.xlsx B${row}`);
+    assert.equal(sf9Types.get(`B${row}`), 'text', `sf9.xlsx B${row} should be editable text`);
+  }
+});
+
+test('every school form workbook matches the preview package layout checks', async () => {
+  const source = await fs.promises.readFile(path.resolve(__dirname, '..', '..', 'assets', 'js', 'sf-workbook.js'), 'utf8');
+  const exposed = source.replace('  window.EDUGNAY_SF_WORKBOOK = {',
+    '  window.EDUGNAY_SF_WORKBOOK = { editableAddresses,');
+  assert.notEqual(exposed, source);
+  const window = {};
+  vm.runInNewContext(exposed, { window });
+  const getDefinition = window.EDUGNAY_SF_WORKBOOK.getTemplateDefinition;
+  const editableAddresses = window.EDUGNAY_SF_WORKBOOK.editableAddresses;
+  const templateIds = {
+    sf1: 'sf1-school-register-v1',
+    sf2: 'sf2-daily-attendance-v1',
+    sf3: 'sf3-books-issued-returned-v1',
+    sf5: 'sf5-promotion-proficiency-v1',
+    sf8: 'sf8-health-nutrition-v1',
+    sf9: 'sf9-learner-performance-v1',
+    'sf9-g11-academic': 'sf9-g11-academic-v1',
+    'sf9-g11-techpro': 'sf9-g11-techpro-v1',
+    'sf9-g12-academic': 'sf9-g12-academic-v1',
+    'sf9-g12-techpro': 'sf9-g12-techpro-v1',
+    sf10: 'sf10-jhs-permanent-record-v1'
+  };
+  const templateDirectory = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
+  const fileNames = fs.readdirSync(templateDirectory).filter(fileName => fileName.endsWith('.xlsx'));
+  assert.equal(fileNames.length, 37);
+
+  for (const fileName of fileNames) {
+    const zip = await JSZip.loadAsync(await fs.promises.readFile(path.join(templateDirectory, fileName)));
+    const formNames = fileName.slice(0, -5).startsWith('sf9-')
+      ? [fileName.slice(0, -5)] : fileName.slice(0, -5).split('-');
+    const stylesFile = zip.file('xl/styles.xml');
+    assert.ok(stylesFile, `${fileName} styles`);
+    const stylesXml = await stylesFile.async('string');
+    assert.ok(xmlCollectionItems(stylesXml, 'borders', 'border').length > 1, `${fileName} borders`);
+    assert.ok(Object.keys(zip.files).some(name => /^xl\/media\/[^/]+$/i.test(name)), `${fileName} image`);
+    assert.ok(Object.keys(zip.files).some(name => /^xl\/printerSettings\/[^/]+$/i.test(name)), `${fileName} printer settings`);
+
+    for (const formName of formNames) {
+      const definition = getDefinition({ id: templateIds[formName] });
+      assert.ok(definition, `${fileName} ${formName} definition`);
+      const sheetPath = await worksheetPackagePath(zip, definition.sheetName);
+      const sheetXml = await zip.file(sheetPath).async('string');
+      const mergeCount = [...sheetXml.matchAll(/<mergeCell\b/g)].length;
+      assert.equal(mergeCount, definition.mergeCount, `${fileName} ${definition.sheetName} merges`);
+      const cellAddresses = new Set([...sheetXml.matchAll(/<c\b[^>]*\br="([A-Z]+\d+)"[^>]*\bs="\d+"/g)]
+        .map(match => match[1]));
+      for (const address of [...Object.keys(definition.anchors),
+        ...Object.values(definition.fields).map(field => field.cellAddress),
+        ...editableAddresses({ id: templateIds[formName] })]) {
+        assert.ok(cellAddresses.has(address), `${fileName} ${definition.sheetName} ${address} style`);
+      }
+    }
+  }
+});
+
+test('all individual templates use mapped types instead of inferring types from workbook formats', async () => {
+  const templates = [
+    { formCode: 'SF1', fileName: 'sf1.xlsx', sheetName: 'School Form 1 (SF1)' },
+    { formCode: 'SF2', fileName: 'sf2.xlsx', sheetName: 'School Form 2 (SF2)' },
+    { formCode: 'SF3', fileName: 'sf3.xlsx', sheetName: 'School Form 3 (SF3)' },
+    { formCode: 'SF5', fileName: 'sf5.xlsx', sheetName: 'School Form 5 (SF5)' },
+    { formCode: 'SF8', fileName: 'sf8.xlsx', sheetName: 'School Form 8 (SF8)' },
+    { formCode: 'SF9', fileName: 'sf9.xlsx', sheetName: 'SF9 - GRADE 4-10' },
+    { formCode: 'SF9', fileName: 'sf9-g11-academic.xlsx', sheetName: 'SF9 - GRADE 11 ACADEMIC',
+      version: SF9_GRADE11_ACADEMIC.version },
+    { formCode: 'SF9', fileName: 'sf9-g11-techpro.xlsx', sheetName: 'SF9 - GRADE 11 TECHPRO',
+      version: SF9_GRADE11_TECHPRO.version },
+    { formCode: 'SF9', fileName: 'sf9-g12-academic.xlsx', sheetName: 'SF9 - GRADE 12 ACADEMIC',
+      version: SF9_GRADE12_ACADEMIC.version },
+    { formCode: 'SF9', fileName: 'sf9-g12-techpro.xlsx', sheetName: 'SF9 - GRADE 12 TECHPRO',
+      version: SF9_GRADE12_TECHPRO.version },
+    { formCode: 'SF10', fileName: 'sf10.xlsx', sheetName: 'Front' }
+  ];
+  for (const template of templates) {
+    const editableCells = await getEditableCells({
+      formCode: template.formCode,
+      filePath: `/assets/templates/school-forms/${template.fileName}`,
+      sheetName: template.sheetName,
+      version: template.version
+    });
+    for (const cell of editableCells) {
+      const expectedType = getFormEntryType(template.formCode, cell.cellAddress, null, template.version) || 'text';
+      assert.equal(cell.type, expectedType, `${template.fileName} ${cell.cellAddress}`);
+    }
+  }
 });
 
 test('combined preview returns mapped data and editable-cell metadata for SF1 and SF2', async () => {
@@ -1577,7 +1809,10 @@ test('combined export puts SF1 and SF2 in one workbook and keeps SF1 edits', asy
     templateIds: [1, 2], sectionId: 8, month: '2026-10',
     previewFingerprint: preview.body.previewFingerprint,
     forms: [
-      { templateId: 1, edits: [{ cellAddress: 'C10', value: 'Updated student name' }] },
+      { templateId: 1, edits: [
+        { cellAddress: 'C10', value: 'Updated student name' },
+        { cellAddress: 'L10', value: 'Updated mother tongue' }
+      ] },
       { templateId: 2, edits: [] }
     ]
   });
@@ -1586,12 +1821,19 @@ test('combined export puts SF1 and SF2 in one workbook and keeps SF1 edits', asy
   assert.match(result.headers['Content-Disposition'], /SF1_SF2_Grade-7-St\.-Matthew_2026-10\.xlsx/);
   assert.equal(writes, 1);
   assert.match(auditValues[0]?.sql || '', /manual_edit_count/);
-  assert.equal(auditValues[0]?.values.at(-1), 1);
+  assert.equal(auditValues[0]?.values.at(-1), 2);
   assert.equal(auditValues.flatMap(record => record.values).includes('Updated student name'), false);
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(result.body);
   assert.deepEqual(workbook.worksheets.map(sheet => sheet.name), ['School Form 1 (SF1)', 'School Form 2 (SF2)']);
-  assert.equal(workbook.getWorksheet('School Form 1 (SF1)').getCell('C10').value, 'Updated student name');
+  const sf1Worksheet = workbook.getWorksheet('School Form 1 (SF1)');
+  assert.equal(sf1Worksheet.getCell('C10').value, 'Updated student name');
+  assert.equal(sf1Worksheet.getCell('L10').value, 'Updated mother tongue');
+  assert.equal(sf1Worksheet.getCell('H10').numFmt, 'mm/dd/yyyy');
+  assert.equal(sf1Worksheet.getCell('H10').value.toISOString().slice(0, 10), '2013-01-10');
+  for (let row = 48; row <= 51; row += 1) {
+    assert.ok(sf1Worksheet.model.merges.includes(`J${row}:K${row}`));
+  }
   assert.equal(workbook.getWorksheet('School Form 2 (SF2)').getCell('B13').value, 'Dela Cruz, Juan');
 });
 
@@ -1806,7 +2048,6 @@ test('SF5 combined workbook templates preserve official sheets, images, styles, 
     images: await worksheetImages(officialSf5Zip, officialSf5Path),
     printerSettings: await worksheetPrinterSettings(officialSf5Zip, officialSf5Path)
   };
-  let sharedStyleHash = null;
   const formBaselines = new Map();
 
   for (const codes of combinations) {
@@ -1817,10 +2058,6 @@ test('SF5 combined workbook templates preserve official sheets, images, styles, 
     const combinedSheetNames = [...combinedWorkbookXml.matchAll(/<sheet\b[^>]*\/?\s*>/g)]
       .map(match => xmlAttribute(match[0], 'name'));
     assert.deepEqual(combinedSheetNames, codes.map(code => formSheets[code]));
-    const currentStyleHash = sha256(await combinedZip.file('xl/styles.xml').async('nodebuffer'));
-    if (sharedStyleHash === null) sharedStyleHash = currentStyleHash;
-    else assert.equal(currentStyleHash, sharedStyleHash, 'combined templates should share the official styles');
-
     for (const code of codes) {
       const combinedSheetPath = await worksheetPackagePath(combinedZip, formSheets[code]);
       const combinedImages = await worksheetImages(combinedZip, combinedSheetPath);
@@ -1842,7 +2079,7 @@ test('SF5 combined workbook templates preserve official sheets, images, styles, 
   }
 });
 
-test('all 15 SF8 combined templates preserve the supplied worksheet layout, styles, images, and print settings', async () => {
+test('all 15 SF8 combined templates preserve the supplied worksheet layout, dates, images, and print settings', async () => {
   const formSheets = {
     SF1: 'School Form 1 (SF1)', SF2: 'School Form 2 (SF2)',
     SF3: 'School Form 3 (SF3)', SF5: 'School Form 5 (SF5)', SF8: 'School Form 8 (SF8)'
@@ -1868,8 +2105,23 @@ test('all 15 SF8 combined templates preserve the supplied worksheet layout, styl
   const styleOffsets = Object.fromEntries(styleCollectionDefinitions.map(([collection, item]) => [
     collection, xmlCollectionItems(baseStylesXml, collection, item).length
   ]));
+  const baseWorksheetPath = await worksheetPackagePath(basePackage, formSheets.SF1);
+  const baseWorksheetXml = await basePackage.file(baseWorksheetPath).async('string');
+  const baseSheetStyleIds = ['H10', 'L10', 'N10'].map(address => {
+    const cell = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[^>]*>`).exec(baseWorksheetXml)?.[0];
+    assert.ok(cell, `the combined SF1 sheet should contain ${address}`);
+    return Number(xmlAttribute(cell, 's') || 0);
+  });
+  const appendedSf1StyleIds = [...new Set(baseSheetStyleIds)];
+  assert.equal(Math.max(...appendedSf1StyleIds), styleOffsets.cellXfs - 1,
+    'corrected SF1 formats should use styles appended after the original combined styles');
+  styleOffsets.cellXfs -= appendedSf1StyleIds.length;
+  const baseCellXfs = xmlCollectionItems(baseStylesXml, 'cellXfs', 'xf');
+  const sf1BirthDateStyle = baseCellXfs[baseSheetStyleIds[0]];
+  const sf1BirthDateNumFmtId = Number(xmlAttribute(sf1BirthDateStyle, 'numFmtId'));
+  const baseNumFmts = xmlCollectionItems(baseStylesXml, 'numFmts', 'numFmt')
+    .filter(item => Number(xmlAttribute(item, 'numFmtId')) !== sf1BirthDateNumFmtId);
   const sourceNumFmts = xmlCollectionItems(sourceStylesXml, 'numFmts', 'numFmt');
-  const baseNumFmts = xmlCollectionItems(baseStylesXml, 'numFmts', 'numFmt');
   const nextNumFmtId = Math.max(163, ...baseNumFmts.map(item => Number(xmlAttribute(item, 'numFmtId')) || 0)) + 1;
   const numFmtOffsets = new Map(sourceNumFmts.map((item, index) => [
     Number(xmlAttribute(item, 'numFmtId')), nextNumFmtId + index
@@ -1877,7 +2129,6 @@ test('all 15 SF8 combined templates preserve the supplied worksheet layout, styl
   const styleAddresses = ['E5', 'I5', 'C7', 'F7', 'H7', 'L7', 'O7', 'A12', 'B12', 'C12', 'G12', 'G63', 'G65', 'G108', 'H12', 'I12', 'M12', 'C114', 'B118'];
   const sourceFormula = sourceSheet.getCell('A12').value;
   const sourceMerges = [...sourceSheet.model.merges];
-  let sharedStylesHash = null;
 
   for (let mask = 1; mask < 16; mask += 1) {
     const codes = [...['SF1', 'SF2', 'SF3', 'SF5'].filter((_, index) => mask & (1 << index)), 'SF8'];
@@ -1893,9 +2144,6 @@ test('all 15 SF8 combined templates preserve the supplied worksheet layout, styl
     assert.ok(cellXfs, `${codes.join(',')} has cell styles`);
     assert.equal([...cellXfs[2].matchAll(/<xf\b[^>]*?(?:\/>|>[\s\S]*?<\/xf>)/g)].length,
       Number(cellXfs[1]), `${codes.join(',')} style indexes match the style table`);
-    const stylesHash = sha256(await combinedZip.file('xl/styles.xml').async('nodebuffer'));
-    if (sharedStylesHash === null) sharedStylesHash = stylesHash;
-    else assert.equal(stylesHash, sharedStylesHash, 'SF8 combined packages should use the same merged style table');
 
     const worksheetPath = await worksheetPackagePath(combinedZip, formSheets.SF8);
     assert.deepEqual(await worksheetImages(combinedZip, worksheetPath), sourceImages);
@@ -1920,14 +2168,16 @@ test('all 15 SF8 combined templates preserve the supplied worksheet layout, styl
       const combinedCell = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[^>]*>`).exec(combinedWorksheetXml)?.[0];
       const sourceStyleIndex = Number(xmlAttribute(sourceCell, 's') || 0);
       const combinedStyleIndex = Number(xmlAttribute(combinedCell, 's') || 0);
-      assert.equal(combinedStyleIndex, styleOffsets.cellXfs + sourceStyleIndex, `${codes.join(',')} ${address} style index`);
+      assert.equal(combinedStyleIndex, styleOffsets.cellXfs + sourceStyleIndex,
+        `${codes.join(',')} ${address} style index`);
 
       const sourceStyle = sourceCellXfs[sourceStyleIndex];
       const combinedStyle = combinedCellXfs[combinedStyleIndex];
       for (const [attribute, collection] of [['fontId', 'fonts'], ['fillId', 'fills'], ['borderId', 'borders'], ['xfId', 'cellStyleXfs']]) {
         const sourceIndex = Number(xmlAttribute(sourceStyle, attribute) || 0);
         const combinedIndex = Number(xmlAttribute(combinedStyle, attribute) || 0);
-        assert.equal(combinedIndex, styleOffsets[collection] + sourceIndex, `${codes.join(',')} ${address} ${attribute}`);
+        assert.equal(combinedIndex, styleOffsets[collection] + sourceIndex,
+          `${codes.join(',')} ${address} ${attribute}`);
         if (sourceCollectionItems[collection][sourceIndex]) {
           if (collection === 'cellStyleXfs') {
             const sourceBaseStyle = sourceCollectionItems[collection][sourceIndex];
@@ -2230,15 +2480,19 @@ test('SF1 adviser birth-province edits survive individual and combined downloads
   const individual = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' });
   assert.equal(individual.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, '');
   assert.equal(individual.body.editableCells.find(cell => cell.cellAddress === 'J10').type, 'text');
+  assert.equal(individual.body.editableCells.find(cell => cell.cellAddress === 'L10').type, 'text');
   const individualTemplate = { formCode: 'SF1', filePath: '/assets/templates/school-forms/sf1.xlsx',
     sheetName: 'School Form 1 (SF1)' };
   const individualPage = individual.body.pages[0].map(cell => cell.cellAddress === 'J10'
-    ? { ...cell, value: 'Adviser-confirmed province' } : cell);
+    ? { ...cell, value: 'Adviser-confirmed province' }
+    : cell.cellAddress === 'L10' ? { ...cell, value: 'Adviser-confirmed mother tongue' } : cell);
   const individualBytes = await createExportWorkbook(individualTemplate, [individualPage]);
   const individualWorkbook = new ExcelJS.Workbook();
   await individualWorkbook.xlsx.load(individualBytes);
   assert.equal(individualWorkbook.getWorksheet('School Form 1 (SF1)').getCell('J10').value,
     'Adviser-confirmed province');
+  assert.equal(individualWorkbook.getWorksheet('School Form 1 (SF1)').getCell('L10').value,
+    'Adviser-confirmed mother tongue');
 
   const combined = await call(controller.previewCombinedTemplates, 'POST', {
     templateIds: [1, 2], sectionId: 8, month: '2026-10'

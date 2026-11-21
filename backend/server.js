@@ -38,6 +38,8 @@ const archiveRoutes = require('./routes/archive');
 const gradingPeriodReopenRoutes = require('./routes/gradingPeriodReopen');
 const usersRoutes = require('./routes/users');
 const userImportRoutes = require('./routes/userImport');
+const fetchersRoutes = require('./routes/fetchers');
+const pickupRoutes = require('./routes/pickup');
 const timetablesRoutes = require('./routes/timetables');
   const shsProgramRoutes = require('./routes/shsProgram');
 const shsSelectionRoutes = require('./routes/shsSelection');
@@ -113,6 +115,8 @@ app.use('/api/archive', archiveRoutes);
 app.use('/api/grading-period-reopen-requests', gradingPeriodReopenRoutes);
 app.use('/api/users/import', userImportRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/fetchers', fetchersRoutes);
+app.use('/api/pickup', pickupRoutes);
 
 app.get(['/', '/index.html'], (req, res, next) => {
   res.sendFile(path.join(projectRoot, 'index.html'), error => error && next(error));

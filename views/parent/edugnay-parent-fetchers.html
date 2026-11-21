@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetchers | AcadeMix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=7" />
+  <link rel="stylesheet" href="../../assets/css/parent/dashboard.css" />
+  <link rel="stylesheet" href="../../assets/css/fetchers.css?v=33" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css?v=3" />
+  <link rel="stylesheet" href="../../assets/css/academic-range-picker.css" />
+  <link rel="stylesheet" href="../../assets/css/theme.css" />
+  <link rel="manifest" href="../../manifest.webmanifest" />
+  <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
+  <script src="../../assets/vendor/qrcode/qrcode.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
+  <script src="../../assets/js/shell-common.js?v=14"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script>
+  <script src="../../assets/js/parent/shell.js"></script>
+</head>
+<body data-page-title="Fetchers" data-page-loading="Loading fetchers...">
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo-icon.png" alt="" /></div>
+        <div class="brand-text"><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub"></div></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-parent-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
+        <a href="edugnay-parent-grades.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap"></i></div><span class="nav-label">Grades</span></a>
+        <a href="edugnay-parent-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="notebook-pen"></i></div><span class="nav-label">Narrative Reports</span></a>
+        <a href="edugnay-parent-attendance.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-check"></i></div><span class="nav-label">Attendance History</span></a>
+        <a href="edugnay-parent-assignments.html" class="nav-item"><div class="nav-icon"><i data-lucide="clipboard-check"></i></div><span class="nav-label">Assignments</span></a>
+        <a href="edugnay-parent-fetchers.html" class="nav-item active" aria-current="page"><div class="nav-icon"><i data-lucide="contact"></i></div><span class="nav-label">Fetchers</span></a>
+      </div>
+      <div class="nav-section"><div class="nav-section-label">Communication</div>
+        <a href="edugnay-parent-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span></a>
+      </div>
+      <div class="nav-section"><div class="nav-section-label">Account</div>
+        <a href="edugnay-parent-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span></a>
+      </div>
+    </aside>
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context"><div class="topbar-context-copy"><strong data-page-title-target>Fetchers</strong></div></div>
+        <button class="hamburger" type="button" aria-label="Open navigation" data-page-click="sab86664ca3f5"><i data-lucide="menu"></i></button>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot"></span></button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span></div><button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div>
+            <div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty"><div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div><div class="tb-notif-empty-title">No notifications yet</div><div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div></div></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-parent-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+        <div class="tb-theme" data-theme-control><button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button></div>
+        <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765"><div class="tb-avatar parent" data-parent-initials>--</div><div class="tb-profile-info"><div class="tb-profile-name" data-parent-name></div><div class="tb-profile-role">Parent</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i> My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902"><i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out</a></div>
+        </div>
+      </div>
+    </header>
+    <script src="../../assets/js/portal-header-init.js"></script>
+    <main class="main fetcher-main parent-fetchers">
+      <section class="portal-overview"><div class="portal-overview-copy">
+        <div class="portal-overview-kicker">Parent workspace</div>
+        <h1 class="portal-overview-title">Fetchers</h1>
+        <p class="portal-overview-description">Register people who may pick up your linked children. The school approves each child separately.</p>
+      </div></section>
+      <div class="dashboard-grid parent-fetchers-grid">
+        <div class="dash-col-left">
+          <section class="panel fetcher-card parent-fetchers-list" aria-labelledby="registeredFetchersTitle">
+            <div class="panel-head"><div><h2 class="panel-title" id="registeredFetchersTitle">Registered fetchers</h2><p class="panel-sub">Approval is shown for each child.</p></div><button class="top-btn primary" id="fetcherRegisterOpen" type="button" aria-label="Register a fetcher"><i data-lucide="plus" aria-hidden="true"></i><span>Register a fetcher</span></button></div>
+            <div class="fetcher-card-body fetcher-list" id="fetcherList"></div>
+          </section>
+        </div>
+        <div class="dash-col-right">
+          <section class="panel fetcher-card parent-fetcher-eligibility" aria-labelledby="ownPickupTitle">
+            <div class="panel-head"><div><h2 class="panel-title" id="ownPickupTitle">Your pickup eligibility</h2><p class="panel-sub">Linked parents do not need school approval.</p></div></div>
+            <div class="fetcher-card-body" id="ownPickupStatus"></div>
+          </section>
+          <section class="panel fetcher-card parent-fetcher-history" aria-labelledby="parentPickupHistoryTitle">
+            <div class="panel-head"><div><h2 class="panel-title" id="parentPickupHistoryTitle">Pickup history</h2><p class="panel-sub">Recent handovers for your currently linked children.</p></div><span class="badge badge-gray pickup-history-count" id="parentPickupCount">0 handovers</span></div>
+            <div class="pickup-history-filters">
+              <div class="school-field academic-range-group" data-academic-range><label>Date range</label><div class="academic-range-native-pair">
+                <label>From<input id="parentPickupFrom" type="date"></label><label>To<input id="parentPickupTo" type="date"></label>
+              </div></div>
+              <button type="button" class="top-btn secondary pickup-history-today" id="parentPickupToday">Today</button>
+            </div>
+            <div class="fetcher-card-body pickup-history-content">
+              <div class="pickup-history-list" id="parentPickupHistory"></div>
+              <button type="button" class="top-btn secondary" id="parentPickupMore" hidden>Load more</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="modal-backdrop dashboard-modal-backdrop fetcher-registration-modal-backdrop" id="fetcherFormModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="fetcherFormTitle" aria-describedby="fetcherFormSub">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <span class="modal-heading-icon" aria-hidden="true"><i data-lucide="contact"></i></span>
+          <div class="modal-heading-copy"><h2 class="modal-title" id="fetcherFormTitle">Register a fetcher</h2><div class="modal-sub" id="fetcherFormSub">Use a clear face photo so the school can review the request.</div></div>
+        </div>
+        <button type="button" class="modal-close" id="fetcherFormClose" aria-label="Close fetcher form"><i data-lucide="x" aria-hidden="true"></i></button>
+      </div>
+      <form id="fetcherForm">
+        <div class="modal-body fetcher-form">
+          <div class="school-field"><label for="fetcherName">Full name</label><input class="form-input" id="fetcherName" name="fullName" maxlength="220" required /></div>
+          <div class="school-field"><label for="fetcherRelationship">Relationship to student</label><input class="form-input" id="fetcherRelationship" name="relationship" maxlength="60" placeholder="e.g. Aunt" required /></div>
+          <div class="school-field"><label for="fetcherContact">Contact number</label><input class="form-input" id="fetcherContact" name="contactNumber" maxlength="30" inputmode="tel" required /></div>
+          <div class="school-field">
+            <label for="fetcherPhoto">Face photo</label>
+            <input class="form-input" id="fetcherPhoto" name="photo" type="file" accept="image/png,image/jpeg,image/webp" required aria-describedby="photoOptional" />
+            <span class="panel-sub" id="photoOptional" hidden>Leave blank to keep the current photo.</span>
+          </div>
+          <fieldset id="fetcherChildrenField"><legend>Children this fetcher may pick up</legend><div id="fetcherChildrenChoices"></div></fieldset>
+        </div>
+        <div class="modal-foot">
+          <button class="top-btn secondary" id="fetcherCancelEdit" type="button">Cancel</button>
+          <button class="top-btn primary" id="fetcherSubmit" type="submit">Send for approval</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <div class="modal-backdrop dashboard-modal-backdrop fetcher-id-modal-backdrop" id="fetcherIdView" hidden>
+    <section class="modal fetcher-id-modal" role="dialog" aria-modal="true" aria-labelledby="fetcherIdTitle" aria-describedby="fetcherIdSub">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <span class="modal-heading-icon" aria-hidden="true"><i data-lucide="contact"></i></span>
+          <div class="modal-heading-copy"><h2 class="modal-title" id="fetcherIdTitle">Fetcher ID</h2><div class="modal-sub" id="fetcherIdSub">Show this ID to the school guard at pickup.</div></div>
+        </div>
+        <button type="button" class="modal-close" id="fetcherIdClose" aria-label="Close Fetcher ID"><i data-lucide="x" aria-hidden="true"></i></button>
+      </div>
+      <div class="modal-body fetcher-id-modal-body">
+        <img class="fetcher-id-card" id="fetcherIdCard" alt="Fetcher ID preview" />
+      </div>
+      <div class="modal-foot fetcher-id-modal-foot">
+        <button type="button" class="top-btn secondary" id="fetcherIdReissue">Reissue ID</button>
+        <button type="button" class="top-btn primary" id="fetcherIdDownload">Download image</button>
+      </div>
+    </section>
+  </div>
+  <script src="../../assets/js/fetcher-confirm.js?v=2"></script>
+  <script src="../../assets/js/pickup-history.js?v=4"></script>
+  <script src="../../assets/js/academic-range-picker.js?v=2"></script>
+  <script src="../../assets/js/parent/fetchers.js?v=21"></script>
+  <script src="../../assets/js/pwa-install.js" defer></script>
+</body>
+</html>

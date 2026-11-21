@@ -15,6 +15,7 @@ const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().
       teacher: './views/teacher/edugnay-teacher-dashboard.html',
       student: './views/student/edugnay-student-dashboard.html',
       parent: './views/parent/edugnay-parent-dashboard.html',
+      school_guard: './views/guard/edugnay-guard-dashboard.html',
       platform_admin: './views/platform/edugnay-platform-dashboard.html'
     };
 

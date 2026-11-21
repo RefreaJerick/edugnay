@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile | AcadeMix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" />
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=6" />
+  <link rel="stylesheet" href="../../assets/css/profile-common.css" />
+  <link rel="stylesheet" href="../../assets/css/admin/profile.css" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css?v=3" />
+  <link rel="stylesheet" href="../../assets/css/theme.css" />
+  <link rel="manifest" href="../../manifest.webmanifest" />
+  <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
+  <script src="../../assets/js/shell-common.js?v=14"></script>
+  <script src="../../assets/js/pwa-install.js" defer></script>
+</head>
+<body data-page-title="My Profile" data-page-loading="Loading your profile...">
+  <div class="shell">
+    <div class="sidebar-overlay" aria-hidden="true" data-page-click="sc48f42f1ec91"></div>
+    <aside class="sidebar" aria-label="Guard navigation">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo-icon.png" alt="" /></div>
+        <div class="brand-text">
+          <div class="brand-name">Acade<span>Mix</span></div>
+          <div class="brand-sub"></div>
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-guard-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" aria-hidden="true"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-guard-profile.html" class="nav-item active" aria-current="page">
+          <div class="nav-icon"><i data-lucide="user-round" aria-hidden="true"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" aria-label="Open navigation" aria-expanded="false"
+          data-page-click="sab86664ca3f5"><i data-lucide="menu" aria-hidden="true"></i></button>
+        <div class="topbar-context" aria-label="My Profile page">
+          <div class="topbar-context-copy"><strong data-page-title-target>My Profile</strong></div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-theme" data-theme-control>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger
+            aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button>
+        </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" aria-expanded="false"
+            aria-label="Open profile menu" data-page-click="se9930608e765">
+            <div class="tb-avatar" aria-hidden="true"></div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name" data-current-user-name>Loading account...</div>
+              <div class="tb-profile-role">School Guard</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;" aria-hidden="true"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-guard-profile.html" aria-current="page">
+              <i data-lucide="user-round" style="width:15px;height:15px;" aria-hidden="true"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902">
+              <i data-lucide="log-out" style="width:15px;height:15px;" aria-hidden="true"></i>
+              Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+    <script src="../../assets/js/portal-header-init.js"></script>
+
+    <main class="main">
+      <section class="page-overview" aria-labelledby="page-overview-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Account</div>
+          <h1 class="page-overview-title" id="page-overview-title">My Profile</h1>
+        </div>
+      </section>
+
+      <div class="profile-setup-notice" id="guard-profile-load-notice" hidden role="alert" aria-live="polite">
+        <span class="profile-setup-notice-icon" aria-hidden="true"><i data-lucide="circle-alert" style="width:16px;height:16px;"></i></span>
+        <div>
+          <div class="profile-setup-notice-title">Profile unavailable</div>
+          <div class="profile-setup-notice-text" id="guard-profile-load-error"></div>
+        </div>
+      </div>
+
+      <section class="profile-header-card" aria-label="Profile photo and account">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profileAvatar" aria-hidden="true"></div>
+          <button type="button" class="profile-avatar-edit" id="avatarEditTrigger" aria-label="Change profile photo"
+            aria-expanded="false" aria-controls="avatarMenu">
+            <i data-lucide="pencil" style="width:14px;height:14px;" aria-hidden="true"></i>
+          </button>
+          <input type="file" id="avatarFileInput" accept="image/png,image/jpeg,image/webp" hidden />
+          <div class="avatar-menu" id="avatarMenu" hidden>
+            <button type="button" class="avatar-menu-item" id="avatarUploadBtn">
+              <i data-lucide="upload" style="width:14px;height:14px;" aria-hidden="true"></i> Upload Photo
+            </button>
+            <button type="button" class="avatar-menu-item avatar-menu-item-danger" id="avatarRemoveBtn"
+              aria-label="Remove profile photo" hidden>
+              <i data-lucide="trash-2" style="width:14px;height:14px;" aria-hidden="true"></i> Remove Photo
+            </button>
+          </div>
+        </div>
+        <div class="profile-header-info">
+          <div class="profile-header-name" id="guard-profile-name">Loading account...</div>
+          <div class="profile-header-meta">
+            <span><i data-lucide="mail" style="width:13px;height:13px;" aria-hidden="true"></i><span id="guard-profile-email"></span></span>
+            <span><i data-lucide="shield-check" style="width:13px;height:13px;" aria-hidden="true"></i>School Guard</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="two-col">
+        <section class="panel personal-info-panel" aria-labelledby="guard-personal-info-title">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon" aria-hidden="true"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+              <div><div class="panel-title" id="guard-personal-info-title">Personal Information</div></div>
+            </div>
+          </div>
+          <form id="guardProfileForm" data-page-submit="guardProfileSave">
+            <div class="config-panel-body profile-fields">
+              <div class="form-group">
+                <label class="form-label" for="guardProfileFullName">Full Name</label>
+                <input class="form-input" type="text" id="guardProfileFullName" disabled />
+                <span class="form-hint">Managed through account administration.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="guardProfileEmail">School Email</label>
+                <input class="form-input" type="email" id="guardProfileEmail" disabled />
+                <span class="form-hint">Used to sign in to your account.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="guardProfileEmployeeNo">Employee Number</label>
+                <input class="form-input" type="text" id="guardProfileEmployeeNo" disabled />
+                <span class="form-hint">Your school-assigned ID.</span>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="guardProfileContact">Contact Number</label>
+                <input class="form-input" type="tel" id="guardProfileContact" placeholder="e.g. 0917 123 4567" autocomplete="tel" />
+                <span class="form-hint">Optional contact number.</span>
+              </div>
+            </div>
+            <div class="config-panel-foot">
+              <button type="button" class="btn btn-cancel" data-page-click="guardProfileDiscard">Discard</button>
+              <button type="submit" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;" aria-hidden="true"></i> Save Changes</button>
+            </div>
+          </form>
+        </section>
+
+        <div class="profile-side-column">
+          <section class="panel" aria-labelledby="guard-access-title">
+            <div class="panel-head">
+              <div class="panel-head-title-group">
+                <div class="panel-title-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+                <div><div class="panel-title" id="guard-access-title">Account Access</div></div>
+              </div>
+            </div>
+            <div class="config-panel-body profile-details">
+              <div class="profile-detail-row"><span class="profile-detail-label">Account status</span><span class="profile-detail-value" id="guardAccountStatus">Loading</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">Access scope</span><span class="profile-detail-value" id="guardAccessScope">Current school only</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">Role</span><span class="profile-detail-value">School Guard</span></div>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="guard-security-title">
+            <div class="panel-head">
+              <div class="panel-head-title-group">
+                <div class="panel-title-icon" aria-hidden="true"><i data-lucide="lock-keyhole" style="width:16px;height:16px;"></i></div>
+                <div><div class="panel-title" id="guard-security-title">Security</div></div>
+              </div>
+            </div>
+            <div class="config-panel-body profile-security-body">
+              <div class="profile-security-copy">Use a unique password with at least 12 characters.</div>
+              <button type="button" class="top-btn secondary" aria-haspopup="dialog" aria-controls="guardPasswordModal" data-page-click="guardProfilePasswordOpen">
+                <i data-lucide="lock" style="width:14px;height:14px;" aria-hidden="true"></i> Change Password
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="guardPasswordModal" role="presentation" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="guardPasswordTitle" aria-describedby="guardPasswordDescription">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="lock-keyhole"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="guardPasswordTitle">Change Password</div>
+            <div class="modal-sub" id="guardPasswordDescription">Choose a strong password you have not used before.</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close" aria-label="Close change password dialog" data-page-click="guardProfilePasswordClose">
+          <i data-lucide="x" style="width:14px;height:14px;" aria-hidden="true"></i>
+        </button>
+      </div>
+      <form id="guardPasswordForm" data-page-submit="guardProfilePasswordSave">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="guardCurrentPassword">Current Password</label>
+            <input class="form-input" type="password" name="currentPassword" id="guardCurrentPassword" required autocomplete="current-password" placeholder="••••••••" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="guardNewPassword">New Password</label>
+            <input class="form-input" type="password" name="newPassword" id="guardNewPassword" required minlength="12" autocomplete="new-password" placeholder="••••••••" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="guardConfirmPassword">Confirm New Password</label>
+            <input class="form-input" type="password" name="confirmPassword" id="guardConfirmPassword" required minlength="12" autocomplete="new-password" placeholder="••••••••" />
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-cancel" data-page-click="guardProfilePasswordClose">Cancel</button>
+          <button type="submit" class="btn btn-save"><i data-lucide="check" style="width:13px;height:13px;" aria-hidden="true"></i> Update Password</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script src="../../assets/js/password-toggle.js"></script>
+  <script src="../../assets/js/guard/profile.js"></script>
+</body>
+</html>

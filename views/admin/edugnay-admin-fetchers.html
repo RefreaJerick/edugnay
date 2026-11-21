@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="../../assets/js/theme.js"></script>
+  <script src="../../assets/js/page-loading.js"></script>
+  <script src="../../assets/js/page-events.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetcher Approvals | AcadeMix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../assets/css/styles.css?v=6" />
+  <link rel="stylesheet" href="../../assets/css/admin/dashboard.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/fetchers.css?v=33" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css?v=3" />
+  <link rel="stylesheet" href="../../assets/css/academic-range-picker.css" />
+  <link rel="stylesheet" href="../../assets/css/theme.css" />
+  <link rel="manifest" href="../../manifest.webmanifest" />
+  <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
+  <script src="../../assets/js/shell-common.js?v=14"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script>
+  <script src="../../assets/js/admin/shell.js"></script>
+</head>
+<body data-page-title="Fetcher Approvals" data-page-loading="Loading fetcher requests...">
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" data-page-click="sc48f42f1ec91"></div>
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo-icon.png" alt="" /></div><div class="brand-text"><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub"></div></div></div>
+      <div class="nav-section"><div class="nav-section-label">Main</div>
+        <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
+        <a href="edugnay-admin-users.html" class="nav-item"><div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span></a>
+        <a href="edugnay-admin-management.html" class="nav-item" data-page-click="s3a4671da9f99"><div class="nav-icon"><i data-lucide="school"></i></div><span class="nav-label">Class Management</span></a>
+        <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days"></i></div><span class="nav-label">Timetables</span></a>
+        <a href="edugnay-admin-shs-program.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap"></i></div><span class="nav-label">SHS Program</span></a>
+        <a href="edugnay-admin-fetchers.html" class="nav-item active" aria-current="page"><div class="nav-icon"><i data-lucide="contact-round"></i></div><span class="nav-label">Fetcher Approvals</span></a>
+      </div>
+      <div class="nav-section"><div class="nav-section-label">Reports</div>
+        <a href="edugnay-admin-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2"></i></div><span class="nav-label">System Reports</span></a>
+        <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span></a>
+      </div>
+      <div class="nav-section"><div class="nav-section-label">Settings</div>
+        <a href="edugnay-admin-schools.html" class="nav-item"><div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Settings</span></a>
+        <a href="edugnay-admin-system-config.html" class="nav-item"><div class="nav-icon"><i data-lucide="settings"></i></div><span class="nav-label">System Config</span></a>
+        <a href="edugnay-admin-archive.html" class="nav-item"><div class="nav-icon"><i data-lucide="archive"></i></div><span class="nav-label">Archive Data</span></a>
+      </div>
+      <div class="nav-section"><div class="nav-section-label">Account</div>
+        <a href="edugnay-admin-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span></a>
+      </div>
+    </aside>
+    <header class="topbar"><div class="topbar-left"><div class="topbar-context"><div class="topbar-context-copy"><strong data-page-title-target>Fetcher Approvals</strong></div></div><button class="hamburger" type="button" aria-label="Open navigation" data-page-click="sab86664ca3f5"><i data-lucide="menu"></i></button></div>
+      <div class="topbar-right">
+        <div class="tb-notif"><button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" data-page-click="s52959ebdf3bb"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span></button>
+          <div class="tb-notif-panel" id="tbNotifPanel"><div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span></div><button class="tb-notif-mark-read" type="button" data-page-click="s390cdc6e7ad5"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div>
+            <div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty"><div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div><div class="tb-notif-empty-title">No notifications yet</div><div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div></div></div><div class="tb-notif-panel-foot"><a href="edugnay-admin-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+        <div class="tb-theme" data-theme-control><button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Switch to dark mode" title="Switch to dark mode"><i data-lucide="moon" aria-hidden="true"></i></button></div>
+        <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" data-page-click="se9930608e765"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name"></div><div class="tb-profile-role">Admin</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-admin-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i> My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" data-page-click="s75e650dae902"><i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out</a></div>
+        </div>
+      </div>
+    </header>
+    <script src="../../assets/js/portal-header-init.js"></script>
+    <main class="main">
+      <section class="portal-overview"><div class="portal-overview-copy"><div class="portal-overview-kicker">School administration</div><h1 class="portal-overview-title">Fetcher Approvals</h1><p class="portal-overview-description">Review a fetcher’s identity and decide authorization for each student.</p></div></section>
+      <div class="dashboard-grid">
+        <div class="dash-col-left">
+          <section class="panel" aria-labelledby="adminFetcherRequestsTitle">
+            <div class="panel-head">
+              <div><div class="panel-title" id="adminFetcherRequestsTitle">Fetcher requests</div><p class="panel-sub">Review authorization for each student.</p></div>
+            </div>
+            <div class="school-tabs" id="requestStatusTabs" role="group" aria-label="Filter fetcher requests">
+              <button type="button" class="school-tab active" data-status="pending" aria-pressed="true">Pending</button>
+              <button type="button" class="school-tab" data-status="approved" aria-pressed="false">Approved</button>
+              <button type="button" class="school-tab" data-status="rejected" aria-pressed="false">Rejected</button>
+              <button type="button" class="school-tab" data-status="all" aria-pressed="false">All</button>
+            </div>
+            <div class="activity-list">
+              <div class="fetcher-list" id="requestList"></div>
+            </div>
+          </section>
+        </div>
+        <div class="dash-col-right">
+          <section class="panel" id="adminPickupHistoryPanel" aria-labelledby="adminPickupHistoryTitle">
+            <div class="panel-head"><div><div class="panel-title" id="adminPickupHistoryTitle">Pickup history</div><p class="panel-sub">Completed handovers across this school.</p></div><span class="badge badge-gray pickup-history-count" id="adminPickupCount">0 handovers</span></div>
+            <div class="pickup-history-filters">
+              <div class="school-field academic-range-group" data-academic-range><label>Date range</label><div class="academic-range-native-pair">
+                <label>From<input id="adminPickupFrom" type="date"></label><label>To<input id="adminPickupTo" type="date"></label>
+              </div></div>
+              <button type="button" class="top-btn secondary pickup-history-today" id="adminPickupToday">Today</button>
+            </div>
+            <div class="activity-list">
+              <div class="pickup-history-list" id="adminPickupHistory"></div>
+              <button type="button" class="top-btn secondary" id="adminPickupMore" hidden>Load more</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="../../assets/js/fetcher-confirm.js?v=2"></script>
+  <script src="../../assets/js/pickup-history.js?v=4"></script>
+  <script src="../../assets/js/academic-range-picker.js?v=2"></script>
+  <script src="../../assets/js/admin/fetchers.js?v=11"></script>
+  <script src="../../assets/js/pwa-install.js" defer></script>
+</body>
+</html>

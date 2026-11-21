@@ -48,7 +48,9 @@ const CATEGORIES = {
   grades: ['final_grades_published', 'grading_item_deleted'],
   attendance: ['attendance_confirmed', 'qr_credential_regenerated'],
   school_forms: ['school_form_generated', 'school_forms_combined_exported'],
-  archives: ['academic_year_archived']
+  archives: ['academic_year_archived'],
+  fetchers: ['fetcher_requested', 'fetcher_updated', 'fetcher_approved', 'fetcher_rejected',
+    'fetcher_revoked', 'fetcher_id_issued', 'fetcher_id_reissued', 'student_picked_up']
 };
 
 const PLATFORM_CATEGORIES = {
@@ -98,7 +100,8 @@ const CATEGORY_LABELS = {
   grades: 'Grades',
   attendance: 'Attendance',
   school_forms: 'School forms',
-  archives: 'Archives'
+  archives: 'Archives',
+  fetchers: 'Fetchers and pickup'
 };
 
 const ACTION_LABELS = {
@@ -226,7 +229,15 @@ const ACTION_LABELS = {
   attendance_confirmed: ['confirmed subject attendance', 'calendar-check', 'green', 'attendance'],
   qr_credential_regenerated: ['regenerated a student attendance QR', 'scan-line', 'blue', 'attendance'],
   school_form_generated: ['generated an official school form', 'file-spreadsheet', 'gold', 'school_forms'],
-  academic_year_archived: ['archived an academic year', 'archive', 'gray', 'archives']
+  academic_year_archived: ['archived an academic year', 'archive', 'gray', 'archives'],
+  fetcher_requested: ['requested pickup authorization', 'user-plus', 'blue', 'fetchers'],
+  fetcher_updated: ['updated fetcher details', 'user-round-pen', 'blue', 'fetchers'],
+  fetcher_approved: ['approved pickup authorization', 'user-check', 'green', 'fetchers'],
+  fetcher_rejected: ['rejected pickup authorization', 'user-x', 'red', 'fetchers'],
+  fetcher_revoked: ['revoked pickup authorization', 'user-minus', 'orange', 'fetchers'],
+  fetcher_id_issued: ['issued a fetcher ID', 'id-card', 'blue', 'fetchers'],
+  fetcher_id_reissued: ['reissued a fetcher ID', 'id-card', 'blue', 'fetchers'],
+  student_picked_up: ['confirmed a student pickup', 'user-check', 'green', 'fetchers']
 };
 
 function parseDetails(value) {
@@ -784,8 +795,19 @@ function formatActivity(row) {
     ? `${importedCount} ${importedCount === 1 ? importedRoleSingular : importedRolePlural}` : '';
   const genericContext = genericActivityContext(row, details);
   const summaryContext = readableSummaryContext(row.actionType, details.summary);
+  const isFetcherAction = CATEGORIES.fetchers.includes(row.actionType);
+  const studentName = String(details.studentName || (details.studentId ? row.activityStudentName : '') || '').trim();
+  const fetcherName = String(details.fetcherName || details.summary || '').trim();
+  const studentCount = Array.isArray(details.studentNames) && details.studentNames.length
+    ? details.studentNames.length : Array.isArray(details.studentIds) ? details.studentIds.length : 0;
+  const students = studentName || (Array.isArray(details.studentNames) && details.studentNames.length
+    ? details.studentNames.filter(Boolean).join(', ') : studentCount ? `${studentCount} students` : 'a student');
+  const fetcherContext = row.actionType === 'student_picked_up'
+    ? `${studentName || 'A student'}${details.fetcherName ? ` picked up by ${details.fetcherName}` : ''}`
+    : fetcherName ? `${fetcherName}${['fetcher_requested', 'fetcher_approved', 'fetcher_rejected', 'fetcher_revoked'].includes(row.actionType)
+      ? ` for ${students}` : ''}` : studentName ? `for ${students}` : '';
   const detail = account ? account.detail : enrollment ? enrollment.detail : sectionChange ? sectionChange.detail : teacherAssignment ? teacherAssignment.detail : shsChoice ? shsChoice.detail : shsProgram ? shsProgram.detail : itemActivity ? itemActivity.detail : isReportAction ? weekDetail
-    : timetable ? timetable
+    : isFetcherAction ? fetcherContext : timetable ? timetable
     : importedContext || genericContext || details.form_code
     || (details.attendance_date ? `Attendance for ${details.attendance_date}` : '')
     || (row.actionType === 'parent_notification_triggers_updated' ? '' : summaryContext);
@@ -908,10 +930,13 @@ async function listSchoolActivity(req, res, next) {
       where.push(`(users.display_name LIKE ? OR audit_logs.action_type LIKE ?
         OR JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.summary')) LIKE ?
         OR JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.studentName')) LIKE ?
+        OR JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.fetcherName')) LIKE ?
+        OR JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.studentNames')) LIKE ?
+        OR activity_students.display_name LIKE ?
         OR JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.subjectName')) LIKE ?
         OR JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.className')) LIKE ?
         OR activity_sections.name LIKE ? OR school_grade_levels.display_name LIKE ?)`);
-      values.push(term, term, term, term, term, term, term, term);
+      values.push(term, term, term, term, term, term, term, term, term, term, term);
     }
     if (range) {
       where.push('audit_logs.created_at >= ? AND audit_logs.created_at < DATE_ADD(?, INTERVAL 1 DAY)');
@@ -927,10 +952,12 @@ async function listSchoolActivity(req, res, next) {
         audit_logs.entity_type AS entityType, audit_logs.details, audit_logs.created_at AS createdAt,
         DATE_FORMAT(audit_logs.created_at, '%Y-%m-%d %H:%i:%s') AS cursorCreatedAt,
         users.display_name AS actor, school_grade_levels.display_name AS sectionGrade,
-        activity_sections.name AS sectionName,
+        activity_sections.name AS sectionName, activity_students.display_name AS activityStudentName,
         CASE WHEN ${LEGACY_SHS_ACTIVITY_SQL} THEN 1 ELSE 0 END AS isLegacyShs
       FROM audit_logs
       LEFT JOIN users ON users.id = audit_logs.actor_user_id
+      LEFT JOIN users AS activity_students ON activity_students.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.studentId')) AS UNSIGNED)
+        AND activity_students.school_id = audit_logs.school_id AND activity_students.role = 'student'
       LEFT JOIN sections AS activity_sections ON activity_sections.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(audit_logs.details, '$.sectionId')) AS UNSIGNED)
         AND activity_sections.school_id = audit_logs.school_id
       LEFT JOIN school_grade_levels ON school_grade_levels.id = activity_sections.grade_level_id

@@ -250,7 +250,7 @@
   </div>
   <section class="panel" aria-labelledby="weekly-reports-title">
     <div class="panel-head">
-      <div><h2 class="panel-title" id="weekly-reports-title">Weekly Reports</h2><p class="report-panel-hint" id="week-caption">Select a section and week.</p></div>
+      <div><h2 class="panel-title" id="weekly-reports-title" tabindex="-1">Weekly Reports</h2><p class="report-panel-hint" id="week-caption">Select a section and week.</p></div>
       <div class="panel-head-right">
         <div class="filter-row"><label class="search-wrap"><span class="search-icon" aria-hidden="true"><i data-lucide="search"></i></span><input class="search-input" id="report-search" type="search" placeholder="Search learner" aria-label="Search learner"></label>
           <select class="select-filter" id="report-status" aria-label="Filter report status"><option value="all">All statuses</option><option value="missing">No draft</option><option value="draft">Needs review</option><option value="confirmed">Confirmed</option></select></div>
@@ -276,6 +276,12 @@
       <div class="gen-note-panel"><div class="gen-note-head"><div><strong class="gen-note-title">Learner notes <span>Optional</span></strong><p class="gen-note-help">Add relevant classroom observations. Avoid unnecessary sensitive details.</p><p class="gen-note-visibility"><i data-lucide="lock-keyhole" aria-hidden="true"></i>Visible to teachers only</p></div><span class="gen-note-count" id="gen-count"></span></div><div class="gen-student-notes" id="gen-students"></div></div>
       <p class="reports-message" id="gen-message" role="status"></p>
       <div class="gen-loading-view" id="gen-progress" role="status" aria-live="polite" aria-atomic="true" hidden><span class="academix-page-loader-mark" aria-hidden="true"><img src="../../assets/images/edUgnay-logo-circle.png" alt=""></span><strong id="gen-loading-title">Generating reports</strong><p id="gen-progress-detail"></p></div>
+      <div class="gen-result-view" id="gen-result" role="status" aria-live="polite" hidden>
+        <span class="gen-result-mark" aria-hidden="true"><img src="../../assets/images/edUgnay-logo-circle.png" alt=""><span id="gen-result-icon"></span></span>
+        <h2 id="gen-result-title"></h2><p id="gen-result-summary"></p>
+        <ul class="gen-result-failures" id="gen-result-failures"></ul>
+        <div class="gen-result-actions"><button class="top-btn primary" id="gen-view-reports" type="button">View reports</button><button class="top-btn secondary" id="gen-back-to-form" type="button">Back to form</button><button class="top-btn secondary" id="gen-result-close" type="button" data-close-modal>Close</button></div>
+      </div>
     </div>
     <div class="review-modal-foot gen-modal-foot"><span class="gen-draft-count" id="gen-draft-count"></span><div class="review-modal-foot-actions"><button class="top-btn secondary" id="gen-cancel" type="button" data-close-modal>Cancel</button><button class="top-btn primary gen-start-button" id="start-generation" type="button"><i data-lucide="sparkles"></i><span id="start-generation-label">Generate drafts</span></button></div></div>
   </div>

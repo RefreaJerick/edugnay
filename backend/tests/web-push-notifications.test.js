@@ -165,6 +165,9 @@ test('worker maps notification types to descriptive, privacy-safe banner copy', 
         'Grade alert', 'A grade update is ready to review in AcadeMix.'],
       [{ type: 'attendance', title: 'Consecutive missed subject meeting dates' },
         'Attendance alert', 'An attendance alert is ready to review in AcadeMix.'],
+      [{ type: 'pickup', title: 'Student picked up',
+        message: 'Juan Santos was picked up by Maria Santos on Nov 19, 2026, 1:05 PM.' },
+        'Student pickup confirmed', 'Juan Santos was picked up by Maria Santos on Nov 19, 2026, 1:05 PM.'],
       [{ type: 'assignment', title: 'Assignments not completed' },
         'Assignment reminder', 'An assignment reminder is ready to review in AcadeMix.'],
       [{ type: 'journal', title: 'Journal entries not submitted' },
@@ -207,6 +210,7 @@ test('worker maps notification types to descriptive, privacy-safe banner copy', 
       });
       assert.equal(sent.title, expectedTitle);
       assert.equal(sent.body, expectedBody);
+      if (overrides.type === 'pickup') assert.equal(sent.type, 'pickup');
       assert.doesNotMatch(JSON.stringify(sent), /Secret Learner|Chemistry|score of 42/);
       if (overrides.type === 'calendar_notice') {
         const select = database.calls.find(call => call.sql.includes('SELECT deliveries.id'))?.sql || '';
@@ -260,6 +264,12 @@ test('service worker shows supplied safe copy and opens the correct in-scope not
     waitUntil(value) { task = value; } });
   await task;
   assert.equal(opened, 'https://school.example/edugnay/views/parent/edugnay-parent-notifications.html?pushNotice=19');
+
+  const pickupBody = 'Student picked up by Authorized Fetcher at 3:45 PM. '.repeat(5).trim();
+  handlers.push({ data: { json: () => ({ title: 'Student pickup confirmed', type: 'pickup',
+    notificationId: '20', role: 'parent', body: pickupBody }) }, waitUntil(value) { task = value; } });
+  await task;
+  assert.equal(displayed.options.body, pickupBody);
 
   handlers.push({ data: { json: () => ({ title: 42, body: { text: 'invalid' } }) }, waitUntil(value) { task = value; } });
   await task;

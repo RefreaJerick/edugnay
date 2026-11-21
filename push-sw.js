@@ -7,7 +7,7 @@ self.addEventListener('push', event => {
     return characters.slice(0, maximumLength).join('');
   };
   const title = cleanText(data.title, 80) || 'New Academix notification';
-  const body = cleanText(data.body, 160) || 'Open AcadeMix to view it.';
+  const body = cleanText(data.body, data.type === 'pickup' ? 500 : 160) || 'Open AcadeMix to view it.';
   const id = /^\d+$/.test(String(data.notificationId || '')) ? String(data.notificationId) : '';
   const role = ['parent', 'student', 'teacher', 'school_admin', 'platform_admin'].includes(data.role)
     ? data.role : 'parent';
