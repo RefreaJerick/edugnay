@@ -1,6 +1,7 @@
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
 const { COMMUNICATION_COMPONENTS } = require('../config/shsCommunication');
+const weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 function fail(message, status = 400) {
   const error = new Error(message);
@@ -47,6 +48,42 @@ function validateMeeting(values, year) {
   const room = String(values.room || '').trim().replace(/\s+/g, ' ');
   if (room.length > 100) fail('Room name is too long.');
   return { weekday, startTime, endTime, startDate, endDate, room: room || null };
+}
+
+function weekdayList(values, label, allowEmpty = false) {
+  if (!Array.isArray(values) || values.length > 7 || (!allowEmpty && !values.length)) fail(`Choose ${label}.`);
+  const weekdays = values.map(Number);
+  if (weekdays.some(day => !Number.isInteger(day) || day < 1 || day > 7)
+    || new Set(weekdays).size !== weekdays.length) fail(`Choose valid, distinct ${label}.`);
+  return weekdays;
+}
+
+function meetingsToSave(body, year, meetingId, owner, dates = {}) {
+  const days = meetingId
+    ? [Number(body.weekday), ...(body.copyToWeekdays === undefined ? [] : weekdayList(body.copyToWeekdays, 'additional days', true))]
+    : body.weekdays === undefined ? [body.weekday] : weekdayList(body.weekdays, 'days');
+  if (meetingId && body.copyToWeekdays !== undefined
+    && (Number(body.weekday) !== Number(owner.weekday) || new Set(days).size !== days.length)) {
+    fail('Keep the original day selected and choose different days to copy.');
+  }
+  return days.map(day => validateMeeting({ ...body, ...dates, weekday: day }, year));
+}
+
+function meetingChanged(owner, meeting) {
+  return Number(owner.weekday) !== meeting.weekday
+    || String(owner.startTime || '').slice(0, 5) !== meeting.startTime.slice(0, 5)
+    || String(owner.endTime || '').slice(0, 5) !== meeting.endTime.slice(0, 5)
+    || owner.startDate !== meeting.startDate || owner.endDate !== meeting.endDate
+    || String(owner.room || '').trim().replace(/\s+/g, ' ') !== String(meeting.room || '');
+}
+
+async function insertMeeting(connection, schoolId, scheduledClassId, meeting) {
+  const [result] = await connection.execute(
+    `INSERT INTO timetable_meetings (school_id, scheduled_class_id, weekday, start_time, end_time, start_date, end_date, room)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [schoolId, scheduledClassId, meeting.weekday, meeting.startTime, meeting.endTime, meeting.startDate, meeting.endDate, meeting.room]
+  );
+  return result.insertId;
 }
 
 async function getAssignment(connection, schoolId, assignmentId) {
@@ -387,20 +424,24 @@ async function save(req, res, next) {
     const assignment = await getAssignment(connection, schoolId, assignmentId);
     if (!assignment || Number(assignment.academicYearId) !== Number(initial.academicYearId)) fail('The assignment changed. Reload and try again.', 409);
     if (assignment.yearStatus === 'archived' || assignment.sectionStatus !== 'active') fail('This school year or section is read-only.', 409);
-    const meeting = validateMeeting(req.body, assignment);
-    if (meetingId) {
-      const owner = await getMeetingOwner(connection, schoolId, meetingId);
-      if (Number(owner?.assignmentId) !== assignmentId) fail('Meeting not found.', 404);
-    }
+    const owner = meetingId ? await getMeetingOwner(connection, schoolId, meetingId, true) : null;
+    if (meetingId && Number(owner?.assignmentId) !== assignmentId) fail('Meeting not found.', 404);
+    const meetings = meetingsToSave(req.body, assignment, meetingId, owner);
+    const primaryChanged = meetingId && meetingChanged(owner, meetings[0]);
     const [[existingClass]] = await connection.execute(
       'SELECT id FROM scheduled_classes WHERE school_id = ? AND assignment_id = ? LIMIT 1', [schoolId, assignmentId]
     );
     assignment.scheduledClassId = existingClass?.id || null;
-    const conflict = await findConflict(connection, schoolId, assignment.academicYearId, assignment, meeting, meetingId);
-    if (conflict) fail(`Schedule conflict with ${conflict.subjectName} in ${conflict.sectionName}.`, 409);
+    for (const [index, meeting] of meetings.entries()) {
+      if (meetingId && index === 0 && !primaryChanged) continue;
+      const conflict = await findConflict(connection, schoolId, assignment.academicYearId, assignment, meeting, index === 0 ? meetingId : null);
+      if (conflict) fail(`Schedule conflict on ${weekdayNames[meeting.weekday - 1]} with ${conflict.subjectName} in ${conflict.sectionName}.`, 409);
+    }
     let savedId = meetingId;
+    let scheduledClassId = existingClass?.id;
     if (meetingId) {
-      await connection.execute(
+      const meeting = meetings[0];
+      if (primaryChanged) await connection.execute(
         `UPDATE timetable_meetings SET weekday=?, start_time=?, end_time=?, start_date=?, end_date=?, room=?
          WHERE id=? AND school_id=?`,
         [meeting.weekday, meeting.startTime, meeting.endTime, meeting.startDate, meeting.endDate, meeting.room, meetingId, schoolId]
@@ -411,21 +452,26 @@ async function save(req, res, next) {
          ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)`, [schoolId, assignmentId]
       );
       const [[scheduledClass]] = await connection.execute('SELECT id FROM scheduled_classes WHERE assignment_id = ? AND school_id = ?', [assignmentId, schoolId]);
-      const [result] = await connection.execute(
-        `INSERT INTO timetable_meetings (school_id, scheduled_class_id, weekday, start_time, end_time, start_date, end_date, room)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [schoolId, scheduledClass.id, meeting.weekday, meeting.startTime, meeting.endTime, meeting.startDate, meeting.endDate, meeting.room]
-      );
-      savedId = result.insertId;
+      scheduledClassId = scheduledClass.id;
+      savedId = await insertMeeting(connection, schoolId, scheduledClassId, meetings[0]);
     }
-    await writeAuditLog(connection, req, meetingId ? 'timetable_meeting_updated' : 'timetable_meeting_created', 'timetable_meeting', savedId, {
-      summary: `Assignment ${assignmentId}`, sectionName: assignment.sectionName,
-      gradeName: assignment.gradeName, subjectName: assignment.subjectName, teacherName: assignment.teacherName,
-      schoolYearLabel: assignment.schoolYearLabel, weekday: meeting.weekday, startTime: meeting.startTime,
-      endTime: meeting.endTime, startDate: meeting.startDate, endDate: meeting.endDate, room: meeting.room
-    });
+    const createdIds = meetingId ? [] : [savedId];
+    for (const [index, meeting] of meetings.entries()) {
+      if (meetingId && index === 0 && !primaryChanged) continue;
+      const savedMeetingId = index === 0 ? savedId : await insertMeeting(connection, schoolId, scheduledClassId, meeting);
+      if (index > 0) createdIds.push(savedMeetingId);
+      await writeAuditLog(connection, req, meetingId && index === 0 ? 'timetable_meeting_updated' : 'timetable_meeting_created', 'timetable_meeting', savedMeetingId, {
+        summary: `Assignment ${assignmentId}`, sectionName: assignment.sectionName,
+        gradeName: assignment.gradeName, subjectName: assignment.subjectName, teacherName: assignment.teacherName,
+        schoolYearLabel: assignment.schoolYearLabel, weekday: meeting.weekday,
+        ...(meetingId && index === 0 && Number(owner.weekday) !== meeting.weekday ? { previousWeekday: Number(owner.weekday) } : {}),
+        ...(meetingId && index > 0 ? { copiedFromWeekday: Number(owner.weekday) } : {}),
+        startTime: meeting.startTime,
+        endTime: meeting.endTime, startDate: meeting.startDate, endDate: meeting.endDate, room: meeting.room
+      });
+    }
     await connection.commit(); started = false;
-    res.status(meetingId ? 200 : 201).json({ id: savedId });
+    res.status(meetingId ? 200 : 201).json({ id: savedId, createdIds });
   } catch (error) { if (started) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
@@ -451,8 +497,9 @@ async function saveElective(req, res, next) {
     const meetingDates = meetingId
       ? { startDate: owner.startDate, endDate: owner.endDate }
       : assignedRange;
-    const meeting = validateMeeting({ ...req.body, ...meetingDates }, elective);
-    if (meeting.startDate < assignedRange.startDate || meeting.endDate > assignedRange.endDate) {
+    const meetings = meetingsToSave(req.body, elective, meetingId, owner, meetingDates);
+    const primaryChanged = meetingId && meetingChanged(owner, meetings[0]);
+    if (meetings[0].startDate < assignedRange.startDate || meetings[0].endDate > assignedRange.endDate) {
       fail(meetingId
         ? 'The saved meeting dates are outside this class’s assigned terms. Review its term assignment before saving.'
         : 'This class has no valid assigned term dates. Review its term assignment before scheduling.', 409);
@@ -462,11 +509,16 @@ async function saveElective(req, res, next) {
     );
     elective.scheduledClassId = existingClass?.id || null;
     elective.electiveClassId = classId;
-    const conflict = await findConflict(connection, schoolId, elective.academicYearId, elective, meeting, meetingId);
-    if (conflict) fail(`Schedule conflict with ${conflict.subjectName} in ${conflict.sectionName}.`, 409);
+    for (const [index, meeting] of meetings.entries()) {
+      if (meetingId && index === 0 && !primaryChanged) continue;
+      const conflict = await findConflict(connection, schoolId, elective.academicYearId, elective, meeting, index === 0 ? meetingId : null);
+      if (conflict) fail(`Schedule conflict on ${weekdayNames[meeting.weekday - 1]} with ${conflict.subjectName} in ${conflict.sectionName}.`, 409);
+    }
     let savedId = meetingId;
+    let scheduledClassId = existingClass?.id;
     if (meetingId) {
-      await connection.execute(
+      const meeting = meetings[0];
+      if (primaryChanged) await connection.execute(
         `UPDATE timetable_meetings SET weekday=?, start_time=?, end_time=?, start_date=?, end_date=?, room=?
          WHERE id=? AND school_id=?`,
         [meeting.weekday, meeting.startTime, meeting.endTime, meeting.startDate, meeting.endDate, meeting.room, meetingId, schoolId]
@@ -479,21 +531,26 @@ async function saveElective(req, res, next) {
       const [[scheduledClass]] = await connection.execute(
         'SELECT id FROM scheduled_classes WHERE school_id = ? AND shs_elective_class_id = ?', [schoolId, classId]
       );
-      const [result] = await connection.execute(
-        `INSERT INTO timetable_meetings (school_id, scheduled_class_id, weekday, start_time, end_time, start_date, end_date, room)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [schoolId, scheduledClass.id, meeting.weekday, meeting.startTime, meeting.endTime, meeting.startDate, meeting.endDate, meeting.room]
-      );
-      savedId = result.insertId;
+      scheduledClassId = scheduledClass.id;
+      savedId = await insertMeeting(connection, schoolId, scheduledClassId, meetings[0]);
     }
-    await writeAuditLog(connection, req, meetingId ? 'shs_timetable_meeting_updated' : 'shs_timetable_meeting_created', 'timetable_meeting', savedId, {
-      summary: `Elective class ${classId}`, className: elective.className, subjectName: elective.subjectName,
-      teacherName: elective.teacherName, gradeCode: elective.gradeCode, trackCode: elective.trackCode,
-      schoolYearLabel: elective.schoolYearLabel, weekday: meeting.weekday, startTime: meeting.startTime,
-      endTime: meeting.endTime, startDate: meeting.startDate, endDate: meeting.endDate, room: meeting.room
-    });
+    const createdIds = meetingId ? [] : [savedId];
+    for (const [index, meeting] of meetings.entries()) {
+      if (meetingId && index === 0 && !primaryChanged) continue;
+      const savedMeetingId = index === 0 ? savedId : await insertMeeting(connection, schoolId, scheduledClassId, meeting);
+      if (index > 0) createdIds.push(savedMeetingId);
+      await writeAuditLog(connection, req, meetingId && index === 0 ? 'shs_timetable_meeting_updated' : 'shs_timetable_meeting_created', 'timetable_meeting', savedMeetingId, {
+        summary: `Elective class ${classId}`, className: elective.className, subjectName: elective.subjectName,
+        teacherName: elective.teacherName, gradeCode: elective.gradeCode, trackCode: elective.trackCode,
+        schoolYearLabel: elective.schoolYearLabel, weekday: meeting.weekday,
+        ...(meetingId && index === 0 && Number(owner.weekday) !== meeting.weekday ? { previousWeekday: Number(owner.weekday) } : {}),
+        ...(meetingId && index > 0 ? { copiedFromWeekday: Number(owner.weekday) } : {}),
+        startTime: meeting.startTime,
+        endTime: meeting.endTime, startDate: meeting.startDate, endDate: meeting.endDate, room: meeting.room
+      });
+    }
     await connection.commit(); started = false;
-    res.status(meetingId ? 200 : 201).json({ id: savedId });
+    res.status(meetingId ? 200 : 201).json({ id: savedId, createdIds });
   } catch (error) { if (started) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 

@@ -1910,6 +1910,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_audit_logs_school_created (school_id, created_at),
   KEY idx_audit_logs_action_created (action_type, created_at, id),
+  KEY idx_audit_logs_meeting_history (school_id, entity_type, entity_id, id),
   CONSTRAINT fk_audit_logs_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE SET NULL,
   CONSTRAINT fk_audit_logs_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

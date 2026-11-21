@@ -810,7 +810,7 @@ test('editing an SHS meeting preserves its saved date span and rejects dates out
   database = { getConnection: async () => connection };
   let error; const res = response();
   await timetable.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '7', meetingId: '14' }, body: {
-    weekday: 3, startTime: '08:00', endTime: '09:00', startDate: '2026-06-01', endDate: '2026-12-31'
+    weekday: 3, startTime: '08:30', endTime: '09:00', startDate: '2026-06-01', endDate: '2026-12-31'
   } }, res, value => { error = value; });
   assert.equal(error, undefined);
   assert.equal(updatedMeetingValues[3], '2026-11-11');

@@ -223,3 +223,208 @@ test('archived years and inactive sections cannot gain meetings', async () => {
     assert.equal(calls.at(-1), 'ROLLBACK');
   }
 });
+
+test('section meetings create several weekdays in one transaction and log each day', async () => {
+  const calls = [];
+  let nextId = 40;
+  const assignment = { id: 5, sectionId: 7, teacherId: 4, academicYearId: 3, sectionStatus: 'active', yearStatus: 'active', ...year };
+  const connection = {
+    async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
+    async rollback() { calls.push('ROLLBACK'); }, release() {},
+    async execute(sql, values) {
+      calls.push({ sql, values });
+      if (sql.includes('FROM section_teachers a') && sql.includes('LIMIT 1')) return [[assignment]];
+      if (sql.includes('m.start_time <')) return [[]];
+      if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 11 }]];
+      if (sql.includes('INSERT INTO timetable_meetings')) return [{ insertId: nextId++ }];
+      return [[]];
+    }
+  };
+  database = { getConnection: async () => connection };
+  let response;
+  await controller.save({ user: { schoolId: 2, id: 90 }, params: { assignmentId: '5' },
+    body: { ...valid, weekdays: [1, 2, 3] } },
+  { status() { return this; }, json(value) { response = value; } }, error => { throw error; });
+  assert.deepEqual(response, { id: 40, createdIds: [40, 41, 42] });
+  assert.deepEqual(calls.filter(call => call.sql?.includes('INSERT INTO timetable_meetings')).map(call => call.values[2]), [1, 2, 3]);
+  assert.equal(calls.filter(call => call.sql?.includes('INSERT INTO audit_logs')).length, 3);
+  assert.equal(calls.at(-1), 'COMMIT');
+});
+
+test('a section weekday move logs its source, while copies log only the new days', async () => {
+  const calls = [];
+  let nextId = 71;
+  const assignment = { id: 5, sectionId: 7, teacherId: 4, academicYearId: 3, sectionStatus: 'active', yearStatus: 'active', ...year };
+  const owner = { assignmentId: 5, weekday: 1, startTime: '09:00', endTime: '10:00',
+    startDate: '2026-06-01', endDate: '2026-12-31', room: '204' };
+  const connection = {
+    async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
+    async rollback() { calls.push('ROLLBACK'); }, release() {},
+    async execute(sql, values) {
+      calls.push({ sql, values });
+      if (sql.includes('FROM section_teachers a') && sql.includes('LIMIT 1')) return [[assignment]];
+      if (sql.includes('FROM timetable_meetings m') && sql.includes('LIMIT 1')) return [[owner]];
+      if (sql.includes('m.start_time <')) return [[]];
+      if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 11 }]];
+      if (sql.includes('UPDATE timetable_meetings')) return [{ affectedRows: 1 }];
+      if (sql.includes('INSERT INTO timetable_meetings')) return [{ insertId: nextId++ }];
+      return [[]];
+    }
+  };
+  database = { getConnection: async () => connection };
+  const req = { user: { schoolId: 2, id: 90 }, params: { assignmentId: '5', meetingId: '70' },
+    body: { weekday: 2, startTime: '09:00', endTime: '10:00', startDate: '2026-06-01', endDate: '2026-12-31', room: '204' } };
+  const res = { status() { return this; }, json() {} };
+  await controller.save(req, res, error => { throw error; });
+  let audits = calls.filter(call => call.sql?.includes('INSERT INTO audit_logs'));
+  assert.equal(audits.length, 1);
+  assert.equal(audits[0].values[2], 'timetable_meeting_updated');
+  assert.equal(JSON.parse(audits[0].values[5]).previousWeekday, 1);
+
+  calls.length = 0;
+  owner.weekday = 2;
+  req.body = { ...req.body, copyToWeekdays: [3, 4] };
+  await controller.save(req, res, error => { throw error; });
+  assert.equal(calls.some(call => call.sql?.includes('UPDATE timetable_meetings')), false);
+  audits = calls.filter(call => call.sql?.includes('INSERT INTO audit_logs'));
+  assert.equal(audits.length, 2);
+  assert.deepEqual(audits.map(call => [call.values[2], JSON.parse(call.values[5]).copiedFromWeekday,
+    JSON.parse(call.values[5]).weekday]), [
+    ['timetable_meeting_created', 2, 3], ['timetable_meeting_created', 2, 4]
+  ]);
+});
+
+test('copying days from an existing meeting keeps its weekday and rolls back on any conflict', async () => {
+  const calls = [];
+  const assignment = { id: 5, sectionId: 7, teacherId: 4, academicYearId: 3, sectionStatus: 'active', yearStatus: 'active', ...year };
+  const connection = {
+    async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
+    async rollback() { calls.push('ROLLBACK'); }, release() {},
+    async execute(sql, values) {
+      calls.push({ sql, values });
+      if (sql.includes('FROM section_teachers a') && sql.includes('LIMIT 1')) return [[assignment]];
+      if (sql.includes('FROM timetable_meetings m') && sql.includes('LIMIT 1')) return [[{ assignmentId: 5, weekday: 1 }]];
+      if (sql.includes('m.start_time <')) return values[2] === 3 ? [[{
+        id: 80, sectionId: 7, teacherId: 9, sectionName: 'St. Peter', subjectName: 'Math',
+        startDate: '2026-06-01', endDate: '2026-12-31'
+      }]] : [[]];
+      if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 11 }]];
+      return [[]];
+    }
+  };
+  database = { getConnection: async () => connection };
+  let failure;
+  await controller.save({ user: { schoolId: 2, id: 90 }, params: { assignmentId: '5', meetingId: '20' },
+    body: { ...valid, copyToWeekdays: [2, 3] } },
+  { status() { return this; }, json() {} }, error => { failure = error; });
+  assert.equal(failure.status, 409);
+  assert.match(failure.message, /Wednesday/);
+  assert.equal(calls.at(-1), 'ROLLBACK');
+  assert.equal(calls.some(call => call.sql?.includes('UPDATE timetable_meetings') || call.sql?.includes('INSERT INTO timetable_meetings')), false);
+});
+
+test('SHS elective weekdays use assigned term dates and create separate meetings', async () => {
+  const calls = [];
+  let nextId = 50;
+  const elective = {
+    id: 9, academicYearId: 3, classActive: 1, offeringActive: 1, teacherStatus: 'active',
+    teacherId: 4, yearStatus: 'active', ...year,
+    startTermId: 11, endTermId: 12, startTermName: 'Term 1', endTermName: 'Term 2',
+    startTermSequence: 1, endTermSequence: 2,
+    firstTermStartDate: '2026-11-06', lastTermEndDate: '2027-03-31'
+  };
+  const connection = {
+    async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
+    async rollback() { calls.push('ROLLBACK'); }, release() {},
+    async execute(sql, values) {
+      calls.push({ sql, values });
+      if (sql.includes('FROM shs_elective_classes c')) return [[elective]];
+      if (sql.includes('m.start_time <')) return [[]];
+      if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 12 }]];
+      if (sql.includes('INSERT INTO timetable_meetings')) return [{ insertId: nextId++ }];
+      return [[]];
+    }
+  };
+  database = { getConnection: async () => connection };
+  let response;
+  await controller.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '9' },
+    body: { weekday: 1, weekdays: [1, 3], startTime: '08:00', endTime: '09:00', room: '' } },
+  { status() { return this; }, json(value) { response = value; } }, error => { throw error; });
+  assert.deepEqual(response, { id: 50, createdIds: [50, 51] });
+  assert.deepEqual(calls.filter(call => call.sql?.includes('INSERT INTO timetable_meetings')).map(call => call.values.slice(2, 7)), [
+    [1, '08:00:00', '09:00:00', '2026-11-06', '2027-03-31'],
+    [3, '08:00:00', '09:00:00', '2026-11-06', '2027-03-31']
+  ]);
+  assert.equal(calls.at(-1), 'COMMIT');
+});
+
+test('editing an SHS meeting adds a day without widening its saved date range', async () => {
+  const calls = [];
+  const elective = {
+    id: 9, academicYearId: 3, classActive: 1, offeringActive: 1, teacherStatus: 'active',
+    teacherId: 4, yearStatus: 'active', ...year,
+    startTermId: 11, endTermId: 12, startTermName: 'Term 1', endTermName: 'Term 2',
+    startTermSequence: 1, endTermSequence: 2,
+    firstTermStartDate: '2026-11-06', lastTermEndDate: '2027-03-31'
+  };
+  const connection = {
+    async beginTransaction() { calls.push('BEGIN'); }, async commit() { calls.push('COMMIT'); },
+    async rollback() { calls.push('ROLLBACK'); }, release() {},
+    async execute(sql, values) {
+      calls.push({ sql, values });
+      if (sql.includes('FROM shs_elective_classes c')) return [[elective]];
+      if (sql.includes('FROM timetable_meetings m') && sql.includes('LIMIT 1')) return [[{
+        electiveClassId: 9, weekday: 1, startTime: '08:00', endTime: '09:00',
+        startDate: '2026-12-01', endDate: '2027-01-31', room: null
+      }]];
+      if (sql.includes('m.start_time <')) return [[]];
+      if (sql.includes('SELECT id FROM scheduled_classes')) return [[{ id: 12 }]];
+      if (sql.includes('INSERT INTO timetable_meetings')) return [{ insertId: 61 }];
+      return [[]];
+    }
+  };
+  database = { getConnection: async () => connection };
+  let response;
+  await controller.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '9', meetingId: '60' },
+    body: { weekday: 1, copyToWeekdays: [3], startTime: '08:00', endTime: '09:00', room: '' } },
+  { status() { return this; }, json(value) { response = value; } }, error => { throw error; });
+  assert.deepEqual(response, { id: 60, createdIds: [61] });
+  const inserted = calls.find(call => call.sql?.includes('INSERT INTO timetable_meetings'));
+  assert.deepEqual(inserted.values.slice(2, 7), [3, '08:00:00', '09:00:00', '2026-12-01', '2027-01-31']);
+  assert.equal(calls.some(call => call.sql?.includes('UPDATE timetable_meetings')), false);
+  const audit = calls.filter(call => call.sql?.includes('INSERT INTO audit_logs'));
+  assert.equal(audit.length, 1);
+  assert.equal(audit[0].values[2], 'shs_timetable_meeting_created');
+  assert.equal(JSON.parse(audit[0].values[5]).copiedFromWeekday, 1);
+  assert.equal(calls.at(-1), 'COMMIT');
+
+  calls.length = 0;
+  await controller.saveElective({ user: { schoolId: 2, id: 90 }, params: { classId: '9', meetingId: '60' },
+    body: { weekday: 2, startTime: '08:00', endTime: '09:00', room: '' } },
+  { status() { return this; }, json() {} }, error => { throw error; });
+  const moveAudit = calls.find(call => call.sql?.includes('INSERT INTO audit_logs'));
+  assert.equal(moveAudit.values[2], 'shs_timetable_meeting_updated');
+  assert.equal(JSON.parse(moveAudit.values[5]).previousWeekday, 1);
+});
+
+test('invalid or repeated weekdays fail before a section meeting is written', async () => {
+  for (const weekdays of [[], [1, 1], [1, 8]]) {
+    const calls = [];
+    const assignment = { id: 5, sectionId: 7, teacherId: 4, academicYearId: 3, sectionStatus: 'active', yearStatus: 'active', ...year };
+    const connection = {
+      async beginTransaction() { calls.push('BEGIN'); }, async rollback() { calls.push('ROLLBACK'); }, release() {},
+      async execute(sql) {
+        calls.push(sql);
+        if (sql.includes('FROM section_teachers a') && sql.includes('LIMIT 1')) return [[assignment]];
+        return [[]];
+      }
+    };
+    database = { getConnection: async () => connection };
+    let failure;
+    await controller.save({ user: { schoolId: 2 }, params: { assignmentId: '5' }, body: { ...valid, weekdays } },
+      { status() { return this; }, json() {} }, error => { failure = error; });
+    assert.equal(failure.status, 400);
+    assert.equal(calls.at(-1), 'ROLLBACK');
+    assert.equal(calls.some(sql => typeof sql === 'string' && sql.includes('INSERT INTO timetable_meetings')), false);
+  }
+});

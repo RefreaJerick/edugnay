@@ -97,11 +97,12 @@
       ${details.map(detail => `<span class="timetable-event-meta">${escape(detail)}</span>`).join('')}`;
     const label = [displaySubjectName(item), time, ...(state.role === 'student' ? [] : [item.gradeName, item.sectionName]), ...details].join(', ');
     return state.role === 'admin' && state.data.year?.status !== 'archived'
-      ? `<button class="timetable-event" type="button" data-meeting-id="${item.id}" aria-label="Edit ${escape(label)}">${content}</button>`
+      ? `<button class="timetable-event" type="button" data-meeting-id="${item.id}" aria-label="Edit ${escape(label)}" aria-describedby="timetable-drag-help">${content}</button>`
       : `<div class="timetable-event">${content}</div>`;
   }
 
   function renderWeek(state) {
+    state.cancelDrag?.();
     const start = state.week;
     const end = addDays(start, 6);
     const nextMonday = addDays(start, 7);
@@ -115,7 +116,7 @@
       const date = addDays(start, index);
       const isToday = date === today();
       const items = meetings.filter(item => activeOn(item, date)).sort(byTime);
-      return `<section class="timetable-day${isToday ? ' today' : ''}" aria-label="${day}, ${shortDate(date)}${isToday ? ', today' : ''}">
+      return `<section class="timetable-day${isToday ? ' today' : ''}" data-weekday="${index + 1}" aria-label="${day}, ${shortDate(date)}${isToday ? ', today' : ''}">
         <div class="timetable-day-head"><span>${day}</span><time datetime="${date}">${shortDate(date)}</time></div>
         ${items.length ? items.map(item => eventHtml(item, state)).join('') : '<p class="timetable-empty-day">No classes</p>'}
       </section>`;
@@ -273,7 +274,11 @@
     renderDialogSubjects(state, assignment?.sectionId || '', selectedId);
     document.getElementById('timetable-dialog-section').disabled = Boolean(meeting);
     form.elements.assignmentId.disabled = Boolean(meeting);
-    form.elements.weekday.value = String(meeting?.weekday || weekday(today()));
+    for (const option of form.querySelectorAll('input[name="weekdays"]')) {
+      option.checked = Boolean(meeting && Number(option.value) === Number(meeting.weekday));
+      option.disabled = option.checked && Boolean(meeting);
+    }
+    document.getElementById('timetable-weekdays-note').hidden = !meeting;
     form.elements.startTime.value = meeting?.startTime || '';
     form.elements.endTime.value = meeting?.endTime || '';
     form.elements.startDate.value = meeting?.startDate || state.data.year.startDate;
@@ -289,7 +294,6 @@
     document.getElementById('timetable-owner-type').disabled = Boolean(meeting);
     document.getElementById('timetable-dialog-title').textContent = meeting ? 'Edit class meeting' : 'Add class meeting';
     document.getElementById('timetable-delete').hidden = !meeting;
-    document.getElementById('timetable-error').textContent = '';
     state.dialogReturnFocus = document.activeElement;
     state.previousBodyOverflow = document.body.style.overflow;
     document.getElementById('timetable-dialog-overlay').hidden = false;
@@ -338,9 +342,14 @@
     event.preventDefault();
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
+    const selectedDays = [...form.querySelectorAll('input[name="weekdays"]:checked')].map(option => Number(option.value));
+    if (!selectedDays.length) {
+      showAppToast('Choose at least one day.', 'error');
+      form.querySelector('input[name="weekdays"]')?.focus();
+      return;
+    }
     const submit = document.getElementById('timetable-save');
     submit.disabled = true;
-    document.getElementById('timetable-error').textContent = '';
     try {
       const values = Object.fromEntries(new FormData(form));
       const elective = document.getElementById('timetable-owner-type').value === 'elective';
@@ -348,19 +357,211 @@
       const electiveClassId = state.editingElectiveClassId || document.getElementById('timetable-elective-class').value;
       const editing = Boolean(state.editingId);
       delete values.assignmentId;
+      delete values.weekdays;
+      if (editing) {
+        values.weekday = Number(state.editingMeeting.weekday);
+        values.copyToWeekdays = selectedDays.filter(day => day !== Number(state.editingMeeting.weekday));
+      } else values.weekdays = selectedDays;
       if (elective) await api().saveElectiveTimetableMeeting(electiveClassId, state.editingId, values);
       else await api().saveTimetableMeeting(assignmentId, state.editingId, values);
       closeDialog(state);
       await load(state);
-      showAppToast(editing ? 'Class meeting updated.' : 'Class meeting added.');
+      const added = editing ? values.copyToWeekdays.length : selectedDays.length;
+      showAppToast(editing
+        ? added ? `Class meeting updated and ${added} ${added === 1 ? 'day' : 'days'} added.` : 'Class meeting updated.'
+        : `${added} class ${added === 1 ? 'meeting' : 'meetings'} added.`);
     } catch (error) {
       const message = error.message || 'The meeting could not be saved.';
-      document.getElementById('timetable-error').textContent = message;
       showAppToast(message, 'error');
     } finally {
       submit.disabled = false;
       updateElectiveTermSummary(state);
     }
+  }
+
+  async function moveMeeting(state, meeting, destinationDay) {
+    if (state.movePending || !meeting || Number(meeting.weekday) === destinationDay || state.data.year?.status === 'archived') return;
+    state.movePending = true;
+    const values = {
+      weekday: destinationDay, startTime: meeting.startTime, endTime: meeting.endTime,
+      startDate: meeting.startDate, endDate: meeting.endDate, room: meeting.room || ''
+    };
+    try {
+      if (meeting.electiveClassId) await api().saveElectiveTimetableMeeting(meeting.electiveClassId, meeting.id, values);
+      else await api().saveTimetableMeeting(meeting.assignmentId, meeting.id, values);
+      await load(state);
+      document.querySelector(`#timetable-grid [data-meeting-id="${meeting.id}"]`)?.focus();
+      showAppToast(`Class meeting moved to ${days[destinationDay - 1]}.`);
+    } catch (error) {
+      showAppToast(error.message || 'The meeting could not be moved.', 'error');
+    } finally {
+      state.movePending = false;
+    }
+  }
+
+  function initMeetingDrag(state) {
+    const grid = document.getElementById('timetable-grid');
+    const status = document.getElementById('timetable-drag-status');
+    let active = null;
+    let pointerCandidate = null;
+    let touchCandidate = null;
+    let keyboardDrag = false;
+    let suppressClick = false;
+    const announce = message => { status.textContent = message; };
+    const cardAt = target => target.closest?.('[data-meeting-id]');
+    const touchById = (touches, id) => [...touches].find(touch => touch.identifier === id);
+
+    function clearDrag() {
+      if (touchCandidate?.timer) clearTimeout(touchCandidate.timer);
+      touchCandidate = null;
+      pointerCandidate = null;
+      grid.querySelector('.is-drop-target')?.classList.remove('is-drop-target');
+      active?.preview?.remove();
+      active?.button.classList.remove('is-dragging');
+      grid.classList.remove('is-dragging');
+      active = null;
+      keyboardDrag = false;
+      status.textContent = '';
+    }
+
+    function positionPreview(x, y) {
+      if (!active?.preview) return;
+      const left = Math.max(8, Math.min(x - active.offsetX, window.innerWidth - active.width - 8));
+      const top = Math.max(8, Math.min(y - active.offsetY, window.innerHeight - active.height - 8));
+      active.preview.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    }
+
+    function beginDrag(button, x, y, isTouch = false) {
+      if (active || state.movePending || state.data.year?.status === 'archived' || !grid.contains(button)) return false;
+      const meeting = state.data.meetings.find(item => String(item.id) === button.dataset.meetingId);
+      if (!meeting) return false;
+      active = { button, meeting, targetDay: null };
+      if (x !== undefined && y !== undefined) {
+        const rect = button.getBoundingClientRect();
+        const preview = button.cloneNode(true);
+        preview.classList.add('timetable-drag-preview');
+        preview.removeAttribute('data-meeting-id');
+        preview.removeAttribute('aria-describedby');
+        preview.setAttribute('aria-hidden', 'true');
+        preview.tabIndex = -1;
+        preview.inert = true;
+        preview.style.width = `${rect.width}px`;
+        preview.style.height = `${rect.height}px`;
+        document.body.appendChild(preview);
+        Object.assign(active, {
+          preview, width: rect.width, height: rect.height,
+          offsetX: x - rect.left, offsetY: isTouch ? rect.height + 24 : y - rect.top
+        });
+        positionPreview(x, y);
+      }
+      button.classList.add('is-dragging');
+      grid.classList.add('is-dragging');
+      announce(`Moving ${displaySubjectName(meeting)}. Choose another day.`);
+      return true;
+    }
+
+    function setTarget(day) {
+      if (!active) return;
+      grid.querySelector('.is-drop-target')?.classList.remove('is-drop-target');
+      active.targetDay = day && day !== Number(active.meeting.weekday) ? day : null;
+      if (active.targetDay) {
+        grid.querySelector(`.timetable-day[data-weekday="${active.targetDay}"]`)?.classList.add('is-drop-target');
+        announce(`Move ${displaySubjectName(active.meeting)} to ${days[active.targetDay - 1]}.`);
+      } else announce('Original day selected. Choose another day or press Escape.');
+    }
+
+    function targetAt(x, y) {
+      const day = document.elementFromPoint(x, y)?.closest?.('.timetable-day[data-weekday]');
+      return day && grid.contains(day) ? Number(day.dataset.weekday) : null;
+    }
+
+    function suppressEditClick() {
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+    }
+
+    function finishDrag() {
+      const meeting = active?.meeting;
+      const destinationDay = active?.targetDay;
+      clearDrag();
+      if (destinationDay) moveMeeting(state, meeting, destinationDay);
+      else announce('Move canceled.');
+    }
+
+    state.cancelDrag = clearDrag;
+    grid.addEventListener('click', event => {
+      if (suppressClick || state.movePending || keyboardDrag) { event.preventDefault(); event.stopImmediatePropagation(); }
+    }, true);
+    grid.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'touch' || event.button !== 0 || active || state.movePending) return;
+      const button = cardAt(event.target);
+      if (button && grid.contains(button)) pointerCandidate = { id: event.pointerId, button, x: event.clientX, y: event.clientY };
+    });
+    document.addEventListener('pointermove', event => {
+      if (!pointerCandidate || event.pointerId !== pointerCandidate.id) return;
+      if (!active && Math.hypot(event.clientX - pointerCandidate.x, event.clientY - pointerCandidate.y) >= 6) beginDrag(pointerCandidate.button, pointerCandidate.x, pointerCandidate.y);
+      if (active) { event.preventDefault(); positionPreview(event.clientX, event.clientY); setTarget(targetAt(event.clientX, event.clientY)); }
+    });
+    document.addEventListener('pointerup', event => {
+      if (!pointerCandidate || event.pointerId !== pointerCandidate.id) return;
+      pointerCandidate = null;
+      if (active) { suppressEditClick(); finishDrag(); }
+    });
+    document.addEventListener('pointercancel', event => {
+      if (pointerCandidate?.id === event.pointerId) { clearDrag(); announce('Move canceled.'); }
+    });
+    grid.addEventListener('touchstart', event => {
+      if (event.touches.length !== 1 || active || state.movePending) return;
+      const button = cardAt(event.target);
+      if (!button || !grid.contains(button)) return;
+      const touch = event.touches[0];
+      touchCandidate = { id: touch.identifier, button, x: touch.clientX, y: touch.clientY };
+      touchCandidate.timer = setTimeout(() => {
+        if (touchCandidate) beginDrag(touchCandidate.button, touchCandidate.x, touchCandidate.y, true);
+      }, 350);
+    }, { passive: true });
+    grid.addEventListener('touchmove', event => {
+      if (!touchCandidate) return;
+      const touch = touchById(event.touches, touchCandidate.id);
+      if (!touch) return;
+      if (!active && Math.hypot(touch.clientX - touchCandidate.x, touch.clientY - touchCandidate.y) >= 10) {
+        clearTimeout(touchCandidate.timer);
+        touchCandidate = null;
+      } else if (active) {
+        event.preventDefault();
+        positionPreview(touch.clientX, touch.clientY);
+        setTarget(targetAt(touch.clientX, touch.clientY));
+      }
+    }, { passive: false });
+    grid.addEventListener('touchend', event => {
+      if (!touchCandidate || !touchById(event.changedTouches, touchCandidate.id)) return;
+      if (active) { event.preventDefault(); suppressEditClick(); finishDrag(); }
+      else { clearTimeout(touchCandidate.timer); touchCandidate = null; }
+    });
+    grid.addEventListener('touchcancel', () => { clearDrag(); announce('Move canceled.'); });
+    grid.addEventListener('keydown', event => {
+      const button = cardAt(event.target);
+      if (!keyboardDrag) {
+        if (button && (event.key === ' ' || event.key === 'Spacebar') && beginDrag(button)) {
+          event.preventDefault();
+          keyboardDrag = true;
+          active.targetDay = Number(active.meeting.weekday);
+          announce(`Moving ${displaySubjectName(active.meeting)}. Use Left or Right, then Enter. Escape cancels.`);
+        }
+        return;
+      }
+      if (event.key === 'Escape') { event.preventDefault(); clearDrag(); announce('Move canceled.'); return; }
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        const current = active.targetDay || Number(active.meeting.weekday);
+        const next = (current - 1 + (event.key === 'ArrowRight' ? 1 : 6)) % 7 + 1;
+        active.targetDay = next;
+        setTarget(next);
+      } else if (event.key === 'Enter') { event.preventDefault(); suppressEditClick(); finishDrag(); }
+    });
+    grid.addEventListener('focusout', event => {
+      if (keyboardDrag && event.target === active?.button) { clearDrag(); announce('Move canceled.'); }
+    });
   }
 
   async function deleteMeeting(state) {
@@ -382,7 +583,6 @@
       state.deletePending = false;
       closeDeleteConfirmation(state, false, true);
       const message = error.message || 'The meeting could not be removed.';
-      document.getElementById('timetable-error').textContent = message;
       showAppToast(message, 'error');
       button.disabled = false;
       button.focus();
@@ -470,6 +670,7 @@
       state.exportControl = window.AcademixTimetableExport?.init(() => exportWeek(state));
     }
     if (role === 'admin') {
+      initMeetingDrag(state);
       document.getElementById('timetable-owner-type').addEventListener('change', event => selectOwnerType(state, event.target.value));
       document.getElementById('timetable-elective-class').addEventListener('change', () => updateElectiveTermSummary(state));
       document.getElementById('timetable-dialog-section').addEventListener('change', event => {

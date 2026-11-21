@@ -46,9 +46,15 @@
 .timetable-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 5px; padding-bottom: 9px; border-bottom: 1px solid var(--panel-border); color: var(--gray-600); font-size: 12px; font-weight: 800; }
 .timetable-day-head time { color: var(--gray-400); font-weight: 600; }
 .timetable-event { display: grid; gap: 3px; width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--blue-pale); border-left: 3px solid var(--blue-mid); border-radius: var(--radius-sm); background: var(--blue-xpale); color: var(--theme-text); font: inherit; text-align: left; overflow-wrap: anywhere; }
-button.timetable-event { cursor: pointer; }
+button.timetable-event { cursor: grab; }
 button.timetable-event:hover { border-color: var(--theme-accent-text); background: var(--surface-blue-hover); }
 button.timetable-event:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--button-focus-ring); }
+.timetable-grid.is-dragging { user-select: none; }
+.timetable-grid.is-dragging .timetable-day[data-weekday] { background: var(--gray-50); }
+.timetable-grid .timetable-day.is-drop-target { background: var(--surface-blue-soft); box-shadow: inset 0 0 0 2px var(--theme-accent-text); }
+.timetable-event.is-dragging { opacity: .55; cursor: grabbing; }
+.timetable-drag-preview { position: fixed; z-index: 300; top: 0; left: 0; pointer-events: none; margin: 0; box-shadow: 0 12px 28px rgba(15, 35, 65, .2); cursor: grabbing; }
+.timetable-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .timetable-event-subject { min-width: 0; color: var(--theme-text); font-size: 12px; font-weight: 800; line-height: 1.4; }
 .timetable-event-time { color: var(--theme-accent-text); font-size: 11px; font-weight: 700; line-height: 1.4; }
 .timetable-event-class, .timetable-event-meta { min-width: 0; color: var(--gray-600); font-size: 10.5px; line-height: 1.4; }
@@ -78,13 +84,22 @@ button.timetable-event:focus-visible { outline: none; box-shadow: 0 0 0 3px var(
 .timetable-dialog-body::-webkit-scrollbar-track { background: var(--gray-50); }
 .timetable-dialog-body::-webkit-scrollbar-thumb { border-radius: 6px; background: var(--gray-300); }
 .timetable-dialog-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.timetable-weekdays { min-width: 0; margin: 0; padding: 0; border: 0; }
+.timetable-weekdays legend { margin-bottom: 8px; padding: 0; color: var(--gray-600); font-size: 10px; font-weight: 700; letter-spacing: .75px; text-transform: uppercase; }
+.timetable-weekday-options { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.timetable-weekday-options label { position: relative; min-width: 0; cursor: pointer; }
+.timetable-weekday-options input[type="checkbox"] { position: absolute; width: 1px !important; height: 1px !important; min-height: 1px !important; padding: 0 !important; opacity: 0; clip-path: inset(50%); overflow: hidden; }
+.timetable-weekday-options span { display: grid; place-items: center; min-height: 42px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); color: var(--gray-700); font-size: 12px; font-weight: 700; }
+.timetable-weekday-options input:checked + span { border-color: var(--blue); background: var(--surface-blue-soft); color: var(--theme-accent-text); }
+.timetable-weekday-options input:focus-visible + span { outline: 2px solid var(--theme-accent-text); outline-offset: 2px; }
+.timetable-weekday-options input:disabled + span { cursor: default; }
+.timetable-weekdays-note { margin: 7px 0 0; color: var(--gray-600); font-size: 11px; line-height: 1.4; }
 .timetable-term-summary { min-width: 0; padding: 11px 12px; border: 1px solid var(--blue-border); border-radius: var(--radius-sm); background: var(--surface-blue-soft); }
 .timetable-term-summary > span { display: block; margin-bottom: 4px; color: var(--theme-accent-text); font-size: 10px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
 .timetable-term-summary .timetable-term-range { margin: 0; color: var(--theme-text); font-size: 14px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
 .timetable-term-summary .timetable-term-note { margin: 4px 0 0; color: var(--gray-600); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
 .timetable-term-summary .timetable-term-range:empty, .timetable-term-summary .timetable-term-note:empty { display: none; }
 .timetable-dialog-body > [hidden] { display: none !important; }
-.timetable-error { min-height: 18px; color: var(--theme-danger-dark); font-size: 12px; }
 .timetable-dialog-actions, .timetable-confirm-actions { flex: 0 0 auto; flex-wrap: wrap; }
 .timetable-dialog-actions .row-btn.remove, .timetable-confirm-actions .row-btn.remove { min-height: var(--button-height); padding: 9px var(--button-pad-x); border-radius: var(--button-radius); font-size: 12.5px; }
 .timetable-dialog-actions #timetable-delete { margin-right: auto; }

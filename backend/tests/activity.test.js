@@ -468,6 +468,73 @@ test('SHS activity messages keep only concise identifying context', () => {
   assert.equal(oldClass.detail, '');
 });
 
+test('timetable activity distinguishes moves, copies, and older updates', () => {
+  const section = { subjectName: 'English', sectionName: 'St. John', weekday: 2,
+    startTime: '10:00', endTime: '11:00' };
+  const format = (actionType, details) => activity.formatActivity({
+    id: 10, actionType, entityType: 'timetable_meeting', actor: 'Jerick Refrea', details
+  });
+
+  const moved = format('timetable_meeting_updated', { ...section, previousWeekday: 1 });
+  assert.equal(moved.title, 'moved a subject class meeting');
+  assert.match(moved.detail, /English.*St\. John.*Monday → Tuesday, 10:00 to 11:00/);
+  assert.equal(moved.category, 'class_management');
+
+  const copied = format('timetable_meeting_created', { ...section, copiedFromWeekday: 1 });
+  assert.equal(copied.title, 'copied a subject class meeting');
+  assert.match(copied.detail, /Monday → Tuesday, 10:00 to 11:00/);
+  assert.equal(copied.category, moved.category);
+
+  const older = format('timetable_meeting_updated', section);
+  assert.equal(older.title, 'updated a subject class schedule');
+  assert.match(older.detail, /Tuesday, 10:00 to 11:00/);
+  assert.doesNotMatch(older.detail, /→/);
+
+  const historicalMove = activity.formatActivity({ id: 11, actionType: 'timetable_meeting_updated',
+    entityType: 'timetable_meeting', details: section, previousRecordedWeekday: '1' });
+  assert.equal(historicalMove.title, 'moved a subject class meeting');
+  assert.match(historicalMove.detail, /Monday → Tuesday, 10:00 to 11:00/);
+  assert.equal(older.title, 'updated a subject class schedule');
+
+  const unchangedDay = activity.formatActivity({ id: 12, actionType: 'timetable_meeting_updated',
+    entityType: 'timetable_meeting', details: section, previousRecordedWeekday: '2' });
+  assert.equal(unchangedDay.title, older.title);
+  const savedSource = activity.formatActivity({ id: 13, actionType: 'timetable_meeting_updated',
+    entityType: 'timetable_meeting', details: { ...section, previousWeekday: 3 }, previousRecordedWeekday: '1' });
+  assert.match(savedSource.detail, /Wednesday → Tuesday/);
+
+  const shs = { className: 'Capstone QA AE012', weekday: 4, startTime: '13:00', endTime: '14:00' };
+  const shsMoved = format('shs_timetable_meeting_updated', { ...shs, previousWeekday: 3 });
+  assert.equal(shsMoved.title, 'moved a meeting for Capstone QA AE012');
+  assert.equal(shsMoved.detail, 'Wednesday → Thursday, 1:00-2:00 PM');
+  assert.equal(shsMoved.category, 'shs_program');
+
+  const shsCopied = format('shs_timetable_meeting_created', { ...shs, copiedFromWeekday: 3 });
+  assert.equal(shsCopied.title, 'copied a meeting for Capstone QA AE012');
+  assert.equal(shsCopied.detail, 'Wednesday → Thursday, 1:00-2:00 PM');
+  assert.equal(shsCopied.category, 'shs_program');
+
+  const olderShs = format('shs_timetable_meeting_updated', shs);
+  assert.equal(olderShs.title, 'updated the schedule for Capstone QA AE012');
+  assert.equal(olderShs.detail, 'Thursday, 1:00-2:00 PM');
+
+  const historicalShsMove = activity.formatActivity({ id: 14, actionType: 'shs_timetable_meeting_updated',
+    entityType: 'timetable_meeting', details: shs, previousRecordedWeekday: '3' });
+  assert.equal(historicalShsMove.title, 'moved a meeting for Capstone QA AE012');
+  assert.equal(historicalShsMove.detail, 'Wednesday → Thursday, 1:00-2:00 PM');
+});
+
+test('school activity looks up earlier days only for meeting updates in the same school and meeting', async () => {
+  queries.length = 0;
+  rows = [];
+  const result = await call(activity.listSchoolActivity, { user: { id: 7, schoolId: 4 }, query: {} });
+  assert.equal(result.error, null);
+  assert.match(queries[0].sql, /CASE WHEN audit_logs\.action_type IN \('timetable_meeting_updated', 'shs_timetable_meeting_updated'\)/);
+  assert.match(queries[0].sql, /prior\.school_id = audit_logs\.school_id/);
+  assert.match(queries[0].sql, /prior\.entity_id = audit_logs\.entity_id AND prior\.id < audit_logs\.id/);
+  assert.match(queries[0].sql, /ORDER BY prior\.id DESC LIMIT 1/);
+});
+
 test('SHS grading and completion messages identify the saved record and learner', () => {
   const rule = activity.formatActivity({
     id: 1, actionType: 'shs_grading_rule_saved', entityType: 'shs_offering', details: {

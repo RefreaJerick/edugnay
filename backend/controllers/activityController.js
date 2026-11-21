@@ -415,10 +415,25 @@ function formatShsTime(value) {
   return { clock: `${hour % 12 || 12}:${match[2]}`, period: hour < 12 ? 'AM' : 'PM' };
 }
 
+function meetingDayName(value) {
+  const day = Number(value);
+  return Number.isInteger(day) && day >= 1 && day <= 7
+    ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day - 1] : '';
+}
+
+function meetingDayChange(details) {
+  const destination = meetingDayName(details.weekday);
+  if (!destination) return null;
+  const previous = meetingDayName(details.previousWeekday);
+  if (previous && previous !== destination) return { kind: 'moved', from: previous, to: destination };
+  const copiedFrom = meetingDayName(details.copiedFromWeekday);
+  if (copiedFrom && copiedFrom !== destination) return { kind: 'copied', from: copiedFrom, to: destination };
+  return null;
+}
+
 function shsMeetingScheduleDetails(details) {
-  const weekdayNumber = Number(details.weekday);
-  const weekday = Number.isInteger(weekdayNumber) && weekdayNumber >= 1 && weekdayNumber <= 7
-    ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][weekdayNumber - 1] : '';
+  const change = meetingDayChange(details);
+  const weekday = change ? `${change.from} → ${change.to}` : meetingDayName(details.weekday);
   const start = formatShsTime(details.startTime);
   const end = formatShsTime(details.endTime);
   let time = '';
@@ -490,9 +505,14 @@ function shsProgramActivity(row, details, fallbackTitle) {
     }
   } else if (action.startsWith('shs_timetable_meeting_')
     || (row.isLegacyShs && ['timetable_meeting_created', 'timetable_meeting_updated', 'timetable_meeting_deleted'].includes(action))) {
-    const verb = action.endsWith('_created') ? 'scheduled a meeting for'
-      : action.endsWith('_updated') ? 'updated the schedule for' : 'removed a meeting for';
-    title = className ? `${verb} ${className}` : fallbackTitle;
+    const change = meetingDayChange(details);
+    const verb = change?.kind === 'moved' && action.endsWith('_updated') ? 'moved a meeting for'
+      : change?.kind === 'copied' && action.endsWith('_created') ? 'copied a meeting for'
+        : action.endsWith('_created') ? 'scheduled a meeting for'
+          : action.endsWith('_updated') ? 'updated the schedule for' : 'removed a meeting for';
+    title = className ? `${verb} ${className}`
+      : change?.kind === 'moved' ? 'moved an SHS class meeting'
+        : change?.kind === 'copied' ? 'copied an SHS class meeting' : fallbackTitle;
     context = shsMeetingScheduleDetails(details);
   } else if (action === 'shs_grading_rule_saved' || action === 'shs_grading_defaults_restored') {
     const restored = action === 'shs_grading_defaults_restored';
@@ -634,10 +654,8 @@ function genericActivityContext(row, details) {
 }
 
 function meetingScheduleDetails(details) {
-  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const weekdayNumber = Number(details.weekday);
-  const weekday = Number.isInteger(weekdayNumber) && weekdayNumber >= 1 && weekdayNumber <= 7
-    ? weekdays[weekdayNumber - 1] : '';
+  const change = meetingDayChange(details);
+  const weekday = change ? `${change.from} → ${change.to}` : meetingDayName(details.weekday);
   const startTime = details.startTime ? String(details.startTime).slice(0, 5) : '';
   const endTime = details.endTime ? String(details.endTime).slice(0, 5) : '';
   const time = startTime && endTime ? `${startTime} to ${endTime}` : '';
@@ -645,9 +663,14 @@ function meetingScheduleDetails(details) {
   return schedule;
 }
 
-function timetableActivity(details) {
+function timetableActivity(action, details) {
+  const change = meetingDayChange(details);
+  const title = change?.kind === 'moved' && action === 'timetable_meeting_updated'
+    ? 'moved a subject class meeting'
+    : change?.kind === 'copied' && action === 'timetable_meeting_created'
+      ? 'copied a subject class meeting' : '';
   const classContext = [details.subjectName, details.sectionName || details.className].filter(Boolean).join(' · ');
-  return [classContext, meetingScheduleDetails(details)].filter(Boolean).join(' · ');
+  return { title, detail: [classContext, meetingScheduleDetails(details)].filter(Boolean).join(' · ') };
 }
 
 function itemNameFromDetails(details) {
@@ -734,7 +757,11 @@ function formatItemActivity(row, details) {
 }
 
 function formatActivity(row) {
-  const details = parseDetails(row.details);
+  const details = { ...parseDetails(row.details) };
+  if (['timetable_meeting_updated', 'shs_timetable_meeting_updated'].includes(row.actionType)
+    && details.previousWeekday == null && row.previousRecordedWeekday != null) {
+    details.previousWeekday = row.previousRecordedWeekday;
+  }
   const label = ACTION_LABELS[row.actionType];
   let [title, icon, tone, category] = label || ['recorded an activity', 'activity', 'blue', null];
   const isShsChoice = String(row.actionType || '').startsWith('shs_selection_') || row.entityType === 'shs_selection_request';
@@ -778,7 +805,7 @@ function formatActivity(row) {
   const teacherAssignment = isTeacherAssignment ? teacherAssignmentActivity(row, details) : null;
   const isTimetableAction = ['timetable_meeting_created', 'timetable_meeting_updated', 'timetable_meeting_deleted'].includes(row.actionType)
     && !isShsActivity;
-  const timetable = isTimetableAction ? timetableActivity(details) : null;
+  const timetable = isTimetableAction ? timetableActivity(row.actionType, details) : null;
   const account = CATEGORIES.accounts.includes(row.actionType) && row.actionType !== 'users_imported'
     ? accountActivity(row, details, title) : null;
   const shsChoice = isShsChoice ? shsChoiceActivity(row, shsDetails, title) : null;
@@ -807,7 +834,7 @@ function formatActivity(row) {
     : fetcherName ? `${fetcherName}${['fetcher_requested', 'fetcher_approved', 'fetcher_rejected', 'fetcher_revoked'].includes(row.actionType)
       ? ` for ${students}` : ''}` : studentName ? `for ${students}` : '';
   const detail = account ? account.detail : enrollment ? enrollment.detail : sectionChange ? sectionChange.detail : teacherAssignment ? teacherAssignment.detail : shsChoice ? shsChoice.detail : shsProgram ? shsProgram.detail : itemActivity ? itemActivity.detail : isReportAction ? weekDetail
-    : isFetcherAction ? fetcherContext : timetable ? timetable
+    : isFetcherAction ? fetcherContext : timetable ? timetable.detail
     : importedContext || genericContext || details.form_code
     || (details.attendance_date ? `Attendance for ${details.attendance_date}` : '')
     || (row.actionType === 'parent_notification_triggers_updated' ? '' : summaryContext);
@@ -821,7 +848,7 @@ function formatActivity(row) {
     actor: isSchoolResubmission ? row.schoolName || 'School account' : row.actor || 'System',
     title: isSchoolResubmission ? 'resubmitted its registration'
       : account?.title || enrollment?.title || sectionChange?.title || teacherAssignment?.title
-        || shsChoice?.title || shsProgram?.title || itemActivity?.title || title,
+        || shsChoice?.title || shsProgram?.title || itemActivity?.title || timetable?.title || title,
     detail: isSchoolResubmission ? '' : String(detail || ''),
     icon,
     tone,
@@ -951,6 +978,17 @@ async function listSchoolActivity(req, res, next) {
       `SELECT audit_logs.id, audit_logs.school_id AS schoolId, audit_logs.action_type AS actionType,
         audit_logs.entity_type AS entityType, audit_logs.details, audit_logs.created_at AS createdAt,
         DATE_FORMAT(audit_logs.created_at, '%Y-%m-%d %H:%i:%s') AS cursorCreatedAt,
+        CASE WHEN audit_logs.action_type IN ('timetable_meeting_updated', 'shs_timetable_meeting_updated')
+          AND JSON_EXTRACT(audit_logs.details, '$.previousWeekday') IS NULL THEN
+          (SELECT JSON_UNQUOTE(JSON_EXTRACT(prior.details, '$.weekday'))
+            FROM audit_logs prior
+            WHERE prior.school_id = audit_logs.school_id AND prior.entity_type = 'timetable_meeting'
+              AND prior.entity_id = audit_logs.entity_id AND prior.id < audit_logs.id
+              AND prior.action_type IN ('timetable_meeting_created', 'timetable_meeting_updated',
+                'shs_timetable_meeting_created', 'shs_timetable_meeting_updated')
+              AND JSON_EXTRACT(prior.details, '$.weekday') IS NOT NULL
+            ORDER BY prior.id DESC LIMIT 1)
+          END AS previousRecordedWeekday,
         users.display_name AS actor, school_grade_levels.display_name AS sectionGrade,
         activity_sections.name AS sectionName, activity_students.display_name AS activityStudentName,
         CASE WHEN ${LEGACY_SHS_ACTIVITY_SQL} THEN 1 ELSE 0 END AS isLegacyShs
