@@ -1743,6 +1743,11 @@ tbody tr.reviewed td {
 .journal-modal-nav-row { display: flex; align-items: center; flex-shrink: 0; }
 .journal-mobile-review-status { display: none; }
 
+@media (min-width: 761px) {
+  #journalModal .modal-nav-btn { border: 0; background: transparent; }
+  #journalModal .modal-nav-btn:hover:not(:disabled) { background: transparent; color: var(--theme-accent-text); }
+}
+
 @media (max-width: 760px) {
   #journalModal { padding: 0 !important; }
   #journalModal .modal {
