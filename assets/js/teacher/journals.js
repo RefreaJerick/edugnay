@@ -158,20 +158,33 @@ function renderAssessmentProgress(requestId) {
 
 async function loadJournalAssessment(entryId) {
   const requestId = ++assessmentRequestId;
+  const panel = document.getElementById('journal-ai-panel');
   activeAssessment = null;
-  document.getElementById('journal-ai-panel').classList.remove('is-empty');
+  panel.classList.remove('is-empty');
+  panel.classList.add('is-loading');
   setAssessmentActionMode(false);
   document.getElementById('journal-ai-use').hidden = true;
   const result = document.getElementById('journal-ai-result');
-  result.textContent = 'Loading assessment…';
+  const loading = document.createElement('div');
+  loading.className = 'journal-ai-assessing journal-ai-loading-state';
+  loading.setAttribute('role', 'status');
+  const spinner = document.createElement('span');
+  spinner.className = 'journal-ai-loading-spinner';
+  spinner.setAttribute('aria-hidden', 'true');
+  const label = document.createElement('span');
+  label.textContent = 'Loading assessment…';
+  loading.append(spinner, label);
+  result.replaceChildren(loading);
   try {
     const response = await window.EDUGNAY_API.getJournalAssessment(entryId);
     if (requestId === assessmentRequestId) renderAssessment(response.assessment);
   } catch (error) {
     if (requestId === assessmentRequestId) {
       result.textContent = error.message || 'Assessment unavailable.';
-      document.getElementById('journal-ai-panel').classList.add('is-empty');
+      panel.classList.add('is-empty');
     }
+  } finally {
+    if (requestId === assessmentRequestId) panel.classList.remove('is-loading');
   }
 }
 

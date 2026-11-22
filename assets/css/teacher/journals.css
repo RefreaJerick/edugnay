@@ -1663,6 +1663,20 @@ tbody tr.reviewed td {
 .journal-ai-progress { height: 4px; margin-top: 4px; overflow: hidden; border-radius: 999px; background: var(--blue-pale); }
 .journal-ai-progress-fill { display: block; height: 100%; border-radius: inherit; background: var(--blue-light); }
 .journal-ai-assessing { margin: 12px 0 4px; color: var(--gray-600); font-size: 12px; font-weight: 600; }
+.journal-ai-loading-state { display: flex; align-items: center; gap: 8px; }
+.journal-ai-loading-spinner {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  border: 2px solid var(--blue-pale);
+  border-top-color: var(--theme-accent-text);
+  border-radius: 50%;
+  animation: journal-ai-loading-spin .8s linear infinite;
+}
+@keyframes journal-ai-loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .journal-ai-loading-spinner { animation: none; border-right-color: var(--theme-accent-text); }
+}
 .journal-ai-assessing-track { height: 6px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: var(--blue-pale); }
 .journal-ai-assessing-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--theme-accent-text); transition: width 24s cubic-bezier(.12, .74, .2, 1); }
 .journal-ai-assessing-fill.is-complete { transition: width .35s ease-out; }
@@ -1672,6 +1686,8 @@ tbody tr.reviewed td {
 }
 #journalModal .journal-ai-actions { margin-top: 12px; flex-wrap: nowrap; align-items: stretch; }
 #journalModal .journal-ai-actions .btn { min-width: 0; justify-content: center; text-align: center; white-space: normal; }
+#journalModal .journal-ai-panel.is-loading .journal-ai-actions { display: none; }
+#journalModal .journal-ai-actions .btn:disabled { opacity: .55; cursor: not-allowed; }
 #journalModal #journal-ai-assess .journal-ai-first-icon,
 #journalModal #journal-ai-assess .journal-ai-retry-icon { width: 14px; height: 14px; flex: 0 0 14px; align-items: center; justify-content: center; }
 #journalModal #journal-ai-assess .journal-ai-first-icon { display: inline-flex; }
