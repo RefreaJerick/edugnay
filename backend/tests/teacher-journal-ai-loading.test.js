@@ -129,5 +129,7 @@ test('teacher journal fetch spinner and loading action row have the requested st
   assert.match(styles, /\.journal-ai-assessing\s*\{[^}]*font-size:\s*12px;[^}]*font-weight:\s*600;/);
   assert.match(styles, /\.journal-ai-loading-state\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;/);
   assert.match(styles, /\.journal-ai-loading-spinner\s*\{[^}]*border-radius:\s*50%;[^}]*animation:\s*journal-ai-loading-spin/);
-  assert.match(styles, /#journalModal \.journal-ai-panel\.is-loading \.journal-ai-actions\s*\{\s*display:\s*none;/);
+  assert.match(styles, /#journalModal \.journal-ai-panel\.is-loading \.journal-ai-actions\s*\{\s*visibility:\s*hidden;\s*pointer-events:\s*none;/);
+  assert.match(styles, /#journalModal \.journal-ai-panel:is\(\.is-empty, \.is-loading\) #journal-ai-result\s*\{\s*margin-top:\s*50px;/);
+  assert.match(styles, /#journalModal \.journal-ai-panel:is\(\.is-empty, \.is-loading\) \.journal-ai-actions\s*\{\s*margin-top:\s*4px;/);
 });

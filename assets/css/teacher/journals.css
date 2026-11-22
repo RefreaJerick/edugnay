@@ -1686,7 +1686,8 @@ tbody tr.reviewed td {
 }
 #journalModal .journal-ai-actions { margin-top: 12px; flex-wrap: nowrap; align-items: stretch; }
 #journalModal .journal-ai-actions .btn { min-width: 0; justify-content: center; text-align: center; white-space: normal; }
-#journalModal .journal-ai-panel.is-loading .journal-ai-actions { display: none; }
+#journalModal .journal-ai-panel.is-loading .journal-ai-actions { visibility: hidden; pointer-events: none; }
+#journalModal .journal-ai-panel.is-loading .journal-ai-loading-state { margin: 0; }
 #journalModal .journal-ai-actions .btn:disabled { opacity: .55; cursor: not-allowed; }
 #journalModal #journal-ai-assess .journal-ai-first-icon,
 #journalModal #journal-ai-assess .journal-ai-retry-icon { width: 14px; height: 14px; flex: 0 0 14px; align-items: center; justify-content: center; }
@@ -1712,16 +1713,16 @@ tbody tr.reviewed td {
   color: color-mix(in srgb, var(--theme-accent-text) 85%, white);
 }
 #journalModal .journal-ai-panel.has-assessment #journal-ai-assess:focus-visible { outline: 2px solid var(--theme-accent-text); outline-offset: 2px; }
-#journalModal .journal-ai-panel.is-empty #journal-ai-result {
+#journalModal .journal-ai-panel:is(.is-empty, .is-loading) #journal-ai-result {
   margin-top: 50px;
   color: var(--gray-700);
   font-size: 12px;
 }
-#journalModal .journal-ai-panel.is-empty .journal-ai-actions {
+#journalModal .journal-ai-panel:is(.is-empty, .is-loading) .journal-ai-actions {
   margin-top: 4px;
   justify-content: flex-start;
 }
-#journalModal .journal-ai-panel.is-empty #journal-ai-assess {
+#journalModal .journal-ai-panel:is(.is-empty, .is-loading) #journal-ai-assess {
   padding: 6px 0;
   border: 0;
   background: transparent;
