@@ -50,7 +50,7 @@ test('new person avatars hydrate with their own photo and size', () => {
 
 test('teacher journal review uses each student photo and student fallback through navigation and review refresh', async () => {
   const source = read('assets/js/teacher/journals.js').replace(/\r\n/g, '\n');
-  const renderStart = source.indexOf('function populateModal(s) {');
+  const renderStart = source.indexOf('function populateModal(s, preserveAssessment = false) {');
   const renderEnd = source.indexOf('\n}\n\n/*', renderStart) + 2;
   const navigateStart = source.indexOf('function navigateEntry(dir) {');
   const navigateEnd = source.indexOf('\n}\n\n/*', navigateStart) + 2;
@@ -76,27 +76,56 @@ test('teacher journal review uses each student photo and student fallback throug
   elements['modal-score-input'].value = '';
   elements['journal-ai-panel'].hidden = false;
   const avatarCalls = [];
+  const assessmentLoads = [];
+  const refreshedEntry = { id: 'entry-102', studentId: '102', sectionId: 'section', score: 20, reviewed: true };
+  const reviewedEntryIds = [];
+  let pendingReview = null;
+  let returnSavedEntry = true;
+  let failEntryFetch = false;
+  let entryFetches = 0;
+  let summaryRenders = 0;
+  let tableRenders = 0;
+  const toasts = [];
+  elements.journalModal = { classList: { remove() {} }, setAttribute() {} };
   let context;
   context = vm.createContext({
-    SECTIONS: { section: { label: 'Grade 7 · St. John', prompt: { promptText: 'Weekly prompt' }, students: entries } },
+    SECTIONS: { section: { id: 'section', label: 'Grade 7 · St. John', prompt: { promptText: 'Weekly prompt' }, entries: [], students: entries } },
     STUDENT_BY_ID: { '101': photoStudent, '102': fallbackStudent },
-    currentSection: 'section', activeStudentIds: ['101', '102'], activeStudentIndex: 0,
-    journalAiRubric: { enabled: false }, assessmentRequestId: 0,
-    window: { EDUGNAY_AVATAR: { render(element, person, options) { avatarCalls.push({ element, person, options }); } }, EDUGNAY_API: { async reviewJournalEntry() {} } },
+    currentSection: 'section', currentPromptId: 'prompt-1', activeStudentIds: ['101', '102'], activeStudentIndex: 0,
+    journalAiRubric: { enabled: true }, assessmentRequestId: 0, activeModalEntryId: null,
+    window: { EDUGNAY_AVATAR: { render(element, person, options) { avatarCalls.push({ element, person, options }); } }, EDUGNAY_API: {
+      async reviewJournalEntry(id) { reviewedEntryIds.push(id); return pendingReview || (returnSavedEntry ? refreshedEntry : null); },
+      async getJournalEntries() { entryFetches++; if (failEntryFetch) throw new Error('Refresh failed'); return [refreshedEntry]; }
+    } },
     document: { getElementById: id => elements[id], querySelector: selector => selector === '.score-max-label' ? { textContent: '' } : null },
-    renderAssessment() {}, loadTeacherJournals: async () => {}, showAppToast() {},
+    renderAssessment() {}, loadJournalAssessment: id => assessmentLoads.push(id),
+    renderJournalSummary() { summaryRenders++; },
+    renderTable() { tableRenders++; vm.runInContext("activeStudentIds = ['101']", context); },
+    loadTeacherJournals() { throw new Error('Full-page reload should not run'); },
+    showAppToast(message) { toasts.push(message); },
     lucide: { createIcons() {} }, parseFloat
   });
 
   const populateModal = vm.runInContext(`${source.slice(renderStart, renderEnd)}; populateModal`, context);
   const navigateEntry = vm.runInContext(`${source.slice(navigateStart, navigateEnd)}; navigateEntry`, context);
   const markReviewed = vm.runInContext(`${source.slice(reviewStart, reviewEnd)}; markReviewed`, context);
+  const closeStart = source.indexOf('function closeModal(id) {');
+  const closeEnd = source.indexOf('\n}\n\ndocument.querySelectorAll', closeStart) + 2;
+  const closeModal = vm.runInContext(`${source.slice(closeStart, closeEnd)}; closeModal`, context);
   populateModal(entries[0]);
   assert.match(elements['journal-mobile-status-note'].innerHTML, /Not yet reviewed/);
   navigateEntry(1);
+  elements['modal-score-input'].value = '20';
+  const requestIdBeforeReview = vm.runInContext('assessmentRequestId', context);
   await markReviewed();
+  assert.deepEqual(assessmentLoads, ['entry-101', 'entry-102']);
+  assert.equal(vm.runInContext('assessmentRequestId', context), requestIdBeforeReview);
+  assert.equal(elements['modal-nav-label'].textContent, '2 / 2');
+  assert.equal(elements['modal-score-input'].value, 20);
   assert.equal(elements['journal-mobile-status-note'].innerHTML, elements['modal-status-note'].innerHTML);
-  entries[1].reviewed = true;
+  assert.equal(entryFetches, 0);
+  assert.equal(summaryRenders, 1);
+  assert.equal(tableRenders, 1);
   populateModal(entries[1]);
   assert.match(elements['journal-mobile-status-note'].className, /is-reviewed/);
   assert.match(elements['journal-mobile-status-note'].innerHTML, /Reviewed/);
@@ -112,6 +141,50 @@ test('teacher journal review uses each student photo and student fallback throug
     assert.equal(call.options.size, 'lg');
     assert.equal(call.element, elements['modal-avatar']);
   }
+
+  returnSavedEntry = false;
+  await markReviewed();
+  assert.equal(entryFetches, 1);
+  assert.equal(summaryRenders, 2);
+  assert.equal(tableRenders, 2);
+
+  failEntryFetch = true;
+  await markReviewed();
+  assert.equal(entryFetches, 2);
+  assert.equal(summaryRenders, 2);
+  assert.equal(tableRenders, 2);
+  assert.match(toasts.at(-1), /Review saved, but the page could not refresh/);
+
+  failEntryFetch = false;
+  returnSavedEntry = true;
+  vm.runInContext("activeStudentIds = ['101', '102']; activeStudentIndex = 0", context);
+  populateModal(entries[0]);
+  elements['modal-score-input'].value = '12';
+  let resolveReview;
+  pendingReview = new Promise(resolve => { resolveReview = resolve; });
+  const saveFirstStudent = markReviewed();
+  closeModal('journalModal');
+  assert.equal(vm.runInContext('activeModalEntryId', context), null);
+  vm.runInContext('activeStudentIndex = 1', context);
+  populateModal(entries[1]);
+  pendingReview = null;
+  resolveReview({ id: 'entry-101', studentId: '101', sectionId: 'section', score: 12, reviewed: true });
+  await saveFirstStudent;
+  assert.equal(elements['modal-student-name'].textContent, 'Ethan Lim');
+  assert.equal(elements['modal-nav-label'].textContent, '2 / 2');
+  assert.equal(vm.runInContext('activeStudentIds[activeStudentIndex]', context), '102');
+  await markReviewed();
+  assert.deepEqual(reviewedEntryIds.slice(-2), ['entry-101', 'entry-102']);
+
+  pendingReview = new Promise(resolve => { resolveReview = resolve; });
+  const saveBeforeClosing = markReviewed();
+  closeModal('journalModal');
+  const avatarCountBeforeCompletion = avatarCalls.length;
+  pendingReview = null;
+  resolveReview(refreshedEntry);
+  await saveBeforeClosing;
+  assert.equal(avatarCalls.length, avatarCountBeforeCompletion);
+  assert.equal(vm.runInContext('activeModalEntryId', context), null);
 });
 
 test('profile avatars stay circular and request private photos with the signed-in session', () => {

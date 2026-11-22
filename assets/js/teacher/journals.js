@@ -18,6 +18,7 @@ const JOURNAL_SETTINGS = { day: 'Friday', deadline: '23:59', minWords: 50, allow
 let journalAiRubric = null;
 let activeAssessment = null;
 let assessmentRequestId = 0;
+let activeModalEntryId = null;
 
 function addRubricRow(criterion = { name: '', points: 5 }) {
   const rows = document.getElementById('journal-rubric-rows');
@@ -622,10 +623,12 @@ function openEntry(studentId) {
   openModal('journalModal');
 }
 
-function populateModal(s) {
+function populateModal(s, preserveAssessment = false) {
   const sec = SECTIONS[currentSection];
   const student = STUDENT_BY_ID[s.studentId];
   if (!student) return;
+  const sameAssessment = preserveAssessment && activeModalEntryId === s.entryId;
+  activeModalEntryId = s.entryId;
 
   window.EDUGNAY_AVATAR.render(document.getElementById('modal-avatar'), student, { role: 'student', size: 'lg' });
   document.getElementById('modal-student-name').textContent = student.displayName;
@@ -650,10 +653,12 @@ function populateModal(s) {
   document.querySelector('.score-max-label').textContent = maxScore;
   const aiPanel = document.getElementById('journal-ai-panel');
   aiPanel.hidden = !journalAiRubric?.enabled || !s.submitted;
-  ++assessmentRequestId;
-  document.getElementById('journal-ai-assess').disabled = false;
-  if (!aiPanel.hidden) loadJournalAssessment(s.entryId);
-  else renderAssessment(null);
+  if (!sameAssessment) {
+    ++assessmentRequestId;
+    document.getElementById('journal-ai-assess').disabled = false;
+    if (!aiPanel.hidden) loadJournalAssessment(s.entryId);
+    else renderAssessment(null);
+  }
 
 
   const statusNote = document.getElementById('modal-status-note');
@@ -687,11 +692,28 @@ function navigateEntry(dir) {
   if (s) populateModal(s);
 }
 
+function syncModalNavigation() {
+  if (!activeModalEntryId) return;
+  const students = SECTIONS[currentSection]?.students || [];
+  const shown = students.find(student => student.entryId === activeModalEntryId);
+  if (!shown) return;
+  activeStudentIndex = activeStudentIds.indexOf(shown.studentId);
+  if (activeStudentIndex === -1) {
+    const position = students.indexOf(shown);
+    activeStudentIndex = activeStudentIds.findIndex(id => students.findIndex(student => student.studentId === id) > position);
+    if (activeStudentIndex === -1) activeStudentIndex = activeStudentIds.length;
+    activeStudentIds.splice(activeStudentIndex, 0, shown.studentId);
+  }
+  document.getElementById('modal-nav-label').textContent = `${activeStudentIndex + 1} / ${activeStudentIds.length}`;
+  document.getElementById('prevBtn').disabled = activeStudentIndex === 0;
+  document.getElementById('nextBtn').disabled = activeStudentIndex === activeStudentIds.length - 1;
+}
+
 /* ══════ MARK REVIEWED ══════ */
 async function markReviewed() {
+  const sectionId = currentSection;
   const sec = SECTIONS[currentSection];
-  const studentId = activeStudentIds[activeStudentIndex];
-  const s = sec.students.find(x => x.studentId === studentId);
+  const s = sec.students.find(student => student.entryId === activeModalEntryId);
   if (!s) return;
 
   const scoreInput = document.getElementById('modal-score-input');
@@ -720,18 +742,38 @@ async function markReviewed() {
   document.getElementById('nextBtn').disabled = true;
   let reviewSaved = false;
   try {
-    await window.EDUGNAY_API.reviewJournalEntry(s.entryId, scoreVal);
+    let updated = await window.EDUGNAY_API.reviewJournalEntry(s.entryId, scoreVal);
     reviewSaved = true;
-    await loadTeacherJournals();
-    const refreshed = SECTIONS[currentSection]?.students.find(student => student.studentId === s.studentId);
-    if (refreshed) populateModal(refreshed);
+    if (!updated || updated.id !== s.entryId || updated.studentId !== s.studentId || updated.sectionId !== sectionId) {
+      const entries = await window.EDUGNAY_API.getJournalEntries({ sectionId: sec.id });
+      updated = entries.find(entry => entry.id === s.entryId && entry.studentId === s.studentId && entry.sectionId === sectionId);
+    }
+    if (!updated) throw new Error('The saved journal entry could not be refreshed.');
+    const entryIndex = sec.entries.findIndex(entry => entry.id === updated.id);
+    if (entryIndex === -1) sec.entries.push(updated);
+    else sec.entries[entryIndex] = updated;
+    const currentStudent = sec.students.find(student => student.studentId === s.studentId && student.entryId === updated.id);
+    if (currentStudent) {
+      currentStudent.score = updated.score;
+      currentStudent.reviewed = updated.reviewed;
+    }
+    renderJournalSummary();
+    if (currentSection === sectionId) {
+      renderTable();
+      syncModalNavigation();
+    }
+    if (currentStudent && currentSection === sectionId && activeModalEntryId === s.entryId) {
+      populateModal(currentStudent, true);
+    }
     showAppToast(`${STUDENT_BY_ID[s.studentId]?.displayName || 'Student'} · review saved`, 'success');
   } catch (error) {
     showAppToast(reviewSaved ? 'Review saved, but the page could not refresh. Please reload.' : error.message || 'Unable to save this journal review.', 'error');
   } finally {
-    button.disabled = !s.submitted;
-    document.getElementById('prevBtn').disabled = activeStudentIndex === 0;
-    document.getElementById('nextBtn').disabled = activeStudentIndex === activeStudentIds.length - 1;
+    if (currentSection === sectionId && activeModalEntryId === s.entryId) {
+      button.disabled = !s.submitted;
+      document.getElementById('prevBtn').disabled = activeStudentIndex === 0;
+      document.getElementById('nextBtn').disabled = activeStudentIndex === activeStudentIds.length - 1;
+    }
   }
 }
 
@@ -747,6 +789,7 @@ function closeModal(id) {
   const modal = document.getElementById(id);
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden', 'true');
+  if (id === 'journalModal') activeModalEntryId = null;
   if (id === 'journalHistoryModal') {
     journalEntryViewer.reset();
     journalHistoryReturnFocus?.focus();
