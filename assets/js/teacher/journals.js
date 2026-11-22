@@ -63,14 +63,29 @@ async function saveJournalAiRubric() {
   finally { button.disabled = false; }
 }
 
+function setAssessmentActionMode(hasAssessment) {
+  const panel = document.getElementById('journal-ai-panel');
+  const button = document.getElementById('journal-ai-assess');
+  panel.classList.toggle('has-assessment', hasAssessment);
+  if (hasAssessment) {
+    button.setAttribute('aria-label', 'Reassess with AI');
+    button.title = 'Reassess with AI';
+  } else {
+    button.removeAttribute('aria-label');
+    button.removeAttribute('title');
+  }
+}
+
 function renderAssessment(assessment) {
   activeAssessment = assessment;
   const result = document.getElementById('journal-ai-result');
   const useButton = document.getElementById('journal-ai-use');
+  document.getElementById('journal-ai-panel').classList.toggle('is-empty', !assessment);
+  setAssessmentActionMode(Boolean(assessment));
   result.replaceChildren();
   useButton.hidden = !assessment;
   if (!assessment) {
-    result.textContent = 'No AI assessment yet.';
+    result.textContent = 'No AI assessment yet';
     return;
   }
   const total = document.createElement('div');
@@ -116,6 +131,7 @@ function renderAssessment(assessment) {
 
 function renderAssessmentProgress(requestId) {
   activeAssessment = null;
+  document.getElementById('journal-ai-panel').classList.remove('is-empty');
   document.getElementById('journal-ai-use').hidden = true;
   const loading = document.createElement('div');
   loading.className = 'journal-ai-assessing';
@@ -142,14 +158,20 @@ function renderAssessmentProgress(requestId) {
 
 async function loadJournalAssessment(entryId) {
   const requestId = ++assessmentRequestId;
-  renderAssessment(null);
+  activeAssessment = null;
+  document.getElementById('journal-ai-panel').classList.remove('is-empty');
+  setAssessmentActionMode(false);
+  document.getElementById('journal-ai-use').hidden = true;
   const result = document.getElementById('journal-ai-result');
   result.textContent = 'Loading assessment…';
   try {
     const response = await window.EDUGNAY_API.getJournalAssessment(entryId);
     if (requestId === assessmentRequestId) renderAssessment(response.assessment);
   } catch (error) {
-    if (requestId === assessmentRequestId) result.textContent = error.message || 'Assessment unavailable.';
+    if (requestId === assessmentRequestId) {
+      result.textContent = error.message || 'Assessment unavailable.';
+      document.getElementById('journal-ai-panel').classList.add('is-empty');
+    }
   }
 }
 
@@ -158,6 +180,7 @@ async function assessActiveJournal() {
   const entryId = SECTIONS[currentSection]?.students.find(student => student.studentId === studentId)?.entryId;
   if (!entryId) return;
   const button = document.getElementById('journal-ai-assess');
+  const previousAssessment = activeAssessment;
   const requestId = ++assessmentRequestId;
   button.disabled = true;
   const progress = renderAssessmentProgress(requestId);
@@ -173,7 +196,15 @@ async function assessActiveJournal() {
       if (requestId === assessmentRequestId) renderAssessment(response.assessment);
     }
   } catch (error) {
-    if (requestId === assessmentRequestId) document.getElementById('journal-ai-result').textContent = error.message || 'AI assessment failed.';
+    if (requestId === assessmentRequestId) {
+      if (previousAssessment) {
+        renderAssessment(previousAssessment);
+        showAppToast(error.message || 'AI assessment failed.', 'error');
+      } else {
+        document.getElementById('journal-ai-result').textContent = error.message || 'AI assessment failed.';
+        document.getElementById('journal-ai-panel').classList.add('is-empty');
+      }
+    }
   } finally { if (requestId === assessmentRequestId) button.disabled = false; }
 }
 

@@ -1623,7 +1623,7 @@ tbody tr.reviewed td {
 .journal-ai-criterion { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 12px; }
 .journal-ai-feedback { margin: 10px 0 0; color: var(--gray-700); font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
 
-#journalModal .modal { max-width: 800px; max-height: min(88vh, 700px); }
+#journalModal .modal { max-width: 900px; max-height: min(88vh, 700px); }
 #journalModal .modal-head { padding: 14px 18px !important; background: var(--theme-surface); }
 #journalModal .modal-head-left { align-items: center; gap: 11px; }
 #journalModal .person-avatar--lg { --avatar-size: 42px; }
@@ -1670,8 +1670,54 @@ tbody tr.reviewed td {
   .journal-ai-assessing-fill:not(.is-complete) { width: 40% !important; transition: none; }
   .journal-ai-assessing-fill.is-complete { transition: none; }
 }
-#journalModal .journal-ai-actions { margin-top: 12px; }
-#journalModal .journal-ai-actions .btn { justify-content: center; padding: 9px 12px; font-size: 11px; }
+#journalModal .journal-ai-actions { margin-top: 12px; flex-wrap: nowrap; align-items: stretch; }
+#journalModal .journal-ai-actions .btn { min-width: 0; justify-content: center; text-align: center; white-space: normal; }
+#journalModal #journal-ai-assess .journal-ai-first-icon,
+#journalModal #journal-ai-assess .journal-ai-retry-icon { width: 14px; height: 14px; flex: 0 0 14px; align-items: center; justify-content: center; }
+#journalModal #journal-ai-assess .journal-ai-first-icon { display: inline-flex; }
+#journalModal #journal-ai-assess .journal-ai-retry-icon { display: none; width: 16px; height: 16px; flex-basis: 16px; }
+#journalModal #journal-ai-assess svg { width: 14px; height: 14px; }
+#journalModal #journal-ai-assess .journal-ai-retry-icon svg { width: 16px; height: 16px; }
+#journalModal .journal-ai-panel.has-assessment #journal-ai-assess .journal-ai-first-icon,
+#journalModal .journal-ai-panel.has-assessment #journal-ai-assess .journal-ai-assess-label { display: none; }
+#journalModal .journal-ai-panel.has-assessment #journal-ai-assess .journal-ai-retry-icon { display: inline-flex; }
+#journalModal .journal-ai-panel.has-assessment #journal-ai-assess {
+  width: 36px;
+  min-width: 36px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--theme-accent-text);
+  box-shadow: none;
+}
+#journalModal .journal-ai-panel.has-assessment #journal-ai-assess:hover {
+  background: transparent;
+  color: color-mix(in srgb, var(--theme-accent-text) 85%, white);
+}
+#journalModal .journal-ai-panel.has-assessment #journal-ai-assess:focus-visible { outline: 2px solid var(--theme-accent-text); outline-offset: 2px; }
+#journalModal .journal-ai-panel.is-empty #journal-ai-result {
+  margin-top: 50px;
+  color: var(--gray-700);
+  font-size: 12px;
+}
+#journalModal .journal-ai-panel.is-empty .journal-ai-actions {
+  margin-top: 4px;
+  justify-content: flex-start;
+}
+#journalModal .journal-ai-panel.is-empty #journal-ai-assess {
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--theme-accent-text);
+  box-shadow: none;
+}
+#journalModal .journal-ai-panel.is-empty #journal-ai-assess:hover {
+  background: transparent;
+  color: color-mix(in srgb, var(--theme-accent-text) 85%, white);
+  text-decoration: none;
+}
+#journalModal .journal-ai-panel.is-empty #journal-ai-assess:focus-visible { outline: 2px solid var(--theme-accent-text); outline-offset: 2px; }
 #journalModal .journal-ai-feedback { margin-top: 12px; font-size: 11.5px; line-height: 1.45; }
 #journalModal .journal-ai-help { font-size: 11.5px; line-height: 1.4; }
 #journalModal .journal-ai-panel .modal-section-label > svg { width: 13px; height: 13px; flex: 0 0 13px; }

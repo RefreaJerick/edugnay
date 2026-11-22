@@ -103,9 +103,7 @@ lucide.createIcons();
       if (!journalWindowOpen) {
         panel.innerHTML = `${journalPromptMarkup}
       <div class="closed-state">
-        <div class="closed-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
-        <div class="closed-title">Submission window closed</div>
-      <div class="closed-sub">This week's journal entry is no longer accepting submissions.</div>
+        ${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'lock', title: 'Submission window closed', text: "This week's journal entry is no longer accepting submissions." })}
       ${pendingDraft?.promptId === currentPrompt.id ? renderUnsentDraft() : ''}
       </div>`;
         lucide.createIcons();

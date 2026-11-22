@@ -275,37 +275,8 @@
   white-space: nowrap;
 }
 
-/* ── Window closed state ── */
-.closed-state {
-  padding: 50px 24px;
-  text-align: center;
-}
-
-.closed-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-md);
-  background: var(--gray-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 14px;
-  color: var(--gray-400);
-}
-
-.closed-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--gray-700);
-  margin-bottom: 4px;
-}
-
-.closed-sub {
-  font-size: 13px;
-  color: var(--gray-400);
-  line-height: 1.6;
-}
+/* Keep a saved draft accessible below the shared closed-window empty state. */
+.closed-state .journal-unsent-draft { padding: 0 24px 30px; box-sizing: border-box; }
 
 .journal-unsent-draft {
   max-width: 80ch;
