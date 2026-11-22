@@ -93,6 +93,23 @@ test('assessment suggests a scaled score without writing a student grade', async
   assert.equal(smallerItem.body.assessment.suggestedScore, 18);
 });
 
+test('new AI suggestions round to whole numbers without exceeding a fractional maximum', async () => {
+  let scores = [5, 4, 5, 5];
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ status: 'completed', usage: { input_tokens: 1, output_tokens: 1 },
+    output: [{ content: [{ type: 'output_text', text: JSON.stringify({ scores, feedback: 'Good reflection.' }) }] }] }) });
+
+  const rounded = await invoke(assessment.assessEntry);
+  assert.ifError(rounded.error);
+  assert.equal(rounded.body.assessment.suggestedScore, 48);
+  assert.equal(calls.find(call => call.sql.startsWith('INSERT INTO journal_ai_assessments')).values[5], 48);
+
+  scores = [5, 5, 5, 5];
+  const capped = await invoke(assessment.assessEntry, { maxScore: 47.5 });
+  assert.ifError(capped.error);
+  assert.equal(capped.body.assessment.suggestedScore, 47);
+  assert.equal(calls.find(call => call.sql.startsWith('INSERT INTO journal_ai_assessments')).values[5], 47);
+});
+
 test('school approval, assignment, and daily limit stop assessment before the AI call', async () => {
   for (const options of [{ approved: false }, { assigned: false }, { quota: false }]) {
     let providerCalls = 0;
@@ -117,6 +134,9 @@ test('only assigned teachers can read saved suggestions', async () => {
   const allowed = await invoke(assessment.getAssessment, { latest });
   assert.ifError(allowed.error);
   assert.equal(allowed.body.assessment.suggestedScore, 40);
+  const historic = await invoke(assessment.getAssessment, { latest: { ...latest, suggested_score: '47.50' } });
+  assert.ifError(historic.error);
+  assert.equal(historic.body.assessment.suggestedScore, 47.5);
   const denied = await invoke(assessment.getAssessment, { latest, assigned: false });
   assert.equal(denied.error.status, 403);
 });

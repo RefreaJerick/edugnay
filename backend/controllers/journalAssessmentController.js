@@ -126,7 +126,10 @@ async function assessEntry(req, res, next) {
     if (!reserved.affectedRows) fail('This school has reached today’s journal AI limit. Try again tomorrow.', 429);
     const result = await generateJournalAssessment({ promptText: entry.promptText, entryText: entry.entryText, criteria });
     const total = criteria.reduce((sum, item) => sum + item.points, 0);
-    const suggestedScore = Math.round(result.scores.reduce((sum, score) => sum + score, 0) / total * maxScore * 100) / 100;
+    const suggestedScore = Math.min(
+      Math.round(result.scores.reduce((sum, score) => sum + score, 0) / total * maxScore),
+      Math.floor(maxScore)
+    );
     const [inserted] = await database.execute(
       `INSERT INTO journal_ai_assessments (school_id, journal_entry_id, assessed_by_user_id,
         rubric_snapshot, criterion_scores, suggested_score, max_score_snapshot, feedback, model)
