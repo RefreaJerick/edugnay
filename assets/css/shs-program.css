@@ -134,7 +134,7 @@
 .shs-review-problem { margin: 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .shs-review-problem, .shs-choice-reason, #elective-error { color: var(--theme-danger-dark) !important; }
 .shs-review-actions { display: grid; gap: 8px; border-top: 1px solid var(--panel-divider); padding-top: 12px; margin-top: 12px; }
-.shs-review-class-choices { display: grid; gap: 8px; max-height: 250px; overflow-y: auto; }
+.shs-review-class-choices { display: grid; grid-auto-rows: max-content; gap: 8px; max-height: 250px; overflow-y: auto; }
 .shs-review-choice { align-items: flex-start; gap: 8px; padding: 8px 10px; }
 .shs-review-choice > input { flex: none; margin-top: 2px; }
 .shs-review-choice > span { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }

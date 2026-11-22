@@ -453,6 +453,7 @@ test('student choices remain gated, validated before saving, and separate from c
   assert.match(choiceFooter, /id="shs-choice-cancel"[\s\S]*id="shs-choice-return"[\s\S]*id="shs-choice-confirm"[\s\S]*id="shs-choice-save"/);
   const shsStyles = read('assets/css/shs-program.css');
   assert.match(shsStyles, /\.shs-choice-footer > \[hidden\]/);
+  assert.match(shsStyles, /\.shs-review-class-choices \{[^}]*grid-auto-rows: max-content;[^}]*max-height: 250px;[^}]*overflow-y: auto;/);
   assert.doesNotMatch(shsStyles, /\.shs-review-actions (?:label|textarea)|\.shs-review-class-choices label|\.shs-review-choice \{[^}]*border:/);
   assert.match(admin, /id="shs-roster-controls" hidden/);
   assert.match(admin, /id="shs-roster-pagination" hidden/);
