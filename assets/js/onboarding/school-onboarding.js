@@ -17,6 +17,14 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
         imageAlt: ''
       },
       {
+        id: 'fetcher-pickup',
+        title: 'Coordinate student pickup',
+        description: 'Parents request fetchers, school administrators review them, and guards verify Fetcher IDs before confirming handover.',
+        previewLabel: 'Fetcher Pickup preview',
+        imageSrc: '../../assets/images/onboarding/fetcher-pickup.png',
+        imageAlt: 'Guard pickup verification screen beside a sample Fetcher ID card'
+      },
+      {
         id: 'student-progress',
         title: 'Keep families informed',
         description: 'Turn stored attendance, grades, assignments, and teacher insights into reviewable student progress reports.',
@@ -823,6 +831,7 @@ const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.ke
 window.EDUGNAY_PAGE_EVENTS.bind({
   click: {
     p03f5081a160b: function(event) { selectOnboardingFeature('student-progress') },
+    p7f3d2a84e01: function(event) { selectOnboardingFeature('fetcher-pickup') },
     pb1446c1a4826: function(event) { selectOnboardingFeature('teaching-tools') },
     pc231d3166b06: function(event) { selectOnboardingFeature('school-forms') },
     pc344d390890b: function(event) { selectOnboardingFeature('school-management') },

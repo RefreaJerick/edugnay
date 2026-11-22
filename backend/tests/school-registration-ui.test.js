@@ -61,6 +61,34 @@ test('onboarding feature previews support mobile swipes and a display-only carou
   assert.match(onboardingCss, /\.onboarding-showcase-preview\s*\{\s*touch-action:\s*pan-y pinch-zoom;/);
 });
 
+test('onboarding showcase pairs six features in a desktop bento grid and mobile carousel', () => {
+  const features = onboardingClient.split('const ONBOARDING_FEATURES = [')[1].split('const FEATURE_PREVIEW_INTERVAL')[0];
+  const featureIds = Array.from(features.matchAll(/id: '([^']+)'/g), match => match[1]);
+  const tabIds = Array.from(onboarding.matchAll(/id="onboardingFeatureTab-([^"]+)"/g), match => match[1]);
+  const desktopGridStyles = onboardingCss.slice(
+    onboardingCss.indexOf('.onboarding-showcase-preview-slide {'),
+    onboardingCss.indexOf('.onboarding-showcase-preview-slide::after')
+  );
+
+  assert.deepEqual(featureIds, [
+    'school-management', 'teaching-tools', 'fetcher-pickup',
+    'student-progress', 'ai-reports', 'school-forms'
+  ]);
+  assert.deepEqual(tabIds, featureIds);
+  assert.match(onboardingClient, /id: 'fetcher-pickup',[\s\S]*?imageSrc: '\.\.\/\.\.\/assets\/images\/onboarding\/fetcher-pickup\.png'/);
+  assert.ok(fs.existsSync(path.join(__dirname, '../../assets/images/onboarding/fetcher-pickup.png')));
+  assert.match(onboarding, /id="onboardingFeatureTab-fetcher-pickup"[^>]*data-page-click="p7f3d2a84e01"/);
+  assert.match(onboardingClient, /p7f3d2a84e01: function\(event\) \{ selectOnboardingFeature\('fetcher-pickup'\) \}/);
+  assert.match(onboardingCss, /\.onboarding-showcase-preview-slide\s*\{[^}]*min-height:\s*300px;/);
+  assert.match(desktopGridStyles, /\.onboarding-showcase-preview-slide\s*\{\s*grid-column:\s*span 5;/);
+  assert.match(desktopGridStyles, /:nth-child\(1\),\s*\.onboarding-showcase-preview-slide:nth-child\(4\),\s*\.onboarding-showcase-preview-slide:nth-child\(5\)\s*\{\s*grid-column:\s*span 7;/);
+  assert.match(desktopGridStyles, /:nth-child\(-n\+2\)\s*\{\s*min-height:\s*360px;/);
+  assert.match(onboardingCss, /@media \(max-width: 860px\) \{[\s\S]*?\.onboarding-showcase-preview-slide\s*\{\s*grid-area:\s*1 \/ 1;\s*min-height:\s*clamp\(420px, 75vw, 520px\);/);
+  assert.match(onboardingCss, /\.onboarding-showcase-preview\s*\{\s*max-width:\s*1120px;/);
+  assert.match(onboardingCss, /\.onboarding-showcase-preview-image\s*\{[^}]*object-fit:\s*cover;/);
+  assert.doesNotMatch(onboardingCss, /\[data-feature-id='fetcher-pickup'\] \.onboarding-showcase-preview-image\s*\{[^}]*object-fit:\s*contain;/);
+});
+
 test('onboarding showcase actions keep a clear dark-mode primary and secondary hierarchy', () => {
   const primaryDark = onboardingCss.match(/html\[data-theme="dark"\]\s+\.onboarding-showcase-action-primary\s*\{([^}]*)\}/)?.[1] || '';
   const primaryDarkInteractive = onboardingCss.match(/html\[data-theme="dark"\]\s+\.onboarding-showcase-action-primary:hover,\s*html\[data-theme="dark"\]\s+\.onboarding-showcase-action-primary:focus-visible\s*\{([^}]*)\}/)?.[1] || '';
@@ -85,7 +113,7 @@ test('onboarding feature swipe moves one card horizontally, wraps, and ignores v
   assert.ok(swipeHelper, 'the swipe target helper should exist');
   const context = {
     FEATURE_PREVIEW_SWIPE_THRESHOLD: 48,
-    ONBOARDING_FEATURES: ['school-management', 'teaching-tools', 'student-progress', 'ai-reports', 'school-forms'].map(id => ({ id }))
+    ONBOARDING_FEATURES: ['school-management', 'teaching-tools', 'fetcher-pickup', 'student-progress', 'ai-reports', 'school-forms'].map(id => ({ id }))
   };
   const targetFor = (currentFeatureId, deltaX, deltaY) => {
     Object.assign(context, { currentFeatureId, deltaX, deltaY });
@@ -94,6 +122,9 @@ test('onboarding feature swipe moves one card horizontally, wraps, and ignores v
 
   assert.equal(targetFor('school-management', -80, 10), 'teaching-tools');
   assert.equal(targetFor('teaching-tools', 80, 10), 'school-management');
+  assert.equal(targetFor('teaching-tools', -80, 10), 'fetcher-pickup');
+  assert.equal(targetFor('fetcher-pickup', -80, 10), 'student-progress');
+  assert.equal(targetFor('student-progress', -80, 10), 'ai-reports');
   assert.equal(targetFor('school-forms', -80, 10), 'school-management');
   assert.equal(targetFor('school-management', 10, 80), null);
   assert.equal(targetFor('school-management', -40, 5), null);

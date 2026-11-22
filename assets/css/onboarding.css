@@ -1021,6 +1021,25 @@ body:has(.onboarding-pending-page) {
   background: var(--theme-surface);
 }
 
+.onboarding-page.onboarding-registration-page > .onboarding-topbar,
+.onboarding-page.onboarding-pending-page > .onboarding-topbar,
+.privacy-policy-body .privacy-page > .onboarding-topbar {
+  border-bottom: 0;
+}
+
+.onboarding-page.onboarding-pending-page > .onboarding-topbar,
+.privacy-policy-body .privacy-page > .onboarding-topbar {
+  background: inherit;
+}
+
+.onboarding-page.onboarding-registration-page > .onboarding-topbar {
+  background: var(--theme-surface);
+}
+
+html[data-theme="dark"] .onboarding-page.onboarding-registration-page > .onboarding-topbar {
+  background: var(--theme-canvas);
+}
+
 .onboarding-topbar-brand,
 .onboarding-topbar-actions {
   display: flex;
@@ -1302,7 +1321,7 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
 }
 
 .onboarding-showcase-preview {
-  max-width: 930px;
+  max-width: 1120px;
   margin: clamp(30px, 5vw, 50px) auto 0;
   text-align: left;
 }
@@ -1341,7 +1360,7 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
 
 .onboarding-showcase-preview-slide {
   display: grid;
-  grid-column: span 7;
+  grid-column: span 6;
   min-height: 300px;
   min-width: 0;
   overflow: hidden;
@@ -1353,14 +1372,20 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
   text-align: left;
 }
 
-.onboarding-showcase-preview-slide:first-child {
-  grid-column: span 12;
-  min-height: 390px;
-}
+@media (min-width: 861px) {
+  .onboarding-showcase-preview-slide {
+    grid-column: span 5;
+  }
 
-.onboarding-showcase-preview-slide:nth-child(3),
-.onboarding-showcase-preview-slide:nth-child(4) {
-  grid-column: span 5;
+  .onboarding-showcase-preview-slide:nth-child(1),
+  .onboarding-showcase-preview-slide:nth-child(4),
+  .onboarding-showcase-preview-slide:nth-child(5) {
+    grid-column: span 7;
+  }
+
+  .onboarding-showcase-preview-slide:nth-child(-n+2) {
+    min-height: 360px;
+  }
 }
 
 .onboarding-showcase-preview-slide::after {
@@ -1446,6 +1471,10 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
   background: var(--gray-100);
   object-fit: cover;
   object-position: center;
+}
+
+.onboarding-showcase-preview-slide[data-feature-id='fetcher-pickup'] .onboarding-showcase-preview-image {
+  object-position: center 30%;
 }
 
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
@@ -1542,15 +1571,11 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
   line-height: 1.25;
 }
 
-.onboarding-registration-transition p:not(.onboarding-showcase-kicker) {
+.onboarding-registration-transition p {
   margin: 10px auto 18px;
   color: rgba(255, 255, 255, .76);
   font-size: 13px;
   line-height: 1.6;
-}
-
-.onboarding-registration-transition .onboarding-showcase-kicker {
-  color: var(--gold-light);
 }
 
 .onboarding-registration-link {
@@ -1601,7 +1626,7 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
   line-height: 1.2;
 }
 
-.onboarding-registration-intro p:not(.onboarding-showcase-kicker) {
+.onboarding-registration-intro p {
   max-width: 620px;
   margin: 10px auto 0;
   color: var(--gray-500);
@@ -1756,10 +1781,7 @@ html[data-theme="dark"] .onboarding-showcase-action-install:focus-visible {
     gap: 0;
   }
 
-  .onboarding-showcase-preview-slide,
-  .onboarding-showcase-preview-slide:first-child,
-  .onboarding-showcase-preview-slide:nth-child(3),
-  .onboarding-showcase-preview-slide:nth-child(4) {
+  .onboarding-showcase-preview-slide {
     grid-area: 1 / 1;
     min-height: clamp(420px, 75vw, 520px);
     border: 0;
