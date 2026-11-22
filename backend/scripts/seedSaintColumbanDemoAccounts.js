@@ -23,19 +23,52 @@ const SECTION_NAMES = [
   ['St. Gabriel', 'St. Michael', 'St. Raphael']
 ];
 const FIRST_NAMES = ('Miguel Sofia Gabriel Alyssa Joaquin Bianca Nathaniel Patricia Lorenzo Andrea Rafael Maria Daniel Elena Carlo Teresa Paolo Janine Arvin Lourdes Anton Camille Emmanuel Katrina Diego Isabel Marco Angela Luis Francesca Adrian Clarisse Vincent Daniela Tristan Regina Mateo Nicole Andres Beatriz Francis Julia Ramon Mikaela Christian Janelle Jose Carla Elijah Samantha Benjamin Anne Lucas Kristine Aaron').split(' ');
-const LAST_NAMES = ('Santos|Reyes|Dela Cruz|Bautista|Mendoza|Villanueva|Castillo|Flores|Ramos|Navarro|Aquino|Lim|Manalo|Fernandez|Garcia|Gatdula|Macapagal|Legaspi|Santiago|De Guzman|Cruz|De Leon|Torres|Velasco|Domingo|Mercado|Pineda|Javier|Alvarado|Perez|Rivera|Soriano|Salazar|Palisoc|Padilla|Bernal|Valdez|Abad|Guinto|Rosales|Magno|Dizon|Pascual|Medina|Estrella|Agustin|Ferrer|Salcedo|Capili|Corpuz|Lacuesta|De Vera|Villareal|Malabanan|Cordero').split('|');
+const ORIGINAL_LAST_NAMES = ('Santos|Reyes|Dela Cruz|Bautista|Mendoza|Villanueva|Castillo|Flores|Ramos|Navarro|Aquino|Lim|Manalo|Fernandez|Garcia|Gatdula|Macapagal|Legaspi|Santiago|De Guzman|Cruz|De Leon|Torres|Velasco|Domingo|Mercado|Pineda|Javier|Alvarado|Perez|Rivera|Soriano|Salazar|Palisoc|Padilla|Bernal|Valdez|Abad|Guinto|Rosales|Magno|Dizon|Pascual|Medina|Estrella|Agustin|Ferrer|Salcedo|Capili|Corpuz|Lacuesta|De Vera|Villareal|Malabanan|Cordero').split('|');
+const MORE_LAST_NAMES = ('Abella|Alonzo|Angeles|Arce|Arellano|Balagtas|Ballesteros|Barrios|Beltran|Benitez|Bernardo|Borja|Briones|Calara|Calderon|Camacho|Canlas|Carandang|Carino|Casimiro|Chua|Co|Cortez|Cuenca|David|Del Rosario|Dimaculangan|Evangelista|Fajardo|Francisco|Galang|Gonzales|Gutierrez|Hidalgo|Jacinto|Lagman|Laurel|Lazaro|Licup|Mabini|Macaraig|Magallanes|Mangubat|Marasigan|Montemayor|Natividad|Ocampo|Ong|Pangilinan|Panganiban|Paredes|Peralta|Punzalan|Quijano|Ramirez|Recto|Robles|Roxas|Salvador|Sarmiento|Sevilla|Sison|Solis|Suarez|Sy|Tabora|Tan|Tecson|Tolentino|Trinidad|Tuazon|Umali|Uy|Valenzuela|Vergara|Yabut|Yambao|Zaragoza|Aglipay|Alcantara|Baluyot|Basa|Caballero|Cabral|Caguioa|Calma|Carpio|Catacutan|Chavez|Concepcion|Dacumos|De Castro|De Mesa|De Ocampo|Del Mundo|Espiritu|Gatchalian|Hermoso|Juarez|Katigbak|Lacson|Ledesma|Liwanag|Maceda|Magsaysay|Navarrete|Nepomuceno|Quintos|Villamor|Yap').split('|');
+const LAST_NAMES = [...ORIGINAL_LAST_NAMES, ...MORE_LAST_NAMES];
+const SECOND_MALE = ['Jose', 'Luis', 'Paolo', 'Andres', 'Gabriel', 'Daniel', 'Rafael', 'Mateo'];
+const SECOND_FEMALE = ['Marie', 'Grace', 'Mae', 'Therese', 'Camille', 'Isabel', 'Angela', 'Rose'];
 const BARANGAYS = ('Poblacion|Maniboc|Baay|Basing|Libsong East|Libsong West|Pangapisan North|Quibaol|Tonton|Estanza|Domalandan East|Capandanan|Wawa|Rosario|Sabangan').split('|');
 const RELIGIONS = ['Roman Catholic', 'Roman Catholic', 'Roman Catholic', 'Roman Catholic', 'Born Again Christian', 'Christian', 'Islam'];
+const FAMILY_STUDENT_INDEXES = Array.from({ length: 10 }, (_, family) => [family * 12, family * 12 + 15]);
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
 function clean(value) { return value.toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
+// Identify accounts created by the first demo seed so the repair touches only those accounts.
+function legacyIdentity(index) {
+  const first = FIRST_NAMES[index % 55];
+  const last = ORIGINAL_LAST_NAMES[(index + Math.floor(index / 55) * 13) % 55];
+  return {
+    first, last, name: `${first} ${last}`,
+    personalEmail: `${clean(last)[0]}.${clean(first)}.${String(index + 1).padStart(3, '0')}@scc-demo.test`
+  };
+}
+
+function legacyProfile(index) {
+  return {
+    middle: ORIGINAL_LAST_NAMES[(index + 17) % 55],
+    maiden: index % 55 % 2 ? ORIGINAL_LAST_NAMES[(index + 23) % 55] : null,
+    religion: RELIGIONS[index % RELIGIONS.length],
+    houseStreet: `Purok ${index % 5 + 1}`,
+    barangay: BARANGAYS[index % BARANGAYS.length]
+  };
+}
+
 function makeData() {
-  assert(FIRST_NAMES.length === 55 && LAST_NAMES.length === 55, 'Name lists changed.');
+  assert(FIRST_NAMES.length === 55 && ORIGINAL_LAST_NAMES.length === 55 &&
+    LAST_NAMES.length === 165 && new Set(LAST_NAMES.map(name => name.toLowerCase())).size === 165,
+  'Name lists must contain 165 different surnames.');
   const sections = SECTION_NAMES.flatMap((names, i) => names.map(name => ({ grade: i + 2, name })));
   const accounts = Array.from({ length: 165 }, (_, i) => {
-    const first = FIRST_NAMES[i % 55];
-    const last = LAST_NAMES[(i + Math.floor(i / 55) * 13) % 55];
+    const originalFirst = FIRST_NAMES[i % 55];
+    const sex = i % 55 % 2 ? 'female' : 'male';
+    const round = Math.floor(i / 55);
+    const secondNames = sex === 'male' ? SECOND_MALE : SECOND_FEMALE;
+    let second = secondNames[(i % 55 + round * 3) % secondNames.length];
+    if (second === originalFirst) second = secondNames[(i % 55 + round * 3 + 1) % secondNames.length];
+    const first = round ? `${originalFirst} ${second}` : originalFirst;
+    const last = LAST_NAMES[i];
     const role = i < 135 ? 'student' : i < 155 ? 'teacher' : 'parent';
     const grade = role === 'student' ? 2 + Math.floor(i / 15) : null;
     const section = grade ? SECTION_NAMES[grade - 2][Math.floor(i % 15 / 5)] : null;
@@ -46,9 +79,9 @@ function makeData() {
     const birthYear = grade ? 2026 - age - (futureBirthday ? 1 : 0) : null;
     return {
       role, grade, section, first, last, name: `${first} ${last}`,
-      sex: i % 55 % 2 ? 'female' : 'male',
-      middle: LAST_NAMES[(i + 17) % 55],
-      maiden: LAST_NAMES[(i + 23) % 55],
+      sex,
+      middle: LAST_NAMES[(i + 17) % 165],
+      maiden: LAST_NAMES[(i + 23) % 165],
       personalEmail: `${clean(last)[0]}.${clean(first)}.${String(i + 1).padStart(3, '0')}@scc-demo.test`,
       birthDate: grade ? `${birthYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null,
       lrn: role === 'student' ? `9996${String(i + 1).padStart(8, '0')}` : null,
@@ -60,8 +93,39 @@ function makeData() {
       contactNumber: `0900${String(i + 1).padStart(7, '0')}`
     };
   });
+  // Keep the existing parent names. Move their replacement names to the
+  // students that originally used those first names and surnames.
+  for (let index = 155; index < 165; index++) {
+    const parent = accounts[index];
+    const old = legacyIdentity(index);
+    const firstOwner = accounts[index % 55];
+    const lastOwner = accounts[ORIGINAL_LAST_NAMES.indexOf(old.last)];
+    [parent.first, firstOwner.first] = [firstOwner.first, parent.first];
+    [parent.last, lastOwner.last] = [lastOwner.last, parent.last];
+  }
+  for (const [index, account] of accounts.entries()) {
+    account.name = `${account.first} ${account.last}`;
+    account.personalEmail = `${clean(account.last)[0]}.${clean(account.first)}.${String(index + 1).padStart(3, '0')}@scc-demo.test`;
+  }
+  for (const [family, studentIndexes] of FAMILY_STUDENT_INDEXES.entries()) {
+    const parent = accounts[155 + family];
+    for (const index of studentIndexes) {
+      const student = accounts[index];
+      student.last = parent.last;
+      student.name = `${student.first} ${student.last}`;
+      student.personalEmail = `${clean(student.last)[0]}.${clean(student.first)}.${String(index + 1).padStart(3, '0')}@scc-demo.test`;
+      student.houseStreet = parent.houseStreet;
+      student.barangay = parent.barangay;
+      student.religion = parent.religion;
+      student.parentIndex = 155 + family;
+    }
+  }
   assert(sections.length === 27 && new Set(sections.map(s => s.name)).size === 27, 'Invalid sections.');
   assert(new Set(accounts.map(a => a.name.toLowerCase())).size === 165, 'Duplicate full names.');
+  assert(new Set(accounts.map(a => a.first.toLowerCase())).size === 165, 'Duplicate first names.');
+  assert(new Set(accounts.map(a => a.last.toLowerCase())).size === 145, 'Unexpected surname overlap.');
+  assert(FAMILY_STUDENT_INDEXES.flat().length === 20 &&
+    new Set(FAMILY_STUDENT_INDEXES.flat()).size === 20, 'Family students overlap.');
   assert(new Set(accounts.map(a => a.personalEmail)).size === 165, 'Duplicate personal emails.');
   for (const section of sections) {
     assert(accounts.filter(a => a.grade === section.grade && a.section === section.name).length === 5,
@@ -183,7 +247,7 @@ async function verify(connection) {
     SCHOOL_ID, DEMO_DATE, DEMO_DATE, SCHOOL_ID, DEMO_DATE, SCHOOL_ID, DEMO_DATE,
     SCHOOL_ID, DEMO_DATE]);
   const expected = { sections: 27, enrollments: 135, students: 135, qr: 135, teachers: 20,
-    parents: 10, parentLinks: 0, teacherAssignments: 0, scoreItems: 0, scores: 0,
+    parents: 10, parentLinks: 20, teacherAssignments: 0, scoreItems: 0, scores: 0,
     publishedGrades: 0, attendance: 0, wrongAccountDates: 0, wrongSectionDates: 0,
     wrongEnrollmentDates: 0, wrongQrDates: 0, incompleteStudents: 0,
     incompleteParents: 0, incompleteTeachers: 0 };
@@ -202,7 +266,7 @@ async function verify(connection) {
       BETWEEN CAST(SUBSTRING(g.grade_code,7) AS UNSIGNED)+5
           AND CAST(SUBSTRING(g.grade_code,7) AS UNSIGNED)+6`, [SCHOOL_ID]);
   assert(Number(ages.n) === 135, 'Student ages failed verification.');
-  return { accounts: counts, sections: 27, enrolledStudents: 135, parentsLinked: 0,
+  return { accounts: counts, sections: 27, enrolledStudents: 135, parentsLinked: 20,
     teacherAssignments: 0, allProfilesComplete: true, datesVerified: true };
 }
 
@@ -254,6 +318,7 @@ async function run({ apply, password, confirm = async phrase => {
       [SCHOOL_ID, current.yearId, grade.levelId, grade.id, section.name, DEMO_DATE, DEMO_DATE]);
       sectionIds.set(`${section.grade}:${section.name}`, result.insertId);
     }
+    const accountIds = [];
     for (const account of data.accounts) {
       const [result] = await connection.execute(`INSERT INTO users
         (school_id,role,school_email,personal_email,password_hash,account_status,
@@ -263,6 +328,7 @@ async function run({ apply, password, confirm = async phrase => {
         account.first, account.last, account.name,
         `${account.first[0]}${account.last[0]}`.toUpperCase(), DEMO_DATE, DEMO_DATE, DEMO_DATE]);
       const id = result.insertId;
+      accountIds.push(id);
       if (account.role === 'student') {
         await connection.execute(`INSERT INTO student_profiles
           (user_id,lrn,middle_name,sex,birth_date,birth_place_province,birth_place,
@@ -293,6 +359,15 @@ async function run({ apply, password, confirm = async phrase => {
           account.sex === 'male', account.sex, account.religion,
           account.contactNumber, account.houseStreet, account.barangay, DEMO_DATE, DEMO_DATE]);
       }
+    }
+    for (const [index, account] of data.accounts.entries()) {
+      if (account.parentIndex === undefined) continue;
+      const parent = data.accounts[account.parentIndex];
+      await connection.execute(`INSERT INTO student_parent_links
+        (school_id,student_user_id,parent_user_id,relationship,created_at)
+        VALUES (?,?,?,?,?)`,
+      [SCHOOL_ID, accountIds[index], accountIds[account.parentIndex],
+        parent.sex === 'female' ? 'mother' : 'father', DEMO_DATE]);
     }
     const verified = await verify(connection);
     await connection.execute(`INSERT INTO audit_logs
@@ -332,4 +407,4 @@ if (require.main === module) main().catch(error => {
   process.exitCode = 1;
 });
 
-module.exports = { makeData, preflight, verify, run, CONFIRMATION };
+module.exports = { makeData, legacyIdentity, legacyProfile, preflight, verify, run, takeSnapshot, CONFIRMATION };

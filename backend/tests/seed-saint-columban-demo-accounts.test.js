@@ -2,11 +2,11 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { makeData, preflight, verify, run } = require('../scripts/seedSaintColumbanDemoAccounts');
+const { makeData, legacyIdentity, preflight, verify, run } = require('../scripts/seedSaintColumbanDemoAccounts');
 
 function fakeDatabase(options = {}) {
   const state = { users: [], sections: [], profiles: { student: 0, teacher: 0, parent: 0 },
-    enrollments: 0, qr: 0, snapshots: 0, commits: 0, rollbacks: 0, nextId: 200,
+    enrollments: 0, parentLinks: 0, qr: 0, snapshots: 0, commits: 0, rollbacks: 0, nextId: 200,
     failure: options.failure || null };
   const connection = {
     async query(sql) {
@@ -24,7 +24,7 @@ function fakeDatabase(options = {}) {
       if (sql.includes('AS sections,')) return [[{
         sections: state.sections.length, enrollments: state.enrollments,
         students: state.profiles.student, qr: state.qr, teachers: state.profiles.teacher,
-        parents: state.profiles.parent, parentLinks: 0, teacherAssignments: 0,
+        parents: state.profiles.parent, parentLinks: state.parentLinks, teacherAssignments: 0,
         scoreItems: 0, scores: 0, publishedGrades: 0, attendance: 0,
         wrongAccountDates: 0, wrongSectionDates: 0, wrongEnrollmentDates: 0,
         wrongQrDates: 0, incompleteStudents: 0, incompleteParents: 0, incompleteTeachers: 0
@@ -57,6 +57,7 @@ function fakeDatabase(options = {}) {
       if (sql.startsWith('INSERT INTO teacher_profiles')) state.profiles.teacher++;
       if (sql.startsWith('INSERT INTO parent_profiles')) state.profiles.parent++;
       if (sql.startsWith('INSERT INTO section_students')) state.enrollments++;
+      if (sql.startsWith('INSERT INTO student_parent_links')) state.parentLinks++;
       return [{ affectedRows: 1 }];
     },
     async beginTransaction() { state.started = true; },
@@ -67,11 +68,28 @@ function fakeDatabase(options = {}) {
   return { state, database: { async getConnection() { return connection; } } };
 }
 
-test('generates 27 unique sections and 165 unique account names', () => {
+test('generates unique names and ten parent families with two children each', () => {
   const data = makeData();
   assert.equal(data.sections.length, 27);
   assert.equal(data.accounts.length, 165);
   assert.equal(new Set(data.accounts.map(account => account.name)).size, 165);
+  assert.equal(new Set(data.accounts.map(account => account.first)).size, 165);
+  assert.equal(new Set(data.accounts.map(account => account.last)).size, 145);
+  const children = data.accounts.filter(account => account.parentIndex !== undefined);
+  assert.equal(children.length, 20);
+  for (let parentIndex = 155; parentIndex < 165; parentIndex++) {
+    const parent = data.accounts[parentIndex];
+    const siblings = children.filter(child => child.parentIndex === parentIndex);
+    assert.equal(siblings.length, 2);
+    assert.notEqual(siblings[0].grade, siblings[1].grade);
+    for (const child of siblings) {
+      assert.equal(child.last, parent.last);
+      assert.equal(child.houseStreet, parent.houseStreet);
+      assert.equal(child.barangay, parent.barangay);
+      assert.equal(child.religion, parent.religion);
+    }
+  }
+  assert.equal(legacyIdentity(55).name, 'Miguel Fernandez');
   assert.deepEqual(data.sections.filter(section => section.grade === 7).map(section => section.name),
     ['St. John', 'St. Peter', 'St. Luke']);
 });
@@ -121,6 +139,7 @@ test('apply creates and verifies all records in one transaction', async () => {
   assert.equal(state.profiles.teacher, 20);
   assert.equal(state.profiles.parent, 10);
   assert.equal(state.enrollments, 135);
+  assert.equal(state.parentLinks, 20);
 });
 
 test('an insert error rolls back', async () => {
