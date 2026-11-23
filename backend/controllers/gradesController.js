@@ -1777,6 +1777,7 @@ async function updateStudentScore(req, res, next) {
 }
 
 module.exports = {
+  buildFinalGradePreview,
   publishedSectionGradeFilter,
   assertGradeWriteAccess,
   validateGradeItemScope,
