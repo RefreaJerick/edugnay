@@ -116,8 +116,10 @@ async function readScope(c) {
   'Grades, journals, AI approvals, or narrative reports are not enabled.');
   check(Number(settings.weekStart || 1) === 1 && Number(settings.weekEnd || 6) === 6,
     'Expected Monday-to-Saturday report weeks.');
-  const [journalSubjects] = await c.execute(`SELECT id FROM journal_subjects WHERE id=? AND school_id=?
-    AND subject_id=? AND is_active=1`, [settings.journalSubjectId, SCHOOL_ID, values.id]);
+  check(Number(settings.journalSubjectId) === Number(values.id),
+    'Values Education is not selected as the school journal subject.');
+  const [journalSubjects] = await c.execute(`SELECT id FROM journal_subjects
+    WHERE school_id=? AND subject_id=? AND is_active=1`, [SCHOOL_ID, values.id]);
   check(journalSubjects.length === 1, 'Values Education journal is not configured.');
   const [rubrics] = await c.execute(`SELECT criteria FROM journal_ai_rubrics
     WHERE school_id=? AND teacher_user_id=? AND journal_subject_id=?`,

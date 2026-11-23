@@ -87,9 +87,12 @@ test('preview validates St. Peter scope and cancelled apply makes no changes', a
       if (sql.includes('FROM school_portal_features f')) return [[{
         gradesEnabled: 1, reportsEnabled: 1, journalsEnabled: 1,
         journalApproved: '2026-11-17', reportApproved: '2026-11-17',
-        journalSubjectId: 25, weekStart: 1, weekEnd: 6
+        journalSubjectId: 108, weekStart: 1, weekEnd: 6
       }]];
-      if (sql.includes('FROM journal_subjects WHERE')) return [[{ id: 25 }]];
+      if (sql.includes('FROM journal_subjects')) {
+        assert.deepEqual(params, [7, 108]);
+        return [[{ id: 25 }]];
+      }
       if (sql.includes('FROM journal_ai_rubrics')) return [[]];
       if (sql.includes('FROM users\n    WHERE school_email')) return [[]];
       if (sql.includes('FROM student_parent_links WHERE')) return [[]];
