@@ -1,5 +1,6 @@
 'use strict';
 
+require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.env'), quiet: true });
 const { createInterface } = require('node:readline/promises');
 const { DOMAIN_WEIGHTS, isDepedValuesSetup, usesDepedValuesDomains } = require('../config/depedValuesDomains');
 const { buildFinalGradePreview } = require('../controllers/gradesController');
@@ -19,8 +20,12 @@ function recordTime(itemIndex, studentIndex, itemCount) {
 function publishTime(subjectIndex) {
   return sqlTime(PUBLISH_START + subjectIndex * 45 * 1000);
 }
-function mockScore(studentId, itemIndex) {
-  return Math.round(20 * (0.62 + ((Number(studentId) * 13 + itemIndex * 7) % 34) / 100));
+function mockFails(studentIndex, subjectIndex) {
+  return (studentIndex * 7 + subjectIndex * 11) % 40 < 5;
+}
+function mockScore(studentIndex, itemIndex, subjectIndex) {
+  const variation = (studentIndex * 13 + itemIndex * 7 + subjectIndex * 3) % 8;
+  return mockFails(studentIndex, subjectIndex) ? 3 + variation : 13 + variation;
 }
 
 function planItems(subject, components, parts) {
@@ -45,7 +50,7 @@ function planItems(subject, components, parts) {
       const prefix = component.componentType === 'written' ? 'Quiz' : 'Performance Task';
       Object.keys(DOMAIN_WEIGHTS[component.componentType]).forEach((domainCode, index) =>
         items.push({ ...fields, examPartId: null, domainCode,
-          title: `${prefix} ${index + 1} (${domainCode[0].toUpperCase()}${domainCode.slice(1)})` }));
+          title: `${prefix} ${index + 1}` }));
     } else {
       const prefix = component.componentType === 'written' ? 'Quiz'
         : component.componentType === 'performance' ? 'Performance Task' : component.name;
@@ -102,6 +107,16 @@ async function readScope(connection) {
     ORDER BY u.last_name, u.first_name, u.id`, [SCHOOL_ID, section.id]);
   check(students.length === 40 && new Set(students.map(row => Number(row.id))).size === 40,
     'Expected exactly 40 active students in St. John.');
+  const [[parentTrigger]] = await connection.execute(`
+    SELECT is_enabled AS enabled FROM parent_notification_triggers
+    WHERE school_id=? AND trigger_code='grade_below_threshold'`, [SCHOOL_ID]);
+  const [parentRows] = await connection.execute(`
+    SELECT DISTINCT links.student_user_id AS studentId, parents.id AS parentId
+    FROM student_parent_links links
+    JOIN users parents ON parents.id=links.parent_user_id AND parents.school_id=links.school_id
+      AND parents.role='parent' AND parents.account_status='active'
+    WHERE links.school_id=? AND links.student_user_id IN (${students.map(() => '?').join(',')})
+    ORDER BY studentId, parentId`, [SCHOOL_ID, ...students.map(row => row.id)]);
   const [[features]] = await connection.execute(
     'SELECT grades_enabled AS enabled FROM school_portal_features WHERE school_id=?', [SCHOOL_ID]);
   check(Number(features?.enabled) === 1,
@@ -130,10 +145,12 @@ async function readScope(connection) {
       AND component_id IN (${componentIds.map(() => '?').join(',')})
     ORDER BY component_id, sort_order, id`, [SCHOOL_ID, ...componentIds]);
   const itemPlans = subjects.flatMap(subject => planItems(subject, components, parts));
-  return { section, term, subjects, students, itemPlans };
+  return { section, term, subjects, students, itemPlans,
+    parentAlertsEnabled: Number(parentTrigger?.enabled) === 1, parentRows };
 }
 
-async function verify(connection, scope, itemIds, noticeIds) {
+async function verify(connection, scope, itemIds, noticeIds, parentNoticeIds) {
+  const allNoticeIds = [...noticeIds, ...parentNoticeIds];
   const [[counts]] = await connection.execute(`
     SELECT (SELECT COUNT(*) FROM grading_items WHERE school_id=? AND section_id=? AND academic_term_id=?
               AND used_in_published_grades=1) AS items,
@@ -141,13 +158,13 @@ async function verify(connection, scope, itemIds, noticeIds) {
               WHERE gi.school_id=? AND gi.section_id=? AND gi.academic_term_id=?) AS scores,
            (SELECT COUNT(*) FROM published_final_grades WHERE school_id=? AND section_id=?
               AND academic_term_id=?) AS grades,
-           (SELECT COUNT(*) FROM notifications WHERE id IN (${noticeIds.map(() => '?').join(',')})) AS notices`,
+           (SELECT COUNT(*) FROM notifications WHERE id IN (${allNoticeIds.map(() => '?').join(',')})) AS notices`,
     [SCHOOL_ID, scope.section.id, scope.term.id,
       SCHOOL_ID, scope.section.id, scope.term.id,
-      SCHOOL_ID, scope.section.id, scope.term.id, ...noticeIds]);
+      SCHOOL_ID, scope.section.id, scope.term.id, ...allNoticeIds]);
   check(Number(counts.items) === itemIds.length &&
     Number(counts.scores) === itemIds.length * 40 &&
-    Number(counts.grades) === 360 && Number(counts.notices) === 360,
+    Number(counts.grades) === 360 && Number(counts.notices) === allNoticeIds.length,
   'Final record counts failed verification.');
   const [[timeBounds]] = await connection.execute(`
     SELECT (SELECT DATE_FORMAT(MIN(recorded_at),'%Y-%m-%d %H:%i:%s') FROM grading_items
@@ -176,10 +193,21 @@ async function verify(connection, scope, itemIds, noticeIds) {
   check(grades.every(row => row.publishedAt === timeBySubject.get(Number(row.subjectId)) &&
     row.createdAt === row.publishedAt), 'Published grade times failed verification.');
   const [notices] = await connection.execute(`
-    SELECT id, user_id AS userId, event_key AS eventKey,
+    SELECT id, user_id AS userId, related_student_user_id AS relatedStudentId,
+           event_key AS eventKey,
            DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS createdAt
-    FROM notifications WHERE id IN (${noticeIds.map(() => '?').join(',')})`, noticeIds);
-  check(notices.length === 360 && notices.every(row => {
+    FROM notifications WHERE id IN (${allNoticeIds.map(() => '?').join(',')})`, allNoticeIds);
+  const studentNoticeIds = new Set(noticeIds.map(Number));
+  const parentIds = new Set(parentNoticeIds.map(Number));
+  check(notices.length === allNoticeIds.length && notices.every(row => {
+    if (parentIds.has(Number(row.id))) {
+      const grade = grades.find(g => row.eventKey ===
+        `grade:${scope.section.id}:${g.subjectId}:${scope.term.id}:${g.studentId}` &&
+        Number(row.relatedStudentId) === Number(g.studentId));
+      return grade && scope.parentRows.some(link => Number(link.studentId) === Number(grade.studentId)
+        && Number(link.parentId) === Number(row.userId)) && row.createdAt === grade.publishedAt;
+    }
+    if (!studentNoticeIds.has(Number(row.id))) return false;
     const grade = grades.find(g => row.eventKey ===
       `grade-published:${scope.section.id}:${g.subjectId}:${scope.term.id}:${g.studentId}` &&
       Number(row.userId) === Number(g.studentId));
@@ -208,7 +236,12 @@ async function run({ apply = false, confirm, database, snapshot = takeSnapshot,
     console.log(JSON.stringify({ mode: 'preview', schoolId: SCHOOL_ID,
       section: 'Grade 7 St. John', term: scope.term.name, students: 40,
       scoreItems: scope.itemPlans.length, scores: scope.itemPlans.length * 40,
-      publishedGrades: 360, studentNotifications: 360,
+      publishedGrades: 360, expectedPassingGrades: 315, expectedBelowPassingGrades: 45,
+      studentNotifications: 360,
+      parentNotifications: scope.parentAlertsEnabled ? scope.subjects.reduce((sum, _subject, subjectIndex) =>
+        sum + scope.students.reduce((count, student, studentIndex) => count +
+          (mockFails(studentIndex, subjectIndex)
+            ? scope.parentRows.filter(link => Number(link.studentId) === Number(student.id)).length : 0), 0), 0) : 0,
       scoreTimeRange: '2026-11-18 10:38:00 to 10:53:00',
       publicationTimeRange: '2026-11-18 10:59:00 to 11:05:00',
       confirmationPhrase: CONFIRMATION }, null, 2));
@@ -232,7 +265,9 @@ async function run({ apply = false, confirm, database, snapshot = takeSnapshot,
     check(current.section.id === scope.section.id && current.term.id === scope.term.id &&
       JSON.stringify(current.subjects) === JSON.stringify(scope.subjects) &&
       JSON.stringify(current.students) === JSON.stringify(scope.students) &&
-      JSON.stringify(current.itemPlans) === JSON.stringify(scope.itemPlans),
+      JSON.stringify(current.itemPlans) === JSON.stringify(scope.itemPlans) &&
+      current.parentAlertsEnabled === scope.parentAlertsEnabled &&
+      JSON.stringify(current.parentRows) === JSON.stringify(scope.parentRows),
     'School setup changed after preview.');
     const itemIds = [];
     const itemsBySubject = new Map(current.subjects.map(subject => [Number(subject.id), []]));
@@ -256,11 +291,14 @@ async function run({ apply = false, confirm, database, snapshot = takeSnapshot,
             (school_id, grading_item_id, student_user_id, score,
              recorded_by_user_id, recorded_at, updated_at)
           VALUES (?,?,?,?,?,?,?)`,
-          [SCHOOL_ID, created.insertId, student.id, mockScore(student.id, index),
+          [SCHOOL_ID, created.insertId, student.id,
+            mockScore(studentIndex, index, current.subjects.findIndex(subject =>
+              Number(subject.id) === Number(item.subjectId))),
             item.teacherId, scoreWhen, scoreWhen]);
       }
     }
     const noticeIds = [];
+    const parentNoticeIds = [];
     const gradeSummary = [];
     for (const [index, subject] of current.subjects.entries()) {
       const time = publishTime(index);
@@ -271,8 +309,14 @@ async function run({ apply = false, confirm, database, snapshot = takeSnapshot,
       check(preview.readyToPublish && preview.students.length === 40 &&
         preview.gradingItemIds.length === itemsBySubject.get(Number(subject.id)).length &&
         preview.students.every(student => !student.retainedPublishedGrade &&
-          student.finalGrade !== null && student.finalGrade >= preview.passingGradeThreshold),
+          student.finalGrade !== null),
       `Grade calculation is not ready for ${subject.name}: ${JSON.stringify(preview.issues)}.`);
+      const expectedFailingIds = new Set(current.students.filter((_student, studentIndex) =>
+        mockFails(studentIndex, index)).map(student => Number(student.id)));
+      check(expectedFailingIds.size === 5 && preview.students.every(student =>
+        (Number(student.finalGrade) < Number(preview.passingGradeThreshold)) ===
+          expectedFailingIds.has(Number(student.studentId))),
+      `Calculated passing and failing grades differ from the mock score plan for ${subject.name}.`);
       check(preview.transferReviewStudentIds.length === 0,
         `Transferred work needs review for ${subject.name}.`);
       for (const student of preview.students) {
@@ -294,6 +338,22 @@ async function run({ apply = false, confirm, database, snapshot = takeSnapshot,
             '/views/student/edugnay-student-grades.html', eventKey, time]);
         check(notice.affectedRows === 1, `Notification failed for student ${student.studentId}.`);
         noticeIds.push(notice.insertId);
+        if (current.parentAlertsEnabled && expectedFailingIds.has(Number(student.studentId))) {
+          for (const link of current.parentRows.filter(row =>
+            Number(row.studentId) === Number(student.studentId))) {
+            const parentEventKey = `grade:${current.section.id}:${subject.id}:${current.term.id}:${student.studentId}`;
+            const [parentNotice] = await connection.execute(`
+              INSERT INTO notifications
+                (user_id, related_student_user_id, type, title, message, target_path, event_key, created_at)
+              VALUES (?, ?, 'grade', 'Published grade below passing', ?, ?, ?, ?)`,
+              [link.parentId, student.studentId,
+                `${student.studentName}'s published grade in ${subject.name} is below the passing grade.`,
+                '/views/parent/edugnay-parent-grades.html', parentEventKey, time]);
+            check(parentNotice.affectedRows === 1,
+              `Parent notification failed for student ${student.studentId}.`);
+            parentNoticeIds.push(parentNotice.insertId);
+          }
+        }
       }
       await connection.execute(`
         UPDATE grading_items SET used_in_published_grades=1, updated_at=?
@@ -307,29 +367,31 @@ async function run({ apply = false, confirm, database, snapshot = takeSnapshot,
           JSON.stringify({ summary: `${subject.name} · St. John · ${current.term.name} · 40 students`,
             source: 'synthetic_demo_data' }), time]);
       gradeSummary.push({ subject: subject.name, teacher: subject.teacher,
-        publishedAt: time, grades: preview.students.length });
+        publishedAt: time, grades: preview.students.length, passing: 35, belowPassing: 5 });
     }
+    const allNoticeIds = [...noticeIds, ...parentNoticeIds];
     const [pushTables] = await connection.execute(`
       SELECT TABLE_NAME FROM information_schema.TABLES
       WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='notification_push_deliveries'`);
     if (pushTables.length) {
       // Keep historical in-app notices without sending fresh device pushes today.
       await connection.execute(`DELETE FROM notification_push_deliveries
-        WHERE notification_id IN (${noticeIds.map(() => '?').join(',')})`, noticeIds);
+        WHERE notification_id IN (${allNoticeIds.map(() => '?').join(',')})`, allNoticeIds);
       const [[queued]] = await connection.execute(`SELECT COUNT(*) AS n FROM notification_push_deliveries
-        WHERE notification_id IN (${noticeIds.map(() => '?').join(',')})`, noticeIds);
+        WHERE notification_id IN (${allNoticeIds.map(() => '?').join(',')})`, allNoticeIds);
       check(Number(queued.n) === 0, 'Live push delivery queue was not cleared.');
     }
-    await verify(connection, current, itemIds, noticeIds);
+    await verify(connection, current, itemIds, noticeIds, parentNoticeIds);
     await connection.commit();
     started = false;
     console.log(JSON.stringify({ result: 'complete', schoolId: SCHOOL_ID,
       section: 'Grade 7 St. John', term: current.term.name,
       scoreItemsCreated: itemIds.length, studentScoresEntered: itemIds.length * 40,
-      gradesPublished: 360, inAppNotifications: noticeIds.length,
+      gradesPublished: 360, passingGrades: 315, belowPassingGrades: 45,
+      studentNotifications: noticeIds.length, parentNotifications: parentNoticeIds.length,
       livePushNotifications: 0, subjects: gradeSummary,
       snapshotId, verified: true }, null, 2));
-    return { result: 'complete', itemIds, noticeIds };
+    return { result: 'complete', itemIds, noticeIds, parentNoticeIds };
   } catch (error) {
     if (started) await connection.rollback();
     throw error;
@@ -340,7 +402,6 @@ async function run({ apply = false, confirm, database, snapshot = takeSnapshot,
 }
 
 async function main() {
-  require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.env'), quiet: true });
   check(process.env.DB_NAME === 'academix', 'DB_NAME must be academix.');
   const args = process.argv.slice(2);
   check(args.length === 1 && ['--preview', '--apply'].includes(args[0]),
@@ -353,5 +414,5 @@ if (require.main === module) main().catch(error => {
   process.exitCode = 1;
 });
 
-module.exports = { planItems, readScope, recordTime, publishTime, mockScore,
+module.exports = { planItems, readScope, recordTime, publishTime, mockFails, mockScore,
   verify, run, CONFIRMATION };

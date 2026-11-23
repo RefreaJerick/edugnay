@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { planItems, readScope, recordTime, publishTime, mockScore, run } =
+const { planItems, readScope, recordTime, publishTime, mockFails, mockScore, run } =
   require('../scripts/seedSaintColumbanStJohnTerm1Grades');
 
 function fixture() {
@@ -35,7 +35,7 @@ function fixture() {
 }
 
 function fakeDatabase({ enrolled = 40, gradesEnabled = 1, existingItems = 0,
-  failScore = false, withPush = false } = {}) {
+  failScore = false, withPush = false, parentAlertsEnabled = 0, parentLinks = [] } = {}) {
   const data = fixture();
   const saved = { items: [], scores: [], grades: [], notices: [], audits: [], pushes: [] };
   const actions = { begins: 0, commits: 0, rollbacks: 0, snapshots: 0 };
@@ -57,6 +57,10 @@ function fakeDatabase({ enrolled = 40, gradesEnabled = 1, existingItems = 0,
         return [data.students.slice(0, enrolled)];
       }
       if (sql.includes('FROM school_portal_features')) return [[{ enabled: gradesEnabled }]];
+      if (sql.includes('FROM parent_notification_triggers')) {
+        return [[{ enabled: parentAlertsEnabled }]];
+      }
+      if (sql.includes('FROM student_parent_links links')) return [parentLinks];
       if (sql.includes('AS items') && sql.includes('AS grades') && sql.includes('AS notices') &&
         !sql.includes('AS scores')) {
         return [[{ items: existingItems, grades: 0, notices: 0 }]];
@@ -80,7 +84,8 @@ function fakeDatabase({ enrolled = 40, gradesEnabled = 1, existingItems = 0,
       }
       if (sql.includes('INSERT INTO notifications')) {
         const id = nextId++;
-        saved.notices.push({ id, params });
+        saved.notices.push({ id, params,
+          kind: sql.includes('related_student_user_id') ? 'parent' : 'student' });
         if (withPush) saved.pushes.push(id);
         return [{ insertId: id, affectedRows: 1 }];
       }
@@ -92,7 +97,7 @@ function fakeDatabase({ enrolled = 40, gradesEnabled = 1, existingItems = 0,
       if (sql.includes('information_schema.TABLES')) return [withPush ? [{ TABLE_NAME: 'notification_push_deliveries' }] : []];
       if (sql.includes('DELETE FROM notification_push_deliveries')) {
         saved.pushes = [];
-        return [{ affectedRows: 360 }];
+        return [{ affectedRows: saved.notices.length }];
       }
       if (sql.includes('COUNT(*) AS n FROM notification_push_deliveries')) {
         return [[{ n: saved.pushes.length }]];
@@ -111,8 +116,10 @@ function fakeDatabase({ enrolled = 40, gradesEnabled = 1, existingItems = 0,
           publishedAt: p[8], createdAt: p[9] }))];
       }
       if (sql.includes('FROM notifications WHERE id IN')) {
-        return [saved.notices.map(({ id, params: p }) => ({ id, userId: p[0],
-          eventKey: p[3], createdAt: p[4] }))];
+        return [saved.notices.map(({ id, params: p, kind }) => ({ id, userId: p[0],
+          relatedStudentId: kind === 'parent' ? p[1] : null,
+          eventKey: kind === 'parent' ? p[4] : p[3],
+          createdAt: kind === 'parent' ? p[5] : p[4] }))];
       }
       throw new Error(`Unexpected execute: ${sql.slice(0, 100)}`);
     },
@@ -141,6 +148,8 @@ test('score items follow the subject profile and Values Education domains', () =
   assert.equal(values.length, 8);
   assert.deepEqual(values.filter(item => item.domainCode).map(item => item.domainCode),
     ['cognitive', 'affective', 'cognitive', 'affective', 'behavioral']);
+  assert.deepEqual(values.filter(item => item.domainCode).map(item => item.title),
+    ['Quiz 1', 'Quiz 2', 'Performance Task 1', 'Performance Task 2', 'Performance Task 3']);
   assert.equal(values.filter(item => item.examPartId).length, 3);
   assert.ok([...normal, ...values].every(item => item.maxScore === 20));
 });
@@ -150,7 +159,12 @@ test('recording and publication dates stay in the requested windows', () => {
   assert.ok(recordTime(63, 40, 64) <= '2026-11-18 10:53:00');
   assert.equal(publishTime(0), '2026-11-18 10:59:00');
   assert.equal(publishTime(8), '2026-11-18 11:05:00');
-  assert.ok(mockScore(300, 0) >= 0 && mockScore(300, 0) <= 20);
+  assert.ok(mockScore(0, 0, 0) >= 0 && mockScore(0, 0, 0) <= 20);
+  for (let subjectIndex = 0; subjectIndex < 9; subjectIndex++) {
+    assert.equal(Array.from({ length: 40 }, (_, studentIndex) =>
+      mockFails(studentIndex, subjectIndex)).filter(Boolean).length, 5);
+    assert.ok(mockScore(0, 0, subjectIndex) <= 20);
+  }
 });
 
 test('preflight rejects wrong enrollment, disabled Grades, and existing items', async () => {
@@ -160,14 +174,18 @@ test('preflight rejects wrong enrollment, disabled Grades, and existing items', 
 });
 
 test('apply publishes 360 calculated grades and matching historical in-app notices', async () => {
-  const scope = fakeDatabase({ withPush: true });
+  const scope = fakeDatabase({ withPush: true, parentAlertsEnabled: 1,
+    parentLinks: [{ studentId: 300, parentId: 900 }] });
   const calculate = async (_connection, _teacher, gradeScope) => ({
     readyToPublish: true, issues: [], passingGradeThreshold: 75,
     transferReviewStudentIds: [], domainRuleVersion: null,
     gradingItemIds: scope.saved.items.filter(row => row.params[2] === gradeScope.subjectId)
       .map(row => row.id),
-    students: scope.data.students.map(row => ({ studentId: row.id,
-      finalGrade: 85, retainedPublishedGrade: false }))
+    students: scope.data.students.map((row, studentIndex) => ({ studentId: row.id,
+      studentName: row.name,
+      finalGrade: mockFails(studentIndex,
+        scope.data.subjects.findIndex(subject => subject.id === gradeScope.subjectId)) ? 70 : 85,
+      retainedPublishedGrade: false }))
   });
   const result = await quiet(() => run({ apply: true, database: scope.database,
     confirm: async () => true,
@@ -177,7 +195,10 @@ test('apply publishes 360 calculated grades and matching historical in-app notic
   assert.equal(scope.saved.items.length, 64);
   assert.equal(scope.saved.scores.length, 2560);
   assert.equal(scope.saved.grades.length, 360);
-  assert.equal(scope.saved.notices.length, 360);
+  assert.equal(scope.saved.notices.filter(row => row.kind === 'student').length, 360);
+  assert.equal(scope.saved.notices.filter(row => row.kind === 'parent').length, 2);
+  assert.equal(result.parentNoticeIds.length, 2);
+  assert.equal(scope.saved.grades.filter(row => Number(row[5]) < 75).length, 45);
   assert.equal(scope.saved.audits.length, 9);
   assert.equal(scope.saved.pushes.length, 0);
   assert.equal(scope.actions.commits, 1);
@@ -196,4 +217,21 @@ test('snapshot failure prevents writes and score failure rolls back', async () =
     confirm: async () => true, snapshot: () => 'available-snapshot' })), /score write failed/);
   assert.equal(second.actions.commits, 0);
   assert.equal(second.actions.rollbacks, 1);
+});
+
+test('unexpected all-passing calculation rolls the grade seed back', async () => {
+  const scope = fakeDatabase();
+  const calculate = async (_connection, _teacher, gradeScope) => ({
+    readyToPublish: true, issues: [], passingGradeThreshold: 75,
+    transferReviewStudentIds: [], domainRuleVersion: null,
+    gradingItemIds: scope.saved.items.filter(row => row.params[2] === gradeScope.subjectId)
+      .map(row => row.id),
+    students: scope.data.students.map(row => ({ studentId: row.id,
+      studentName: row.name, finalGrade: 85, retainedPublishedGrade: false }))
+  });
+  await assert.rejects(quiet(() => run({ apply: true, database: scope.database,
+    confirm: async () => true, snapshot: () => 'available-snapshot', calculate })),
+  /passing and failing grades differ/);
+  assert.equal(scope.actions.commits, 0);
+  assert.equal(scope.actions.rollbacks, 1);
 });
