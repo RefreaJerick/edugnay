@@ -13,7 +13,6 @@ const CONFIRMATION = 'ALIGN ALL SCHOOL 7 ACTIVITY DATES';
 const SUBMITTED_UTC = '2026-11-16 14:35:00';
 const APPROVED_UTC = '2026-11-16 14:45:00';
 const FETCHER_START_UTC = '2026-11-18 05:00:00'; // 1:00 PM in the Philippines
-const FALLBACK_START_UTC = '2026-11-18 07:00:00'; // 3:00 PM in the Philippines
 
 function check(ok, message) { if (!ok) throw new Error(message); }
 function addSeconds(value, seconds) {
@@ -32,6 +31,16 @@ function actionTime(row, scope, fetcherIndex) {
   if (row.actionType === 'school_registration_submitted') return scope.school.submittedAt;
   if (row.actionType === 'school_registration_approved') return scope.school.approvedAt;
   if (fetcherAction(row.actionType)) return sqlTime(addSeconds(FETCHER_START_UTC, fetcherIndex * 60));
+  if (row.entityType === 'narrative_reports') {
+    const report = scope.reports.find(item => Number(item.id) === Number(row.entityId));
+    const field = {
+      narrative_report_draft_generated: 'generatedAt',
+      narrative_report_draft_regenerated: 'generatedAt',
+      narrative_report_confirmed_held: 'confirmedAt',
+      narrative_report_released_to_parents: 'releasedAt'
+    }[row.actionType];
+    if (field) return report?.[field] && inWindow(report[field]) ? report[field] : null;
+  }
   if (row.actionType === 'learning_material_uploaded' && row.entityType === 'learning_material') {
     const material = scope.materials.find(item => Number(item.id) === Number(row.entityId));
     if (material && inWindow(material.createdAt)) return material.createdAt;
@@ -54,15 +63,14 @@ function actionTime(row, scope, fetcherIndex) {
 function buildPlan(scope) {
   const sorted = [...scope.logs].sort((a, b) => Number(a.id) - Number(b.id));
   let fetcherIndex = 0;
-  let fallbackIndex = 0;
   const logs = sorted.map(row => {
-    const mapped = actionTime(row, scope, fetcherIndex);
-    const target = mapped || sqlTime(addSeconds(FALLBACK_START_UTC, fallbackIndex++));
+    const target = actionTime(row, scope, fetcherIndex);
     if (fetcherAction(row.actionType)) fetcherIndex++;
-    check(inWindow(target), `Target outside November 16–18 for log ${row.id}.`);
+    if (target) check(inWindow(target), `Target outside November 16–18 for log ${row.id}.`);
     return { id: Number(row.id), actionType: row.actionType, entityType: row.entityType,
       entityId: row.entityId === null ? null : Number(row.entityId),
-      current: row.createdAt, target, change: row.createdAt !== target };
+      current: row.createdAt, target, change: row.createdAt !== target,
+      needsReview: !target };
   });
   const byEntity = (type, id) => logs.filter(row => row.entityType === type && row.entityId === Number(id));
   const first = rows => rows[0]?.target;
@@ -122,6 +130,11 @@ async function readScope(connection) {
   const [materials] = await connection.execute(`SELECT id,
     DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS createdAt
     FROM learning_materials WHERE school_id=? ORDER BY id`, [SCHOOL_ID]);
+  const [reports] = await connection.execute(`SELECT id,
+    DATE_FORMAT(generated_at,'%Y-%m-%d %H:%i:%s') AS generatedAt,
+    DATE_FORMAT(confirmed_at,'%Y-%m-%d %H:%i:%s') AS confirmedAt,
+    DATE_FORMAT(released_at,'%Y-%m-%d %H:%i:%s') AS releasedAt
+    FROM narrative_reports WHERE school_id=? ORDER BY id`, [SCHOOL_ID]);
   const [fetchers] = await connection.execute(`SELECT id,parent_user_id AS parentId,
     DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS createdAt,
     DATE_FORMAT(updated_at,'%Y-%m-%d %H:%i:%s') AS updatedAt
@@ -139,7 +152,7 @@ async function readScope(connection) {
     DATE_FORMAT(school_date,'%Y-%m-%d') AS schoolDate,
     DATE_FORMAT(picked_up_at,'%Y-%m-%d %H:%i:%s') AS pickedUpAt
     FROM pickup_records WHERE school_id=? ORDER BY id`, [SCHOOL_ID]);
-  return { school, logs, materials, fetchers, authorizations, credentials, pickups };
+  return { school, logs, materials, reports, fetchers, authorizations, credentials, pickups };
 }
 
 function assertServiceStopped() {
@@ -212,7 +225,7 @@ function verify(scope, plan) {
     'Pickup date verification failed.');
 }
 
-async function run({ apply = false, database, confirm, snapshot = takeSnapshot,
+async function run({ apply = false, reviewOnly = false, database, confirm, snapshot = takeSnapshot,
   checkEndpoint = assertRdsTarget, checkService = assertServiceStopped,
   saveManifest = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2), { flag: 'wx', mode: 0o600 }) } = {}) {
   const db = database || require('../config/database').getDatabase();
@@ -224,12 +237,22 @@ async function run({ apply = false, database, confirm, snapshot = takeSnapshot,
     const plan = buildPlan(before);
     const preview = { mode: 'preview', school: { id: SCHOOL_ID, name: SCHOOL_NAME },
       activityRows: plan.logs.length, activityChanges: plan.logs.filter(row => row.change).length,
+      activityRowsNeedingReview: plan.logs.filter(row => row.needsReview).length,
       fetcherRows: plan.fetchers.length, authorizationRows: plan.authorizations.length,
       credentialRows: plan.credentials.length, pickupRows: plan.pickups.length,
       logs: plan.logs, fetchers: plan.fetchers, authorizations: plan.authorizations,
       credentials: plan.credentials, pickups: plan.pickups, confirmationPhrase: CONFIRMATION };
+    if (reviewOnly) {
+      const review = { mode: 'review', schoolId: SCHOOL_ID,
+        totalActivityRows: plan.logs.length,
+        rowsNeedingReview: plan.logs.filter(row => row.needsReview) };
+      console.log(JSON.stringify(review, null, 2));
+      return review;
+    }
     console.log(JSON.stringify(preview, null, 2));
     if (!apply) return preview;
+    check(!plan.logs.some(row => row.needsReview),
+      'Some activity dates have no matching record date. Review the preview; nothing was changed.');
     check(plan.logs.some(row => row.change), 'All activity dates already match; nothing to change.');
     const ask = confirm || (async phrase => {
       const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -281,8 +304,9 @@ async function main() {
   check(process.env.DB_NAME === 'academix', 'DB_NAME must be academix.');
   check(new Date().getTimezoneOffset() === 0, 'Run on the UTC-configured EC2 host.');
   const args = process.argv.slice(2);
-  check(args.length === 1 && ['--preview', '--apply'].includes(args[0]), 'Use --preview or --apply.');
-  await run({ apply: args[0] === '--apply' });
+  check(args.length === 1 && ['--preview', '--review', '--apply'].includes(args[0]),
+    'Use --preview, --review, or --apply.');
+  await run({ apply: args[0] === '--apply', reviewOnly: args[0] === '--review' });
 }
 
 if (require.main === module) main().catch(error => {
