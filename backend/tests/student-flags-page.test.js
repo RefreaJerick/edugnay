@@ -94,8 +94,13 @@ test('modified page inline scripts parse', () => {
 test('flag cards use compact reasons, plain avatars, and responsive grids', () => {
   for (const source of [teacher, admin]) {
     assert.match(source, /\$\{reason\.count\} dates with a recorded/);
-    assert.match(source, /\$\{reason\.count\} missed \$\{reason\.subject\} meeting dates in a row/);
-    assert.match(source, /\$\{reason\.subject\}: \$\{reason\.grade\}/);
+    if (source === admin) {
+      assert.match(source, /\$\{reason\.count\} missed \$\{formatFlaggedSubject\(reason\.subject\)\} meeting dates in a row/);
+      assert.match(source, /\$\{formatFlaggedSubject\(reason\.subject\)\}: \$\{reason\.grade\}/);
+    } else {
+      assert.match(source, /\$\{reason\.count\} missed \$\{reason\.subject\} meeting dates in a row/);
+      assert.match(source, /\$\{reason\.subject\}: \$\{reason\.grade\}/);
+    }
     assert.match(source, /class="badge badge-\$\{\['grade', 'low_scores'\]\.includes\(reason\.type\) \? 'gold' : 'red'\}"/);
     assert.match(source, /data-lucide="\$\{\['grade', 'low_scores'\]\.includes\(reason\.type\) \? 'trending-down' : 'calendar-days'\}" aria-hidden="true"/);
     assert.doesNotMatch(source, /passing \$\{reason\.threshold\}|limit \$\{reason\.threshold\}/);
@@ -109,4 +114,14 @@ test('flag cards use compact reasons, plain avatars, and responsive grids', () =
   assert.match(adminStyles, /@media \(max-width: 760px\)/);
   assert.doesNotMatch(teacherStyles, /\.flag-reason\s*\{/);
   assert.doesNotMatch(adminStyles, /\.flag-reason\s*\{/);
+});
+
+test('admin flagged badges shorten only TLE subject names', () => {
+  const formatter = admin.match(/function formatFlaggedSubject\(subject\) \{[\s\S]*?\n    \}/)?.[0];
+  assert.ok(formatter);
+  const format = vm.runInNewContext(`${formatter}\nformatFlaggedSubject`);
+  assert.equal(format('Technology and Livelihood Education (TLE)'), 'TLE');
+  assert.equal(format('Technology and Livelihood Education'), 'TLE');
+  assert.equal(format('Science'), 'Science');
+  assert.match(admin, /\$\{formatFlaggedSubject\(reason\.subject\)\}: 3 low scores this report week/);
 });

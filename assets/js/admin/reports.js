@@ -205,6 +205,11 @@ let gradeSummaryError = '';
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'No attendance indicators', text: 'No confirmed attendance records are available.' });
     }
 
+    function formatFlaggedSubject(subject) {
+      return /^technology and livelihood education(?:\s*\(tle\))?$/i.test(String(subject || '').trim())
+        ? 'TLE' : subject;
+    }
+
     function renderFlaggedStudents(data = REPORTS_DATA) {
       const panel = document.getElementById('report-flagged-students');
       if (attendanceSummaryError && !FLAGGED_STUDENTS_PREVIEW) {
@@ -224,9 +229,9 @@ let gradeSummaryError = '';
           <div class="flag-info"><div class="flag-name">${escape(student.name)}</div>
             <div class="flag-detail">${escape(student.grade)} · ${escape(student.sectionName)}</div></div></div>
           <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${['grade', 'low_scores'].includes(reason.type) ? 'gold' : 'red'}"><i data-lucide="${['grade', 'low_scores'].includes(reason.type) ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
-            ? `${reason.subject}: ${reason.grade}`
-                : reason.type === 'low_scores' ? `${reason.subject}: 3 low scores this report week`
-                : reason.type === 'consecutive' ? `${reason.count} missed ${reason.subject} meeting dates in a row`
+            ? `${formatFlaggedSubject(reason.subject)}: ${reason.grade}`
+                : reason.type === 'low_scores' ? `${formatFlaggedSubject(reason.subject)}: 3 low scores this report week`
+                : reason.type === 'consecutive' ? `${reason.count} missed ${formatFlaggedSubject(reason.subject)} meeting dates in a row`
                   : `${reason.count} dates with a recorded ${reason.includesExcused ? 'subject absence (including excused)' : 'unexcused subject absence'}`)}</span>`).join('')}</div>
         </div>`).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or academic criteria.' });
